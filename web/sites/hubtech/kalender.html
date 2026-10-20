@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>Calendar with colors and notes</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #1f1f2f, #2a2a3d);
+      color: #f0f0f0;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 1em;
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: white;
+      margin: 0;
+      font-size: 2em;
+    }
+
+    .calendar-container {
+      max-width: 900px;
+      margin: 2em auto;
+      padding: 2em;
+      background-color: #2b2b3c;
+      border-radius: 12px;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 1em;
+    }
+
+    .topbar input {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #888;
+      background-color: #2a2a3d;
+      color: #fff;
+    }
+
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1em;
+    }
+
+    .month-title {
+      font-size: 1.8em;
+      text-align: center;
+      flex: 1;
+      color: #00f2ff;
+    }
+
+    .month-header button {
+      background: #00c6ff;
+      color: #000;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #bbb;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .day {
+      background-color: #3a3a4f;
+      border: 1px solid #555;
+      padding: 1em;
+      min-height: 80px;
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+      color: #fff;
+      transition: background-color 0.2s ease;
+    }
+
+    .day:hover {
+      background-color: #505070;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #ccc;
+      margin-top: 5px;
+      white-space: pre-wrap;
+    }
+
+    .red { background-color: #ff4c4c !important; }
+    .blue { background-color: #2196f3 !important; }
+    .green { background-color: #4caf50 !important; }
+
+    #modal, #overlay {
+      display: none;
+      position: fixed;
+      z-index: 10;
+    }
+
+    #overlay {
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 5;
+    }
+
+    #modal {
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1e1e2f;
+      padding: 2em;
+      border-radius: 12px;
+      width: 360px;
+      color: #fff;
+    }
+
+    #modal label {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #ddd;
+    }
+
+    #modal textarea, #modal select, #modal input {
+      width: 100%;
+      margin-top: 6px;
+      font-size: 14px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #888;
+      background-color: #2a2a3d;
+      color: #fff;
+    }
+
+    #modal button {
+      margin-top: 15px;
+      padding: 10px 14px;
+      background: #00c6ff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #modal button:hover {
+      background: #00bcd4;
+    }
+
+    /* Fremhæv dagens dato med lysegrøn skrift og kant */
+    .today {
+      color: #90ee90 !important;
+      border: 2px solid #90ee90;
+    }
+
+    /* Lille badge, der viser synlighed i dagscellen */
+    .vis-badge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 11px;
+      color: #bbb;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .hidden-note {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>Calendar with colors and notes</h1>
+  <div class="calendar-container">
+    <div class="topbar">
+      <label for="currentUser">Aktuel bruger:</label>
+      <input id="currentUser" type="text" placeholder="Fx Magnus eller email" />
+    </div>
+
+    <div class="month-header">
+      <button onclick="changeMonth(-1)">←</button>
+      <div class="month-title" id="monthTitle"></div>
+      <button onclick="changeMonth(1)">→</button>
+    </div>
+    <div class="weekdays">
+      <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <div id="overlay"></div>
+  <div id="modal">
+    <h3 id="modalDate">Date</h3>
+
+    <label for="noteInput">Note</label>
+    <textarea id="noteInput" placeholder="Type your note here..."></textarea>
+
+    <label for="colorInput">Farve</label>
+    <select id="colorInput">
+      <option value="">No color</option>
+      <option value="red">🔴 Submitting</option>
+      <option value="blue">🔵 Birthday</option>
+      <option value="green">🟢 Personal appointment</option>
+    </select>
+
+    <label for="visibilityInput">Synlighed</label>
+    <select id="visibilityInput">
+      <option value="public">Offentlig (alle kan se)</option>
+      <option value="private">Privat (kun ejer)</option>
+      <option value="custom">Tilpasset (kun valgte)</option>
+    </select>
+
+    <label for="viewersInput">Tilladte seere (komma-separeret: navn eller email)</label>
+    <input id="viewersInput" type="text" placeholder="Fx: Magnus, anna@firma.dk" />
+
+    <button onclick="saveNote()">Save</button>
+  </div>
+
+  <script>
+    const calendar = document.getElementById('calendar');
+    const modal = document.getElementById('modal');
+    const overlay = document.getElementById('overlay');
+    const modalDate = document.getElementById('modalDate');
+    const noteInput = document.getElementById('noteInput');
+    const colorInput = document.getElementById('colorInput');
+    const visibilityInput = document.getElementById('visibilityInput');
+    const viewersInput = document.getElementById('viewersInput');
+    const monthTitle = document.getElementById('monthTitle');
+    const currentUserInput = document.getElementById('currentUser');
+
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth();
+    let selectedDate = '';
+
+    // --- INIT: Aktuel bruger fra URL eller localStorage
+    function initCurrentUser() {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get('user');
+      const savedUser = localStorage.getItem('__currentUser__');
+      const resolved = fromUrl || savedUser || '';
+      currentUserInput.value = resolved;
+    }
+
+    currentUserInput.addEventListener('input', () => {
+      localStorage.setItem('__currentUser__', currentUserInput.value.trim());
+      generateCalendar(currentYear, currentMonth);
+    });
+
+    function generateCalendar(year, month) {
+      calendar.innerHTML = '';
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      monthTitle.textContent = `${monthNames[month]} ${year}`;
+
+      const startOffset = (firstDay + 6) % 7; // mandagsstart
+      for (let i = 0; i < startOffset; i++) {
+        const blank = document.createElement('div');
+        calendar.appendChild(blank);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${month + 1}-${day}`;
+        const div = document.createElement('div');
+        div.className = 'day';
+        div.textContent = day;
+        div.onclick = () => openModal(dateStr);
+
+        // Fremhæv dagens dato
+        if (isToday(year, month, day)) {
+          div.classList.add('today');
+        }
+
+        const saved = JSON.parse(localStorage.getItem(dateStr) || '{}');
+
+        // --- Bruger din viewer-linje med normalizeId:
+        const viewer = normalizeId(currentUserInput.value || '');
+
+        // Badge for synlighed (vises altid)
+        const badge = document.createElement('div');
+        badge.className = 'vis-badge';
+        badge.textContent = saved.visibility ? visLabel(saved.visibility) : '—';
+        div.appendChild(badge);
+
+        // Farve vises kun hvis seer har adgang
+        if (saved.color && canView(saved, viewer)) {
+          div.classList.add(saved.color);
+        }
+
+        // Note vises kun hvis seer har adgang
+        if (saved.note) {
+          if (canView(saved, viewer)) {
+            const note = document.createElement('div');
+            note.className = 'note';
+            note.textContent = saved.note;
+            div.appendChild(note);
+          } else {
+            const hidden = document.createElement('div');
+            hidden.className = 'hidden-note';
+            hidden.textContent = 'Note skjult';
+            div.appendChild(hidden);
+          }
+        }
+
+        calendar.appendChild(div);
+      }
+    }
+
+    function changeMonth(offset) {
+      currentMonth += offset;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      } else if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      generateCalendar(currentYear, currentMonth);
+    }
+
+    function openModal(dateStr) {
+      selectedDate = dateStr;
+      const saved = JSON.parse(localStorage.getItem(dateStr) || '{}');
+      modalDate.textContent = `Note for ${dateStr}`;
+      noteInput.value = saved.note || '';
+      colorInput.value = saved.color || '';
+      visibilityInput.value = saved.visibility || 'public';
+      viewersInput.value = (saved.viewers || []).join(', ');
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+    }
+
+    function saveNote() {
+      const note = noteInput.value;
+      const color = colorInput.value;
+      const visibility = visibilityInput.value;
+      const owner = resolveOwner();
+      const viewers = parseViewers(viewersInput.value);
+
+      localStorage.setItem(selectedDate, JSON.stringify({ note, color, visibility, viewers, owner }));
+      modal.style.display = 'none';
+      overlay.style.display = 'none';
+      generateCalendar(currentYear, currentMonth);
+    }
+
+    overlay.onclick = () => {
+      modal.style.display = 'none';
+      overlay.style.display = 'none';
+    };
+
+    // --- Hjælpefunktioner ---
+
+    // Dagens dato?
+    function isToday(year, monthZeroBased, day) {
+      const today = new Date();
+      return (
+        today.getFullYear() === year &&
+        today.getMonth() === monthZeroBased &&
+        today.getDate() === day
+      );
+    }
+
+    // Opdater ved midnat (så "i dag" flytter sig)
+    function scheduleMidnightRefresh() {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const msToMidnight = tomorrow - now;
+      setTimeout(() => {
+        generateCalendar(currentYear, currentMonth);
+        scheduleMidnightRefresh();
+      }, msToMidnight);
+    }
+
+    // Synlighedstekst
+    function visLabel(v) {
+      if (v === 'public') return 'Offentlig';
+      if (v === 'private') return 'Privat';
+      if (v === 'custom') return 'Tilpasset';
+      return '—';
+    }
+
+    // --- NORMALISERING & ADGANGSKONTROL (DINE STYKKER INDSAT) ---
+
+    function normalizeId(x) {
+      return String(x || '')
+        .replace(/\u00A0/g, ' ')      // NBSP -> almindeligt space
+        .replace(/\s+/g, ' ')         // kollaps whitespace
+        .trim()
+        .toLowerCase();
+    }
+
+    function parseViewers(text) {
+      return (text || '')
+        .split(',')
+        .map(s => s.replace(/\u00A0/g, ' ')) // NBSP -> space
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(normalizeId);
+    }
+
+    function resolveOwner() {
+      return normalizeId(currentUserInput.value || 'Ejer');
+    }
+
+    function eqId(a, b) {
+      return normalizeId(a) === normalizeId(b);
+    }
+
+    function canView(saved, viewer) {
+      if (!saved) return false;
+      const v = saved.visibility || 'public';
+      if (!viewer) return v === 'public';
+
+      if (v === 'public') return true;
+      if (v === 'private') return eqId(saved.owner, viewer);
+
+      if (v === 'custom') {
+        const list = (saved.viewers || []).map(normalizeId);
+        return eqId(saved.owner, viewer) || list.includes(normalizeId(viewer));
+      }
+      return false;
+    }
+
+    // Init + render + natlig opdatering
+    initCurrentUser();
+    generateCalendar(currentYear, currentMonth);
+    scheduleMidnightRefresh();
+  </script>
+</body>
+</html>

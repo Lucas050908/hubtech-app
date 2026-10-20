@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>DM & Groups with Files</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e1e2f, #2a2a3d);
+      color: #f0f0f0;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 1em;
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: white;
+      margin: 0;
+      font-size: 2em;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 2em auto;
+      background-color: #2b2b3c;
+      border-radius: 12px;
+      padding: 2em;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+
+    h2 {
+      margin-top: 0;
+      color: #ffffff;
+      border-bottom: 1px solid #444;
+      padding-bottom: 0.5em;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+      background-color: #3a3a4f;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 16px;
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    li {
+      background-color: #3a3a4f;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff;
+    }
+
+    li button {
+      background-color: #ff4c4c;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .dm-messages {
+      background: #1e1e2f;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    .dm-message {
+      margin-bottom: 10px;
+      font-size: 14px;
+      background-color: #3a3a4f;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .dm-message a {
+      color: #00f0ff;
+      text-decoration: underline;
+    }
+
+    ::placeholder {
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+  <h1>DM & Groups with Files</h1>
+
+  <div class="container">
+    <h2>Group administration</h2>
+    <input type="text" id="newGroupInput" placeholder="🔧 Ny gruppe...">
+    <button onclick="addGroup()">➕ Add group</button>
+    <ul id="groupList"></ul>
+  </div>
+
+  <div class="container">
+    <h2>Send DM</h2>
+    <select id="dmSelect"></select>
+    <textarea id="dmInput" placeholder="💬 Write a message with emojis... 😊🔥🎯"></textarea>
+    <input type="file" id="dmFileInput">
+    <button onclick="sendDM()">📨 Send</button>
+    <div class="dm-messages" id="dmMessages"></div>
+  </div>
+
+  <script>
+    const newGroupInput = document.getElementById('newGroupInput');
+    const groupList = document.getElementById('groupList');
+    const dmSelect = document.getElementById('dmSelect');
+    const dmInput = document.getElementById('dmInput');
+    const dmMessages = document.getElementById('dmMessages');
+    const dmFileInput = document.getElementById('dmFileInput');
+
+    function getGroups() {
+      return JSON.parse(localStorage.getItem('groups') || '[]');
+    }
+
+    function saveGroups(groups) {
+      localStorage.setItem('groups', JSON.stringify(groups));
+    }
+
+    function renderGroups() {
+      const groups = getGroups();
+      groupList.innerHTML = '';
+      dmSelect.innerHTML = '';
+      groups.forEach(group => {
+        const li = document.createElement('li');
+        li.textContent = group;
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑️';
+        delBtn.onclick = () => {
+          const updated = groups.filter(g => g !== group);
+          saveGroups(updated);
+          renderGroups();
+        };
+        li.appendChild(delBtn);
+        groupList.appendChild(li);
+
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        dmSelect.appendChild(option);
+      });
+    }
+
+    function sendDM() {
+      const group = dmSelect.value;
+      const message = dmInput.value.trim();
+      const file = dmFileInput.files[0];
+      const key = `dm_${group}`;
+      const messages = JSON.parse(localStorage.getItem(key) || '[]');
+
+      if (message) {
+        messages.push({ type: 'text', content: message });
+      }
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          messages.push({
+            type: 'file',
+            name: file.name,
+            data: evt.target.result
+          });
+          localStorage.setItem(key, JSON.stringify(messages));
+          dmInput.value = '';
+          dmFileInput.value = '';
+          loadDMs(group);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        localStorage.setItem(key, JSON.stringify(messages));
+        dmInput.value = '';
+        loadDMs(group);
+      }
+    }
+
+    function loadDMs(group) {
+      const key = `dm_${group}`;
+      const messages = JSON.parse(localStorage.getItem(key) || '[]');
+      dmMessages.innerHTML = '';
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'dm-message';
+        if (msg.type === 'text') {
+          div.textContent = msg.content;
+        } else if (msg.type === 'file') {
+          div.innerHTML = `
+            📎 <strong>${msg.name}</strong><br>
+            <a href="${msg.data}" download="${msg.name}">Download fil</a>
+          `;
+        }
+        dmMessages.appendChild(div);
+      });
+    }
+
+    dmSelect.onchange = () => {
+      loadDMs(dmSelect.value);
+    };
+
+    renderGroups();
+  </script>
+</body>
+</html>

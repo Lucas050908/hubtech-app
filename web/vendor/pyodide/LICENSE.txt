@@ -1,0 +1,4 @@
+Pyodide 0.26.4 (https://pyodide.org) – Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).
+Filerne i denne mappe er uændrede kopier fra npm-pakken pyodide@0.26.4.
+Pyodide indeholder CPython (PSF License) og andre komponenter under deres egne licenser;
+se https://github.com/pyodide/pyodide/blob/main/LICENSE.

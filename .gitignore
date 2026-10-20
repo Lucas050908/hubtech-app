@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+/data/
+.update-backup/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.apk
+
+# signing keys never go into the repository (CI gets them from GitHub Secrets)
+*.keystore
+*.jks

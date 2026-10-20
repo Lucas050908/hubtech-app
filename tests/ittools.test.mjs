@@ -1,0 +1,20 @@
+// node tests/ittools.test.mjs – IT & network calculators in Værktøjskassen
+import assert from 'node:assert/strict';
+import { subnet, prefixFromMask, parseBase, toBases, transferSeconds, fmtDuration, voltageDrop, batteryHours } from '../web/js/features/ittools.js';
+let s = subnet('192.168.1.10/24');
+assert.equal(s.network, '192.168.1.0'); assert.equal(s.broadcast, '192.168.1.255'); assert.equal(s.first, '192.168.1.1'); assert.equal(s.last, '192.168.1.254');
+assert.equal(s.hosts, 254); assert.equal(s.mask, '255.255.255.0'); assert.equal(s.wildcard, '0.0.0.255'); assert.equal(s.kind, 'Privat (RFC 1918)');
+s = subnet('10.20.30.40 255.255.240.0'); assert.equal(s.prefix, 20); assert.equal(s.network, '10.20.16.0'); assert.equal(s.broadcast, '10.20.31.255'); assert.equal(s.hosts, 4094);
+s = subnet('172.16.5.4/30'); assert.equal(s.hosts, 2); assert.equal(s.first, '172.16.5.5');
+s = subnet('8.8.8.8/32'); assert.equal(s.hosts, 1); assert.equal(s.kind, 'Offentlig'); assert.equal(s.mask, '255.255.255.255');
+assert.equal(subnet('100.101.1.1/10').kind, 'CGNAT / Tailscale'); assert.equal(subnet('169.254.3.3').kind.startsWith('Link-local'), true);
+assert.equal(subnet('0.0.0.0/0').hosts, 2 ** 32 - 2);
+assert.ok(subnet('300.1.1.1/24').error); assert.ok(subnet('1.2.3.4/33').error); assert.ok(subnet('1.2.3.4 255.0.255.0').error); assert.ok(subnet('hej').error);
+assert.equal(prefixFromMask('255.255.255.128'), 25); assert.equal(prefixFromMask('255.255.255.255'), 32); assert.equal(prefixFromMask('0.0.0.0'), 0);
+assert.equal(parseBase('0xFF'), 255n); assert.equal(parseBase('1010', 2), 10n); assert.equal(parseBase('0b1111_0000'), 240n); assert.equal(parseBase('12', 2), null); assert.equal(parseBase('-17'), -17n);
+assert.deepEqual(toBases(65n), { dec: '65', hex: '41', bin: '100 0001', oct: '101', ascii: 'A' });
+assert.equal(toBases(parseBase('18446744073709551615')).hex, 'FFFFFFFFFFFFFFFF');
+assert.equal(transferSeconds(1e9, 100), 80); assert.equal(fmtDuration(80), '1 min 20 s'); assert.equal(fmtDuration(3600 * 26 + 60), '1 d 2 t 1 min'); assert.equal(fmtDuration(0.25), '250 ms');
+const vd = voltageDrop({ length: 25, current: 10, area: 1.5 }); assert.ok(Math.abs(vd.du - 5.833) < 0.01); assert.ok(Math.abs(vd.pct - 2.536) < 0.01);
+assert.equal(batteryHours(2000, 100), 16);
+console.log('ittools ok');

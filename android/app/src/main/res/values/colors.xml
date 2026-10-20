@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hubtech_bg">#0A1422</color>
+    <color name="hubtech_icon_bg">#142F5D</color>
+    <color name="hubtech_accent">#4C8DFF</color>
+    <color name="hubtech_text">#F4F8FC</color>
+</resources>

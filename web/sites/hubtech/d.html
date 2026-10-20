@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Depot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top left, #0f0f0f, #1a1a1a);
+      color: #e0e0e0;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: linear-gradient(to right, #00f0ff, #ff00cc);
+      color: black;
+      padding: 1.5em;
+      text-align: center;
+      font-size: 2em;
+      font-weight: 600;
+      box-shadow: 0 0 20px #00f0ff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      text-shadow: 0 0 5px #fff;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 3em auto;
+      background: rgba(20, 20, 20, 0.95);
+      padding: 2em;
+      border-radius: 16px;
+      box-shadow: 0 0 30px #ff00cc;
+      backdrop-filter: blur(10px);
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h2 {
+      margin-top: 0;
+      font-weight: 600;
+      color: #00f0ff;
+      font-size: 1.4em;
+      text-shadow: 0 0 5px #00f0ff;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      margin-bottom: 2em;
+    }
+
+    input[type="file"] {
+      padding: 0.8em;
+      border: 1px solid #444;
+      border-radius: 8px;
+      font-size: 1em;
+      background-color: #111;
+      color: #eee;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+      border-color: #ff00cc;
+    }
+
+    button {
+      background: linear-gradient(to right, #00f0ff, #ff00cc);
+      color: black;
+      border: none;
+      padding: 0.9em 1.4em;
+      border-radius: 8px;
+      font-size: 1em;
+      cursor: pointer;
+      font-weight: 600;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 10px #00f0ff;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.2);
+      transform: skewX(-45deg);
+      transition: left 0.5s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #ff00cc;
+    }
+
+    button:hover::after {
+      left: 100%;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      padding: 1em;
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s ease;
+    }
+
+    li:hover {
+      background-color: #222;
+    }
+
+    .filename {
+      font-weight: 500;
+      color: #fff;
+      word-break: break-word;
+    }
+
+    .filename::before {
+      content: '📄';
+      margin-right: 8px;
+    }
+
+    a.download {
+      background-color: #111;
+      color: #00f0ff;
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      font-weight: 500;
+      border: 1px solid #00f0ff;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    a.download:hover {
+      background-color: #00f0ff;
+      color: black;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 1em;
+        padding: 1.5em;
+      }
+
+      header {
+        font-size: 1.5em;
+      }
+
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>⚡ Online Depot</header>
+  <div class="container">
+    <h2>Upload a file</h2>
+    <form id="uploadForm">
+      <input type="file" id="fileInput" accept=".pdf,image/*" required>
+      <button type="submit">Upload</button>
+    </form>
+
+    <h2>My files</h2>
+    <ul id="fileList"></ul>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const uploadForm = document.getElementById('uploadForm');
+
+    let files = JSON.parse(localStorage.getItem('depotFiles') || '{}');
+
+    function renderFiles() {
+      fileList.innerHTML = '';
+      Object.keys(files).forEach(name => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span class="filename">${name}</span>
+          <a class="download" href="${files[name]}" download="${name}">Download</a>
+        `;
+        fileList.appendChild(li);
+      });
+    }
+
+    uploadForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        files[file.name] = evt.target.result;
+        localStorage.setItem('depotFiles', JSON.stringify(files));
+        renderFiles();
+        fileInput.value = '';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    renderFiles();
+  </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+/* CircuitPilot inside HUBTECH: maps the app's own variables onto the platform's glass design system.
+   CircuitPilot keeps its green identity (--grn) while surfaces, type and light/dark follow HUBTECH. */
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: transparent;
+  --bgc: rgba(10, 20, 34, .72);
+  --bgc2: rgba(255, 255, 255, .055);
+  --txt: #eef4fb;
+  --txt2: #b9c7d8;
+  --txt3: #8697ad;
+  --bdr: rgba(255, 255, 255, .09);
+  --bdr2: rgba(255, 255, 255, .16);
+  --grn: #2ee05a;
+  --gdk: #06140b;
+  --gdim: #2ee05a;
+  --gpale: rgba(46, 224, 90, .13);
+  --glow: rgba(46, 224, 90, .32);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: transparent;
+  --bgc: rgba(255, 255, 255, .8);
+  --bgc2: rgba(12, 26, 43, .045);
+  --txt: #0c1a2b;
+  --txt2: #33475e;
+  --txt3: #5d6f85;
+  --bdr: rgba(12, 26, 43, .1);
+  --bdr2: rgba(12, 26, 43, .18);
+  --grn: #13a32f;
+  --gdim: #0f7a24;
+  --gpale: rgba(19, 163, 47, .12);
+}
+html, body { background: transparent !important; }
+body { font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important; max-width: none !important; padding-bottom: calc(68px + env(safe-area-inset-bottom)) !important; }
+main { max-width: 760px; margin: 0 auto; }
+#hdr, .bnav, .tab-bar { -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
+#hdr { max-width: 760px; margin: 0 auto; left: 0; right: 0; border-radius: 0 0 16px 16px; border: 1px solid var(--bdr); border-top: 0; }
+.bnav { max-width: 760px !important; border-radius: 16px 16px 0 0; border: 1px solid var(--bdr); border-bottom: 0; }
+.nb { font-size: 10px !important; }
+.card, .lab-box, .cpl, .dc-card, .ac, .sbox, .ach, .comp-card, .sb-wrap { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.hero { border-radius: 18px; margin: 12px 13px 0; overflow: hidden; }
+.ac { transition: transform .2s cubic-bezier(.2,.8,.2,1), border-color .2s !important; }
+.ac:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--grn) 50%, transparent) !important; }
+button:focus-visible, .ac:focus-visible, [onclick]:focus-visible { outline: 2px solid #4cc2ff; outline-offset: 2px; }
+#toast { bottom: 84px !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+/* section labels sit directly on the landscape – keep them readable in both themes (like HUBTECH's on-world text) */
+.sec { color: #f2f7fc !important; text-shadow: 0 1px 2px rgba(0, 0, 0, .6), 0 0 12px rgba(0, 0, 0, .45); }

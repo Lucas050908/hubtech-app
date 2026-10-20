@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "HUBTECH",
+  "short_name": "HUBTECH",
+  "description": "Dit digitale univers: HUBTECH Office, Servicehjælp, CircuitPilot, ByteForge, Cursor-projekter og mere – samlet i ét program.",
+  "lang": "da",
+  "dir": "ltr",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#0a1422",
+  "theme_color": "#0a1422",
+  "categories": ["productivity", "education", "utilities"],
+  "icons": [
+    { "src": "assets/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "HUBTECH Office", "short_name": "Office", "url": "/#/apps/hubtech", "icons": [{ "src": "assets/icons/app-192.png", "sizes": "192x192" }] },
+    { "name": "Servicehjælp", "url": "/#/apps/servicehelp", "icons": [{ "src": "assets/icons/app-192.png", "sizes": "192x192" }] },
+    { "name": "Opgaver", "url": "/#/apps/tasks", "icons": [{ "src": "assets/icons/app-192.png", "sizes": "192x192" }] },
+    { "name": "Projekter", "url": "/#/projects", "icons": [{ "src": "assets/icons/app-192.png", "sizes": "192x192" }] }
+  ]
+}

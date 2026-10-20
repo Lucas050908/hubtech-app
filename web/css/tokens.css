@@ -1,0 +1,165 @@
+/* ════════════════════════════════════════════════════════════════════
+   HUBTECH design tokens
+   One identity: "aurora glass over a living landscape".
+   Every app keeps its own hue (--app) but shares surfaces, type & motion.
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: dark;
+
+  /* type */
+  --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --fs-xs: .72rem; --fs-sm: .8125rem; --fs-md: .875rem; --fs-lg: 1rem;
+  --fs-xl: 1.25rem; --fs-2xl: 1.6rem; --fs-3xl: clamp(1.9rem, 3.4vw, 2.6rem); --fs-hero: clamp(2.4rem, 6vw, 4.6rem);
+
+  /* spacing (4px grid) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px;
+
+  /* radii */
+  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 14px; --r-xl: 22px; --r-pill: 999px;
+
+  /* palette — night-sky neutrals with an aurora accent */
+  --ink-0: #050b14;
+  --ink-1: #0a1422;
+  --surface-solid: #0a1422;
+  --ink-2: #0f1c2e;
+  --ink-3: #162741;
+
+  --text: #eef4fb;
+  --text-2: #b9c7d8;
+  --text-3: #8697ad;
+  --text-inv: #06101d;
+
+  --accent: #4cc2ff;          /* aurora cyan — platform accent */
+  --accent-2: #7d6bff;        /* violet — HUBTECH heritage (rgb 58,4,109 lifted) */
+  --accent-glow: rgba(76, 194, 255, .45);
+  --accent-soft: rgba(76, 194, 255, .14);
+
+  --ok: #3ddc84;  --ok-soft: rgba(61, 220, 132, .14);
+  --warn: #ffc857; --warn-soft: rgba(255, 200, 87, .14);
+  --bad: #ff6b6b;  --bad-soft: rgba(255, 107, 107, .14);
+  --info: #6aa8ff;
+
+  /* app identities */
+  --hue-hubtech: #2f8cff;
+  --hue-community: #6d7cff;
+  --hue-byteforge: #a259ff;
+  --hue-archive: #ff2bd6;
+  --hue-circuitpilot: #1ed640;
+  --hue-cursor: #dfe7f1;
+  --hue-learn: #ffc857;
+  --hue-course: #3dd6c6;
+  --hue-settings: #9fb3c8;
+  --hue-notes: #ffa63d;
+  --hue-tasks: #ff4f8b;
+  --hue-toolkit: #22d3ee;
+  --hue-focus: #6c72ff;
+  --hue-service: #ff8a4c;
+  --hue-calendar: #38bdf8;
+  --hue-inventory: #f59e0b;
+  --hue-timesheet: #34d399;
+  --hue-snippets: #c084fc;
+  --hue-studio: #fbbf24;
+  --hue-codeschool: #818cf8;
+  --hue-flashcards: #f472b6;
+  --hue-customers: #fb923c;
+
+  /* glass surfaces */
+  --glass: rgba(9, 17, 30, .62);
+  --glass-strong: rgba(9, 17, 29, .78);
+  --glass-soft: rgba(255, 255, 255, .05);
+  --glass-hover: rgba(255, 255, 255, .08);
+  --line: rgba(255, 255, 255, .09);
+  --line-2: rgba(255, 255, 255, .16);
+  --blur: 18px;
+
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 10px 30px -12px rgba(0, 0, 0, .55);
+  --shadow-2: 0 1px 0 rgba(255, 255, 255, .07) inset, 0 24px 60px -20px rgba(0, 0, 0, .7);
+  --ring: 0 0 0 2px var(--ink-0), 0 0 0 4px var(--accent);
+
+  /* motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 140ms; --t-med: 260ms; --t-slow: 520ms;
+
+  /* layout */
+  --sidebar-w: 222px;
+  --topbar-h: 60px;
+  --rail-w: 316px;
+  --content-max: 1180px;
+
+  /* world scrim (set by the world controller per screen) */
+  --scrim: .35;
+}
+
+/* ── light theme ───────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --surface-solid: #f4f7fb;
+  color-scheme: light;
+  --text: #0c1a2b;
+  --text-2: #33475e;
+  --text-3: #5d6f85;
+  --text-inv: #ffffff;
+  --accent: #0a84d6;
+  --accent-2: #5b4be0;
+  --accent-glow: rgba(10, 132, 214, .3);
+  --accent-soft: rgba(10, 132, 214, .12);
+  --ok: #128a4a; --ok-soft: rgba(18, 138, 74, .12);
+  --warn: #a36800; --warn-soft: rgba(163, 104, 0, .12);
+  --bad: #c62f2f; --bad-soft: rgba(198, 47, 47, .1);
+  --hue-cursor: #33475e;
+  --hue-hubtech: #1672e6;
+  --hue-byteforge: #8a3ff0;
+  --hue-learn: #b77900;
+  --hue-circuitpilot: #13a32f;
+  --hue-settings: #4f6680;
+  --hue-notes: #c06a00;
+  --hue-tasks: #d11f5f;
+  --hue-toolkit: #0b8fa3;
+  --hue-focus: #4b50d6;
+  --hue-service: #c95a10;
+  --hue-community: #4651c9;
+  --hue-calendar: #0a659b;
+  --hue-inventory: #b45f06;
+  --hue-timesheet: #0f8a5f;
+  --hue-snippets: #8b3fd1;
+  --hue-studio: #a15c00;
+  --hue-codeschool: #4f46e5;
+  --hue-flashcards: #b8326f;
+  --hue-customers: #b45309;
+  --hue-course: #0f9488;
+  --hue-archive: #c4129f;
+  --glass: rgba(255, 255, 255, .74);
+  --glass-strong: rgba(255, 255, 255, .9);
+  --glass-soft: rgba(12, 26, 43, .04);
+  --glass-hover: rgba(12, 26, 43, .07);
+  --line: rgba(12, 26, 43, .1);
+  --line-2: rgba(12, 26, 43, .18);
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 10px 30px -14px rgba(10, 30, 60, .35);
+  --shadow-2: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 24px 60px -22px rgba(10, 30, 60, .45);
+  --ring: 0 0 0 2px #fff, 0 0 0 4px var(--accent);
+  --ink-0: #dfe9f3;
+}
+
+/* ── on-world zones ─────────────────────────────────────────────────
+   Text that sits directly on the landscape (hero, page headings, section titles) always uses the
+   light-on-dark dialect – in both themes – so it stays readable in every season and time of day. */
+.on-world, .page > .page-head, .home-hero, .guide-cat, .guide-head, .course-top, .landing-hero, .section-head, .public-nav, .site-page > .cp-head ~ .callout {
+  --text: #f4f8fc;
+  --text-2: rgba(240, 246, 252, .9);
+  --text-3: rgba(228, 238, 248, .78);
+  --accent: #6fd0ff;
+  --accent-soft: rgba(111, 208, 255, .16);
+  --glass-soft: rgba(8, 16, 28, .42);
+  --glass-hover: rgba(8, 16, 28, .58);
+  --glass-strong: rgba(8, 16, 28, .66);
+  --line: rgba(255, 255, 255, .14);
+  --line-2: rgba(255, 255, 255, .26);
+  --hue-cursor: #dfe7f1;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 18px rgba(0, 0, 0, .35);
+}
+.on-world .btn, .page > .page-head .btn, .home-hero .btn, .guide-head .input, .course-top .day-pill, .public-nav .btn { text-shadow: none; }
+:root[data-theme="light"] :is(.on-world, .page > .page-head, .guide-head, .home-hero) .input { background: rgba(8, 16, 28, .5); color: #fff; }

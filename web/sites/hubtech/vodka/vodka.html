@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vodka Clicker Game</title>
+    <link rel="stylesheet" href="vodkastyle.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="game">
+        <div class="counter">
+          <h2 id="shotsTaken">0 Shots taken</h2>
+          
+        </div>
+        <div class="vodka">
+          <img src="Rigtig vodka.png" alt="Vodka Bottle" onclick="clickedElement()" />
+        </div>
+      </div>
+      <div class="shop">
+       <div class="upgrade" onclick="buyUpgrade(15, 1)">
+  <span>Slave Vodka with ice</span><span>15</span>
+</div>
+<div class="upgrade" onclick="buyUpgrade(100, 4)">
+  <span>Absolute Vodka</span><span>100</span>
+</div>
+<div class="upgrade" onclick="buyUpgrade(250, 20)">
+  <span>Absolute Vodka With Ice</span><span>250</span>
+</div>
+<div class="upgrade" onclick="buyUpgrade(750, 60)">
+  <span>Grey Goose Vodka</span><span>750</span>
+</div>
+<div class="upgrade" onclick="buyUpgrade(1000, 80)">
+  <span>Grey Goose Vodka with Ice</span><span>1000</span>
+</div>
+<div class="upgrade" onclick="buyUpgrade(1500, 120)">
+  <span>Espresso Martini Med Absolute Vodka</span><span>1500</span>
+</div>
+
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

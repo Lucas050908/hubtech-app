@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CercuitPilot">
+<meta name="theme-color" content="#050f07">
+<title>CercuitPilot – Electronics Academy</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f0f0eb;--bgc:#fff;--bgc2:#f4f4f0;--txt:#0a0a0a;--txt2:#444;--txt3:#888;--bdr:rgba(0,0,0,.07);--bdr2:rgba(0,0,0,.15);--grn:#1ed640;--gdk:#050f07;--gdim:#0f6620;--gpale:rgba(30,214,64,.11);--amb:#f5a623;--apale:rgba(245,166,35,.11);--red:#e53e3e;--rpale:rgba(229,62,62,.11);--blu:#4a9eff;--bpale:rgba(74,158,255,.11);--pur:#a855f7;--ppale:rgba(168,85,247,.11);--glow:rgba(30,214,64,.25);--r:12px;--rsm:8px}
+@media(prefers-color-scheme:dark){:root{--bg:#060606;--bgc:#111;--bgc2:#1a1a1a;--txt:#f0f0f0;--txt2:#aaa;--txt3:#555;--bdr:rgba(255,255,255,.07);--bdr2:rgba(255,255,255,.14);--gdim:#1ed640}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{font-family:'Space Grotesk',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100dvh;padding-bottom:calc(60px + env(safe-area-inset-bottom));max-width:680px;margin:0 auto;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+input,select{font-family:inherit;outline:none}
+.mono{font-family:'JetBrains Mono',monospace}
+/* ── MODALS ── */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+.ov-card{background:var(--bgc);border-radius:16px;padding:24px 20px;width:100%;max-width:360px;border:1px solid var(--bdr2)}
+.ov-logo{width:48px;height:48px;background:var(--gdk);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 0 20px var(--glow)}
+.ov-h{font-size:1.2rem;font-weight:700;text-align:center;margin-bottom:4px}
+.ov-sub{font-size:.8rem;color:var(--txt3);text-align:center;margin-bottom:14px;line-height:1.5}
+.av-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:12px}
+.av-btn{font-size:1.2rem;padding:6px 2px;border:2px solid transparent;border-radius:7px;background:var(--bgc2);cursor:pointer}
+.av-btn.sel{border-color:var(--grn);box-shadow:0 0 7px var(--glow)}
+.ov-inp{width:100%;height:44px;border:1px solid var(--bdr2);border-radius:var(--rsm);background:var(--bgc2);color:var(--txt);font-size:.95rem;padding:0 12px;margin-bottom:10px}
+.ov-go{width:100%;padding:12px;background:var(--grn);color:var(--gdk);border:none;border-radius:var(--rsm);font-size:.9rem;font-weight:700;margin-bottom:8px}
+.ov-note{font-size:10px;color:var(--txt3);text-align:center}
+.ov-link{font-size:11px;color:var(--grn);text-align:center;cursor:pointer;text-decoration:underline;margin-top:7px;display:block}
+/* ── HEADER ── */
+#hdr{position:sticky;top:0;z-index:100;background:var(--bgc);border-bottom:.5px solid var(--bdr);padding:0 13px;height:50px;display:flex;align-items:center;gap:9px}
+.hdr-logo{width:32px;height:32px;background:var(--gdk);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 10px var(--glow)}
+.hdr-name{font-size:13px;font-weight:700;color:var(--txt);white-space:nowrap;flex-shrink:0}
+.hdr-name em{color:var(--grn);font-style:normal}
+.xp-wrap{flex:1;display:flex;align-items:center;gap:6px;min-width:0}
+.lvl-pill{background:var(--gdk);color:var(--grn);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap;font-family:'JetBrains Mono',monospace;border:1px solid rgba(30,214,64,.3)}
+.xp-track{flex:1;height:5px;background:var(--bgc2);border-radius:3px;overflow:hidden}
+.xp-bar{height:100%;background:var(--grn);border-radius:3px;transition:width .5s ease}
+.xp-num{font-size:9px;color:var(--txt3);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.hdr-av{font-size:1.1rem;cursor:pointer;flex-shrink:0}
+/* ── NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--bgc);border-top:.5px solid var(--bdr);z-index:100}
+.nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;color:var(--txt3);font-size:8.5px;font-weight:600;padding:5px 0;transition:color .15s}
+.nb svg{width:21px;height:21px}
+.nb.on{color:var(--grn)}
+/* ── PAGES/TABS ── */
+main{padding-top:50px}
+.page{display:none}.page.on{display:block}
+.tab-bar{display:flex;overflow-x:auto;background:var(--bgc);border-bottom:.5px solid var(--bdr);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tb{flex-shrink:0;padding:10px 13px;border:none;background:transparent;color:var(--txt3);font-size:11px;font-weight:600;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all .15s}
+.tb.on{color:var(--grn);border-bottom-color:var(--grn)}
+.tc{display:none}.tc.on{display:block}
+/* ── SHARED ── */
+.pad{padding:13px}.mb{margin-bottom:11px}
+.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);margin-bottom:8px}
+.card{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r)}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px}
+.btn-g{display:block;width:100%;padding:12px;background:var(--grn);color:var(--gdk);border:none;border-radius:var(--rsm);font-size:.9rem;font-weight:700;cursor:pointer;text-align:center}
+.btn-g:active{opacity:.85}
+.btn-o{display:block;width:100%;padding:11px;background:transparent;color:var(--txt2);border:.5px solid var(--bdr2);border-radius:var(--rsm);font-size:.875rem;font-weight:600;cursor:pointer;text-align:center}
+.formula{background:var(--gdk);color:var(--grn);font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:500;padding:12px;border-radius:10px;text-align:center;margin:10px 0;box-shadow:0 0 10px rgba(30,214,64,.13)}
+.fb{border-radius:var(--rsm);padding:10px 12px;margin-top:10px;font-size:.85rem;line-height:1.6;display:none}
+.fb strong{display:block;margin-bottom:3px}
+.fb.ok{background:var(--gpale);border-left:3px solid var(--grn);color:var(--gdim)}
+.fb.bad{background:var(--rpale);border-left:3px solid var(--red);color:var(--red)}
+.opt{width:100%;text-align:left;padding:12px 13px;background:var(--bgc2);border:.5px solid var(--bdr);border-radius:var(--rsm);font-size:.875rem;color:var(--txt);line-height:1.4;margin-bottom:6px;min-height:44px;cursor:pointer;transition:border-color .1s}
+.opt.correct{background:var(--gpale);border-color:var(--grn);color:var(--gdim)}
+.opt.wrong{background:var(--rpale);border-color:var(--red);color:var(--red)}
+.opt:disabled{cursor:default}
+.nxt{display:none;width:100%;margin-top:9px;padding:11px;background:var(--bgc2);border:.5px solid var(--bdr2);border-radius:var(--rsm);color:var(--txt2);font-size:.875rem;font-weight:600;cursor:pointer}
+.qhdr{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--bgc);border-bottom:.5px solid var(--bdr)}
+.qprog{font-size:11px;font-weight:600;color:var(--txt2);font-family:'JetBrains Mono',monospace}
+.sc-badge{font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;background:var(--gpale);color:var(--gdim);padding:3px 9px;border-radius:20px}
+.diff-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-block}
+.diff-e{background:var(--gpale);color:var(--gdim)}
+.diff-m{background:var(--apale);color:#7a4f00}
+.diff-h{background:var(--rpale);color:var(--red)}
+.diff-filter{display:flex;gap:6px;padding:8px 13px;background:var(--bgc);border-bottom:.5px solid var(--bdr)}
+.df{padding:5px 12px;border-radius:20px;border:.5px solid var(--bdr2);background:transparent;font-size:11px;font-weight:600;color:var(--txt2);cursor:pointer}
+.df.on{background:var(--gdk);color:var(--grn);border-color:var(--grn)}
+.cpl{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:26px 18px;text-align:center}
+.cpl-i{font-size:2rem;margin-bottom:9px}
+.cpl-s{font-family:'JetBrains Mono',monospace;font-size:1.7rem;font-weight:700;margin-bottom:3px}
+.cpl-p{font-size:.9rem;color:var(--grn);font-weight:700;margin-bottom:7px}
+.cpl-m{font-size:.82rem;color:var(--txt2);margin-bottom:16px;line-height:1.5}
+/* ── HOME ── */
+.hero{background:var(--gdk);padding:18px 13px 16px;position:relative;overflow:hidden}
+.hero-pcb{position:absolute;inset:0;opacity:.1;pointer-events:none}
+.hero-z{position:relative;z-index:2}
+.hero-eye{font-size:10px;color:rgba(30,214,64,.55);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.hero-h{font-size:1.6rem;font-weight:700;color:#eee;line-height:1.1;letter-spacing:-.03em;margin-bottom:4px}
+.hero-h em{color:var(--grn);font-style:normal;text-shadow:0 0 12px rgba(30,214,64,.5)}
+.hero-xp-row{display:flex;align-items:center;gap:8px;margin-top:11px}
+.hero-bar{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.hero-fill{height:100%;background:var(--grn);border-radius:3px;box-shadow:0 0 8px var(--glow)}
+.hero-xt{font-size:10px;color:rgba(30,214,64,.55);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.ss{display:grid;grid-template-columns:repeat(4,1fr);background:var(--bgc);border-bottom:.5px solid var(--bdr)}
+.sbox{padding:9px 5px;text-align:center;border-right:.5px solid var(--bdr)}.sbox:last-child{border-right:none}
+.snum{font-size:1.2rem;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1}
+.slbl{font-size:8.5px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ac-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.ac{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:12px 9px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;cursor:pointer;transition:all .15s}
+.ac:hover,.ac:active{border-color:rgba(30,214,64,.35);box-shadow:0 0 10px rgba(30,214,64,.07)}
+.ac-em{font-size:1.35rem}
+.ac-t{font-size:.8rem;font-weight:700}
+.ac-s{font-size:.68rem;color:var(--txt3)}
+.dc-card{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:12px;margin-bottom:7px}
+.dc-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.dc-title{font-size:.85rem;font-weight:600}
+.dc-xp{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--grn);font-weight:700}
+.dc-bar{height:4px;background:var(--bgc2);border-radius:2px;overflow:hidden}
+.dc-fill{height:100%;background:var(--grn);border-radius:2px;transition:width .4s}
+.dc-pt{font-size:10px;color:var(--txt3);margin-top:3px}
+.dc-done .dc-title::before{content:'✓ '}
+.streak-card{background:var(--gdk);border:.5px solid rgba(30,214,64,.3);border-radius:var(--r);padding:12px;text-align:center;box-shadow:0 0 14px rgba(30,214,64,.07)}
+.streak-n{font-size:2.2rem;font-weight:700;color:var(--grn);font-family:'JetBrains Mono',monospace;line-height:1;text-shadow:0 0 14px rgba(30,214,64,.5)}
+.streak-l{font-size:.7rem;color:rgba(30,214,64,.55);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+/* ── TRAIN ── */
+.fc-wrap{height:230px;perspective:1100px;cursor:pointer;user-select:none;-webkit-user-select:none;margin-bottom:10px;touch-action:pan-y}
+.fc-in{width:100%;height:100%;position:relative;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform .4s ease}
+.fc-in.flip{transform:rotateY(180deg)}
+.fc-face{position:absolute;inset:0;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 14px;text-align:center;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.fc-face.front{background:var(--bgc);border:.5px solid var(--bdr)}
+.fc-face.back{background:var(--gdk);transform:rotateY(180deg)}
+.fc-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-bottom:9px}
+.fc-face.front .fc-lbl{color:var(--txt3)}.fc-face.back .fc-lbl{color:rgba(30,214,64,.4)}
+.fc-q{font-size:.9rem;font-weight:600;line-height:1.5}
+.fc-a{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:#1ed640;line-height:1.65;white-space:pre-line}
+.knew-row{display:flex;gap:8px;margin-bottom:10px}
+.kno{flex:1;padding:12px;border-radius:var(--rsm);border:none;font-size:.82rem;font-weight:700;background:var(--rpale);color:var(--red);cursor:pointer}
+.kyes{flex:1;padding:12px;border-radius:var(--rsm);border:none;font-size:.82rem;font-weight:700;background:var(--gpale);color:var(--gdim);cursor:pointer}
+.cp-bar{width:100%;background:var(--bgc2);border-radius:2px;height:4px;overflow:hidden;margin-bottom:5px}
+.cp-fill{height:100%;background:var(--grn);border-radius:2px;transition:width .3s}
+/* RACE */
+.r-card{height:220px;perspective:1100px;cursor:pointer;user-select:none;-webkit-user-select:none;margin-bottom:11px;touch-action:pan-y}
+.r-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform .38s ease}
+.r-inner.flip{transform:rotateY(180deg)}
+.r-face{position:absolute;inset:0;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.r-face.front{background:var(--bgc);border:.5px solid var(--bdr)}.r-face.back{background:var(--gdk);transform:rotateY(180deg);box-shadow:0 0 18px rgba(30,214,64,.1)}
+.r-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-bottom:9px}
+.r-face.front .r-lbl{color:var(--txt3)}.r-face.back .r-lbl{color:rgba(30,214,64,.4)}
+.r-q{font-size:.88rem;font-weight:600;line-height:1.5}
+.r-a{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:#1ed640;line-height:1.6;white-space:pre-line}
+.r-btns{display:flex;gap:8px}
+.r-no{flex:1;padding:12px;border-radius:var(--rsm);border:none;font-size:.82rem;font-weight:700;background:var(--rpale);color:var(--red);cursor:pointer}
+.r-yes{flex:1;padding:12px;border-radius:var(--rsm);border:none;font-size:.82rem;font-weight:700;background:var(--gpale);color:var(--gdim);cursor:pointer}
+/* EXAM / HC */
+.timer-bar{height:5px;background:var(--bgc2);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.timer-fill{height:100%;background:var(--grn);border-radius:3px;transition:width 1s linear}
+.timer-fill.warn{background:var(--amb)}.timer-fill.danger{background:var(--red)}
+.grade-card{background:var(--gdk);border:.5px solid rgba(30,214,64,.3);border-radius:var(--r);padding:18px;text-align:center;box-shadow:0 0 18px rgba(30,214,64,.09);margin-bottom:11px}
+.grade-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(30,214,64,.45);margin-bottom:4px}
+.grade-val{font-size:3.5rem;font-weight:700;color:var(--grn);font-family:'JetBrains Mono',monospace;text-shadow:0 0 18px rgba(30,214,64,.5)}
+.grade-name{font-size:.85rem;color:#ccc;margin-top:4px}
+/* ── LAB ── */
+.lab-box{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:11px}
+.lab-h{font-size:.9rem;font-weight:700;margin-bottom:10px}
+.lab-out{background:var(--gdk);border-radius:9px;padding:12px;display:flex;margin-bottom:11px;box-shadow:0 0 9px rgba(30,214,64,.1)}
+.lob{flex:1;text-align:center}
+.lob+.lob{border-left:.5px solid rgba(30,214,64,.15)}
+.lov{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--grn);text-shadow:0 0 7px rgba(30,214,64,.4)}
+.lol{font-size:9px;color:rgba(30,214,64,.4);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.lab-sl{margin-bottom:10px}
+.lab-sl-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--txt2);margin-bottom:3px}
+.lab-sl-lbl span{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--grn)}
+.sl-row{display:flex;gap:7px;margin-bottom:10px;align-items:center}
+.sl-lbl{font-size:10px;color:var(--txt3);flex-shrink:0;width:38px}
+.sb{padding:5px 11px;border-radius:20px;border:.5px solid var(--bdr2);background:transparent;font-size:11px;font-weight:600;color:var(--txt2);cursor:pointer}
+.sb.on{background:var(--gdk);color:var(--grn);border-color:var(--grn)}
+.led-viz{font-size:2.5rem;text-align:center;padding:11px;transition:filter .3s}
+.rc-gw{background:var(--bgc2);border-radius:8px;height:10px;overflow:hidden;margin-bottom:7px}
+.rc-gf{height:100%;background:var(--grn);border-radius:8px;transition:width .1s linear;box-shadow:0 0 5px var(--glow)}
+.gate-row{display:flex;gap:7px;margin-bottom:10px}
+.g-inp{flex:1;padding:12px;border-radius:var(--rsm);border:.5px solid var(--bdr2);background:var(--bgc2);font-size:.9rem;font-weight:700;color:var(--txt);cursor:pointer}
+.g-inp.hi{background:var(--gpale);border-color:var(--grn);color:var(--gdim)}
+.g-out{text-align:center;padding:12px;background:var(--bgc2);border-radius:var(--rsm);margin-bottom:10px}
+.g-ov{font-family:'JetBrains Mono',monospace;font-size:1.8rem;font-weight:700;margin-bottom:2px}
+.g-ov.hi{color:var(--grn);text-shadow:0 0 9px var(--glow)}.g-ov.lo{color:var(--txt3)}
+.tt{width:100%;font-size:11px;border-collapse:collapse;font-family:'JetBrains Mono',monospace}
+.tt th{background:var(--bgc2);padding:5px 9px;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3)}
+.tt td{padding:5px 9px;border-top:.5px solid var(--bdr);text-align:center}
+.tt tr.hl td{background:var(--gpale);color:var(--gdim)}
+/* ── SANDBOX (circuit simulator) ── */
+.sb-wrap{background:#0a0a0a;border-radius:var(--r);overflow:hidden;margin-bottom:10px;position:relative}
+.sb-toolbar{display:flex;gap:4px;padding:8px;background:#111;border-bottom:1px solid #222;flex-wrap:wrap}
+.sbt{padding:6px 10px;border-radius:6px;border:.5px solid #2a2a2a;background:#181818;cursor:pointer;font-size:10px;font-weight:600;color:#888;display:flex;align-items:center;gap:3px;transition:all .15s;white-space:nowrap}
+.sbt:hover{border-color:#1ed640;color:#1ed640;background:#0f2315}
+.sbt.on{border-color:#1ed640;background:#0f2315;color:#1ed640;box-shadow:0 0 7px rgba(30,214,64,.2)}
+.sbt.red{border-color:#444}.sbt.red:hover{border-color:#ff6060;color:#ff6060}
+.sbt.run{background:#1ed640;color:#050f07;border-color:#1ed640}.sbt.run.active{background:#ff4444;color:#fff;border-color:#ff4444}
+#sb-canvas{display:block;cursor:crosshair;width:100%;touch-action:none}
+.sb-status{padding:5px 10px;font-size:10px;font-family:'JetBrains Mono',monospace;color:#444;border-top:1px solid #1a1a1a;background:#0d0d0d}
+.sb-info{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#1a1a1a;border-top:1px solid #1a1a1a}
+.sb-val{background:#111;padding:7px;text-align:center}
+.sb-vl{font-size:9px;color:#444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.sb-vv{font-family:'JetBrains Mono',monospace;font-size:12px;color:#1ed640;font-weight:500}
+/* ── WIRE CHALLENGE ── */
+.wc-circuit{background:var(--gdk);border-radius:9px;padding:12px;margin-bottom:11px;font-family:'JetBrains Mono',monospace;font-size:.76rem;color:rgba(30,214,64,.8);line-height:1.8;white-space:pre;overflow-x:auto;box-shadow:0 0 10px rgba(30,214,64,.07)}
+/* ── FAULT HUNTER ── */
+.symp-card{background:var(--rpale);border:.5px solid rgba(229,62,62,.3);border-radius:var(--rsm);padding:10px 12px;margin-bottom:10px}
+.symp-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--red);font-weight:700;margin-bottom:3px}
+/* ── REPAIR SHOP ── */
+.repair-hdr{background:var(--gdk);padding:11px 13px;display:flex;align-items:center;gap:9px;border-bottom:.5px solid rgba(30,214,64,.2)}
+.repair-av{font-size:1.4rem}
+.repair-cust{font-size:.88rem;font-weight:700;color:#eee}
+.repair-dev{font-size:.74rem;color:rgba(30,214,64,.6);font-family:'JetBrains Mono',monospace}
+.repair-rew{font-size:.74rem;font-weight:700;color:var(--grn)}
+.mbox{background:var(--gdk);border:.5px solid rgba(30,214,64,.2);border-radius:9px;padding:10px;min-height:48px;font-family:'JetBrains Mono',monospace;font-size:.76rem;color:rgba(30,214,64,.75);margin-bottom:10px;line-height:1.6;white-space:pre-wrap}
+.tool-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tool-btn{padding:5px 10px;border-radius:var(--rsm);border:.5px solid var(--bdr2);background:var(--bgc2);font-size:.76rem;color:var(--txt2);cursor:pointer}
+.tool-btn.on{background:var(--gdk);color:var(--grn);border-color:var(--grn)}
+/* ── CAREER ── */
+.proj-card{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:12px;margin-bottom:8px;cursor:pointer}
+.proj-hrow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.proj-em{font-size:1.25rem}
+.proj-ttl{font-size:.88rem;font-weight:700}
+.proj-desc{font-size:.78rem;color:var(--txt2);line-height:1.5;margin-bottom:8px}
+.proj-foot{display:flex;align-items:center;justify-content:space-between}
+.proj-xp{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--grn);font-weight:700}
+.proj-bar{height:3px;background:var(--bgc2);border-radius:2px;flex:1;margin:0 9px;overflow:hidden}
+.proj-fill{height:100%;background:var(--grn);border-radius:2px}
+.bp-b{background:var(--gpale);color:var(--gdim)}.bp-i{background:var(--apale);color:#7a4f00}.bp-a{background:var(--bpale);color:#0044cc}
+.badge-pill{display:inline-block;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px}
+/* ── COLLECTION ── */
+.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.comp-card{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--rsm);padding:10px 8px;text-align:center;cursor:pointer;transition:border-color .15s}
+.comp-card:hover{border-color:rgba(30,214,64,.3)}
+.comp-card.locked{opacity:.32;filter:grayscale(1);pointer-events:none}
+.comp-sym{font-size:1.5rem;margin-bottom:4px}
+.comp-name{font-size:.74rem;font-weight:700;margin-bottom:2px}
+.comp-lbl{font-size:.66rem;color:var(--txt3)}
+.comp-unlock{font-size:.65rem;color:var(--grn);font-family:'JetBrains Mono',monospace;margin-top:2px}
+/* ── PROFILE ── */
+.prof-hero{background:var(--gdk);padding:18px 13px;text-align:center;position:relative}
+.prof-av{font-size:2.8rem;margin-bottom:7px}
+.prof-name{font-size:1.2rem;font-weight:700;color:#eee;margin-bottom:3px}
+.prof-title{font-size:.8rem;color:var(--grn);font-weight:600;margin-bottom:10px;text-shadow:0 0 7px var(--glow)}
+.prof-xp-row{display:flex;align-items:center;gap:7px}
+.prof-bar{flex:1;height:7px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
+.prof-fill{height:100%;background:var(--grn);border-radius:4px;box-shadow:0 0 7px var(--glow)}
+.prof-xt{font-size:10px;color:rgba(30,214,64,.55);font-family:'JetBrains Mono',monospace}
+.ach-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ach{background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--rsm);padding:9px 7px;text-align:center}
+.ach.locked{opacity:.28;filter:grayscale(1)}
+.ach-em{font-size:1.25rem;margin-bottom:3px}
+.ach-t{font-size:9px;font-weight:700}
+.ach-x{font-size:8px;color:var(--grn);font-family:'JetBrains Mono',monospace}
+.lb-row{display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:.5px solid var(--bdr)}
+.lb-row:last-child{border-bottom:none}
+.lb-row.me{background:var(--gpale)}
+.lb-rank{font-size:.88rem;width:22px;text-align:center;flex-shrink:0}
+.lb-av{font-size:.95rem}
+.lb-name{flex:1;font-size:.82rem;font-weight:600}
+.lb-xp{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--grn);font-weight:700}
+.diff-row{display:flex;gap:7px;margin-bottom:10px}
+.diff-btn{flex:1;padding:8px;border:.5px solid var(--bdr2);border-radius:var(--rsm);background:transparent;font-size:.78rem;font-weight:600;color:var(--txt2);cursor:pointer}
+.diff-btn.on{background:var(--gdk);color:var(--grn);border-color:var(--grn)}
+.sw-row{display:flex;flex-direction:column;gap:7px}
+.sw-btn{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--bgc2);border:.5px solid var(--bdr);border-radius:var(--rsm);cursor:pointer}
+.sw-av{font-size:1.1rem}
+.sw-name{flex:1;font-size:.85rem;font-weight:600}
+.sw-lv{font-size:9px;color:var(--grn);font-family:'JetBrains Mono',monospace}
+/* ── LVLUP + TOAST ── */
+#lvlup{position:fixed;inset:0;background:rgba(5,15,7,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:900;opacity:0;pointer-events:none;transition:opacity .3s}
+#lvlup.show{opacity:1}
+.lu-em{font-size:3.5rem;margin-bottom:10px}
+.lu-h{font-size:1.5rem;font-weight:700;color:var(--grn);text-shadow:0 0 18px var(--glow);margin-bottom:5px}
+.lu-sub{font-size:.95rem;color:#ccc}
+#toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--gdk);color:var(--grn);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;border:1px solid var(--grn);opacity:0;transition:opacity .25s,transform .25s;z-index:500;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── RESPONSIVE DESKTOP ENHANCEMENTS ── */
+@media(min-width:500px){.ac-grid{grid-template-columns:repeat(3,1fr)}.hero-h{font-size:1.9rem}.g2{grid-template-columns:1fr 1fr}}
+@keyframes sIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<!-- REGISTRATION -->
+<div id="reg-ov" class="ov" style="display:none">
+<div class="ov-card">
+  <div class="ov-logo"><svg width="22" height="22" viewBox="0 0 28 28" fill="none"><line x1="4" y1="6" x2="14" y2="22" stroke="#1ed640" stroke-width="2.5" stroke-linecap="round"/><line x1="24" y1="6" x2="14" y2="22" stroke="#1ed640" stroke-width="2.5" stroke-linecap="round"/><circle cx="4" cy="6" r="2.3" fill="#1ed640"/><circle cx="24" cy="6" r="2.3" fill="#1ed640"/><circle cx="14" cy="22" r="2.3" fill="#1ed640"/></svg></div>
+  <div class="ov-h">Create account</div>
+  <div class="ov-sub">Choose avatar + username.<br>Saves locally – no email needed.</div>
+  <div class="av-grid" id="av-grid"></div>
+  <input id="reg-inp" class="ov-inp" type="text" placeholder="Username..." maxlength="20">
+  <button class="ov-go" onclick="createAccount()">Start learning →</button>
+  <div class="ov-note">All progress saved in this browser</div>
+  <a class="ov-link" onclick="showSwitch()">Switch to existing account</a>
+</div></div>
+<!-- SWITCH -->
+<div id="sw-ov" class="ov" style="display:none">
+<div class="ov-card">
+  <div class="ov-h">Choose account</div>
+  <div class="ov-sub">All accounts on this device</div>
+  <div class="sw-row mb" id="sw-list"></div>
+  <button class="btn-o mb" onclick="document.getElementById('sw-ov').style.display='none';document.getElementById('reg-ov').style.display='flex'">+ New account</button>
+  <button class="btn-o" onclick="document.getElementById('sw-ov').style.display='none'">Cancel</button>
+</div></div>
+<!-- LVLUP -->
+<div id="lvlup"><div class="lu-em" id="lu-em">⭐</div><div class="lu-h">LEVEL UP!</div><div class="lu-sub" id="lu-sub"></div></div>
+<div id="toast"></div>
+<!-- HEADER -->
+<header id="hdr">
+  <div class="hdr-logo"><svg width="20" height="20" viewBox="0 0 28 28" fill="none"><line x1="4" y1="6" x2="14" y2="22" stroke="#1ed640" stroke-width="2.5" stroke-linecap="round"/><line x1="24" y1="6" x2="14" y2="22" stroke="#1ed640" stroke-width="2.5" stroke-linecap="round"/><circle cx="4" cy="6" r="2.3" fill="#1ed640"/><circle cx="24" cy="6" r="2.3" fill="#1ed640"/><circle cx="14" cy="22" r="2.3" fill="#1ed640"/></svg></div>
+  <div class="hdr-name">Cercuit<em>Pilot</em></div>
+  <div class="xp-wrap">
+    <div class="lvl-pill" id="hdr-lv">Lv.1</div>
+    <div class="xp-track"><div class="xp-bar" id="hdr-xp" style="width:0%"></div></div>
+    <div class="xp-num" id="hdr-xn">0 XP</div>
+  </div>
+  <div class="hdr-av" id="hdr-av" onclick="goto('profile')">👤</div>
+</header>
+<main>
+<!-- HOME -->
+<div id="p-home" class="page on">
+  <div class="hero">
+    <svg class="hero-pcb" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg"><g stroke="#1ed640" stroke-width=".6" fill="none"><line x1="0" y1="30" x2="120" y2="30"/><line x1="120" y1="30" x2="120" y2="80"/><line x1="120" y1="80" x2="240" y2="80"/><line x1="240" y1="80" x2="240" y2="50"/><line x1="240" y1="50" x2="380" y2="50"/><line x1="380" y1="50" x2="380" y2="110"/><line x1="380" y1="110" x2="520" y2="110"/><line x1="520" y1="110" x2="520" y2="70"/><line x1="520" y1="70" x2="600" y2="70"/><line x1="60" y1="30" x2="60" y2="140"/><line x1="60" y1="140" x2="300" y2="140"/><circle cx="120" cy="30" r="3" fill="#1ed640"/><circle cx="240" cy="80" r="3" fill="#1ed640"/><rect x="113" y="65" width="14" height="30" rx="2" fill="#050f07" stroke="#1ed640"/><rect x="233" y="35" width="14" height="30" rx="2" fill="#050f07" stroke="#1ed640"/></g></svg>
+    <div class="hero-z">
+      <div class="hero-eye" id="hero-eye">⚡ Welcome</div>
+      <h1 class="hero-h">Master <em>electronics</em><br>one circuit at a time</h1>
+      <div class="hero-xp-row"><div class="hero-bar"><div class="hero-fill" id="home-xp-fill" style="width:0%"></div></div><div class="hero-xt" id="home-xp-txt">0 XP</div></div>
+    </div>
+  </div>
+  <div class="ss"><div class="sbox"><div class="snum" id="st-q">0</div><div class="slbl">Quiz</div></div><div class="sbox"><div class="snum" id="st-p">—</div><div class="slbl">Score</div></div><div class="sbox"><div class="snum" id="st-r">—</div><div class="slbl">Race</div></div><div class="sbox"><div class="snum" id="st-s">—</div><div class="slbl">Streak</div></div></div>
+  <div class="pad">
+    <div class="sec">Quick access</div>
+    <div class="ac-grid mb">
+      <div class="ac" onclick="goto('learn');setTab('learn','skill')"><div class="ac-em">🌳</div><div class="ac-t">Skill Tree</div><div class="ac-s">5 chapters</div></div>
+      <div class="ac" onclick="goto('train');setTab('train','quiz')"><div class="ac-em">❓</div><div class="ac-t">Quiz</div><div class="ac-s">Easy→Hard</div></div>
+      <div class="ac" onclick="goto('train');setTab('train','exam')"><div class="ac-em">📝</div><div class="ac-t">Exam</div><div class="ac-s">Timed · graded</div></div>
+      <div class="ac" onclick="goto('lab');setTab('lab','sandbox')"><div class="ac-em">⚡</div><div class="ac-t">Sandbox</div><div class="ac-s">Build circuits</div></div>
+      <div class="ac" onclick="goto('career');setTab('career','repair')"><div class="ac-em">🔧</div><div class="ac-t">Repair Shop</div><div class="ac-s">Fix real faults</div></div>
+      <div class="ac" onclick="goto('train');setTab('train','race')"><div class="ac-em">🏎️</div><div class="ac-t">Race</div><div class="ac-s">Speed challenge</div></div>
+    </div>
+    <div class="sec">Daily challenges</div>
+    <div id="dc-list" class="mb"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div class="streak-card"><div class="streak-n" id="streak-num">0</div><div class="streak-l">Day streak 🔥</div></div>
+      <div class="streak-card" style="background:var(--bgc);border:.5px solid var(--bdr);box-shadow:none"><div class="streak-n" style="font-size:1.5rem;color:var(--txt)" id="dc-xp-today">0</div><div class="streak-l" style="color:var(--txt3)">XP today ⚡</div></div>
+    </div>
+  </div>
+</div>
+<!-- LEARN -->
+<div id="p-learn" class="page">
+  <div class="tab-bar"><button class="tb on" onclick="setTab('learn','slides')">📖 Slides</button><button class="tb" onclick="setTab('learn','skill')">🌳 Skill Tree</button><button class="tb" onclick="setTab('learn','bp')">📐 Blueprints</button></div>
+  <div id="tc-learn-slides" class="tc on">
+    <div class="qhdr"><span class="qprog" id="sl-num">1/15</span><div id="sl-dots" style="display:flex;gap:3px;flex-wrap:wrap;max-width:180px"></div></div>
+    <div class="pad">
+      <div id="sl-card" style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:18px 14px;min-height:320px;display:flex;flex-direction:column;user-select:none;touch-action:pan-y">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div id="sl-em" style="font-size:1.4rem"></div><div id="sl-ttl" style="font-size:.95rem;font-weight:700"></div></div>
+        <div class="formula" id="sl-f"></div>
+        <ul id="sl-b" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;list-style:none"></ul>
+        <div id="sl-tip" style="margin-top:auto;background:var(--gpale);border-left:3px solid var(--grn);border-radius:0 7px 7px 0;padding:8px 10px;font-size:.78rem;color:var(--gdim);line-height:1.5"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn-o" style="flex:1" onclick="prevSlide()">← Prev</button><button class="btn-g" style="flex:1" onclick="nextSlide()">Next →</button></div>
+    </div>
+  </div>
+  <div id="tc-learn-skill" class="tc"><div class="pad" id="skill-tree-content"></div></div>
+  <div id="tc-learn-bp" class="tc"><div class="pad"><div class="sec">Blueprint Analysis</div><div id="bp-content"></div></div></div>
+</div>
+<!-- TRAIN -->
+<div id="p-train" class="page">
+  <div class="tab-bar"><button class="tb on" onclick="setTab('train','quiz')">❓ Quiz</button><button class="tb" onclick="setTab('train','cards')">🃏 Cards</button><button class="tb" onclick="setTab('train','race')">🏎️ Race</button><button class="tb" onclick="setTab('train','exam')">📝 Exam</button><button class="tb" onclick="setTab('train','hc')">💀 Hardcore</button><button class="tb" onclick="setTab('train','calc')">🧮 Calc</button></div>
+  <!-- QUIZ -->
+  <div id="tc-train-quiz" class="tc on">
+    <div class="diff-filter" id="q-diff-filter">
+      <button class="df on" onclick="setQDiff('all',this)">All</button>
+      <button class="df" onclick="setQDiff('e',this)">🟢 Easy</button>
+      <button class="df" onclick="setQDiff('m',this)">🟡 Medium</button>
+      <button class="df" onclick="setQDiff('h',this)">🔴 Hard</button>
+    </div>
+    <div class="qhdr"><span class="qprog" id="q-num">Q 1/30</span><span class="sc-badge" id="q-sc">0/0</span></div>
+    <div class="pad">
+      <div style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:14px">
+        <div class="timer-bar" id="q-tbar-wrap" style="display:none"><div class="timer-fill" id="q-tbar"></div></div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:11px">
+          <div style="font-size:.9rem;font-weight:500;line-height:1.55;flex:1" id="q-txt"></div>
+          <span class="diff-badge" id="q-diff-badge"></span>
+        </div>
+        <div id="q-opts"></div>
+        <div class="fb" id="q-fb"></div>
+        <button class="nxt" id="q-nxt" onclick="nextQ()">Next question →</button>
+      </div>
+    </div>
+    <div class="pad" id="q-done" style="display:none">
+      <div class="cpl"><div class="cpl-i" id="q-ci">🎉</div><div class="cpl-s" id="q-cs"></div><div class="cpl-p" id="q-cp"></div><div class="cpl-m" id="q-cm"></div><button class="btn-g" onclick="restartQ()">🔄 New round (shuffle)</button></div>
+    </div>
+  </div>
+  <!-- FLASHCARDS -->
+  <div id="tc-train-cards" class="tc">
+    <div class="qhdr"><span class="qprog" id="fc-num">1/30</span><button style="font-size:11px;font-weight:700;color:var(--grn);background:var(--gpale);border:none;border-radius:20px;padding:4px 11px;cursor:pointer" onclick="shuffleCards()">🔀 Shuffle</button></div>
+    <div class="pad">
+      <div class="fc-wrap" id="fc-wrap" onclick="flipCard()">
+        <div class="fc-in" id="fc-in">
+          <div class="fc-face front"><div class="fc-lbl">Question</div><div class="fc-q" id="fc-front"></div></div>
+          <div class="fc-face back"><div class="fc-lbl">Answer</div><div class="fc-a" id="fc-back"></div></div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:.75rem;color:var(--txt3);margin-bottom:9px" id="fc-hint">👆 Tap to flip</div>
+      <div class="knew-row" id="fc-btns" style="display:none"><button class="kno" onclick="cardResult(false)">✗ Didn't know</button><button class="kyes" onclick="cardResult(true)">✓ Knew it!</button></div>
+      <div class="cp-bar"><div class="cp-fill" id="cp-fill" style="width:0%"></div></div>
+      <div style="font-size:10px;display:flex;gap:13px;justify-content:center;color:var(--txt3)"><span id="cp-k" style="color:var(--grn)">✓ 0</span><b id="cp-m" style="color:var(--red)">✗ 0</b><span id="cp-l">— left</span></div>
+    </div>
+  </div>
+  <!-- RACE -->
+  <div id="tc-train-race" class="tc">
+    <div class="pad">
+      <div id="r-setup" style="text-align:center;padding-top:18px">
+        <div style="font-size:2.2rem;margin-bottom:10px">🏎️</div>
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:7px">Race Mode</div>
+        <div style="font-size:.82rem;color:var(--txt2);line-height:1.6;margin-bottom:16px">Answer as many flashcards as possible before time runs out. Faster = more points!</div>
+        <div style="display:flex;gap:7px;justify-content:center;margin-bottom:16px">
+          <button class="df on" onclick="setRD(this,60)">60s</button>
+          <button class="df" onclick="setRD(this,45)">45s</button>
+          <button class="df" onclick="setRD(this,30)">30s</button>
+        </div>
+        <button class="btn-g" onclick="startRace()">▶ Start Race</button>
+      </div>
+      <div id="r-active" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:var(--grn);text-shadow:0 0 10px var(--glow)" id="r-t">60</div>
+          <div style="font-size:.9rem;color:var(--txt2)">⚡ <span id="r-sc" style="font-weight:700;color:var(--txt)">0</span> pts</div>
+        </div>
+        <div class="r-card" id="r-card" onclick="raceFlip()">
+          <div class="r-inner" id="r-in">
+            <div class="r-face front"><div class="r-lbl">Question</div><div class="r-q" id="r-front"></div></div>
+            <div class="r-face back"><div class="r-lbl">Answer</div><div class="r-a" id="r-back"></div></div>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:.75rem;color:var(--txt3);margin-bottom:9px" id="r-hint">👆 Tap to reveal</div>
+        <div class="r-btns" id="r-btns" style="display:none"><button class="r-no" onclick="raceAns(false)">✗ Didn't know</button><button class="r-yes" onclick="raceAns(true)">✓ Knew it!</button></div>
+      </div>
+      <div id="r-done" style="display:none;text-align:center;padding-top:12px">
+        <div style="font-size:1.8rem;margin-bottom:9px">🏁</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:2.3rem;font-weight:700;color:var(--grn);text-shadow:0 0 14px var(--glow)" id="r-final"></div>
+        <div style="font-size:.82rem;color:var(--txt2);margin-bottom:4px" id="r-stats"></div>
+        <div style="font-size:.8rem;color:var(--grn);font-weight:600;margin-bottom:18px" id="r-pb"></div>
+        <button class="btn-g mb" onclick="startRace()">▶ Play again</button>
+        <button class="btn-o" onclick="goto('profile');setTab('profile','lb')">🏆 Leaderboard</button>
+      </div>
+    </div>
+  </div>
+  <!-- EXAM -->
+  <div id="tc-train-exam" class="tc">
+    <div id="exam-setup" class="pad" style="text-align:center;padding-top:20px">
+      <div style="font-size:2.2rem;margin-bottom:11px">📝</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Exam Mode</div>
+      <div style="font-size:.82rem;color:var(--txt2);line-height:1.6;margin-bottom:18px">25 questions · 45 minutes · No hints<br>Graded on the Danish scale: 12, 10, 7, 4, 02, 00, −3</div>
+      <button class="btn-g" onclick="startExam()">▶ Start Exam</button>
+    </div>
+    <div id="exam-active" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px;background:var(--gdk)">
+        <span style="font-size:11px;color:#aaa">Q <span id="ex-num">1</span>/25</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--grn)" id="ex-timer">45:00</span>
+        <span class="sc-badge" id="ex-sc">0/0</span>
+      </div>
+      <div class="pad">
+        <div style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:14px">
+          <div style="font-size:.9rem;font-weight:500;line-height:1.55;margin-bottom:11px" id="ex-txt"></div>
+          <div id="ex-opts"></div><div class="fb" id="ex-fb"></div>
+          <button class="nxt" id="ex-nxt" onclick="nextExam()">Next →</button>
+        </div>
+      </div>
+    </div>
+    <div id="exam-done" class="pad" style="display:none">
+      <div class="grade-card mb"><div class="grade-lbl">Your grade</div><div class="grade-val" id="exam-grade">12</div><div class="grade-name" id="exam-grade-name"></div></div>
+      <div class="cpl"><div class="cpl-s" id="exam-score"></div><div class="cpl-p" id="exam-pct"></div><div class="cpl-m" id="exam-msg"></div>
+      <button class="btn-g mb" onclick="startExam()">🔄 Retake</button>
+      <button class="btn-o" onclick="showCert()">📜 Certificate</button></div>
+    </div>
+  </div>
+  <!-- HARDCORE -->
+  <div id="tc-train-hc" class="tc">
+    <div id="hc-setup" class="pad" style="text-align:center;padding-top:20px">
+      <div style="font-size:2.2rem;margin-bottom:11px">💀</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Hardcore Mode</div>
+      <div style="font-size:.82rem;color:var(--txt2);line-height:1.6;margin-bottom:18px">3 lives · 15s timer per question · No hints<br>Complete all questions for <strong style="color:var(--grn)">3× XP bonus!</strong></div>
+      <button class="btn-g" style="background:var(--red);color:#fff" onclick="startHC()">💀 Begin</button>
+    </div>
+    <div id="hc-active" style="display:none">
+      <div class="qhdr">
+        <div style="display:flex;align-items:center;gap:8px" id="hc-lives"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;color:var(--amb);background:var(--apale);padding:3px 9px;border-radius:20px">3× XP</span>
+      </div>
+      <div class="pad">
+        <div class="timer-bar"><div class="timer-fill" id="hc-tbar" style="width:100%"></div></div>
+        <div style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:14px">
+          <div style="font-size:.9rem;font-weight:500;line-height:1.55;margin-bottom:11px" id="hc-txt"></div>
+          <div id="hc-opts"></div><div class="fb" id="hc-fb"></div>
+          <button class="nxt" id="hc-nxt" onclick="nextHC()">Next →</button>
+        </div>
+      </div>
+    </div>
+    <div id="hc-done" class="pad" style="display:none">
+      <div class="cpl"><div class="cpl-i" id="hc-ci">💀</div><div class="cpl-s" id="hc-cs"></div><div class="cpl-p" id="hc-cp"></div><div class="cpl-m" id="hc-cm"></div><button class="btn-g" onclick="startHC()">💀 Try again</button></div>
+    </div>
+  </div>
+  <!-- CALC -->
+  <div id="tc-train-calc" class="tc">
+    <div class="diff-filter">
+      <button class="df on" onclick="setCalcDiff('all',this)">All</button>
+      <button class="df" onclick="setCalcDiff('e',this)">🟢 Easy</button>
+      <button class="df" onclick="setCalcDiff('m',this)">🟡 Medium</button>
+      <button class="df" onclick="setCalcDiff('h',this)">🔴 Hard</button>
+    </div>
+    <div class="qhdr"><span class="qprog" id="ca-num">1/10</span><span class="sc-badge" id="ca-sc">0/0</span></div>
+    <div class="pad">
+      <div style="background:var(--bgc2);border:.5px solid var(--bdr);border-radius:var(--rsm);padding:11px;margin-bottom:9px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);font-weight:700;margin-bottom:4px;display:flex;justify-content:space-between"><span>Problem</span><span class="diff-badge" id="ca-diff-badge"></span></div>
+        <div style="font-size:.82rem;color:var(--txt2);line-height:1.55" id="ca-s"></div>
+      </div>
+      <div style="font-size:.88rem;font-weight:600;margin-bottom:9px" id="ca-q"></div>
+      <button class="btn-o" style="margin-bottom:7px;font-size:.78rem;padding:7px" onclick="document.getElementById('ca-hint').style.display='block'">💡 Hint</button>
+      <div id="ca-hint" style="background:var(--apale);border-left:3px solid var(--amb);border-radius:0 7px 7px 0;padding:8px 10px;font-size:.79rem;color:var(--txt2);margin-bottom:9px;display:none"></div>
+      <div style="display:flex;gap:7px;align-items:center;margin-bottom:9px">
+        <input type="number" id="ca-inp" style="flex:1;height:48px;border:.5px solid var(--bdr2);border-radius:var(--rsm);background:var(--bgc);color:var(--txt);font-size:1rem;font-family:'JetBrains Mono',monospace;padding:0 12px" placeholder="Your answer..." inputmode="decimal">
+        <div id="ca-unit" style="background:var(--bgc2);border:.5px solid var(--bdr2);border-radius:var(--rsm);padding:0 11px;height:48px;display:flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--grn);font-weight:500;flex-shrink:0"></div>
+      </div>
+      <button class="btn-g" onclick="checkCalc()">Check answer</button>
+      <div class="fb" id="ca-fb"></div>
+      <button class="nxt" id="ca-nxt" onclick="nextCalc()">Next problem →</button>
+    </div>
+  </div>
+</div>
+<!-- LAB -->
+<div id="p-lab" class="page">
+  <div class="tab-bar"><button class="tb on" onclick="setTab('lab','ohm')">⚡ Ohm</button><button class="tb" onclick="setTab('lab','led')">💡 LED</button><button class="tb" onclick="setTab('lab','rc')">🔋 RC</button><button class="tb" onclick="setTab('lab','logic')">🔲 Logic</button><button class="tb" onclick="setTab('lab','sandbox')">🛸 Sandbox</button><button class="tb" onclick="setTab('lab','wire')">🔌 Wire</button><button class="tb" onclick="setTab('lab','fh')">🔍 Fault</button></div>
+  <!-- OHM -->
+  <div id="tc-lab-ohm" class="tc on"><div class="pad">
+    <div class="lab-box">
+      <div class="lab-h">⚡ Ohm's Law — Interactive</div>
+      <div class="sl-row"><span class="sl-lbl" style="font-size:9px;color:var(--txt3)">Solve for:</span><button class="sb on" onclick="setSolve('u',this)">U (V)</button><button class="sb" onclick="setSolve('r',this)">R (Ω)</button><button class="sb" onclick="setSolve('i',this)">I (A)</button></div>
+      <div class="lab-out"><div class="lob"><div class="lov" id="ohm-u">12.0</div><div class="lol">U (Volt)</div></div><div class="lob"><div class="lov" id="ohm-r">100</div><div class="lol">R (Ohm)</div></div><div class="lob"><div class="lov" id="ohm-i">0.120</div><div class="lol">I (Amp)</div></div></div>
+      <div class="lab-sl"><div class="lab-sl-lbl"><span id="ohm-la">Resistance R</span><span id="ohm-lav">100 Ω</span></div><input type="range" id="ohm-a" min="1" max="500" step=".5" value="100" oninput="ohmUpdate()"></div>
+      <div class="lab-sl"><div class="lab-sl-lbl"><span id="ohm-lb">Voltage U</span><span id="ohm-lbv">12 V</span></div><input type="range" id="ohm-b" min="1" max="50" step=".5" value="12" oninput="ohmUpdate()"></div>
+      <div style="font-size:.75rem;color:var(--txt3);margin-bottom:10px;font-family:'JetBrains Mono',monospace" id="ohm-formula">I = U/R = 12/100 = 0.120A</div>
+      <button class="btn-g" id="ohm-done" onclick="completeLab('ohm','ohm-done')">✓ Mark complete (+30 XP)</button>
+    </div>
+  </div></div>
+  <!-- LED -->
+  <div id="tc-lab-led" class="tc"><div class="pad">
+    <div class="lab-box">
+      <div class="lab-h">💡 LED Current Limiter</div>
+      <div style="margin-bottom:9px"><select id="led-type" style="width:100%;padding:8px;border:.5px solid var(--bdr2);border-radius:var(--rsm);background:var(--bgc2);color:var(--txt);font-size:.85rem" onchange="ledUpdate()"><option value="2.0">Red LED (Vf=2.0V)</option><option value="2.1">Yellow (Vf=2.1V)</option><option value="2.2">Green (Vf=2.2V)</option><option value="3.2">Blue / White (Vf=3.2V)</option></select></div>
+      <div class="lab-sl"><div class="lab-sl-lbl"><span>Supply Vs</span><span id="vs-v">5.0V</span></div><input type="range" id="vs-sl" min="3" max="15" step=".5" value="5" oninput="ledUpdate()"></div>
+      <div class="lab-sl"><div class="lab-sl-lbl"><span>Series R</span><span id="rs-v">150Ω</span></div><input type="range" id="rs-sl" min="10" max="2000" step="10" value="150" oninput="ledUpdate()"></div>
+      <div class="led-viz" id="led-viz">💡</div>
+      <div class="lab-out"><div class="lob"><div class="lov" id="led-if">20</div><div class="lol">If (mA)</div></div><div class="lob"><div class="lov" id="led-pr">60</div><div class="lol">P_R (mW)</div></div><div class="lob"><div class="lov" id="led-st">✓ OK</div><div class="lol">Status</div></div></div>
+      <button class="btn-g" id="led-done" onclick="completeLab('led','led-done')">✓ Complete (+30 XP)</button>
+    </div>
+  </div></div>
+  <!-- RC -->
+  <div id="tc-lab-rc" class="tc"><div class="pad">
+    <div class="lab-box">
+      <div class="lab-h">🔋 RC Charge Curve</div>
+      <div class="lab-sl"><div class="lab-sl-lbl"><span>R</span><span id="rc-rv">10 kΩ</span></div><input type="range" id="rc-r" min="1" max="100" value="10" oninput="rcUpdate()"></div>
+      <div class="lab-sl"><div class="lab-sl-lbl"><span>C</span><span id="rc-cv">100 µF</span></div><input type="range" id="rc-c" min="1" max="1000" value="100" oninput="rcUpdate()"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.88rem;color:var(--grn);text-align:center;margin-bottom:8px" id="rc-tau">τ=1.00s · 5τ=5.00s</div>
+      <div class="rc-gw mb"><div class="rc-gf" id="rc-fill" style="width:0%"></div></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.88rem;color:var(--grn);text-align:center;margin-bottom:9px" id="rc-pct">0% charged</div>
+      <div style="display:flex;gap:7px;margin-bottom:9px"><button class="btn-g" style="flex:1;padding:10px" onclick="startRC()">▶ Charge</button><button class="btn-o" style="flex:1;padding:10px" onclick="stopRC()">■ Stop</button></div>
+      <button class="btn-g" id="rc-done" onclick="completeLab('rc','rc-done')">✓ Complete (+30 XP)</button>
+    </div>
+  </div></div>
+  <!-- LOGIC -->
+  <div id="tc-lab-logic" class="tc"><div class="pad">
+    <div class="lab-box">
+      <div class="lab-h">🔲 Logic Gates</div>
+      <div style="margin-bottom:10px"><select id="gate-sel" style="width:100%;padding:8px;border:.5px solid var(--bdr2);border-radius:var(--rsm);background:var(--bgc2);color:var(--txt);font-size:.9rem;font-weight:600" onchange="gateUpdate()"><option>AND</option><option>OR</option><option>NOT</option><option>NAND</option><option>NOR</option><option>XOR</option></select></div>
+      <div class="gate-row"><button class="g-inp" id="g-a" onclick="toggleGate('a')">A = 0</button><button class="g-inp" id="g-b" onclick="toggleGate('b')">B = 0</button></div>
+      <div class="g-out"><div class="g-ov lo" id="g-out">0</div><div style="font-size:10px;color:var(--txt3)">Output Y</div></div>
+      <table class="tt" id="g-tt"></table>
+      <button class="btn-g" style="margin-top:11px" id="logic-done" onclick="completeLab('logic','logic-done')">✓ Complete (+30 XP)</button>
+    </div>
+  </div></div>
+  <!-- SANDBOX -->
+  <div id="tc-lab-sandbox" class="tc"><div class="pad" style="padding:8px">
+    <div class="sb-wrap">
+      <div class="sb-toolbar" id="sb-toolbar">
+        <button class="sbt on" id="sbt-select" onclick="sbTool('select')">↕ Select</button>
+        <button class="sbt" id="sbt-wire" onclick="sbTool('wire')">─ Wire</button>
+        <button class="sbt" id="sbt-V" onclick="sbTool('V')">🔋 Battery</button>
+        <button class="sbt" id="sbt-R" onclick="sbTool('R')">⊟ Resistor</button>
+        <button class="sbt" id="sbt-LED" onclick="sbTool('LED')">💡 LED</button>
+        <button class="sbt" id="sbt-SW" onclick="sbTool('SW')">⊙ Switch</button>
+        <button class="sbt" id="sbt-GND" onclick="sbTool('GND')">⏚ GND</button>
+        <button class="sbt red" onclick="sbDelete()">✕</button>
+        <button class="sbt" onclick="sbExample()">📋 Example</button>
+        <button class="sbt run" id="sb-run" onclick="sbToggleSim()">▶ Run</button>
+      </div>
+      <canvas id="sb-canvas" height="300"></canvas>
+      <div class="sb-info">
+        <div class="sb-val"><div class="sb-vl">Max Voltage</div><div class="sb-vv" id="sb-vmax">—</div></div>
+        <div class="sb-val"><div class="sb-vl">Max Current</div><div class="sb-vv" id="sb-imax">—</div></div>
+        <div class="sb-val"><div class="sb-vl">Components</div><div class="sb-vv" id="sb-ncomp">0</div></div>
+      </div>
+      <div class="sb-status" id="sb-status">Place components → Connect with Wire → Press ▶ Run</div>
+    </div>
+    <div style="font-size:.75rem;color:var(--txt3);line-height:1.6;margin-top:4px">Tap Switch to toggle ON/OFF · Delete: select then tap ✕ · Swipe to scroll the canvas</div>
+  </div></div>
+  <!-- WIRE CHALLENGE -->
+  <div id="tc-lab-wire" class="tc">
+    <div class="diff-filter"><button class="df on" onclick="setWCDiff('all',this)">All</button><button class="df" onclick="setWCDiff('e',this)">🟢 Easy</button><button class="df" onclick="setWCDiff('m',this)">🟡 Medium</button><button class="df" onclick="setWCDiff('h',this)">🔴 Hard</button></div>
+    <div class="qhdr"><span class="qprog" id="wc-num">1/10</span><span class="sc-badge" id="wc-sc">0/0</span></div>
+    <div class="pad">
+      <div style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:14px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--grn);font-weight:700">Wire Challenge</div><span class="diff-badge" id="wc-diff-badge"></span></div>
+        <div style="font-size:.9rem;font-weight:600;margin-bottom:10px" id="wc-title"></div>
+        <div class="wc-circuit" id="wc-circuit"></div>
+        <div style="font-size:.85rem;font-weight:500;margin-bottom:9px" id="wc-q"></div>
+        <div id="wc-opts"></div>
+        <div class="fb" id="wc-fb"></div>
+        <button class="nxt" id="wc-nxt" onclick="nextWC()">Next challenge →</button>
+      </div>
+    </div>
+  </div>
+  <!-- FAULT HUNTER -->
+  <div id="tc-lab-fh" class="tc">
+    <div class="diff-filter"><button class="df on" onclick="setFHDiff('all',this)">All</button><button class="df" onclick="setFHDiff('e',this)">🟢 Easy</button><button class="df" onclick="setFHDiff('m',this)">🟡 Medium</button><button class="df" onclick="setFHDiff('h',this)">🔴 Hard</button></div>
+    <div class="qhdr"><span class="qprog" id="fh-num">1/8</span><span class="sc-badge" id="fh-sc">0/0</span></div>
+    <div class="pad">
+      <div style="background:var(--bgc2);border:.5px solid var(--bdr);border-radius:var(--rsm);padding:12px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);font-weight:700">Scenario</div><span class="diff-badge" id="fh-diff-badge"></span></div>
+        <div style="font-size:.9rem;font-weight:700;margin-bottom:5px" id="fh-title"></div>
+        <div style="font-size:.82rem;color:var(--txt2);line-height:1.55" id="fh-s"></div>
+      </div>
+      <div class="symp-card"><div class="symp-lbl">⚠ Symptoms observed</div><div style="font-size:.82rem;line-height:1.5" id="fh-sym"></div></div>
+      <div style="font-size:.88rem;font-weight:600;margin-bottom:9px" id="fh-q"></div>
+      <div id="fh-opts"></div><div class="fb" id="fh-fb"></div>
+      <button class="nxt" id="fh-nxt" onclick="nextFH()">Next scenario →</button>
+    </div>
+  </div>
+</div>
+<!-- CAREER -->
+<div id="p-career" class="page">
+  <div class="tab-bar"><button class="tb on" onclick="setTab('career','projects')">📋 Projects</button><button class="tb" onclick="setTab('career','repair')">🔧 Repair</button><button class="tb" onclick="setTab('career','coll')">💎 Collection</button></div>
+  <div id="tc-career-projects" class="tc on">
+    <div class="pad" id="proj-list"></div>
+    <div class="pad" id="proj-detail" style="display:none"><button class="btn-o mb" onclick="backToProjects()">← All projects</button><div id="proj-steps"></div></div>
+  </div>
+  <div id="tc-career-repair" class="tc"><div id="repair-content"></div></div>
+  <div id="tc-career-coll" class="tc"><div class="pad"><div class="sec">Component Collection</div><div style="font-size:.78rem;color:var(--txt3);margin-bottom:10px">Level up to unlock more components. Tap to view details.</div><div class="comp-grid" id="comp-grid"></div></div></div>
+</div>
+<!-- PROFILE -->
+<div id="p-profile" class="page">
+  <div class="tab-bar"><button class="tb on" onclick="setTab('profile','stats')">👤 Profile</button><button class="tb" onclick="setTab('profile','badges')">🏅 Badges</button><button class="tb" onclick="setTab('profile','lb')">🏆 Ranks</button><button class="tb" onclick="setTab('profile','settings')">⚙️ Settings</button></div>
+  <div id="tc-profile-stats" class="tc on">
+    <div class="prof-hero"><div class="prof-av" id="pr-av">👤</div><div class="prof-name" id="pr-name">—</div><div class="prof-title" id="pr-title">Beginner · Level 1</div><div class="prof-xp-row"><div class="prof-bar"><div class="prof-fill" id="pr-fill" style="width:0%"></div></div><div class="prof-xt" id="pr-xt">0 XP</div></div></div>
+    <div class="pad"><div class="sec">Statistics</div><div class="g2 mb"><div class="card" style="padding:12px"><div style="font-size:1.3rem;font-weight:700;font-family:'JetBrains Mono',monospace" id="pr-qt">0</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">Quiz answered</div></div><div class="card" style="padding:12px"><div style="font-size:1.3rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--grn)" id="pr-qp">—</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">Quiz accuracy</div></div><div class="card" style="padding:12px"><div style="font-size:1.3rem;font-weight:700;font-family:'JetBrains Mono',monospace" id="pr-pj">0/5</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">Projects done</div></div><div class="card" style="padding:12px"><div style="font-size:1.3rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--amb)" id="pr-rh">—</div><div style="font-size:10px;color:var(--txt3);margin-top:2px">Race best</div></div></div>
+    <div class="sec">Recent badges</div><div class="ach-grid" id="pr-badges"></div></div>
+  </div>
+  <div id="tc-profile-badges" class="tc"><div class="pad"><div class="ach-grid" id="all-badges"></div></div></div>
+  <div id="tc-profile-lb" class="tc"><div class="pad"><div class="sec" style="margin-bottom:10px">🏆 XP Rankings</div><div class="card mb" id="lb-xp"></div><div class="sec" style="margin-bottom:10px;margin-top:16px">🏎️ Race High Scores</div><div class="card mb" id="lb-race"></div></div></div>
+  <div id="tc-profile-settings" class="tc"><div class="pad">
+    <div class="sec">Difficulty</div>
+    <div class="diff-row mb"><button class="diff-btn" onclick="setDiff('easy',this)">🟢 Easy</button><button class="diff-btn on" onclick="setDiff('normal',this)">🟡 Normal</button><button class="diff-btn" onclick="setDiff('hard',this)">🔴 Hard ⏱</button></div>
+    <div style="font-size:.78rem;color:var(--txt2);margin-bottom:18px;line-height:1.55" id="diff-desc">Normal: hints on request, no timer, standard XP.</div>
+    <div class="sec">Accounts on this device</div>
+    <div class="sw-row mb" id="acc-list"></div>
+    <button class="btn-o mb" onclick="document.getElementById('reg-ov').style.display='flex'">+ Create new account</button>
+    <button class="btn-o" style="color:var(--red);border-color:var(--red)" onclick="resetAcc()">⚠️ Reset my progress</button>
+  </div></div>
+</div>
+</main>
+<!-- BOTTOM NAV -->
+<nav class="bnav">
+  <button class="nb on" id="nav-home" onclick="goto('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12L12 3L21 12"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg>Home</button>
+  <button class="nb" id="nav-learn" onclick="goto('learn')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Learn</button>
+  <button class="nb" id="nav-train" onclick="goto('train')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17" stroke-width="2.5"/></svg>Train</button>
+  <button class="nb" id="nav-lab" onclick="goto('lab')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"/><path d="M8.5 2h7"/><path d="M14.5 16h-5l-3.5 4h12z"/></svg>Lab</button>
+  <button class="nb" id="nav-career" onclick="goto('career')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>Career</button>
+  <button class="nb" id="nav-profile" onclick="goto('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile</button>
+</nav>
+<script>
+// ════════════════════════════════════════
+// CONSTANTS & DATA
+// ════════════════════════════════════════
+const AVS=['🦊','🐺','🦁','🐯','🐻','🦅','🐉','⚡','🔧','💡','🛸','🔬','🎯','🚀','🏆','🌊','🤖','🔌','🧠','⚗️'];
+const LEVELS=[{l:1,xp:0,t:'Beginner',i:'🔩'},{l:2,xp:200,t:'Apprentice',i:'⚡'},{l:3,xp:500,t:'Technician',i:'🔌'},{l:4,xp:1000,t:'Engineer',i:'🔧'},{l:5,xp:2000,t:'Senior EFT',i:'💡'},{l:6,xp:3500,t:'Master',i:'🏆'},{l:7,xp:5500,t:'Expert',i:'⚗️'},{l:8,xp:8000,t:'Instructor',i:'🎓'},{l:9,xp:12000,t:'Professor',i:'🏛️'},{l:10,xp:18000,t:'Legend',i:'🌟'}];
+const ACHS=[
+  {i:'⚡',t:'First Answer',d:'Answer first quiz question',x:25,k:'q1'},{i:'✅',t:'10 Correct',d:'Get 10 quiz correct',x:50,k:'q10'},{i:'🎯',t:'50 Correct',d:'50 correct answers',x:100,k:'q50'},{i:'🏅',t:'Quiz Veteran',d:'100 correct answers',x:200,k:'q100'},{i:'💯',t:'Perfect Streak',d:'10 correct in a row',x:150,k:'perf'},{i:'🧪',t:'Lab Rat',d:'First lab done',x:50,k:'lab1'},{i:'🔬',t:'Lab Master',d:'All 4 labs done',x:200,k:'labs'},{i:'📋',t:'Project Lead',d:'First project done',x:100,k:'proj1'},{i:'🏗️',t:'Engineer',d:'All 5 projects done',x:500,k:'projs'},{i:'🔥',t:'3-Day Streak',d:'3 days in a row',x:50,k:'s3'},{i:'🔥',t:'Week Streak',d:'7 days in a row',x:150,k:'s7'},{i:'🔥',t:'Month Streak',d:'30 days in a row',x:500,k:'s30'},{i:'🏎️',t:'Racer',d:'Score 200+ in Race',x:50,k:'r200'},{i:'🏆',t:'Race Champion',d:'Score 500+ in Race',x:150,k:'r500'},{i:'🌟',t:'Race Legend',d:'Score 1000+ in Race',x:300,k:'r1000'},{i:'🔍',t:'Fault Finder',d:'Solve 5 faults',x:75,k:'f5'},{i:'🔍',t:'Fault Expert',d:'Solve all 8 faults',x:150,k:'f8'},{i:'🧮',t:'Calculator',d:'10 correct calculations',x:100,k:'c10'},{i:'📚',t:'Bookworm',d:'View all 15 slides',x:75,k:'slid'},{i:'🃏',t:'Card Master',d:'All 30 flashcards done',x:100,k:'card'},{i:'📝',t:'Exam Passed',d:'Pass exam (grade 4+)',x:100,k:'exam'},{i:'🎓',t:'Distinction',d:'Grade 12 on exam',x:300,k:'exam12'},{i:'💀',t:'Hardcore Hero',d:'Complete Hardcore Mode',x:200,k:'hc'},{i:'🔌',t:'Wire Wizard',d:'Solve 5 Wire Challenges',x:75,k:'wc5'},{i:'🔌',t:'Circuit Sage',d:'Solve all Wire Challenges',x:150,k:'wc10'},{i:'🛠️',t:'Repair Rookie',d:'First repair job',x:50,k:'rep1'},{i:'🔧',t:'Repair Expert',d:'All repair jobs done',x:200,k:'reps'},{i:'💎',t:'Collector',d:'Unlock 5 components',x:50,k:'col5'},{i:'💎',t:'Complete Set',d:'All 15 components unlocked',x:200,k:'col15'},{i:'⭐',t:'Level 5',d:'Reach Senior EFT',x:0,k:'lv5'},{i:'🌟',t:'The Legend',d:'Reach Level 10',x:0,k:'lv10'},{i:'🌙',t:'Night Owl',d:'Study after midnight',x:50,k:'night'},{i:'🌅',t:'Early Bird',d:'Study before 7am',x:50,k:'early'},{i:'⚡',t:'Speed Demon',d:'Answer in under 3s',x:75,k:'fast'},{i:'🎯',t:'Perfect Exam',d:'Score 100% on exam',x:250,k:'epfct'},{i:'💡',t:'Easy Master',d:'10 easy quiz correct',x:50,k:'em10'},{i:'🟡',t:'Medium Hero',d:'10 medium quiz correct',x:100,k:'mm10'},{i:'🔴',t:'Hard Mode',d:'5 hard quiz correct',x:150,k:'hm5'},{i:'🛸',t:'Sandbox Pro',d:'Run 5 circuit simulations',x:100,k:'sb5'},{i:'🤖',t:'CercuitPilot',d:'Earn all other badges',x:1000,k:'all'}
+];
+const SLIDES=[
+  {e:'⚡',t:"Ohm's Law",f:'U = R × I',b:['U = voltage in Volt (V)','R = resistance in Ohm (Ω)','I = current in Ampere (A)'],tip:'Find I: I=U/R  |  Find R: R=U/I  |  Find U: U=R×I'},
+  {e:'💡',t:'Electric Power',f:'P = U × I',b:['P = power in Watt (W)','Alternative: P = I² × R','Alternative: P = U² / R'],tip:'A 100W bulb at 230V draws 0.43A. P=230×0.43≈100W ✓'},
+  {e:'▶▶',t:'Series Circuits',f:'Rs = R1 + R2 + R3',b:['Same current I through all components','Voltage divides across resistors','One break = entire circuit breaks'],tip:'KVL: Sum of all voltage drops = source voltage'},
+  {e:'🔀',t:'Parallel Circuits',f:'1/Rp = 1/R1 + 1/R2',b:['Same voltage across all branches','Current splits proportionally','Two equal R in parallel = R/2'],tip:'KCL: Sum of all currents at any node = 0'},
+  {e:'🔋',t:'Capacitors',f:'Q = C × U  |  τ = R×C',b:['C = capacitance in Farad (µF, nF, pF)','Stores energy: W = ½CU²','Time constant: τ = R × C (seconds)'],tip:'63% charged at t=τ · Fully charged at t=5τ (99.3%)'},
+  {e:'🌀',t:'Inductors',f:'XL = 2π × f × L',b:['L = inductance in Henry (H)','Opposes changes in current','Stores energy in magnetic field: W = ½LI²'],tip:'Higher frequency → higher XL → inductor blocks AC more'},
+  {e:'➡️',t:'Diodes',f:'Vf ≈ 0.7V (Silicon)',b:['Conducts only in forward bias direction','Zener: voltage regulator in reverse bias','LED: Vf = 1.8–3.5V depending on colour'],tip:'LED resistor formula: R = (Vs − Vf) / If  (If ≈ 20mA)'},
+  {e:'🔌',t:'BJT Transistors',f:'Ic = β × Ib',b:['β (hFE) = current gain (50–300)','3 terminals: Base (B), Collector (C), Emitter (E)','NPN: positive Ib → C–E path conducts'],tip:'Always use flyback diode in parallel with inductive loads!'},
+  {e:'〰️',t:'AC & Frequency',f:'Vrms = Vpeak / √2',b:['European mains: 230V RMS at 50Hz','Vpeak = 230 × √2 ≈ 325V','f = 1/T (frequency = 1/period)'],tip:'RMS = effective value (DC equivalent for heating effect)'},
+  {e:'🔲',t:'Logic Gates',f:'AND: Y=A·B  |  OR: Y=A+B',b:['AND: output 1 ONLY when ALL inputs are 1','OR: output 1 if at least one input is 1','NOT: inverts — 0→1, 1→0'],tip:'NAND and NOR are "universal" — can make all other gates'},
+  {e:'📻',t:'RC Low-Pass Filter',f:'fc = 1 / (2πRC)',b:['Frequencies below fc pass unchanged','Above fc: attenuated –20dB/decade','fc = –3dB point (amplitude = 70.7%)'],tip:'Larger R or C → lower fc. Used to filter out HF noise.'},
+  {e:'🛡️',t:'Electrical Safety',f:'Dangerous: I > 10mA',b:['50V AC is the safe-touch voltage limit','100mA can be lethal','ESD: even µJ discharges can destroy ICs'],tip:'NEVER work on live equipment. Always kill power first!'},
+  {e:'⚙️',t:'Transistor Switch',f:'Ib_min = Ic / (β × 0.5)',b:['Saturation: Vce ≈ 0.2V (ON)','Cutoff: Ic = 0A (OFF)','Safety factor 2× ensures deep saturation'],tip:'Flyback diode ALWAYS across inductive loads (relays, motors)!'},
+  {e:'🔺',t:'Op-Amps',f:'Vout = −(Rf/Rin) × Vin',b:['Infinite input impedance (ideal)','Inverting: negative gain','Non-inverting: Vout = (1+Rf/Rin) × Vin'],tip:'Golden rules (negative feedback): V+ = V−  and  Iin = 0'},
+  {e:'🔄',t:'Transformers',f:'V1/V2 = N1/N2',b:['Voltage ratio = turns ratio','Current inversely proportional: I1/I2 = N2/N1','Power is conserved: P1 ≈ P2 (ideal)'],tip:'Isolation transformer provides safety from mains in the lab'},
+];
+const QUIZ=[
+  {q:"What is Ohm's Law?",o:['U=R+I','U=R×I','U=R/I','U×R=I'],a:1,e:"U=R×I. Voltage=Resistance×Current. Foundation of all circuit calculations.",d:'e'},
+  {q:'Unit of electric voltage?',o:['Ampere','Watt','Volt (V)','Ohm'],a:2,e:'Volt (V), named after Alessandro Volta.',d:'e'},
+  {q:'Unit of resistance?',o:['Volt','Ampere','Watt','Ohm (Ω)'],a:3,e:'Ohm (Ω), named after Georg Simon Ohm (1789–1854).',d:'e'},
+  {q:'What is the unit of capacitance?',o:['Henry','Farad (F)','Volt','Siemens'],a:1,e:'Farad (F). In practice: µF, nF, pF.',d:'e'},
+  {q:'Which component conducts in only one direction?',o:['Capacitor','Resistor','Diode','Inductor'],a:2,e:'A diode conducts only in forward bias. Reverse = blocked.',d:'e'},
+  {q:'European mains frequency?',o:['60Hz','50Hz','40Hz','100Hz'],a:1,e:'Europe uses 50Hz and 230V RMS.',d:'e'},
+  {q:'What does ESD stand for?',o:['Electric Signal Detector','ElectroStatic Discharge','Electron Switching Device','Electric Surge Detector'],a:1,e:'ESD = ElectroStatic Discharge. Static can permanently destroy ICs.',d:'e'},
+  {q:'What is CE marking?',o:['Chinese Electronics','Certified Electronics','Conformité Européenne','Central Electronics'],a:2,e:'CE = Conformité Européenne. Declares compliance with EU directives.',d:'e'},
+  {q:'Forward voltage of a silicon diode?',o:['0V','0.3V','0.7V','1.2V'],a:2,e:'Silicon: Vf≈0.7V. Germanium: ≈0.3V. LED: 1.8–3.5V.',d:'e'},
+  {q:'What is PWM?',o:['Power Wire Measurement','Pulse Width Modulation','Phase Width Modulation','Power Wave Mode'],a:1,e:'PWM=Pulse Width Modulation. Controls power by varying duty cycle.',d:'e'},
+  {q:'A 100Ω resistor connected to 5V. Current?',o:['500mA','50mA','20mA','0.5mA'],a:1,e:'I=U/R=5/100=0.05A=50mA.',d:'e'},
+  {q:'Power formula?',o:['P=U×R','P=U×I','P=I×R','P=U/I'],a:1,e:'P=U×I. Also: P=I²R and P=U²/R.',d:'e'},
+  {q:'What happens to current if you add a series resistor?',o:['Increases','Decreases','Stays same','Doubles'],a:1,e:'More R → lower I. I=U/R — current and resistance are inversely proportional.',d:'e'},
+  {q:'Which gate outputs 1 ONLY when ALL inputs are 1?',o:['OR','XOR','AND','NAND'],a:2,e:'AND gate: Y=A·B. Output is 1 only when ALL inputs are HIGH.',d:'e'},
+  {q:'What does an oscilloscope primarily measure?',o:['Resistance','Capacitance','Voltage over time','Current generation'],a:2,e:'Oscilloscope shows voltage as function of time. Essential for troubleshooting.',d:'e'},
+  {q:'RC time constant τ?',o:['τ=R+C','τ=R×C','τ=R/C','τ=C/R'],a:1,e:'τ=R×C. At t=τ: 63.2% charged. Fully charged at 5τ.',d:'m'},
+  {q:'Primary function of a capacitor?',o:['Conduct one way','Amplify signals','Store electric energy','Convert voltage'],a:2,e:'Capacitor stores energy in electric field (W=½CU²).',d:'m'},
+  {q:'What is KVL?',o:['Current sum at node=0','Sum of voltage drops in closed loop=0','Power is constant','Resistance is linear'],a:1,e:"KVL: Sum of all voltage drops in a closed loop = 0. Kirchhoff's Voltage Law.",d:'m'},
+  {q:'NPN transistor terminals?',o:['Plus/Minus/Earth','Anode/Cathode/Gate','Base/Collector/Emitter','Input/Output/Enable'],a:2,e:'NPN BJT: Base (B), Collector (C), Emitter (E).',d:'m'},
+  {q:'Parallel resistors: total resistance vs smallest?',o:['Higher','Same','Lower','Twice as large'],a:2,e:'Parallel always gives LOWER total resistance than the smallest individual value.',d:'m'},
+  {q:'Vrms at Vpeak=325V?',o:['325V','230V','163V','460V'],a:1,e:'Vrms=Vpeak/√2=325/1.414≈230V. European mains voltage.',d:'m'},
+  {q:'MOSFET terminals?',o:['Base/Collector/Emitter','Gate/Drain/Source','Anode/Cathode/Gate','Plus/Minus/Control'],a:1,e:'MOSFET: Gate (G), Drain (D), Source (S). Voltage controlled.',d:'m'},
+  {q:'Decimal 10 in binary?',o:['1001','1010','1100','0110'],a:1,e:'10₁₀=1010₂. 8+0+2+0=10.',d:'m'},
+  {q:'RC low-pass cutoff frequency?',o:['f=L×C','f=1/(2πRC)','f=R×C','f=2π×RC'],a:1,e:'fc=1/(2πRC). At fc: −3dB = 70.7% amplitude.',d:'m'},
+  {q:'NAND gate: when is output 0?',o:['Never','When any input is 0','Only when ALL inputs are 1','Always'],a:2,e:'NAND=NOT AND. Output is 0 ONLY when ALL inputs are 1. Otherwise 1.',d:'m'},
+  {q:'LC resonant frequency?',o:['f=L×C','f=1/(LC)','f=1/(2π√LC)','f=2π√LC'],a:2,e:'f₀=1/(2π√LC). At resonance: XL=XC, impedance is minimum.',d:'h'},
+  {q:'Capacitor impedance at DC (f=0)?',o:['0Ω','1Ω','Infinite (open circuit)','Depends on C'],a:2,e:'Xc=1/(2π×0×C)=∞. Capacitor fully blocks DC — open circuit at DC.',d:'h'},
+  {q:'What is skin effect?',o:['Temperature at surface','Magnetic field outer layer','HF current at conductor surface','Current damages surface'],a:2,e:'At high frequencies, current concentrates at conductor surface, increasing effective AC resistance.',d:'h'},
+  {q:'Thevenin theorem states?',o:['Superposition applies','Any linear circuit = Vth + Rth in series','Current sources only','Applies to non-linear only'],a:1,e:"Thévenin: any linear network can be replaced by Vth (open-circuit voltage) + Rth (series resistance).",d:'h'},
+  {q:'Energy stored in inductor?',o:['W=½LI','W=½LI²','W=LI²','W=½L/I'],a:1,e:'W=½LI² (joules). Energy stored in the magnetic field.',d:'h'},
+];
+const CALC=[
+  {s:'U=9V, R=180Ω.',q:'Calculate current I in mA.',a:50,u:'mA',t:1,h:'I=U/R, ×1000 for mA',e:'I=9/180=0.05A=50mA',d:'e'},
+  {s:'R=47Ω, I=2A.',q:'Calculate voltage U in Volt.',a:94,u:'V',t:0.5,h:'U=R×I',e:'U=47×2=94V',d:'e'},
+  {s:'Red LED: Vf=2.0V, If=20mA, Vs=5V.',q:'Calculate series resistor R in Ω.',a:150,u:'Ω',t:5,h:'R=(Vs−Vf)/If (If=0.02A)',e:'R=(5−2)/0.02=150Ω',d:'e'},
+  {s:'R1=100Ω and R2=100Ω in parallel.',q:'Total resistance Rp in Ω.',a:50,u:'Ω',t:0.5,h:'1/Rp=1/R1+1/R2',e:'Rp=100/2=50Ω',d:'e'},
+  {s:'R=10kΩ, C=47µF.',q:'Time constant τ in seconds.',a:0.47,u:'s',t:0.02,h:'τ=R×C (C in Farads: 47µF=0.000047F)',e:'τ=10000×0.000047=0.47s',d:'m'},
+  {s:'R1=1kΩ, R2=2kΩ, Vin=9V (voltage divider).',q:'Output voltage Vout in V.',a:6,u:'V',t:0.1,h:'Vout=Vin×R2/(R1+R2)',e:'Vout=9×2000/3000=6V',d:'m'},
+  {s:'P=2300W at mains U=230V.',q:'Current I in Ampere.',a:10,u:'A',t:0.5,h:'P=U×I → I=P/U',e:'I=2300/230=10A',d:'m'},
+  {s:'C=100µF, f=50Hz.',q:'Capacitive reactance Xc in Ω.',a:31.8,u:'Ω',t:1.5,h:'Xc=1/(2π×f×C) (C=0.0001F)',e:'Xc=1/(2π×50×0.0001)≈31.8Ω',d:'h'},
+  {s:'LC: L=10mH, C=100µF.',q:'Resonant frequency f₀ in Hz.',a:159,u:'Hz',t:3,h:'f₀=1/(2π×√(L×C))',e:'f₀=1/(2π×√(0.01×0.0001))≈159Hz',d:'h'},
+  {s:'Resistor P=10W at I=0.5A.',q:'Resistance R in Ω.',a:40,u:'Ω',t:0.5,h:'P=I²×R → R=P/I²',e:'R=10/(0.5)²=40Ω',d:'h'},
+];
+const CARDS=[
+  {f:"Ohm's Law?",b:'U = R × I\n\nVoltage = Resistance × Current'},{f:'Power formula?',b:'P = U × I\n\nAlso: P=I²R  and  P=U²/R'},{f:'RC time constant τ?',b:'τ = R × C\n\n63% at t=τ · Full at 5τ'},{f:'LC resonant frequency?',b:'f₀ = 1/(2π√LC)\n\nHere XL = XC'},{f:'Voltage divider?',b:'Vout = Vin × R2/(R1+R2)'},{f:"KCL (Kirchhoff's Current Law)?",b:'ΣI_in = ΣI_out\n\nSum of currents at node = 0'},{f:"KVL (Kirchhoff's Voltage Law)?",b:'ΣU = 0\n\nSum of voltages in closed loop = 0'},{f:'Capacitive reactance Xc?',b:'Xc = 1/(2πfC)\n\nHigher f → lower Xc → more current'},{f:'Inductive reactance XL?',b:'XL = 2πfL\n\nHigher f → higher XL → less current'},{f:'Parallel resistance?',b:'1/Rp = 1/R1 + 1/R2\n\nTwo equal: Rp = R/2'},{f:"Thévenin's theorem?",b:'Any linear network →\nVth (open-circuit V) + Rth (series R)'},{f:'NPN vs PNP?',b:'NPN: Ib in → C→E conducts\n\nPNP: Ib out → E→C conducts'},{f:'Zener diode?',b:'Voltage reference in reverse bias\nNeeds series resistor! Iz=fixed Vz'},{f:'ESD protection?',b:'• Wrist strap\n• Anti-static mat\n• Grounded tools\n\nPrevent ElectroStatic Discharge'},{f:'PWM duty cycle?',b:'Duty = ton/T × 100%\n\nVavg = Duty × Vcc'},{f:'I²C protocol?',b:'2 wires: SDA + SCL\nUp to 127 devices on one bus\n7-bit addressing'},{f:'Vrms from Vpeak?',b:'Vrms = Vpeak / √2\n\n325V peak → 230V RMS'},{f:'RC low-pass fc?',b:'fc = 1/(2πRC)\n\nAt fc: −3dB (amplitude = 70.7%)'},{f:'Binary 1111?',b:'1111₂ = 15₁₀ = F₁₆'},{f:'Capacitor charge formula?',b:'Q = C × U\n\nEnergy: W = ½CU²'},{f:'Impedance Z?',b:'Z = √(R² + X²)\n\nTotal AC resistance in Ω'},{f:'Bypass capacitor?',b:'100nF ceramic parallel to VCC/GND\nat each IC pin → filters HF noise'},{f:'ADC resolution?',b:'12-bit → 4096 levels\n10-bit → 1024 levels\nRes = Vref/2ⁿ'},{f:'SPI protocol?',b:'4 wires: MOSI MISO SCK CS\nFull-duplex serial'},{f:'Pull-down resistor?',b:'R from signal to GND\n→ defines LOW when undriven'},{f:'Thermal resistance Rθ?',b:'Unit: °C/W\n\nTj = Ta + P×Rθ'},{f:'Skin effect?',b:'HF current → conductor surface\n→ higher AC resistance\n→ Use Litz wire for RF'},{f:"Norton's theorem?",b:'Any linear network →\nIn (short-circuit I) ∥ Rth'},{f:'Superposition?',b:'Effect of N sources =\nsum of each source alone\n\nLinear circuits only'},{f:'Open circuit?',b:'I = 0A  |  R = ∞Ω\n\nAll source voltage appears across break'},
+];
+const FAULT_HUNTER=[
+  {title:'LED not lighting',s:'LED connected to 5V via 220Ω. LED does not light. Multimeter shows 0V across LED, 5V across resistor.',sym:'5V supply verified. 0V across LED. 5V across R. No visible damage.',q:'What is the fault?',o:['Resistor too large','LED is short-circuited (internal)','Power supply faulty','Wrong LED polarity'],a:1,e:'0V across LED + 5V across R = current flows but LED has no voltage drop. This is a short circuit inside the LED. Test: swap LED.',d:'e'},
+  {title:'Series circuit — no current',s:'Series: 10V → R1(100Ω) → R2(100Ω) → GND. Measured: 10V across R1, 0V across R2.',sym:'10V across R1 only. 0V across R2. Supply verified OK.',q:'What is wrong?',o:['R2 is shorted','R1 is open-circuit (broken)','Supply too low','Both resistors wrong value'],a:1,e:'If R1 is open (broken), no current flows. All 10V appears across the break. R2=0V since I=0.',d:'e'},
+  {title:'LED dim',s:'LED should run at 20mA from 12V but is noticeably dimmer than spec.',sym:'LED lights but weak. Supply 12V verified. Vf measured correctly.',q:'Most likely cause?',o:['Series R too small','Series R too large','LED internally damaged','Voltage too high'],a:1,e:'Too large a series R → If < 20mA → dim LED. LED brightness is directly proportional to current.',d:'e'},
+  {title:'Capacitor bulging',s:'Electrolytic capacitor on PCB is bulging at the top and smells burnt.',sym:'Cap top is domed. Slight smell. Circuit behaves erratically.',q:'Correct action?',o:['Ignore — normal aging','Replace immediately — risk of explosion','Reduce supply voltage','Add parallel resistor'],a:1,e:'Bulging electrolytic = overheating or reverse polarity. Can EXPLODE. Kill power immediately and replace.',d:'m'},
+  {title:'New PCB — nothing works',s:'First power-on of a new PCB. No LEDs, no response from any IC.',sym:'Board completely dead. No visible smoke or burning smell. Fuse intact.',q:'First step?',o:['Replace all capacitors','Verify VCC present at IC pins','Re-solder all joints','Check all logic signals'],a:1,e:'ALWAYS verify supply voltage first. ~80% of new PCB faults = missing/wrong supply. Measure VCC at IC pins.',d:'m'},
+  {title:'Amplifier — no output',s:'Amplifier receives a clear 1kHz sinewave at input (verified on scope). Output pin measures 0V.',sym:'Input signal confirmed correct. Output = 0V flat. No oscillation.',q:'First diagnostic step?',o:['Replace transistor','Verify VCC at IC supply pins','Add output coupling cap','Increase input signal amplitude'],a:1,e:'Always check VCC first. No supply = no output. Measure directly at IC power pins before anything else.',d:'m'},
+  {title:'Motor trips current limit',s:'DC motor (24V, 2A rated) instantly trips the power supply current limit on startup.',sym:'PSU current-limits immediately. Motor does not move. No burning smell. Motor is cold.',q:'Most likely fault?',o:['Motor needs more start current than rated','Short circuit in motor winding or cable','PSU is too small','Motor requires AC, not DC'],a:1,e:'Instant current limit = short circuit. Measure resistance across motor terminals. Healthy: 1–50Ω. Short = 0Ω → replace motor.',d:'h'},
+  {title:'Op-amp output saturates',s:'Inverting amplifier (Rf=100kΩ, Rin=10kΩ, gain=−10) outputs +12V when Vin=+0.5V. Expected: −5V.',sym:'Output = +12V (rail). Expected −5V. Input confirmed +0.5V. Supply ±12V OK.',q:'What is wrong?',o:['Gain too high','Inputs swapped — positive feedback instead of negative','Supply too high','Feedback resistor open'],a:1,e:'V+ > V− → output goes to +rail. Inputs are reversed: feedback goes to V+ → positive feedback (latch) instead of negative. Swap input wires.',d:'h'},
+];
+const WIRE_CHALLENGES=[
+  {title:'Simple LED circuit',xp:25,circuit:`(+5V)──[R=150Ω]──[LED→]──(GND)\n\nA: (+5V)──[LED]──(GND)  no resistor\nB: (+5V)──[R=150Ω]──[LED]──(GND) ✓\nC: (+5V)──[LED]──[R]──(+5V)  wrong loop\nD: Resistor only, LED parallel to GND`,q:'Which circuit correctly limits LED current (Vf=2V, If=20mA) at 5V?',o:['A — LED direct to 5V','B — 150Ω then LED to GND','C — LED then resistor, back to +5V','D — Resistor with LED parallel'],a:1,e:'R=(5−2)/0.02=150Ω in series. Current: 5V→R→LED→GND. Without R: LED instantly destroyed.',d:'e'},
+  {title:'Series vs parallel',xp:20,circuit:`Series:   (A)──R1──R2──R3──(B)  Rs=R1+R2+R3\nParallel: (A)─┬─R1─┬─(B)  1/Rp=1/R1+1/R2\n              └─R2─┘`,q:'Three 300Ω resistors in parallel. Total resistance?',o:['900Ω','150Ω','100Ω','200Ω'],a:2,e:'1/Rp=3/300=1/100 → Rp=100Ω. N equal R in parallel: Rp=R/N=300/3=100Ω.',d:'e'},
+  {title:'RC low-pass filter',xp:25,circuit:`Input──[R=1kΩ]──+──Output\n               |\n            [C=100nF]\n               |\n              GND\n\n  fc = 1/(2πRC)`,q:'Cutoff frequency for R=1kΩ, C=100nF?',o:['159Hz','1592Hz','15920Hz','15.9Hz'],a:1,e:'fc=1/(2π×1000×0.0000001)=1592Hz. Signals above this are attenuated −20dB/decade.',d:'m'},
+  {title:'Voltage divider for 3.3V',xp:30,circuit:`  (+5V)\n    |\n  [R1=10kΩ]\n    |\n    +──── Vout\n    |\n  [R2=?]\n    |\n  (GND)`,q:'R2 value to get Vout=3.3V from 5V with R1=10kΩ?',o:['10kΩ','15kΩ','19.4kΩ','5.6kΩ'],a:2,e:'R2=Vout×R1/(Vin−Vout)=3.3×10/(5−3.3)=33/1.7≈19.4kΩ',d:'m'},
+  {title:'NPN switch base resistor',xp:30,circuit:`  +12V\n    |\n  [Relay coil 60Ω]\n    |\n   [C] NPN β=100\n [B]──[Rb]──GPIO 3.3V\n   [E]\n    |\n   GND\n\n[D1 flyback diode across relay]`,q:'Why is flyback diode D1 essential?',o:['Increases relay speed','Protects transistor from inductive voltage spike','Reduces supply current','Increases base current'],a:1,e:"When transistor turns OFF, relay coil releases W=½LI² as spike. D1 clamps this — without it, transistor Vce is exceeded and it's destroyed.",d:'m'},
+  {title:'Zener voltage regulator',xp:35,circuit:`  (+12V)\n    |\n  [Rs = ?]  ← MISSING!\n    |\n    +────── Vout=5.1V\n    |\n  [Zener 5.1V]\n    |\n   GND`,q:'Which component is critically missing for the zener regulator to work?',o:['Bypass capacitor','Series resistor Rs','Second zener','Transistor'],a:1,e:'Without Rs: unlimited current → zener destroyed. Rs=(Vin−Vz)/(Iz+Iload) limits current safely.',d:'h'},
+  {title:'Full-wave bridge rectifier',xp:40,circuit:`      AC~\n    /    \\\n [D1]    [D3]\n   |        |\n   +──Load──+\n   |        |\n [D4]    [D2]\n    \\    /\n      AC~`,q:'Number of diodes in a full-wave bridge?',o:['1','2','3','4'],a:3,e:'Bridge uses 4 diodes. Both AC half-cycles produce positive load current. Output: 100Hz ripple (2× input freq).',d:'h'},
+  {title:'Transistor current gain',xp:30,circuit:`NPN: β = Ic / Ib\n\n  Ic = ?\n  Ib = 0.1mA\n  β  = 200`,q:'Calculate collector current Ic.',o:['0.1mA','2mA','20mA','200mA'],a:2,e:'Ic=β×Ib=200×0.1mA=20mA. Transistor amplifies base current by factor β.',d:'m'},
+  {title:'Logic gate NAND',xp:25,circuit:`A ──┐\n     NAND ── Y\nB ──┘\n\nA=1, B=1 → Y=?\nA=1, B=0 → Y=?`,q:'NAND output when A=1, B=1?',o:['0','1','Undefined','Changes continuously'],a:0,e:'NAND(1,1)=NOT(AND(1,1))=NOT(1)=0. NAND gate: output is 0 ONLY when ALL inputs are 1.',d:'m'},
+  {title:'Op-amp inverting gain',xp:40,circuit:`Rin=10kΩ, Rf=47kΩ\nInverting amplifier\n\n  Vout = -(Rf/Rin) × Vin\n  Vin = 0.2V`,q:'Calculate Vout.',o:['+0.94V','-0.94V','+4.7V','-4.7V'],a:1,e:'Vout=−(47k/10k)×0.2=−4.7×0.2=−0.94V. Negative = inverting. Gain=4.7.',d:'h'},
+];
+const REPAIRS=[
+  {customer:'Lars M.',device:'Table lamp',complaint:"Lamp won't light. Replaced bulb — still nothing. Fuse OK.",tools:['Multimeter','Screwdriver'],measurements:{voltmeter:['Socket (mains plug): 230V AC ✓','Switch input: 230V AC ✓','Switch output (SW ON): 230V AC ✓','Bulb socket L-terminal: 0V ✗ ← FAULT']},q:'What is the fault?',o:['Third bulb failed','Broken wire between switch and socket','Switch contacts failed','Fuse blown'],a:1,e:'230V at switch output but 0V at socket = break in cable between switch and socket. Repair or replace that wire.',xp:75,d:'e'},
+  {customer:'Sofie K.',device:'Phone charger (5V/2A)',complaint:"Gets extremely hot and charges very slowly.",tools:['Multimeter','Load tester'],measurements:{voltmeter:['Output (no load): 5.1V ✓','Output (2A load): 3.8V ✗ — drops badly','Temperature after 5 min: 82°C ✗']},q:'Most likely fault?',o:['Output too high','Smoothing capacitors degraded','Input voltage wrong','USB cable defective'],a:1,e:'Voltage drop under load + heat = degraded smoothing capacitors. Poor regulation + higher ESR = heat. Replace charger.',xp:100,d:'m'},
+  {customer:'Mikkel R.',device:'PCB motor controller',complaint:"Motor runs full speed or not at all — PWM control not working.",tools:['Oscilloscope','Multimeter'],measurements:{oscope:['PWM at MCU pin: 100Hz variable duty ✓','PWM at MOSFET gate: FLAT LINE — always LOW ✗','MOSFET Vgs never reaches threshold']},q:'Where is the fault?',o:['PWM software bug','Gate driver IC or trace between MCU and MOSFET failed','MOSFET shorted','Wrong motor type'],a:1,e:'PWM present at MCU but not at gate = gate driver or PCB trace failed. Check gate driver VCC, check for cracked trace.',xp:125,d:'m'},
+  {customer:'Hanne P.',device:'Power supply (12V/5A)',complaint:"Output voltage fluctuates between 11V and 14V randomly.",tools:['Oscilloscope','ESR meter'],measurements:{oscope:['Output ripple: 800mVpp ✗ (should be <100mV)','Ripple frequency: 100Hz (correct for full-wave)','Output under load: 11.2V avg ✗']},q:'Failed component?',o:['Bridge rectifier diode open','Main smoothing capacitor(s) failing','Voltage regulator open','Transformer winding short'],a:1,e:'100Hz ripple 8× over spec + voltage variation = electrolytic smoothing caps dried out. Replace all main electrolytics.',xp:100,d:'h'},
+  {customer:'Thomas B.',device:'Solar charge controller',complaint:"Battery not charging despite panels producing voltage.",tools:['Multimeter'],measurements:{voltmeter:['Panel Voc: 21V ✓','Controller input: 21V ✓','Controller output to battery: 0V ✗','Controller LED: flashing red']},q:'Red flash indicator means?',o:['Low battery — needs boost','Reverse polarity: battery connected backwards','Over-temperature shutdown','Panel polarity reversed'],a:1,e:'Red flash + 0V out = protection triggered. Battery polarity reversed. Disconnect immediately — check for battery damage.',xp:125,d:'h'},
+];
+const COMPONENTS_DATA=[
+  {id:'r',n:'Resistor',s:'⊟',d:'Limits current flow. R=U/I.',u:'Ω · kΩ · MΩ',lvl:1},{id:'c',n:'Capacitor',s:'⊣⊢',d:'Stores charge Q=C×U.',u:'pF · nF · µF',lvl:1},{id:'led',n:'LED',s:'💡',d:'Emits light when If>~5mA.',u:'Vf=1.8–3.5V',lvl:1},{id:'d',n:'Diode',s:'▷|',d:'Conducts forward only. Vf=0.7V.',u:'Si Vf≈0.7V',lvl:2},{id:'l',n:'Inductor',s:'∿',d:'Stores energy in magnetic field.',u:'µH · mH · H',lvl:2},{id:'npn',n:'NPN Transistor',s:'⊿',d:'Current amplifier/switch. Ic=β×Ib.',u:'β=50–300',lvl:3},{id:'pnp',n:'PNP Transistor',s:'⊵',d:'Like NPN — opposite polarity.',u:'β=50–300',lvl:3},{id:'z',n:'Zener Diode',s:'▷⌇',d:'Voltage reference — reverse bias.',u:'Vz=fixed',lvl:3},{id:'relay',n:'Relay',s:'⊡',d:'Electrically controlled switch.',u:'Coil+contacts',lvl:3},{id:'mos',n:'MOSFET',s:'⊫',d:'Voltage-controlled switch.',u:'Vgs threshold',lvl:4},{id:'oa',n:'Op-Amp',s:'▷',d:'Differential voltage amplifier.',u:'A_OL=∞ (ideal)',lvl:4},{id:'ic',n:'Logic IC (74xx)',s:'⬛',d:'Boolean logic on a chip.',u:'TTL/CMOS',lvl:4},{id:'xfmr',n:'Transformer',s:'⊔⊔',d:'Transfers energy via coupling.',u:'V1/V2=N1/N2',lvl:5},{id:'igbt',n:'IGBT',s:'⊫▷',d:'High-power switch. Motor drives.',u:'Vge threshold',lvl:7},{id:'opto',n:'Optocoupler',s:'💡→📷',d:'Signal isolation via light.',u:'CTR ratio',lvl:5},
+];
+const PROJECTS=[
+  {id:'led',t:'Project 1: LED Driver',lv:'Beginner',i:'💡',xp:150,d:'Design a complete LED driver from scratch.',steps:[{n:'Calculate R',type:'calc',q:'Red LED: Vf=2.0V, If=20mA, Vs=5V. Series resistor R=?',a:150,u:'Ω',tol:10,h:'R=(Vs−Vf)/If  |  If=20mA=0.02A',e:'R=(5−2)/0.02=150Ω'},{n:'LED Power',type:'calc',q:'Power in R=150Ω with I=20mA in mW?',a:60,u:'mW',tol:3,h:'P=I²×R, ×1000 for mW',e:'P=(0.02)²×150=0.06W=60mW'},{n:'E12 value',type:'mcq',q:'Nearest E12 standard value to 150Ω?',opts:['120Ω','150Ω','180Ω','220Ω'],ans:1,e:'150Ω is itself an E12 value! Series: ...120, 150, 180, 220...'},{n:'Blue LED',type:'mcq',q:'Swap to blue LED (Vf=3.2V), keep 5V and 150Ω. What happens?',opts:['LED brighter','LED dimmer — If=12mA','LED destroyed','No change'],ans:1,e:'If=(5−3.2)/150=12mA. Dimmer than 20mA. Correct R: (5−3.2)/0.02=90Ω≈82Ω.'}]},
+  {id:'vdiv',t:'Project 2: Voltage Divider',lv:'Beginner',i:'⚡',xp:150,d:'Design a 3.3V reference from 5V supply.',steps:[{n:'Calculate R2',type:'calc',q:'Vin=5V, R1=10kΩ, Vout=3.3V. Calculate R2 in kΩ.',a:19.4,u:'kΩ',tol:0.5,h:'R2=Vout×R1/(Vin−Vout)',e:'R2=3.3×10/1.7≈19.4kΩ'},{n:'Loading effect',type:'mcq',q:'100kΩ load connected to Vout. What happens?',opts:['Vout increases','Vout drops slightly','Stays exactly 3.3V','Goes to 0V'],ans:1,e:'Load in parallel with R2 reduces effective R2 → Vout drops. Use small R1,R2 relative to load.'},{n:'Total power',type:'calc',q:'R1=10kΩ, R2=19.4kΩ, Vin=5V. Total power P in mW?',a:0.86,u:'mW',tol:0.1,h:'Rtot=R1+R2, I=Vin/Rtot, P=Vin×I (×1000)',e:'Rtot=29.4kΩ. I=0.17mA. P=5×0.17=0.85mW'},{n:'Regulator vs divider',type:'mcq',q:'Why NOT use voltage divider as a power supply?',opts:['Too expensive','Vout drops with load','Only works at 5V','Too complex'],ans:1,e:'Output voltage falls as load current increases. Use LDO/78xx for stable voltage.'}]},
+  {id:'rc',t:'Project 3: RC Low-Pass Filter',lv:'Intermediate',i:'📻',xp:200,d:'Design an RC filter removing HF noise above 1kHz.',steps:[{n:'Calculate R',type:'calc',q:'fc=1kHz, C=100nF. Calculate R in Ω.',a:1592,u:'Ω',tol:50,h:'fc=1/(2πRC) → R=1/(2π×fc×C)',e:'R=1/(2π×1000×0.0000001)≈1592Ω ≈ 1.5kΩ'},{n:'Attenuation at 10kHz',type:'mcq',q:'Attenuation at 10kHz (1 decade above fc=1kHz)?',opts:['0dB','−3dB','−20dB','−40dB'],ans:2,e:'First-order RC: −20dB per decade above fc.'},{n:'Xc at fc',type:'calc',q:'Xc for C=100nF at f=1000Hz in Ω?',a:1592,u:'Ω',tol:50,h:'Xc=1/(2πfC)',e:'Xc=1/(2π×1000×0.0000001)≈1592Ω. At fc: Xc=R.'},{n:'High-pass vs low-pass',type:'mcq',q:'You want to REMOVE DC drift but KEEP 1kHz signal. Which filter?',opts:['Low-pass','High-pass','Band-pass','Notch'],ans:1,e:'High-pass: blocks DC/LF, passes HF. Set fc well below 1kHz.'}]},
+  {id:'npn',t:'Project 4: NPN Transistor Switch',lv:'Intermediate',i:'⚙️',xp:250,d:'Control 12V relay from 3.3V GPIO using NPN transistor.',steps:[{n:'Min base current',type:'calc',q:'β=100, Ic=100mA, safety factor 2×. Min Ib in mA?',a:2,u:'mA',tol:0.2,h:'Ib_min=Ic/(β×0.5)',e:'Ib=100/(100×0.5)=2mA. Deep saturation ensured.'},{n:'Base resistor',type:'calc',q:'GPIO=3.3V, Vbe=0.7V, Ib=2mA. Calculate Rb in Ω.',a:1300,u:'Ω',tol:50,h:'Rb=(Vgpio−Vbe)/Ib (Ib in A: 2mA=0.002A)',e:'Rb=(3.3−0.7)/0.002=1300Ω → use 1.2kΩ standard'},{n:'Flyback diode',type:'mcq',q:'Why place a diode across the relay coil?',opts:['Speed up relay','Prevent inductive spike destroying transistor','Reduce current','Increase holding voltage'],ans:1,e:'Relay coil spike exceeds Vce_max. Diode across coil clamps spike to safe level.'},{n:'MOSFET advantage',type:'mcq',q:'You swap to N-MOSFET. Main benefit vs NPN BJT?',opts:['Cheaper','Zero gate current needed — no loading of GPIO','Lower voltage','Higher capacitance'],ans:1,e:'MOSFET: gate current≈0. GPIO drives directly with no base resistor calculation.'},{n:'Power dissipation',type:'calc',q:'Transistor saturated: Vce=0.2V, Ic=200mA. Heat dissipated P in mW?',a:40,u:'mW',tol:3,h:'P=Vce×Ic (×1000 for mW)',e:'P=0.2×0.2=0.04W=40mW. No heatsink needed.'}]},
+  {id:'psu',t:'Project 5: Linear Power Supply',lv:'Advanced',i:'🔋',xp:350,d:'Design a complete 5V/1A linear supply from 230V AC mains.',steps:[{n:'Turns ratio',type:'calc',q:'Want 9V AC secondary. Turns ratio N1/N2 ≈ ? (round to integer)',a:26,u:'',tol:1,h:'N1/N2=V1/V2=230/9',e:'N1/N2=230/9≈25.6≈26. Standard 9V AC transformer.'},{n:'Peak voltage',type:'calc',q:'9V RMS → peak voltage Vpeak in V?',a:12.7,u:'V',tol:0.3,h:'Vpeak=Vrms×√2',e:'Vpeak=9×1.414=12.7V'},{n:'Smoothing cap',type:'calc',q:'I=1A, f=100Hz, ripple ΔV=1V. Min C in µF?',a:10000,u:'µF',tol:1000,h:'C=I/(f×ΔV)',e:'C=1/(100×1)=0.01F=10000µF'},{n:'7805 dropout',type:'mcq',q:'7805 regulator (5V out). Minimum input voltage?',opts:['At least 7–8V (dropout 2–3V)','Exactly 5V','Equal to output','No minimum'],ans:0,e:'7805 needs 2–3V dropout. Our ~11V DC is adequate for stable 5V.'},{n:'Heat dissipation',type:'calc',q:'7805: Vin=10V, Vout=5V, I=1A. Power dissipated P in W?',a:5,u:'W',tol:0.2,h:'P=(Vin−Vout)×I',e:'P=(10−5)×1=5W. Heatsink required!'}]},
+];
+const SKILL_TREE=[
+  {id:'ch1',t:'Chapter 1: Foundations',i:'⚡',c:'#1ed640',xp:0,topics:[{id:'elec',n:'Voltage, Current & Charge',done:false},{id:'ohm',n:"Ohm's Law",done:false},{id:'pwr',n:'Electric Power',done:false}]},
+  {id:'ch2',t:'Chapter 2: Circuit Analysis',i:'🔌',c:'#4a9eff',xp:200,topics:[{id:'series',n:'Series Circuits & KVL',done:false},{id:'para',n:'Parallel Circuits & KCL',done:false},{id:'vdiv',n:'Voltage Dividers',done:false}]},
+  {id:'ch3',t:'Chapter 3: Components',i:'🔧',c:'#f5a623',xp:500,topics:[{id:'caps',n:'Capacitors & Inductors',done:false},{id:'diodes',n:'Diodes & Rectifiers',done:false},{id:'bjt',n:'BJT Transistors',done:false}]},
+  {id:'ch4',t:'Chapter 4: AC Theory',i:'〰️',c:'#c44fd8',xp:1000,topics:[{id:'ac',n:'AC Signals & RMS',done:false},{id:'filters',n:'Filters & Reactance',done:false},{id:'opamp',n:'Op-Amps',done:false}]},
+  {id:'ch5',t:'Chapter 5: Digital & Systems',i:'🔲',c:'#00c9a0',xp:2000,topics:[{id:'logic',n:'Logic Gates & Boolean',done:false},{id:'numbers',n:'Number Systems',done:false},{id:'comms',n:'Protocols & Interfaces',done:false}]},
+];
+const DAILY_SETS=[
+  [{type:'quiz',n:5,lbl:'Answer 5 quiz questions correctly',xp:50},{type:'calc',n:3,lbl:'Solve 3 calculation problems',xp:75},{type:'cards',n:10,lbl:'Go through 10 flashcards',xp:30}],
+  [{type:'cards',n:15,lbl:'Go through 15 flashcards',xp:45},{type:'fault',n:2,lbl:'Solve 2 fault scenarios',xp:60},{type:'quiz',n:8,lbl:'Answer 8 quiz questions',xp:80}],
+  [{type:'quiz',n:10,lbl:'Answer 10 quiz questions',xp:100},{type:'wc',n:3,lbl:'Complete 3 Wire Challenges',xp:75},{type:'repair',n:1,lbl:'Complete a Repair job',xp:100}],
+  [{type:'cards',n:20,lbl:'Go through 20 flashcards',xp:60},{type:'calc',n:5,lbl:'Solve 5 calculation problems',xp:100},{type:'fault',n:3,lbl:'Solve 3 fault scenarios',xp:75}],
+  [{type:'wc',n:5,lbl:'Complete 5 Wire Challenges',xp:100},{type:'quiz',n:7,lbl:'Answer 7 quiz questions',xp:70},{type:'cards',n:10,lbl:'Go through 10 flashcards',xp:30}],
+  [{type:'repair',n:2,lbl:'Complete 2 Repair jobs',xp:200},{type:'quiz',n:5,lbl:'Answer 5 quiz questions',xp:50},{type:'calc',n:2,lbl:'Solve 2 calculations',xp:40}],
+  [{type:'quiz',n:15,lbl:'Answer 15 quiz questions',xp:150},{type:'cards',n:20,lbl:'Go through 20 flashcards',xp:60},{type:'wc',n:3,lbl:'Complete 3 Wire Challenges',xp:75}],
+];
+// ════════════════════════════════════════
+// ACCOUNT SYSTEM
+// ════════════════════════════════════════
+function emptyAcc(u,av){return{username:u,avatar:av,xp:0,achievements:[],settings:{difficulty:'normal'},stats:{qT:0,qC:0,qRow:0,fT:0,fC:0,cT:0,cC:0,cardK:0,raceH:0,labsDone:[],projsDone:[],rsDone:0,wcDone:0,fhDone:0,streakDays:0,lastVisit:'',slideSeen:0,dcDate:'',dcProgress:{},xpToday:0,xpDate:'',hcDone:false,examBest:-1,sbRuns:0,stDone:{}},projProgress:{}};}
+function getAcc(){const u=localStorage.getItem('cp_cur')||'';if(!u)return null;try{return JSON.parse(localStorage.getItem('cp_u_'+u)||'null');}catch{return null;}}
+function saveAcc(a){localStorage.setItem('cp_u_'+a.username,JSON.stringify(a));localStorage.setItem('cp_cur',a.username);updateLB(a);}
+function getAllUsers(){const r=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('cp_u_'))r.push(k.replace('cp_u_',''));}return r;}
+function getLvl(xp){let info=LEVELS[0];for(const l of LEVELS)if(xp>=l.xp)info=l;const nx=LEVELS.find(l=>l.xp>xp);const pct=nx?Math.round((xp-info.xp)/(nx.xp-info.xp)*100):100;return{...info,nx,pct,nxp:nx?nx.xp:info.xp};}
+function addXP(amt,reason){const a=getAcc();if(!a)return;const before=getLvl(a.xp).l;a.xp+=amt;const today=new Date().toDateString();if(a.stats.xpDate!==today){a.stats.xpToday=0;a.stats.xpDate=today;}a.stats.xpToday=(a.stats.xpToday||0)+amt;const after=getLvl(a.xp);saveAcc(a);checkAchs(a);updateHdr();showToast('+'+amt+' XP — '+reason);if(after.l>before)showLvlUp(after);updateHomeStats();}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function showLvlUp(li){const el=document.getElementById('lvlup');document.getElementById('lu-em').textContent=li.i;document.getElementById('lu-sub').textContent='You are now '+li.t+' (Level '+li.l+')';el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
+function checkAchs(a){const h=k=>a.achievements.includes(k);const give=(k,xp=0)=>{if(h(k))return;const ac=ACHS.find(x=>x.k===k);if(!ac)return;a.achievements.push(k);if(xp>0)a.xp+=xp;showToast('🏅 Badge: '+ac.t+(xp>0?' +'+xp+' XP':''));saveAcc(a);updateHdr();};
+const s=a.stats;
+if(s.qT>=1)give('q1',25);if(s.qC>=10)give('q10',50);if(s.qC>=50)give('q50',100);if(s.qC>=100)give('q100',200);
+if(s.qRow>=10)give('perf',150);
+if(s.labsDone.length>=1)give('lab1',50);if(s.labsDone.length>=4)give('labs',200);
+if(s.projsDone.length>=1)give('proj1',100);if(s.projsDone.length>=5)give('projs',500);
+if(s.streakDays>=3)give('s3',50);if(s.streakDays>=7)give('s7',150);if(s.streakDays>=30)give('s30',500);
+if(s.raceH>=200)give('r200',50);if(s.raceH>=500)give('r500',150);if(s.raceH>=1000)give('r1000',300);
+if(s.fhDone>=5)give('f5',75);if(s.fhDone>=8)give('f8',150);
+if(s.cC>=10)give('c10',100);
+if(s.slideSeen>=15)give('slid',75);
+if(s.cardK>=30)give('card',100);
+if(s.hcDone)give('hc',200);
+if(s.examBest>=55)give('exam',100);if(s.examBest>=90)give('exam12',300);if(s.examBest>=100)give('epfct',250);
+if(s.wcDone>=5)give('wc5',75);if(s.wcDone>=10)give('wc10',150);
+if(s.rsDone>=1)give('rep1',50);if(s.rsDone>=5)give('reps',200);
+if((s.sbRuns||0)>=5)give('sb5',100);
+const li=getLvl(a.xp);if(li.l>=5)give('lv5',0);if(li.l>=10)give('lv10',0);
+const hr=new Date().getHours();if(hr>=0&&hr<5)give('night',50);if(hr>=5&&hr<7)give('early',50);
+// Difficulty badges
+if((s.qEasyC||0)>=10)give('em10',50);if((s.qMedC||0)>=10)give('mm10',100);if((s.qHardC||0)>=5)give('hm5',150);
+const colls=COMPONENTS_DATA.filter(c=>li.l>=c.lvl).length;if(colls>=5)give('col5',50);if(colls>=15)give('col15',200);
+if(a.achievements.length>=ACHS.length-1)give('all',1000);}
+function updateStreak(a){const today=new Date().toDateString();if(a.stats.lastVisit===today)return;const yest=new Date(Date.now()-86400000).toDateString();a.stats.streakDays=a.stats.lastVisit===yest?a.stats.streakDays+1:1;a.stats.lastVisit=today;}
+function updateLB(a){try{let lb=JSON.parse(localStorage.getItem('cp_lb')||'[]');const i=lb.findIndex(e=>e.u===a.username);const en={u:a.username,av:a.avatar,xp:a.xp,race:a.stats.raceH||0};if(i>=0)lb[i]=en;else lb.push(en);localStorage.setItem('cp_lb',JSON.stringify(lb));}catch{}}
+function updateHdr(){const a=getAcc();if(!a)return;const li=getLvl(a.xp);document.getElementById('hdr-lv').textContent='Lv.'+li.l;document.getElementById('hdr-xp').style.width=li.pct+'%';document.getElementById('hdr-xn').textContent=a.xp+' XP';document.getElementById('hdr-av').textContent=a.avatar;}
+function createAccount(){const n=document.getElementById('reg-inp').value.trim();if(!n){alert('Enter a username');return;}const av=document.querySelector('.av-btn.sel')?.textContent||'⚡';const a=emptyAcc(n,av);saveAcc(a);document.getElementById('reg-ov').style.display='none';init();}
+function resetAcc(){if(!confirm('Reset ALL your progress? This cannot be undone.'))return;const a=getAcc();if(!a)return;saveAcc(emptyAcc(a.username,a.avatar));init();}
+function showSwitch(){const list=document.getElementById('sw-list');list.innerHTML=getAllUsers().map(u=>{try{const a=JSON.parse(localStorage.getItem('cp_u_'+u)||'{}');const li=getLvl(a.xp||0);return`<div class="sw-btn" onclick="switchTo('${u}')"><span class="sw-av">${a.avatar||'👤'}</span><span class="sw-name">${u}</span><span class="sw-lv">Lv.${li.l}</span></div>`;}catch{return '';}}).join('');document.getElementById('reg-ov').style.display='none';document.getElementById('sw-ov').style.display='flex';}
+function switchTo(u){localStorage.setItem('cp_cur',u);document.getElementById('sw-ov').style.display='none';init();}
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+function goto(p){document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));document.getElementById('p-'+p).classList.add('on');document.querySelectorAll('.nb').forEach(e=>e.classList.remove('on'));document.getElementById('nav-'+p).classList.add('on');if(p==='profile')renderProfile();window.scrollTo(0,0);}
+function setTab(pg,tb){const pre='tc-'+pg+'-';document.querySelectorAll('[id^="'+pre+'"]').forEach(e=>e.classList.remove('on'));const el=document.getElementById(pre+tb);if(el)el.classList.add('on');document.querySelectorAll('#p-'+pg+' .tab-bar .tb').forEach(b=>{b.classList.toggle('on',b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+tb+"'"));});window.scrollTo(0,0);}
+// ════════════════════════════════════════
+// HOME + DAILY CHALLENGES
+// ════════════════════════════════════════
+function updateHomeStats(){const a=getAcc();if(!a)return;const li=getLvl(a.xp);document.getElementById('hero-eye').textContent='⚡ Welcome back, '+a.username+' — '+li.i+' '+li.t;document.getElementById('home-xp-fill').style.width=li.pct+'%';document.getElementById('home-xp-txt').textContent=a.xp+' / '+(li.nx?li.nx.xp:a.xp)+' XP';document.getElementById('st-q').textContent=a.stats.qT||0;document.getElementById('st-p').textContent=a.stats.qT?Math.round(a.stats.qC/a.stats.qT*100)+'%':'—';document.getElementById('st-r').textContent=a.stats.raceH||'—';document.getElementById('st-s').textContent=a.stats.streakDays?a.stats.streakDays+'🔥':'—';document.getElementById('streak-num').textContent=a.stats.streakDays||0;document.getElementById('dc-xp-today').textContent=a.stats.xpToday||0;renderDC();}
+function renderDC(){const a=getAcc();if(!a)return;const today=new Date().toDateString();if(a.stats.dcDate!==today){a.stats.dcDate=today;a.stats.dcProgress={};saveAcc(a);}const chs=DAILY_SETS[new Date().getDay()];document.getElementById('dc-list').innerHTML=chs.map((c,i)=>{const p=a.stats.dcProgress['d'+i]||0,done=p>=c.n,pct=Math.min(100,Math.round(p/c.n*100));return`<div class="dc-card${done?' dc-done':''}"><div class="dc-hdr"><div class="dc-title">${c.lbl}</div><div class="dc-xp">+${c.xp} XP</div></div><div class="dc-bar"><div class="dc-fill" style="width:${pct}%"></div></div><div class="dc-pt">${p}/${c.n}${done?' ✓':''}</div></div>`;}).join('');}
+function trackDC(type){const a=getAcc();if(!a)return;const today=new Date().toDateString();if(a.stats.dcDate!==today){a.stats.dcDate=today;a.stats.dcProgress={};}DAILY_SETS[new Date().getDay()].forEach((c,i)=>{if(c.type===type){const k='d'+i,was=a.stats.dcProgress[k]||0;a.stats.dcProgress[k]=was+1;if(was+1===c.n){a.xp+=c.xp;showToast('🎯 Daily: +'+c.xp+' XP!');}}});saveAcc(a);renderDC();}
+// ════════════════════════════════════════
+// SLIDES
+// ════════════════════════════════════════
+let slIdx=0;
+function renderSlide(){const s=SLIDES[slIdx];document.getElementById('sl-num').textContent=(slIdx+1)+'/'+SLIDES.length;document.getElementById('sl-em').textContent=s.e;document.getElementById('sl-ttl').textContent=s.t;document.getElementById('sl-f').textContent=s.f;document.getElementById('sl-b').innerHTML=s.b.map(x=>`<li style="font-size:.82rem;color:var(--txt2);padding-left:11px;position:relative;line-height:1.45"><span style="position:absolute;left:0;color:var(--grn);font-weight:700">·</span>${x}</li>`).join('');document.getElementById('sl-tip').textContent='💡 '+s.tip;document.getElementById('sl-dots').innerHTML=SLIDES.map((_,i)=>`<span style="width:${i===slIdx?11:5}px;height:5px;border-radius:3px;background:${i===slIdx?'var(--grn)':'var(--bdr2)'};transition:width .2s;display:inline-block"></span>`).join('');document.getElementById('sl-card').style.animation='none';void document.getElementById('sl-card').offsetWidth;document.getElementById('sl-card').style.animation='sIn .22s ease';const a=getAcc();if(a){a.stats.slideSeen=Math.max(a.stats.slideSeen||0,slIdx+1);saveAcc(a);checkAchs(a);trackDC('slides');}}
+function prevSlide(){if(slIdx>0){slIdx--;renderSlide();}}
+function nextSlide(){if(slIdx<SLIDES.length-1){slIdx++;renderSlide();}}
+// ════════════════════════════════════════
+// SKILL TREE
+// ════════════════════════════════════════
+function renderSkillTree(){const a=getAcc();const xp=a?a.xp:0;document.getElementById('skill-tree-content').innerHTML='<div class="sec">Your Learning Path</div>'+SKILL_TREE.map(ch=>{const unlocked=xp>=ch.xp;const done=ch.topics.filter(t=>a&&a.stats.stDone&&a.stats.stDone[t.id]).length;return`<div style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-bottom:9px;${unlocked?'':'opacity:.45'}"><div style="padding:12px 13px;display:flex;align-items:center;gap:9px;cursor:${unlocked?'pointer':'default'}" ${unlocked?`onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"`:''}><div style="font-size:1.25rem">${ch.i}</div><div style="flex:1"><div style="font-size:.88rem;font-weight:700">${ch.t}</div><div style="font-size:.74rem;color:var(--txt3)">${unlocked?done+'/'+ch.topics.length+' topics completed':(ch.xp>0?'Requires '+ch.xp+' XP':'Available now')}</div></div>${unlocked?ch.topics.map((_,i)=>`<span style="font-size:.85rem;opacity:${i<done?1:.2}">⭐</span>`).join(''):'<span style="font-size:.85rem">🔒</span>'}</div><div style="${unlocked?'':'display:none'}">${unlocked?ch.topics.map(t=>{const td=a&&a.stats.stDone&&a.stats.stDone[t.id];return`<div style="display:flex;align-items:center;gap:9px;padding:9px 13px;border-top:.5px solid var(--bdr);cursor:pointer;transition:background .1s" onclick="doTopic('${t.id}')" onmouseover="this.style.background='var(--bgc2)'" onmouseout="this.style.background=''"><div style="width:12px;height:12px;border-radius:50%;background:${td?'var(--grn)':'var(--bgc2)'};border:.5px solid ${td?'var(--grn)':'var(--bdr2)'};flex-shrink:0"></div><div style="flex:1;font-size:.82rem">${t.n}</div><div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:${td?'var(--grn)':'var(--txt3)'}">${td?'✓ Done':'+50 XP'}</div></div>`}).join(''):''}`;}).join('');}
+function doTopic(id){const a=getAcc();if(!a)return;if(a.stats.stDone&&a.stats.stDone[id]){showToast('Already completed!');return;}if(!a.stats.stDone)a.stats.stDone={};a.stats.stDone[id]=true;saveAcc(a);checkAchs(a);addXP(50,'Skill: '+id);renderSkillTree();}
+// ════════════════════════════════════════
+// BLUEPRINTS
+// ════════════════════════════════════════
+function renderBlueprints(){const bps=[{t:"Ohm's Law",q:'R=220Ω, U=11V. Calculate I in mA.',o:['5mA','50mA','500mA','0.5mA'],a:1,e:'I=U/R=11/220=0.05A=50mA.'},{t:'Power',q:'47Ω carries 100mA. Power in mW?',o:['4.7W','0.47W','470mW','47mW'],a:2,e:'P=I²R=(0.1)²×47=0.47W=470mW.'},{t:'Capacitor Energy',q:'C=10µF, U=5V. Energy W in µJ?',o:['125µJ','25µJ','250µJ','50µJ'],a:0,e:'W=½CU²=½×0.00001×25=125µJ.'}];document.getElementById('bp-content').innerHTML=bps.map((b,i)=>`<div style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:9px"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--grn);font-weight:700;margin-bottom:5px">Blueprint ${i+1}: ${b.t}</div><div style="font-size:.88rem;font-weight:500;margin-bottom:10px;line-height:1.5">${b.q}</div><div>${b.o.map((o,j)=>`<button class="opt" onclick="bpAns(this,${j},${b.a},'${b.e.replace(/'/g,"\\'")}',${i})">${o}</button>`).join('')}</div><div class="fb" id="bp${i}"></div></div>`).join('');}
+function bpAns(btn,idx,ans,exp,i){if(btn.disabled)return;btn.closest('div').querySelectorAll('.opt').forEach((b,j)=>{b.disabled=true;if(j===ans)b.classList.add('correct');else if(j===idx&&idx!==ans)b.classList.add('wrong');});const fb=document.getElementById('bp'+i);fb.style.display='block';fb.className='fb '+(idx===ans?'ok':'bad');fb.innerHTML='<strong>'+(idx===ans?'✓ Correct!':'✗ Wrong')+'</strong>'+exp;if(idx===ans){addXP(20,'Blueprint');trackDC('quiz');}}
+// ════════════════════════════════════════
+// QUIZ WITH DIFFICULTY
+// ════════════════════════════════════════
+let qIdx=0,qAns=false,qSc={c:0,t:0},qOrd=[],qTI=null,qDiff='all';
+function setQDiff(d,btn){qDiff=d;document.querySelectorAll('#q-diff-filter .df').forEach(b=>b.classList.remove('on'));btn.classList.add('on');restartQ();}
+function getQFiltered(){if(qDiff==='all')return QUIZ.map((_,i)=>i);return QUIZ.map((q,i)=>q.d===qDiff?i:-1).filter(i=>i>=0);}
+function renderQ(){const filtered=getQFiltered();if(qOrd.length===0||qIdx>=qOrd.length){showQDone();return;}const qi=qOrd[qIdx];const q=QUIZ[qi];qAns=false;document.getElementById('q-body')&&(document.getElementById('q-body').style.display='');document.getElementById('q-done').style.display='none';document.getElementById('q-num').textContent='Q '+(qIdx+1)+'/'+qOrd.length;document.getElementById('q-sc').textContent=qSc.c+'/'+qSc.t;document.getElementById('q-txt').textContent=q.q;const db=document.getElementById('q-diff-badge');db.className='diff-badge diff-'+q.d;db.textContent=q.d==='e'?'🟢 Easy':q.d==='m'?'🟡 Medium':'🔴 Hard';document.getElementById('q-opts').innerHTML=q.o.map((o,i)=>`<button class="opt" onclick="ansQ(${i})">${o}</button>`).join('');const fb=document.getElementById('q-fb');fb.style.display='none';fb.className='fb';document.getElementById('q-nxt').style.display='none';if(qTI)clearInterval(qTI);const a=getAcc();if(a&&a.settings.difficulty==='hard'){document.getElementById('q-tbar-wrap').style.display='block';let t=15;document.getElementById('q-tbar').style.width='100%';document.getElementById('q-tbar').className='timer-fill';qTI=setInterval(()=>{t--;const pct=t/15*100;const el=document.getElementById('q-tbar');el.style.width=pct+'%';el.className='timer-fill'+(t<=8?' warn':'')+(t<=4?' danger':'');if(t<=0){clearInterval(qTI);ansQ(-1);}},1000);}else document.getElementById('q-tbar-wrap').style.display='none';}
+function ansQ(idx){if(qAns)return;qAns=true;if(qTI)clearInterval(qTI);const q=QUIZ[qOrd[qIdx]];const ok=idx===q.a;qSc.t++;if(ok)qSc.c++;document.querySelectorAll('#q-opts .opt').forEach((b,i)=>{b.disabled=true;if(i===q.a)b.classList.add('correct');else if(i===idx&&!ok)b.classList.add('wrong');});const fb=document.getElementById('q-fb');fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong')+'</strong>'+q.e;document.getElementById('q-sc').textContent=qSc.c+'/'+qSc.t;document.getElementById('q-nxt').style.display='block';const a=getAcc();if(!a)return;a.stats.qT++;if(ok){a.stats.qC++;a.stats.qRow=(a.stats.qRow||0)+1;if(q.d==='e')a.stats.qEasyC=(a.stats.qEasyC||0)+1;if(q.d==='m')a.stats.qMedC=(a.stats.qMedC||0)+1;if(q.d==='h')a.stats.qHardC=(a.stats.qHardC||0)+1;}else a.stats.qRow=0;saveAcc(a);checkAchs(a);if(ok){addXP(q.d==='h'?20:q.d==='m'?12:8,'Quiz');trackDC('quiz');}}
+function nextQ(){qIdx++;renderQ();}
+function showQDone(){document.getElementById('q-done').style.display='';const pct=qSc.t?Math.round(qSc.c/qSc.t*100):0;document.getElementById('q-ci').textContent=pct>=80?'🏆':pct>=60?'👍':'📚';document.getElementById('q-cs').textContent=qSc.c+' / '+qSc.t;document.getElementById('q-cp').textContent=pct+'% correct';document.getElementById('q-cm').textContent=pct>=90?'Outstanding! You know this material.':pct>=70?'Good work! Keep practising.':'Review the slides and try again.';}
+function restartQ(){qIdx=0;qSc={c:0,t:0};qOrd=shuffle(getQFiltered());if(qOrd.length===0){document.getElementById('q-done').style.display='';document.getElementById('q-cs').textContent='0 questions';document.getElementById('q-cp').textContent='No questions match this filter';document.getElementById('q-cm').textContent='Select All or a different difficulty.';return;}renderQ();}
+// FLASHCARDS
+let fcIdx=0,fcFlip=false,fcOrd=[],fcK=0,fcM=0;
+function renderCard(){const c=CARDS[fcOrd[fcIdx%CARDS.length]];fcFlip=false;document.getElementById('fc-in').classList.remove('flip');document.getElementById('fc-front').textContent=c.f;document.getElementById('fc-back').textContent=c.b;document.getElementById('fc-num').textContent=(fcIdx%CARDS.length+1)+'/'+CARDS.length;document.getElementById('fc-hint').textContent='👆 Tap to flip';document.getElementById('fc-btns').style.display='none';updateCPBar();}
+function flipCard(){fcFlip=!fcFlip;document.getElementById('fc-in').classList.toggle('flip',fcFlip);document.getElementById('fc-hint').textContent=fcFlip?'Tap to flip back':'👆 Tap to flip';if(fcFlip)document.getElementById('fc-btns').style.display='flex';}
+function cardResult(knew){if(knew)fcK++;else fcM++;fcIdx++;const a=getAcc();if(a&&knew){a.stats.cardK=(a.stats.cardK||0)+1;saveAcc(a);checkAchs(a);addXP(5,'Flashcard');trackDC('cards');}if(fcIdx%CARDS.length===0){document.getElementById('fc-front').textContent='🎉 Round complete!';document.getElementById('fc-back').textContent=fcK+'/'+CARDS.length+' known.';document.getElementById('fc-in').classList.remove('flip');document.getElementById('fc-btns').style.display='none';document.getElementById('fc-hint').textContent='Tap Shuffle to restart';fcK=0;fcM=0;}else renderCard();}
+function shuffleCards(){fcOrd=shuffle([...Array(CARDS.length).keys()]);fcIdx=0;fcK=0;fcM=0;renderCard();}
+function updateCPBar(){const t=CARDS.length,d=fcK+fcM;document.getElementById('cp-fill').style.width=Math.round(d/t*100)+'%';document.getElementById('cp-k').textContent='✓ '+fcK;document.getElementById('cp-m').textContent='✗ '+fcM;document.getElementById('cp-l').textContent=(t-d)+' left';}
+// RACE
+let rDur=60,rTime=60,rScore=0,rC=0,rT=0,rIntvl=null,rDeck=[],rIdx=0,rFlip=false,rStart=0;
+function setRD(btn,s){rDur=s;document.querySelectorAll('#tc-train-race .df').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function startRace(){if(rIntvl)clearInterval(rIntvl);rTime=rDur;rScore=0;rC=0;rT=0;rDeck=shuffle([...CARDS]);rIdx=0;rFlip=false;document.getElementById('r-setup').style.display='none';document.getElementById('r-done').style.display='none';document.getElementById('r-active').style.display='';document.getElementById('r-t').textContent=rTime;document.getElementById('r-t').style.color='var(--grn)';document.getElementById('r-sc').textContent=0;rIntvl=setInterval(()=>{rTime--;document.getElementById('r-t').textContent=rTime;if(rTime<=10)document.getElementById('r-t').style.color='var(--red)';if(rTime<=0)endRace();},1000);showRCard();}
+function showRCard(){if(rIdx>=rDeck.length)rIdx=0;const c=rDeck[rIdx];document.getElementById('r-front').textContent=c.f;document.getElementById('r-back').textContent=c.b;document.getElementById('r-in').classList.remove('flip');document.getElementById('r-btns').style.display='none';document.getElementById('r-hint').textContent='👆 Tap to reveal';rFlip=false;rStart=Date.now();}
+function raceFlip(){if(rFlip)return;rFlip=true;document.getElementById('r-in').classList.add('flip');document.getElementById('r-btns').style.display='flex';document.getElementById('r-hint').textContent='';}
+function raceAns(knew){rT++;if(knew){rC++;const el=(Date.now()-rStart)/1000;rScore+=el<3?15:el<6?10:5;document.getElementById('r-sc').textContent=rScore;trackDC('cards');}rIdx++;showRCard();}
+function endRace(){if(rIntvl)clearInterval(rIntvl);document.getElementById('r-active').style.display='none';document.getElementById('r-done').style.display='';document.getElementById('r-final').textContent=rScore+' points';document.getElementById('r-stats').textContent=rC+' / '+rT+' correct';const a=getAcc();if(a){const old=a.stats.raceH||0;if(rScore>old){a.stats.raceH=rScore;document.getElementById('r-pb').textContent='🎉 New personal best!';saveAcc(a);}else document.getElementById('r-pb').textContent='Best: '+old+' pts';checkAchs(a);addXP(Math.round(rScore/8),'Race Mode');trackDC('race');}}
+// EXAM
+let exOrd=[],exIdx=0,exSc={c:0,t:0},exTI=null,exMins=44,exSecs=59,exFlip=false;
+function startExam(){if(exTI)clearInterval(exTI);exOrd=shuffle([...Array(QUIZ.length).keys()]).slice(0,25);exIdx=0;exSc={c:0,t:0};exMins=44;exSecs=59;exFlip=false;document.getElementById('exam-setup').style.display='none';document.getElementById('exam-done').style.display='none';document.getElementById('exam-active').style.display='';renderExam();exTI=setInterval(()=>{exSecs--;if(exSecs<0){exSecs=59;exMins--;}if(exMins<0)finishExam(true);const ts=String(exMins).padStart(2,'0')+':'+String(exSecs).padStart(2,'0');const el=document.getElementById('ex-timer');el.textContent=ts;el.style.color=exMins<5?'var(--red)':exMins<10?'var(--amb)':'var(--grn)';},1000);}
+function renderExam(){if(exIdx>=25){finishExam(false);return;}const q=QUIZ[exOrd[exIdx]];exFlip=false;document.getElementById('ex-num').textContent=exIdx+1;document.getElementById('ex-sc').textContent=exSc.c+'/'+exSc.t;document.getElementById('ex-txt').textContent=q.q;document.getElementById('ex-opts').innerHTML=q.o.map((o,i)=>`<button class="opt" onclick="ansExam(${i})">${o}</button>`).join('');const fb=document.getElementById('ex-fb');fb.style.display='none';fb.className='fb';document.getElementById('ex-nxt').style.display='none';}
+function ansExam(idx){if(exFlip)return;exFlip=true;const q=QUIZ[exOrd[exIdx]];const ok=idx===q.a;exSc.t++;if(ok)exSc.c++;document.querySelectorAll('#ex-opts .opt').forEach((b,i)=>{b.disabled=true;if(i===q.a)b.classList.add('correct');else if(i===idx&&!ok)b.classList.add('wrong');});const fb=document.getElementById('ex-fb');fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct':'✗ Wrong')+'</strong>'+q.e;document.getElementById('ex-nxt').style.display='block';}
+function nextExam(){exIdx++;exFlip=false;renderExam();}
+function finishExam(to){if(exTI)clearInterval(exTI);document.getElementById('exam-active').style.display='none';document.getElementById('exam-done').style.display='';const pct=Math.round(exSc.c/25*100);const G=[{m:90,g:'12',n:'Outstanding — top grade'},{m:80,g:'10',n:'Excellent'},{m:70,g:'7',n:'Good'},{m:55,g:'4',n:'Passed'},{m:40,g:'02',n:'Barely passed'},{m:20,g:'00',n:'Failed'},{m:0,g:'-3',n:'Retake required'}];const gr=G.find(x=>pct>=x.m)||G[G.length-1];document.getElementById('exam-grade').textContent=gr.g;document.getElementById('exam-grade-name').textContent=gr.n;document.getElementById('exam-score').textContent=exSc.c+' / 25';document.getElementById('exam-pct').textContent=pct+'%'+(to?' (time expired)':'');document.getElementById('exam-msg').textContent=pct>=55?'Congratulations! Grade '+gr.g+' earned.':'Grade '+gr.g+'. Review slides and retake.';const a=getAcc();if(a){a.stats.examBest=Math.max(a.stats.examBest||0,pct);saveAcc(a);checkAchs(a);addXP(Math.round(pct*2),'Exam');}}
+function showCert(){const a=getAcc();alert('📜 CercuitPilot Certificate\n\nStudent: '+(a?.username||'—')+'\nScore: '+exSc.c+'/25 ('+Math.round(exSc.c/25*100)+'%)\nDate: '+new Date().toLocaleDateString('da-DK')+'\n\nCongratulations!');}
+// HARDCORE
+let hcOrd=[],hcIdx=0,hcLives=3,hcSc={c:0,t:0},hcAns=false,hcTI=null;
+function startHC(){if(hcTI)clearInterval(hcTI);hcOrd=shuffle([...Array(QUIZ.length).keys()]);hcIdx=0;hcLives=3;hcSc={c:0,t:0};hcAns=false;document.getElementById('hc-setup').style.display='none';document.getElementById('hc-done').style.display='none';document.getElementById('hc-active').style.display='';renderHC();}
+function renderHC(){document.getElementById('hc-lives').innerHTML='Lives: '+[...Array(3)].map((_,i)=>`<span style="font-size:1.1rem;opacity:${i<hcLives?1:.2}">❤️</span>`).join('');if(hcIdx>=QUIZ.length){finishHC(true);return;}const q=QUIZ[hcOrd[hcIdx]];hcAns=false;document.getElementById('hc-txt').textContent=q.q;document.getElementById('hc-opts').innerHTML=q.o.map((o,i)=>`<button class="opt" onclick="ansHC(${i})">${o}</button>`).join('');const fb=document.getElementById('hc-fb');fb.style.display='none';fb.className='fb';document.getElementById('hc-nxt').style.display='none';if(hcTI)clearInterval(hcTI);let t=15;document.getElementById('hc-tbar').style.width='100%';document.getElementById('hc-tbar').className='timer-fill';hcTI=setInterval(()=>{t--;const el=document.getElementById('hc-tbar');el.style.width=(t/15*100)+'%';el.className='timer-fill'+(t<=8?' warn':'')+(t<=4?' danger':'');if(t<=0){clearInterval(hcTI);ansHC(-1);}},1000);}
+function ansHC(idx){if(hcAns)return;hcAns=true;if(hcTI)clearInterval(hcTI);const q=QUIZ[hcOrd[hcIdx]];const ok=idx===q.a;hcSc.t++;if(ok)hcSc.c++;else{hcLives--;if(hcLives<=0){document.querySelectorAll('#hc-opts .opt').forEach(b=>b.disabled=true);const fb=document.getElementById('hc-fb');fb.style.display='block';fb.className='fb bad';fb.innerHTML='<strong>💀 Out of lives!</strong>Answer: '+q.o[q.a];setTimeout(()=>finishHC(false),1500);return;}}document.querySelectorAll('#hc-opts .opt').forEach((b,i)=>{b.disabled=true;if(i===q.a)b.classList.add('correct');else if(i===idx&&!ok)b.classList.add('wrong');});const fb=document.getElementById('hc-fb');fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong — lost a life')+'</strong>'+q.e;document.getElementById('hc-nxt').style.display='block';document.getElementById('hc-lives').innerHTML='Lives: '+[...Array(3)].map((_,i)=>`<span style="font-size:1.1rem;opacity:${i<hcLives?1:.2}">❤️</span>`).join('');}
+function nextHC(){hcIdx++;renderHC();}
+function finishHC(won){document.getElementById('hc-active').style.display='none';document.getElementById('hc-done').style.display='';document.getElementById('hc-ci').textContent=won?'🏆':'💀';document.getElementById('hc-cs').textContent=hcSc.c+' / '+hcSc.t;document.getElementById('hc-cp').textContent=won?'YOU SURVIVED ALL QUESTIONS!':'Game Over';document.getElementById('hc-cm').textContent=won?'Incredible! 3× XP earned!':'Practice on Normal mode first.';const a=getAcc();if(!a)return;if(won){a.stats.hcDone=true;addXP(hcSc.c*30,'Hardcore Clear!');}else addXP(hcSc.c*10,'Hardcore');saveAcc(a);checkAchs(a);}
+// CALC WITH DIFFICULTY
+let caIdx=0,caAns=false,caSc={c:0,t:0},caOrd=[],caDiff='all';
+function setCalcDiff(d,btn){caDiff=d;document.querySelectorAll('#tc-train-calc .df').forEach(b=>b.classList.remove('on'));btn.classList.add('on');restartCalc();}
+function getCalcFiltered(){if(caDiff==='all')return CALC.map((_,i)=>i);return CALC.map((c,i)=>c.d===caDiff?i:-1).filter(i=>i>=0);}
+function restartCalc(){caOrd=shuffle(getCalcFiltered());caIdx=0;caSc={c:0,t:0};renderCalc();}
+function renderCalc(){if(caOrd.length===0){document.getElementById('ca-q').textContent='No questions match this filter.';return;}const c=CALC[caOrd[caIdx%caOrd.length]];caAns=false;document.getElementById('ca-num').textContent=(caIdx%caOrd.length+1)+'/'+caOrd.length;document.getElementById('ca-sc').textContent=caSc.c+'/'+caSc.t;document.getElementById('ca-s').textContent=c.s;document.getElementById('ca-q').textContent=c.q;document.getElementById('ca-unit').textContent=c.u;document.getElementById('ca-inp').value='';document.getElementById('ca-hint').textContent='💡 '+c.h;document.getElementById('ca-hint').style.display='none';const db=document.getElementById('ca-diff-badge');db.className='diff-badge diff-'+c.d;db.textContent=c.d==='e'?'🟢 Easy':c.d==='m'?'🟡 Medium':'🔴 Hard';const fb=document.getElementById('ca-fb');fb.style.display='none';fb.className='fb';document.getElementById('ca-nxt').style.display='none';}
+function checkCalc(){if(caAns)return;const c=CALC[caOrd[caIdx%caOrd.length]];const val=parseFloat((document.getElementById('ca-inp').value||'').replace(',','.'));const fb=document.getElementById('ca-fb');if(isNaN(val)){fb.style.display='block';fb.className='fb bad';fb.innerHTML='<strong>Invalid number</strong>';return;}caAns=true;const ok=Math.abs(val-c.a)<=c.t;caSc.t++;if(ok)caSc.c++;fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong — answer: '+c.a+' '+c.u)+'</strong>'+c.e;document.getElementById('ca-sc').textContent=caSc.c+'/'+caSc.t;document.getElementById('ca-nxt').style.display='block';const a=getAcc();if(!a)return;a.stats.cT=(a.stats.cT||0)+1;if(ok){a.stats.cC=(a.stats.cC||0)+1;addXP(c.d==='h'?25:c.d==='m'?18:12,'Calculation');trackDC('calc');}saveAcc(a);checkAchs(a);}
+function nextCalc(){caIdx++;renderCalc();}
+// ════════════════════════════════════════
+// LAB EXPERIMENTS
+// ════════════════════════════════════════
+let ohmSolve='i';
+function setSolve(v,btn){ohmSolve=v;document.querySelectorAll('.sb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');ohmUpdate();}
+function ohmUpdate(){const av=parseFloat(document.getElementById('ohm-a').value)||0,bv=parseFloat(document.getElementById('ohm-b').value)||0;let u,r,i;if(ohmSolve==='i'){r=av;u=bv;i=r>0?u/r:0;document.getElementById('ohm-la').textContent='Resistance R';document.getElementById('ohm-lav').textContent=av+'Ω';document.getElementById('ohm-lb').textContent='Voltage U';document.getElementById('ohm-lbv').textContent=bv+'V';document.getElementById('ohm-u').textContent=u;document.getElementById('ohm-r').textContent=r;document.getElementById('ohm-i').textContent=i.toFixed(4);document.getElementById('ohm-formula').textContent='I=U/R='+u+'/'+r+'='+i.toFixed(4)+'A = '+(i*1000).toFixed(1)+'mA';}else if(ohmSolve==='u'){r=av;i=bv;u=r*i;document.getElementById('ohm-la').textContent='Resistance R';document.getElementById('ohm-lav').textContent=av+'Ω';document.getElementById('ohm-lb').textContent='Current I';document.getElementById('ohm-lbv').textContent=bv+'A';document.getElementById('ohm-u').textContent=u.toFixed(3);document.getElementById('ohm-r').textContent=r;document.getElementById('ohm-i').textContent=i;document.getElementById('ohm-formula').textContent='U=R×I='+r+'×'+i+'='+u.toFixed(3)+'V';}else{u=av;i=bv;r=i>0?u/i:0;document.getElementById('ohm-la').textContent='Voltage U';document.getElementById('ohm-lav').textContent=av+'V';document.getElementById('ohm-lb').textContent='Current I';document.getElementById('ohm-lbv').textContent=bv+'A';document.getElementById('ohm-u').textContent=u;document.getElementById('ohm-r').textContent=r.toFixed(2);document.getElementById('ohm-i').textContent=i;document.getElementById('ohm-formula').textContent='R=U/I='+u+'/'+i+'='+r.toFixed(2)+'Ω';}}
+function ledUpdate(){const vs=parseFloat(document.getElementById('vs-sl').value),rs=parseFloat(document.getElementById('rs-sl').value),vf=parseFloat(document.getElementById('led-type').value);document.getElementById('vs-v').textContent=vs.toFixed(1)+'V';document.getElementById('rs-v').textContent=rs+'Ω';const ifA=(vs-vf)/rs,ifMA=ifA*1000,pr=ifA*ifA*rs*1000;document.getElementById('led-if').textContent=ifMA>0?ifMA.toFixed(1):'0.0';document.getElementById('led-pr').textContent=ifMA>0?pr.toFixed(1):'0';let st='OK',op=0;if(ifMA<=0){st='Off';op=0;}else if(ifMA<5){st='Dim';op=0.15;}else if(ifMA<15){st='Low';op=0.5;}else if(ifMA<=30){st='✓ OK';op=1;}else{st='⚠ Overload';op=1;}document.getElementById('led-st').textContent=st;document.getElementById('led-viz').style.filter='brightness('+Math.max(0.05,op*2)+') drop-shadow(0 0 '+(op*14)+'px #ff0)';}
+let rcAF=null,rcS=null,rcTau=1;
+function rcUpdate(){const r=parseFloat(document.getElementById('rc-r').value),c=parseFloat(document.getElementById('rc-c').value);document.getElementById('rc-rv').textContent=r+' kΩ';document.getElementById('rc-cv').textContent=c+' µF';rcTau=(r*1000)*(c/1000000);document.getElementById('rc-tau').textContent='τ='+rcTau.toFixed(2)+'s · 5τ='+(rcTau*5).toFixed(2)+'s';}
+function startRC(){stopRC();rcS=null;const dur=rcTau*1000;function step(ts){if(!rcS)rcS=ts;const el=ts-rcS;const pct=(1-Math.exp(-el/dur))*100;document.getElementById('rc-fill').style.width=Math.min(pct,99.9)+'%';document.getElementById('rc-pct').textContent=pct.toFixed(1)+'% charged ('+((el/1000)/rcTau).toFixed(2)+'τ)';if(pct<99.3)rcAF=requestAnimationFrame(step);else document.getElementById('rc-pct').textContent='99.3% — Fully charged (5τ)!';}rcAF=requestAnimationFrame(step);}
+function stopRC(){if(rcAF){cancelAnimationFrame(rcAF);rcAF=null;rcS=null;}}
+let gA=0,gB=0;
+function gateUpdate(){const g=document.getElementById('gate-sel').value;let out=g==='AND'?gA&gB:g==='OR'?gA|gB:g==='NOT'?gA?0:1:g==='NAND'?(gA&gB)?0:1:g==='NOR'?(gA|gB)?0:1:gA^gB;const el=document.getElementById('g-out');el.textContent=out;el.className='g-ov '+(out?'hi':'lo');renderTT(g);}
+function toggleGate(w){if(w==='a'){gA=gA?0:1;const b=document.getElementById('g-a');b.textContent='A='+gA;b.classList.toggle('hi',!!gA);}else{gB=gB?0:1;const b=document.getElementById('g-b');b.textContent='B='+gB;b.classList.toggle('hi',!!gB);}gateUpdate();}
+function gcalc(g,a,b){return g==='AND'?a&b:g==='OR'?a|b:g==='NOT'?a?0:1:g==='NAND'?(a&b)?0:1:g==='NOR'?(a|b)?0:1:a^b;}
+function renderTT(g){const rows=g==='NOT'?[[0],[1]]:[[0,0],[0,1],[1,0],[1,1]];const isNot=g==='NOT';let h='<tr><th>A</th>'+(isNot?'':'<th>B</th>')+'<th>Y</th></tr>';rows.forEach(r=>{const out=gcalc(g,r[0],r[1]||0);const cur=r[0]===gA&&(isNot||r[1]===gB);h+='<tr class="'+(cur?'hl':'')+'"><td>'+r[0]+'</td>'+(isNot?'':'<td>'+r[1]+'</td>')+'<td><b>'+out+'</b></td></tr>';});document.getElementById('g-tt').innerHTML=h;}
+function completeLab(id,btnId){const a=getAcc();if(!a)return;if((a.stats.labsDone||[]).includes(id)){showToast('Already completed!');return;}a.stats.labsDone=[...(a.stats.labsDone||[]),id];saveAcc(a);checkAchs(a);addXP(30,'Lab: '+id);const b=document.getElementById(btnId);if(b){b.textContent='✓ Completed!';b.disabled=true;b.style.opacity='.6';}}
+// ════════════════════════════════════════
+// CIRCUIT SANDBOX (MNA SIMULATION)
+// ════════════════════════════════════════
+const SB={CELL:28,comps:[],wires:[],tool:'select',sim:false,animF:null,result:null,wStart:null,drag:null,hover:null,particles:{},exIdx:0,lastT:0,selId:null};
+class UF{constructor(){this.p={}}add(k){if(!(k in this.p))this.p[k]=k}find(k){this.add(k);if(this.p[k]!==k)this.p[k]=this.find(this.p[k]);return this.p[k]}union(a,b){this.p[this.find(a)]=this.find(b)}}
+let sbCV,sbCtx;
+function sbInit(){sbCV=document.getElementById('sb-canvas');sbCtx=sbCV.getContext('2d');sbResize();sbCV.addEventListener('click',sbClick);sbCV.addEventListener('mousemove',sbMove);sbCV.addEventListener('mouseleave',()=>{SB.hover=null;if(!SB.sim)sbDraw();});sbCV.addEventListener('touchstart',e=>{e.preventDefault();const pt=sbGP(e);SB.hover=sbSnap(pt.x,pt.y);sbClick(e);},{passive:false});sbCV.addEventListener('touchmove',e=>{e.preventDefault();const pt=sbGP(e);SB.hover=sbSnap(pt.x,pt.y);if(!SB.sim)sbDraw();},{passive:false});sbDraw();}
+function sbResize(){sbCV.width=sbCV.parentElement.clientWidth;sbDraw();}
+function sbGP(e){const r=sbCV.getBoundingClientRect();const t=e.touches?e.touches[0]||e.changedTouches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+function sbSnap(px,py){return{gx:Math.round(px/SB.CELL),gy:Math.round(py/SB.CELL)};}
+function sbTK(gx,gy){return gx+','+gy;}
+function sbGtoP(gx,gy){return{x:gx*SB.CELL,y:gy*SB.CELL};}
+function sbTool(t){SB.tool=t;SB.wStart=null;document.querySelectorAll('.sbt').forEach(b=>b.classList.remove('on'));const el=document.getElementById('sbt-'+t);if(el)el.classList.add('on');document.getElementById('sb-status').textContent={select:'Click to select · Drag to move · Tap switch to toggle',wire:'Click start node → click end node to draw wire',V:'Click to place 9V battery',R:'Click to place 1kΩ resistor',LED:'Click to place LED',SW:'Click to place switch (closed)',GND:'Click to place ground node',delete:'Click component or wire to delete'}[t]||'';}
+function sbMove(e){const pt=sbGP(e);SB.hover=sbSnap(pt.x,pt.y);if(!SB.sim)sbDraw();}
+function sbClick(e){const pt=sbGP(e);const g=sbSnap(pt.x,pt.y);if(SB.tool==='wire'){if(!SB.wStart){SB.wStart={gx:g.gx,gy:g.gy};}else{if(SB.wStart.gx!==g.gx||SB.wStart.gy!==g.gy){SB.wires.push({id:'w'+Date.now(),x1:SB.wStart.gx,y1:SB.wStart.gy,x2:g.gx,y2:g.gy});SB.particles={};if(SB.sim)sbRunSim();}SB.wStart=null;}}else if(['V','R','LED','SW','GND'].includes(SB.tool)){const comp={id:'c'+Date.now(),type:SB.tool,gx:g.gx,gy:g.gy,value:SB.tool==='V'?9:SB.tool==='R'?1000:SB.tool==='LED'?15:SB.tool==='SW'?0.01:0,on:true,simV1:0,simV2:0,simI:0};SB.comps.push(comp);document.getElementById('sb-ncomp').textContent=SB.comps.length;SB.particles={};if(SB.sim)sbRunSim();}else if(SB.tool==='select'){const c=sbCompAt(g.gx,g.gy);if(c&&c.type==='SW'){c.on=!c.on;c.value=c.on?0.01:1e9;SB.particles={};if(SB.sim)sbRunSim();}SB.selId=c?c.id:null;}if(!SB.sim)sbDraw();}
+function sbDelete(){SB.tool='select';document.querySelectorAll('.sbt').forEach(b=>b.classList.remove('on'));document.getElementById('sbt-select').classList.add('on');// Next click in select mode: delete selected
+document.getElementById('sb-status').textContent='Click a component or wire to delete it then tap ✕ again';const origClick=sbCV.onclick;sbCV.onclick=function(e){const pt=sbGP(e);const g=sbSnap(pt.x,pt.y);const c=sbCompAt(g.gx,g.gy);if(c){SB.comps=SB.comps.filter(x=>x.id!==c.id);}else{const w=SB.wires.find(w=>{const p1=sbGtoP(w.x1,w.y1),p2=sbGtoP(w.x2,w.y2);return sbPtLineDist(pt.x,pt.y,p1.x,p1.y,p2.x,p2.y)<9;});if(w)SB.wires=SB.wires.filter(x=>x.id!==w.id);}SB.particles={};document.getElementById('sb-ncomp').textContent=SB.comps.length;if(SB.sim)sbRunSim();sbDraw();sbCV.onclick=origClick;};}
+function sbPtLineDist(px,py,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1;const len2=dx*dx+dy*dy;if(len2===0)return Math.hypot(px-x1,py-y1);const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/len2));return Math.hypot(px-x1-t*dx,py-y1-t*dy);}
+function sbCompAt(gx,gy){return SB.comps.find(c=>{if(c.type==='GND')return c.gx===gx&&c.gy===gy;return(c.gx<=gx&&gx<=c.gx+2&&c.gy===gy);});}
+function sbGetTerms(c){if(c.type==='GND')return[{gx:c.gx,gy:c.gy}];return[{gx:c.gx,gy:c.gy},{gx:c.gx+2,gy:c.gy}];}
+// MNA SOLVER
+function sbRunSim(){try{const uf=new UF();SB.comps.forEach(c=>sbGetTerms(c).forEach(t=>uf.add(sbTK(t.gx,t.gy))));SB.wires.forEach(w=>{const k1=sbTK(w.x1,w.y1),k2=sbTK(w.x2,w.y2);uf.add(k1);uf.add(k2);uf.union(k1,k2);});const rootToIdx={};let nc=0;const nOf=(gx,gy)=>{const r=uf.find(sbTK(gx,gy));if(!(r in rootToIdx))rootToIdx[r]=nc++;return rootToIdx[r];};let gnd=-1;SB.comps.filter(c=>c.type==='GND').forEach(c=>{gnd=nOf(c.gx,c.gy);});if(gnd<0){document.getElementById('sb-vmax').textContent='— (no GND)';document.getElementById('sb-imax').textContent='—';return;}const elems=[];SB.comps.filter(c=>c.type!=='GND').forEach(c=>{const n1=nOf(c.gx,c.gy),n2=nOf(c.gx+2,c.gy);if(n1!==n2)elems.push({id:c.id,type:c.type,n1,n2,value:c.value});});const nonGnd=Array.from({length:nc},(_,i)=>i).filter(i=>i!==gnd);const n=nonGnd.length;const idx=new Array(nc).fill(-1);nonGnd.forEach((nid,i)=>{idx[nid]=i;});const vsrcs=elems.filter(e=>e.type==='V');const m=vsrcs.length;const sz=n+m;if(sz===0)return;const G=Array.from({length:sz},()=>new Array(sz).fill(0));const b=new Array(sz).fill(0);elems.filter(e=>['R','LED','SW'].includes(e.type)).forEach(e=>{const g=1/Math.max(e.type==='LED'?15:e.value,0.001);const i=idx[e.n1],j=idx[e.n2];if(i>=0)G[i][i]+=g;if(j>=0)G[j][j]+=g;if(i>=0&&j>=0){G[i][j]-=g;G[j][i]-=g;}});vsrcs.forEach((e,k)=>{const i=idx[e.n1],j=idx[e.n2],bk=n+k;if(i>=0){G[i][bk]+=1;G[bk][i]+=1;}if(j>=0){G[j][bk]-=1;G[bk][j]-=1;}b[bk]=e.value;});const sol=sbGauss(G,b,sz);if(!sol)return;const volts=new Array(nc).fill(0);nonGnd.forEach((nid,i)=>{volts[nid]=sol[i]||0;});const currs={};elems.filter(e=>['R','LED','SW'].includes(e.type)).forEach(e=>{currs[e.id]=(volts[e.n1]-volts[e.n2])/Math.max(e.type==='LED'?15:e.value,0.001);});vsrcs.forEach((e,k)=>{currs[e.id]=-(sol[n+k]||0);});const vByKey={};SB.comps.forEach(c=>{sbGetTerms(c).forEach(t=>{vByKey[sbTK(t.gx,t.gy)]=volts[nOf(t.gx,t.gy)]||0;});});SB.wires.forEach(w=>{vByKey[sbTK(w.x1,w.y1)]=volts[nOf(w.x1,w.y1)]||0;vByKey[sbTK(w.x2,w.y2)]=volts[nOf(w.x2,w.y2)]||0;});SB.comps.filter(c=>c.type!=='GND').forEach(c=>{c.simV1=vByKey[sbTK(c.gx,c.gy)]||0;c.simV2=vByKey[sbTK(c.gx+2,c.gy)]||0;c.simI=currs[c.id]||0;});SB.result={vByKey,currs};const vmax=Math.max(...Object.values(vByKey).map(Math.abs),0.01);const imax=Math.max(...Object.values(currs).map(Math.abs),0);document.getElementById('sb-vmax').textContent=vmax.toFixed(2)+'V';document.getElementById('sb-imax').textContent=imax<0.001?(imax*1000000).toFixed(1)+' µA':(imax*1000).toFixed(2)+' mA';const a=getAcc();if(a){a.stats.sbRuns=(a.stats.sbRuns||0)+1;saveAcc(a);checkAchs(a);trackDC('sandbox');}}catch(err){console.warn('SB sim error:',err);}}
+function sbGauss(A,b,n){const M=A.map((row,i)=>[...row,b[i]]);for(let col=0;col<n;col++){let mx=col;for(let r=col+1;r<n;r++)if(Math.abs(M[r][col])>Math.abs(M[mx][col]))mx=r;[M[col],M[mx]]=[M[mx],M[col]];const piv=M[col][col];if(Math.abs(piv)<1e-12)continue;for(let r=0;r<n;r++){if(r===col)continue;const f=M[r][col]/piv;for(let j=col;j<=n;j++)M[r][j]-=f*M[col][j];}}return M.map((row,i)=>Math.abs(row[i])>1e-12?row[n]/row[i]:0);}
+function sbToggleSim(){SB.sim=!SB.sim;const btn=document.getElementById('sb-run');if(SB.sim){btn.textContent='■ Stop';btn.classList.add('active');sbRunSim();SB.lastT=0;SB.animF=requestAnimationFrame(sbAnimLoop);}else{btn.textContent='▶ Run';btn.classList.remove('active');SB.result=null;SB.particles={};if(SB.animF){cancelAnimationFrame(SB.animF);SB.animF=null;}document.getElementById('sb-vmax').textContent='—';document.getElementById('sb-imax').textContent='—';sbDraw();}}
+function sbAnimLoop(ts){if(!SB.sim){SB.animF=null;return;}SB.lastT=SB.lastT||ts;const dt=Math.min((ts-SB.lastT)/1000,0.05);SB.lastT=ts;sbDraw(dt);SB.animF=requestAnimationFrame(sbAnimLoop);}
+// DRAWING
+function sbVColor(v,vm){if(!vm||vm===0)return'#2a2a2a';const t=Math.max(0,Math.min(1,Math.abs(v)/vm));if(t<0.33)return`rgb(0,${Math.round(t/0.33*150+50)},255)`;if(t<0.66)return`rgb(0,${Math.round(200+(t-0.33)/0.33*55)},${Math.round((1-(t-0.33)/0.33)*200)})`;const s=(t-0.66)/0.34;return`rgb(${Math.round(s*255)},${Math.round(255-s*200)},0)`;}
+function sbDraw(dt=0){if(!sbCtx)return;const W=sbCV.width,H=sbCV.height;sbCtx.clearRect(0,0,W,H);sbCtx.fillStyle='#0a0a0a';sbCtx.fillRect(0,0,W,H);const vm=SB.result?Math.max(...Object.values(SB.result.vByKey).map(Math.abs),0.01):9;// Grid
+sbCtx.fillStyle='#1e1e1e';const C=SB.CELL;for(let gx=0;gx*C<W+C;gx++)for(let gy=0;gy*C<H+C;gy++){const p=sbGtoP(gx,gy);if(p.x<W&&p.y<H){sbCtx.beginPath();sbCtx.arc(p.x,p.y,1.2,0,Math.PI*2);sbCtx.fill();}}// Wires
+SB.wires.forEach(w=>{const p1=sbGtoP(w.x1,w.y1),p2=sbGtoP(w.x2,w.y2);const v1=SB.result?SB.result.vByKey[sbTK(w.x1,w.y1)]||0:0;const v2=SB.result?SB.result.vByKey[sbTK(w.x2,w.y2)]||0:0;sbCtx.beginPath();sbCtx.moveTo(p1.x,p1.y);sbCtx.lineTo(p2.x,p2.y);sbCtx.strokeStyle=SB.sim?sbVColor((v1+v2)/2,vm):'#2a2a2a';sbCtx.lineWidth=2.5;sbCtx.lineCap='round';sbCtx.stroke();// Particles
+if(SB.sim&&dt>0){const pid='pw_'+w.id;if(!SB.particles[pid])SB.particles[pid]=[0.15,0.5,0.82];const dv=Math.abs(v1-v2);const spd=Math.min(0.6,dv*0.1);const dir=v1>=v2?1:-1;SB.particles[pid]=SB.particles[pid].map(p=>((p+spd*dt*dir)+1)%1);if(spd>0.005){const col=sbVColor((v1+v2)/2,vm);SB.particles[pid].forEach(pos=>{const x=p1.x+(p2.x-p1.x)*pos,y=p1.y+(p2.y-p1.y)*pos;sbCtx.beginPath();sbCtx.arc(x,y,2.5,0,Math.PI*2);sbCtx.fillStyle=col;sbCtx.fill();});}}});// Components
+SB.comps.forEach(c=>{const p1=sbGtoP(c.gx,c.gy);const cx=p1.x+C,cy=p1.y;const col1=SB.sim?sbVColor(c.simV1||0,vm):'#2a2a2a';const col2=SB.sim?sbVColor(c.simV2||0,vm):'#2a2a2a';if(c.type==='GND'){sbCtx.strokeStyle=col1;sbCtx.lineWidth=2;[[0,10],[6,6],[12,2]].forEach(([w,y])=>{sbCtx.beginPath();sbCtx.moveTo(p1.x-w,p1.y+y);sbCtx.lineTo(p1.x+w,p1.y+y);sbCtx.stroke();});sbCtx.beginPath();sbCtx.moveTo(p1.x,p1.y-C/2);sbCtx.lineTo(p1.x,p1.y);sbCtx.stroke();return;}const p2=sbGtoP(c.gx+2,c.gy);sbCtx.lineWidth=2.5;sbCtx.lineCap='round';sbCtx.beginPath();sbCtx.moveTo(p1.x,cy);sbCtx.lineTo(cx-18,cy);sbCtx.strokeStyle=col1;sbCtx.stroke();sbCtx.beginPath();sbCtx.moveTo(cx+18,cy);sbCtx.lineTo(p2.x,cy);sbCtx.strokeStyle=col2;sbCtx.stroke();if(c.type==='R'){sbCtx.fillStyle='#1c1c1c';sbCtx.strokeStyle='#aaa';sbCtx.lineWidth=1.8;sbCtx.beginPath();sbCtx.roundRect(cx-18,cy-8,36,16,2);sbCtx.fill();sbCtx.stroke();sbCtx.fillStyle='#aaa';sbCtx.font='8px JetBrains Mono';sbCtx.textAlign='center';sbCtx.fillText(c.value>=1000?(c.value/1000).toFixed(0)+'k':c.value+'Ω',cx,cy+3);}else if(c.type==='V'){sbCtx.strokeStyle='#ff6060';sbCtx.lineWidth=3;sbCtx.beginPath();sbCtx.moveTo(cx-4,cy-13);sbCtx.lineTo(cx-4,cy+13);sbCtx.stroke();sbCtx.strokeStyle='#666';sbCtx.lineWidth=2;sbCtx.beginPath();sbCtx.moveTo(cx+4,cy-8);sbCtx.lineTo(cx+4,cy+8);sbCtx.stroke();sbCtx.fillStyle='#ff6060';sbCtx.font='9px JetBrains Mono';sbCtx.textAlign='center';sbCtx.fillText('+',cx-4,cy-15);sbCtx.fillStyle='#555';sbCtx.fillText('−',cx+5,cy+20);}else if(c.type==='LED'){const lit=SB.sim&&Math.abs(c.simI)>0.001;const glow=Math.min(1,Math.abs(c.simI)*40);sbCtx.save();sbCtx.translate(cx,cy);if(lit){sbCtx.shadowBlur=20*glow;sbCtx.shadowColor='#ffaa00';}sbCtx.fillStyle=lit?`rgba(255,170,0,${0.3+glow*0.7})`:'#333';sbCtx.strokeStyle=lit?'#ffaa00':'#555';sbCtx.lineWidth=2;sbCtx.beginPath();sbCtx.moveTo(-12,-9);sbCtx.lineTo(-12,9);sbCtx.lineTo(8,0);sbCtx.closePath();sbCtx.fill();sbCtx.stroke();sbCtx.beginPath();sbCtx.moveTo(8,-9);sbCtx.lineTo(8,9);sbCtx.stroke();sbCtx.restore();}else if(c.type==='SW'){const cl=c.on;sbCtx.strokeStyle='#888';sbCtx.lineWidth=2;sbCtx.lineCap='round';sbCtx.beginPath();sbCtx.arc(cx-10,cy,3,0,Math.PI*2);sbCtx.fillStyle='#666';sbCtx.fill();sbCtx.stroke();sbCtx.beginPath();sbCtx.arc(cx+10,cy,3,0,Math.PI*2);sbCtx.fill();sbCtx.stroke();sbCtx.beginPath();sbCtx.moveTo(cx-10,cy);if(cl)sbCtx.lineTo(cx+10,cy);else sbCtx.lineTo(cx+8,cy-12);sbCtx.stroke();sbCtx.fillStyle=cl?'#1ed640':'#555';sbCtx.font='8px JetBrains Mono';sbCtx.textAlign='center';sbCtx.fillText(cl?'ON':'OFF',cx,cy+18);}// Current label
+if(SB.sim&&c.simI&&Math.abs(c.simI)>0.00001){sbCtx.fillStyle='rgba(30,214,64,.7)';sbCtx.font='8px JetBrains Mono';sbCtx.textAlign='center';const i=c.simI;sbCtx.fillText(Math.abs(i)<0.001?(i*1e6).toFixed(0)+'µA':(i*1000).toFixed(1)+'mA',cx,cy-20);}// Particles along component
+if(SB.sim&&dt>0&&c.type!=='GND'){const pid='pc_'+c.id;if(!SB.particles[pid])SB.particles[pid]=[0.3,0.7];const spd=Math.min(0.5,Math.abs(c.simI)*30);const dir=c.simI>=0?1:-1;SB.particles[pid]=SB.particles[pid].map(p=>((p+spd*dt*dir)+1)%1);if(spd>0.002&&c.type!=='V'){const col=sbVColor(c.simV1,vm);SB.particles[pid].forEach(pos=>{const x=p1.x+(p2.x-p1.x)*pos,y=p1.y;sbCtx.beginPath();sbCtx.arc(x,y,2,0,Math.PI*2);sbCtx.fillStyle=col;sbCtx.fill();});}}});// Wire preview
+if(SB.wStart&&SB.hover&&SB.tool==='wire'){const ps=sbGtoP(SB.wStart.gx,SB.wStart.gy),ph=sbGtoP(SB.hover.gx,SB.hover.gy);sbCtx.beginPath();sbCtx.moveTo(ps.x,ps.y);sbCtx.lineTo(ph.x,ph.y);sbCtx.strokeStyle='rgba(30,214,64,.5)';sbCtx.lineWidth=2;sbCtx.setLineDash([5,4]);sbCtx.stroke();sbCtx.setLineDash([]);sbCtx.beginPath();sbCtx.arc(ps.x,ps.y,5,0,Math.PI*2);sbCtx.fillStyle='#1ed640';sbCtx.fill();}// Hover point
+if(SB.hover){const ph=sbGtoP(SB.hover.gx,SB.hover.gy);sbCtx.beginPath();sbCtx.arc(ph.x,ph.y,5,0,Math.PI*2);sbCtx.strokeStyle='rgba(30,214,64,.6)';sbCtx.lineWidth=1.5;sbCtx.stroke();}}
+const SB_EXAMPLES=[{comps:[{type:'V',gx:2,gy:4,value:9},{type:'R',gx:6,gy:4,value:100},{type:'LED',gx:10,gy:4,value:15},{type:'GND',gx:14,gy:4}],wires:[{x1:4,y1:4,x2:6,y2:4},{x1:8,y1:4,x2:10,y2:4},{x1:12,y1:4,x2:14,y2:4},{x1:2,y1:4,x2:2,y2:8},{x1:2,y1:8,x2:14,y2:8},{x1:14,y1:8,x2:14,y2:4}]},{comps:[{type:'V',gx:2,gy:4,value:12},{type:'R',gx:7,gy:2,value:220},{type:'R',gx:7,gy:6,value:470},{type:'GND',gx:13,gy:4}],wires:[{x1:4,y1:4,x2:4,y2:2},{x1:4,y1:2,x2:7,y2:2},{x1:9,y1:2,x2:13,y2:2},{x1:13,y1:2,x2:13,y2:4},{x1:4,y1:4,x2:4,y2:6},{x1:4,y1:6,x2:7,y2:6},{x1:9,y1:6,x2:13,y2:6},{x1:13,y1:6,x2:13,y2:4},{x1:2,y1:4,x2:2,y2:9},{x1:2,y1:9,x2:13,y2:9},{x1:13,y1:9,x2:13,y2:6}]}];
+function sbExample(){SB.comps=[];SB.wires=[];SB.particles={};SB.result=null;if(SB.sim)sbToggleSim();const ex=SB_EXAMPLES[SB.exIdx%SB_EXAMPLES.length];SB.exIdx++;ex.comps.forEach(c=>SB.comps.push({...c,id:'c'+Date.now()+Math.random(),simV1:0,simV2:0,simI:0,on:true}));ex.wires.forEach(w=>SB.wires.push({...w,id:'w'+Date.now()+Math.random()}));document.getElementById('sb-ncomp').textContent=SB.comps.length;sbDraw();setTimeout(()=>{if(!SB.sim)sbToggleSim();},100);}
+// ════════════════════════════════════════
+// WIRE CHALLENGE WITH DIFFICULTY
+// ════════════════════════════════════════
+let wcIdx=0,wcAns=false,wcSc={c:0,t:0},wcOrd=[],wcDiff='all';
+function setWCDiff(d,btn){wcDiff=d;document.querySelectorAll('#tc-lab-wire .df').forEach(b=>b.classList.remove('on'));btn.classList.add('on');restartWC();}
+function getWCFiltered(){if(wcDiff==='all')return WIRE_CHALLENGES.map((_,i)=>i);return WIRE_CHALLENGES.map((w,i)=>w.d===wcDiff?i:-1).filter(i=>i>=0);}
+function restartWC(){wcOrd=shuffle(getWCFiltered());wcIdx=0;wcSc={c:0,t:0};renderWC();}
+function renderWC(){if(wcOrd.length===0){document.getElementById('wc-title').textContent='No challenges match this filter.';return;}const w=WIRE_CHALLENGES[wcOrd[wcIdx%wcOrd.length]];wcAns=false;document.getElementById('wc-num').textContent=(wcIdx%wcOrd.length+1)+'/'+wcOrd.length;document.getElementById('wc-sc').textContent=wcSc.c+'/'+wcSc.t;document.getElementById('wc-title').textContent=w.title;document.getElementById('wc-circuit').textContent=w.circuit;document.getElementById('wc-q').textContent=w.q;const db=document.getElementById('wc-diff-badge');db.className='diff-badge diff-'+w.d;db.textContent=w.d==='e'?'🟢 Easy':w.d==='m'?'🟡 Medium':'🔴 Hard';document.getElementById('wc-opts').innerHTML=w.o.map((o,i)=>`<button class="opt" onclick="ansWC(${i})">${o}</button>`).join('');const fb=document.getElementById('wc-fb');fb.style.display='none';fb.className='fb';document.getElementById('wc-nxt').style.display='none';}
+function ansWC(idx){if(wcAns)return;wcAns=true;const w=WIRE_CHALLENGES[wcOrd[wcIdx%wcOrd.length]];const ok=idx===w.a;wcSc.t++;if(ok)wcSc.c++;document.querySelectorAll('#wc-opts .opt').forEach((b,i)=>{b.disabled=true;if(i===w.a)b.classList.add('correct');else if(i===idx&&!ok)b.classList.add('wrong');});const fb=document.getElementById('wc-fb');fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong')+'</strong>'+w.e;document.getElementById('wc-sc').textContent=wcSc.c+'/'+wcSc.t;document.getElementById('wc-nxt').style.display='block';const a=getAcc();if(!a)return;if(ok){a.stats.wcDone=(a.stats.wcDone||0)+1;addXP(w.d==='h'?w.xp+10:w.xp,'Wire Challenge');trackDC('wc');}saveAcc(a);checkAchs(a);}
+function nextWC(){wcIdx++;renderWC();}
+// FAULT HUNTER WITH DIFFICULTY
+let fhIdx=0,fhAns=false,fhSc={c:0,t:0},fhOrd=[],fhDiff='all';
+function setFHDiff(d,btn){fhDiff=d;document.querySelectorAll('#tc-lab-fh .df').forEach(b=>b.classList.remove('on'));btn.classList.add('on');restartFH();}
+function getFHFiltered(){if(fhDiff==='all')return FAULT_HUNTER.map((_,i)=>i);return FAULT_HUNTER.map((f,i)=>f.d===fhDiff?i:-1).filter(i=>i>=0);}
+function restartFH(){fhOrd=shuffle(getFHFiltered());fhIdx=0;fhSc={c:0,t:0};renderFH();}
+function renderFH(){if(fhOrd.length===0){document.getElementById('fh-title').textContent='No scenarios match this filter.';return;}const f=FAULT_HUNTER[fhOrd[fhIdx%fhOrd.length]];fhAns=false;document.getElementById('fh-num').textContent=(fhIdx%fhOrd.length+1)+'/'+fhOrd.length;document.getElementById('fh-sc').textContent=fhSc.c+'/'+fhSc.t;document.getElementById('fh-title').textContent=f.title;document.getElementById('fh-s').textContent=f.s;document.getElementById('fh-sym').textContent=f.sym;document.getElementById('fh-q').textContent=f.q;const db=document.getElementById('fh-diff-badge');db.className='diff-badge diff-'+f.d;db.textContent=f.d==='e'?'🟢 Easy':f.d==='m'?'🟡 Medium':'🔴 Hard';document.getElementById('fh-opts').innerHTML=f.o.map((o,i)=>`<button class="opt" onclick="ansFH(${i})">${o}</button>`).join('');const fb=document.getElementById('fh-fb');fb.style.display='none';fb.className='fb';document.getElementById('fh-nxt').style.display='none';}
+function ansFH(idx){if(fhAns)return;fhAns=true;const f=FAULT_HUNTER[fhOrd[fhIdx%fhOrd.length]];const ok=idx===f.a;fhSc.t++;if(ok)fhSc.c++;document.querySelectorAll('#fh-opts .opt').forEach((b,i)=>{b.disabled=true;if(i===f.a)b.classList.add('correct');else if(i===idx&&!ok)b.classList.add('wrong');});const fb=document.getElementById('fh-fb');fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong')+'</strong>'+f.e;document.getElementById('fh-sc').textContent=fhSc.c+'/'+fhSc.t;document.getElementById('fh-nxt').style.display='block';const a=getAcc();if(!a)return;a.stats.fT=(a.stats.fT||0)+1;if(ok){a.stats.fhDone=(a.stats.fhDone||0)+1;addXP(f.d==='h'?25:f.d==='m'?18:12,'Fault Hunter');trackDC('fault');}saveAcc(a);checkAchs(a);}
+function nextFH(){fhIdx++;renderFH();}
+// ════════════════════════════════════════
+// REPAIR SHOP
+// ════════════════════════════════════════
+let repIdx=0,repAns=false;
+function renderRepair(){const r=REPAIRS[repIdx%REPAIRS.length];repAns=false;document.getElementById('repair-content').innerHTML=`<div class="repair-hdr"><div class="repair-av">🧑‍🔧</div><div style="flex:1"><div class="repair-cust">${r.customer}</div><div class="repair-dev">${r.device}</div></div><div><div class="repair-rew">+${r.xp} XP</div><span class="diff-badge diff-${r.d}" style="font-size:9px">${r.d==='e'?'🟢 Easy':r.d==='m'?'🟡 Medium':'🔴 Hard'}</span></div></div><div class="pad"><div style="background:var(--bgc2);border:.5px solid var(--bdr);border-radius:var(--rsm);padding:10px;margin-bottom:10px"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);font-weight:700;margin-bottom:3px">Customer complaint</div><div style="font-size:.82rem;line-height:1.55">${r.complaint}</div></div><div class="sec">Select tool to take measurements</div><div class="tool-row">${r.tools.map(t=>`<button class="tool-btn" onclick="repTool('${t}')">${t}</button>`).join('')}</div><div class="mbox" id="mbox">← Select a tool above</div><div class="sec" style="margin-top:9px">Your diagnosis</div><div style="font-size:.88rem;font-weight:600;margin-bottom:9px">What is the fault?</div><div>${r.o.map((o,i)=>`<button class="opt" onclick="ansRepair(${i})">${o}</button>`).join('')}</div><div class="fb" id="rep-fb"></div><button class="nxt" id="rep-nxt" onclick="nextRepair()">Next customer →</button></div>`;}
+function repTool(tool){const r=REPAIRS[repIdx%REPAIRS.length];document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('on',b.textContent===tool));const m=document.getElementById('mbox');if(tool==='Multimeter'&&r.measurements.voltmeter)m.textContent=r.measurements.voltmeter.join('\n');else if(tool==='Oscilloscope'&&r.measurements.oscope)m.textContent=r.measurements.oscope.join('\n');else m.textContent='No '+tool+' readings available for this job.';}
+function ansRepair(idx){if(repAns)return;repAns=true;const r=REPAIRS[repIdx%REPAIRS.length];const ok=idx===r.a;document.querySelectorAll('#repair-content .opt').forEach((b,i)=>{b.disabled=true;if(i===r.a)b.classList.add('correct');else if(i===idx&&!ok)b.classList.add('wrong');});const fb=document.getElementById('rep-fb');fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct diagnosis!':'✗ Wrong')+'</strong>'+r.e;document.getElementById('rep-nxt').style.display='block';const a=getAcc();if(!a)return;if(ok){a.stats.rsDone=(a.stats.rsDone||0)+1;addXP(r.xp,'Repair: '+r.device);trackDC('repair');}saveAcc(a);checkAchs(a);}
+function nextRepair(){repIdx++;renderRepair();}
+// ════════════════════════════════════════
+// COMPONENT COLLECTION
+// ════════════════════════════════════════
+function renderColl(){const a=getAcc();const li=getLvl(a?a.xp:0);document.getElementById('comp-grid').innerHTML=COMPONENTS_DATA.map(c=>{const u=li.l>=c.lvl;return`<div class="comp-card${u?'':' locked'}" ${u?`onclick="showComp('${c.id}')"`:''}>  <div class="comp-sym">${c.s}</div><div class="comp-name">${c.n}</div><div class="comp-lbl">${c.d}</div><div class="comp-unlock">${u?c.u:'🔒 Lv.'+c.lvl}</div></div>`;}).join('');}
+function showComp(id){const c=COMPONENTS_DATA.find(x=>x.id===id);if(!c)return;alert('📦 '+c.n+'\n\n'+c.d+'\n\nUnit/Key param: '+c.u);}
+// ════════════════════════════════════════
+// PROJECTS (multi-step, all types working)
+// ════════════════════════════════════════
+function renderProjList(){const a=getAcc();document.getElementById('proj-list').innerHTML='<div class="sec">Guided Projects</div>'+PROJECTS.map(p=>{const done=a&&a.stats.projsDone.includes(p.id);const prog=a&&a.projProgress?a.projProgress[p.id]||0:0;const pct=Math.round(prog/p.steps.length*100);return`<div class="proj-card" onclick="openProj('${p.id}')"><div class="proj-hrow"><div class="proj-em">${p.i}</div><div><div class="proj-ttl">${p.t}</div><span class="badge-pill bp-${p.lv==='Beginner'?'b':p.lv==='Intermediate'?'i':'a'}">${p.lv}</span></div></div><div class="proj-desc">${p.d}</div><div class="proj-foot"><span class="proj-xp">${done?'✓ Done':'⚡ '+p.xp+' XP'}</span><div class="proj-bar"><div class="proj-fill" style="width:${pct}%"></div></div><span style="font-size:9px;color:var(--txt3)">${prog}/${p.steps.length}</span></div></div>`;}).join('');}
+function openProj(id){const p=PROJECTS.find(x=>x.id===id);if(!p)return;document.getElementById('proj-list').style.display='none';document.getElementById('proj-detail').style.display='';const a=getAcc();const progress=a&&a.projProgress?a.projProgress[id]||0:0;let html=`<div class="proj-card" style="cursor:default;margin-bottom:11px"><div class="proj-hrow"><div class="proj-em">${p.i}</div><div class="proj-ttl">${p.t}</div></div><div class="proj-desc">${p.d}</div></div>`;p.steps.forEach((st,si)=>{const done=si<progress;const cur=si===progress;html+=`<div id="pstep-${id}-${si}" style="background:var(--bgc);border:.5px solid var(--bdr);border-radius:var(--rsm);padding:12px;margin-bottom:8px;${done?'opacity:.5;pointer-events:none':''}"><div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);font-weight:700;margin-bottom:4px">Step ${si+1}/${p.steps.length}: ${st.n}</div><div style="font-size:.86rem;font-weight:500;margin-bottom:9px;line-height:1.5">${st.q}</div>`;if(done){html+=`<div style="font-size:.78rem;color:var(--gdim);background:var(--gpale);padding:5px 8px;border-radius:6px">✓ Done</div>`;}else if(cur){if(st.type==='mcq'){html+=st.opts.map((o,oi)=>`<button class="opt" id="po-${id}-${si}-${oi}" onclick="projMCQ('${id}',${si},${oi})">${o}</button>`).join('');}else{html+=`<div style="display:flex;gap:7px;margin-bottom:8px"><input type="number" id="pi-${id}-${si}" style="flex:1;height:44px;border:.5px solid var(--bdr2);border-radius:var(--rsm);background:var(--bgc2);color:var(--txt);font-size:.95rem;font-family:'JetBrains Mono',monospace;padding:0 10px" placeholder="Answer..." inputmode="decimal"><div style="height:44px;padding:0 9px;display:flex;align-items:center;background:var(--bgc2);border:.5px solid var(--bdr2);border-radius:var(--rsm);font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--grn)">${st.u}</div></div><button style="font-size:.78rem;background:transparent;border:.5px solid var(--bdr2);border-radius:6px;padding:4px 9px;cursor:pointer;color:var(--txt3);margin-bottom:7px" onclick="document.getElementById('phint-${id}-${si}').style.display='block'">💡 Hint</button><div id="phint-${id}-${si}" style="background:var(--apale);border-left:3px solid var(--amb);border-radius:0 7px 7px 0;padding:7px 10px;font-size:.78rem;color:var(--txt2);margin-bottom:8px;display:none">${st.h}</div><button class="btn-g" onclick="projCalc('${id}',${si})">Check answer</button>`;}html+=`<div class="fb" id="pfb-${id}-${si}"></div><button class="nxt" id="pnxt-${id}-${si}" onclick="projNext('${id}',${si})">Next step →</button>`;}html+='</div>';});if(progress>=p.steps.length)html+=`<div class="cpl"><div class="cpl-i">🏆</div><div class="cpl-s">${p.t}</div><div class="cpl-p">Completed!</div><div class="cpl-m">All ${p.steps.length} steps done. ${p.xp} XP earned.</div></div>`;document.getElementById('proj-steps').innerHTML=html;}
+function projMCQ(pid,si,oi){const p=PROJECTS.find(x=>x.id===pid);const st=p.steps[si];const ok=oi===st.ans;for(let j=0;j<st.opts.length;j++){const btn=document.getElementById('po-'+pid+'-'+si+'-'+j);if(btn){btn.disabled=true;if(j===st.ans)btn.classList.add('correct');else if(j===oi&&!ok)btn.classList.add('wrong');}}const fb=document.getElementById('pfb-'+pid+'-'+si);fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong')+'</strong>'+st.e;if(ok)document.getElementById('pnxt-'+pid+'-'+si).style.display='block';}
+function projCalc(pid,si){const p=PROJECTS.find(x=>x.id===pid);const st=p.steps[si];const val=parseFloat((document.getElementById('pi-'+pid+'-'+si).value||'').replace(',','.'));const fb=document.getElementById('pfb-'+pid+'-'+si);if(isNaN(val)){fb.style.display='block';fb.className='fb bad';fb.innerHTML='<strong>Invalid number</strong>';return;}const ok=Math.abs(val-st.a)<=st.tol;fb.style.display='block';fb.className='fb '+(ok?'ok':'bad');fb.innerHTML='<strong>'+(ok?'✓ Correct!':'✗ Wrong — answer: '+st.a+' '+st.u)+'</strong>'+st.e;if(ok)document.getElementById('pnxt-'+pid+'-'+si).style.display='block';}
+function projNext(pid,si){const a=getAcc();if(!a)return;if(!a.projProgress)a.projProgress={};const np=(a.projProgress[pid]||0)+1;a.projProgress[pid]=np;const p=PROJECTS.find(x=>x.id===pid);addXP(Math.round(p.xp/p.steps.length),'Project step');if(np>=p.steps.length&&!a.stats.projsDone.includes(pid)){a.stats.projsDone.push(pid);addXP(Math.round(p.xp*0.3),'Project complete: '+p.t);}saveAcc(a);checkAchs(a);openProj(pid);}
+function backToProjects(){document.getElementById('proj-list').style.display='';document.getElementById('proj-detail').style.display='none';renderProjList();}
+// ════════════════════════════════════════
+// PROFILE
+// ════════════════════════════════════════
+function renderProfile(){const a=getAcc();if(!a)return;const li=getLvl(a.xp);document.getElementById('pr-av').textContent=a.avatar;document.getElementById('pr-name').textContent=a.username;document.getElementById('pr-title').textContent=li.i+' '+li.t+' · Level '+li.l;document.getElementById('pr-fill').style.width=li.pct+'%';document.getElementById('pr-xt').textContent=a.xp+' / '+(li.nx?li.nx.xp:a.xp)+' XP';document.getElementById('pr-qt').textContent=a.stats.qT||0;document.getElementById('pr-qp').textContent=a.stats.qT?Math.round(a.stats.qC/a.stats.qT*100)+'%':'—';document.getElementById('pr-pj').textContent=a.stats.projsDone.length+'/'+PROJECTS.length;document.getElementById('pr-rh').textContent=a.stats.raceH||'—';const earned=ACHS.filter(ac=>a.achievements.includes(ac.k));document.getElementById('pr-badges').innerHTML=earned.slice(-6).map(ac=>`<div class="ach"><div class="ach-em">${ac.i}</div><div class="ach-t">${ac.t}</div></div>`).join('')||'<div style="color:var(--txt3);font-size:.75rem;grid-column:span 3;text-align:center;padding:8px">No badges yet — start training!</div>';document.getElementById('all-badges').innerHTML=ACHS.map(ac=>`<div class="ach${a.achievements.includes(ac.k)?'':' locked'}"><div class="ach-em">${ac.i}</div><div class="ach-t">${ac.t}</div><div class="ach-x">${ac.x>0?'+'+ac.x+' XP':ac.d}</div></div>`).join('');renderLBs(a);renderSettings(a);renderAccList();}
+function renderLBs(a){try{const lb=JSON.parse(localStorage.getItem('cp_lb')||'[]');const M=['🥇','🥈','🥉'];const byXP=[...lb].sort((a,b)=>b.xp-a.xp);const byR=[...lb].filter(e=>e.race>0).sort((a,b)=>b.race-a.race);document.getElementById('lb-xp').innerHTML=byXP.length?byXP.slice(0,10).map((e,i)=>`<div class="lb-row${a&&e.u===a.username?' me':''}"><span class="lb-rank">${M[i]||i+1}</span><span class="lb-av">${e.av||'👤'}</span><span class="lb-name">${e.u}</span><span class="lb-xp">${e.xp} XP</span></div>`).join(''):'<div style="padding:13px;color:var(--txt3);font-size:.82rem">No data yet</div>';document.getElementById('lb-race').innerHTML=byR.length?byR.slice(0,10).map((e,i)=>`<div class="lb-row${a&&e.u===a.username?' me':''}"><span class="lb-rank">${M[i]||i+1}</span><span class="lb-av">${e.av||'👤'}</span><span class="lb-name">${e.u}</span><span class="lb-xp">${e.race} pts</span></div>`).join(''):'<div style="padding:13px;color:var(--txt3);font-size:.82rem">Play Race Mode to appear here!</div>';}catch{}}
+function renderSettings(a){const d=a.settings.difficulty||'normal';document.querySelectorAll('.diff-btn').forEach((b,i)=>b.classList.toggle('on',['easy','normal','hard'][i]===d));document.getElementById('diff-desc').textContent={easy:'Easy: hints always visible, no timer, +8 XP per correct answer.',normal:'Normal: hints on request, no timer, +10–20 XP depending on difficulty.',hard:'Hard: 15s timer, no hints, +20% XP bonus per correct answer.'}[d];}
+function renderAccList(){document.getElementById('acc-list').innerHTML=getAllUsers().map(u=>{try{const a=JSON.parse(localStorage.getItem('cp_u_'+u)||'{}');const li=getLvl(a.xp||0);const cur=getAcc()?.username===u;return`<div class="sw-btn"><span class="sw-av">${a.avatar||'👤'}</span><span class="sw-name">${u}${cur?' (active)':''}</span><span class="sw-lv">Lv.${li.l} · ${a.xp||0} XP</span>${!cur?`<button style="font-size:10px;padding:3px 9px;border:.5px solid var(--grn);border-radius:7px;background:transparent;color:var(--grn);cursor:pointer" onclick="switchTo('${u}')">Switch</button>`:''}</div>`;}catch{return '';}}).join('');}
+function setDiff(d,btn){const a=getAcc();if(!a)return;a.settings.difficulty=d;saveAcc(a);renderSettings(a);}
+// ════════════════════════════════════════
+// UTILS + SWIPE
+// ════════════════════════════════════════
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function addSwipe(el,left,right){let sx=0,sy=0;el.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});el.addEventListener('touchend',e=>{const dx=sx-e.changedTouches[0].clientX;const dy=sy-e.changedTouches[0].clientY;if(Math.abs(dx)>Math.abs(dy)*1.2&&Math.abs(dx)>44){if(dx>0)left();else right();}});}
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+function init(){const a=getAcc();if(!a){document.getElementById('reg-ov').style.display='flex';document.getElementById('av-grid').innerHTML=AVS.map((av,i)=>`<button class="av-btn${i===0?' sel':''}" onclick="document.querySelectorAll('.av-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')">${av}</button>`).join('');return;}
+updateStreak(a);saveAcc(a);
+// Reset diff filters
+qDiff='all';caDiff='all';wcDiff='all';fhDiff='all';
+// Seed orders
+qOrd=shuffle([...Array(QUIZ.length).keys()]);
+fcOrd=[...Array(CARDS.length).keys()];
+caOrd=shuffle([...Array(CALC.length).keys()]);
+wcOrd=shuffle([...Array(WIRE_CHALLENGES.length).keys()]);
+fhOrd=shuffle([...Array(FAULT_HUNTER.length).keys()]);
+// Update UI
+updateHdr();updateHomeStats();
+// Render all sections
+renderSlide();renderQ();renderCalc();renderCard();renderWC();renderFH();renderRepair();renderProjList();renderColl();renderSkillTree();renderBlueprints();
+// Labs
+rcUpdate();ledUpdate();ohmUpdate();gateUpdate();
+// Sandbox
+setTimeout(sbInit,100);
+// Swipe gestures
+addSwipe(document.getElementById('sl-card'),nextSlide,prevSlide);addSwipe(document.getElementById('fc-wrap'),()=>fcFlip&&cardResult(false),()=>fcFlip&&cardResult(true));addSwipe(document.getElementById('r-card'),()=>rFlip&&raceAns(false),()=>rFlip&&raceAns(true));
+// Enter key for calc
+document.getElementById('ca-inp').addEventListener('keydown',e=>{if(e.key==='Enter')checkCalc();});
+// Resize sandbox
+window.addEventListener('resize',()=>{if(sbCV)sbResize();});
+// Night/early bird check
+checkAchs(a);
+}
+window.addEventListener('load',init);
+</script></body></html>

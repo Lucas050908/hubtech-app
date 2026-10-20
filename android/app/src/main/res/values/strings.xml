@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HUBTECH</string>
+    <string name="starting">Starter HUBTECH …</string>
+    <string name="first_start">Første start: HUBTECH pakkes ud på telefonen. Det tager op til et halvt minut – kun denne gang.</string>
+    <string name="start_failed">HUBTECH kunne ikke starte</string>
+    <string name="saved_to">Gemt i Overførsler: %1$s</string>
+    <string name="save_failed">Filen kunne ikke gemmes</string>
+    <string name="channel_reminders">Påmindelser</string>
+    <string name="channel_reminders_desc">Deadlines fra Opgaver og aftaler fra Kalender</string>
+    <string name="widget_title">I dag</string>
+    <string name="widget_empty">Åbn HUBTECH for at se dagens aftaler</string>
+    <string name="widget_desc">Dagens aftaler, deadlines og hvad der venter</string>
+    <string name="sc_timer">Start ur</string>
+    <string name="sc_timer_long">Start tidsregistrering</string>
+    <string name="sc_task">Ny opgave</string>
+    <string name="sc_note">Ny note</string>
+    <string name="sc_calendar">Kalender</string>
+    <string name="lock_title">Lås HUBTECH op</string>
+    <string name="lock_sub">Brug fingeraftryk, ansigt eller skærmlåsen</string>
+    <string name="lock_retry">Lås op</string>
+    <string name="update_downloading">Henter ny version af HUBTECH …</string>
+    <string name="update_failed">Opdateringen kunne ikke hentes</string>
+    <string name="update_allow">Tillad at HUBTECH installerer opdateringer, og tryk Installér igen</string>
+    <string name="camera_denied">Kameraet er ikke tilladt for HUBTECH</string>
+    <string name="share_sending">Gemmer billedet …</string>
+</resources>

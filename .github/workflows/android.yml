@@ -1,0 +1,95 @@
+# Builds HUBTECH for Android (APK) on GitHub's servers – no Android Studio needed on your PC.
+# Result: Actions → the newest run → Artifacts → "HUBTECH-android" (a zip with the .apk inside).
+name: Android-app (APK)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'server/**'
+      - 'web/**'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write          # the build log and the APK are also published to the "ci" branch
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-python@v5          # Chaquopy compiles the Python code with the same version
+        with:
+          python-version: '3.12'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Server-tests (samme kode som i appen)
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      # The signing key is NOT in the repository. It lives in the repository's secrets (Settings → Secrets and
+      # variables → Actions): HUBTECH_KEYSTORE_B64 (the keystore, base64) and HUBTECH_KEYSTORE_PASSWORD.
+      # Same key every time, so a new APK installs on top of the old one. See docs/OFFENTLIG.md.
+      - name: Signeringsnøgle
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.HUBTECH_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "::error::Hemmeligheden HUBTECH_KEYSTORE_B64 mangler – se docs/OFFENTLIG.md"
+            exit 1
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/hubtech.keystore"
+          echo "HUBTECH_KEYSTORE=$RUNNER_TEMP/hubtech.keystore" >> "$GITHUB_ENV"
+
+      - name: Byg APK
+        working-directory: android
+        shell: bash
+        env:
+          HUBTECH_KEYSTORE_PASSWORD: ${{ secrets.HUBTECH_KEYSTORE_PASSWORD }}
+          HUBTECH_KEY_PASSWORD: ${{ secrets.HUBTECH_KEYSTORE_PASSWORD }}
+          HUBTECH_KEY_ALIAS: hubtech
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleRelease 2>&1 | tee ../build.log
+
+      - name: Navngiv APK
+        run: |
+          V=$(python -c "import re;print(re.search(r'^VERSION\s*=\s*\"([^\"]+)\"', open('server/config.py').read(), re.M).group(1))")
+          mkdir -p out && cp android/app/build/outputs/apk/release/app-release.apk "out/HUBTECH-$V.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HUBTECH-android
+          path: out/*.apk
+          retention-days: 30
+
+      - name: Læg log og APK på grenen "ci"
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p /tmp/ci
+          [ -f build.log ] && tail -n 400 build.log > /tmp/ci/build.log || echo "ingen log" > /tmp/ci/build.log
+          cp out/*.apk /tmp/ci/ 2>/dev/null || true
+          echo "run ${{ github.run_number }} · ${{ job.status }} · ${{ github.sha }}" > /tmp/ci/STATUS.txt
+          if ls out/*.apk >/dev/null 2>&1; then
+            APK=$(basename out/*.apk)
+            V=$(python -c "import re;print(re.search(r'^VERSION\s*=\s*\"([^\"]+)\"', open('server/config.py').read(), re.M).group(1))")
+            printf '{"version":"%s","build":%s,"versionCode":%s,"apk":"%s","sha":"%s","date":"%s"}\n' "$V" "${{ github.run_number }}" "$((1000000 + ${{ github.run_number }}))" "$APK" "${{ github.sha }}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/ci/version.json
+            cat /tmp/ci/version.json
+          fi
+          cd /tmp/ci
+          git init -q -b ci
+          git add -A
+          git -c user.name="HUBTECH CI" -c user.email="ci@hubtech.local" commit -qm "Build ${{ github.run_number }}: ${{ job.status }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci

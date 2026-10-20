@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>Neon Chatbot 🤖</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h2 {
+      color: #fff;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #00f2ff;
+    }
+
+    #chatbox {
+      width: 100%;
+      max-width: 700px;
+      background-color: #1e1e2f;
+      border-radius: 12px;
+      padding: 20px;
+      height: 400px;
+      overflow-y: auto;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message {
+      margin: 10px 0;
+      padding: 12px 16px;
+      border-radius: 16px;
+      max-width: 80%;
+      word-wrap: break-word;
+      font-size: 15px;
+      line-height: 1.4;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user {
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      color: white;
+      align-self: flex-end;
+      text-align: right;
+      margin-left: auto;
+      box-shadow: 0 0 10px #0072ff;
+    }
+
+    .bot {
+      background: linear-gradient(to right, #ff6a00, #ee0979);
+      color: white;
+      align-self: flex-start;
+      margin-right: auto;
+      box-shadow: 0 0 10px #ee0979;
+    }
+
+    #inputArea {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+      background-color: #2a2a3d;
+      color: #fff;
+      outline: none;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+    }
+
+    #sendBtn {
+      padding: 12px 20px;
+      margin-left: 10px;
+      background: linear-gradient(to right, #00f2ff, #00c6ff);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s ease;
+      box-shadow: 0 0 10px #00f2ff;
+    }
+
+    #sendBtn:hover {
+      transform: scale(1.05);
+    }
+
+    ::placeholder {
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+  <h2>Chat with the Bot 🤖</h2>
+  <div id="chatbox"></div>
+  <div id="inputArea">
+    <input type="text" id="userInput" placeholder="Write something... 😊🔥🎯" />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <script>
+    const chatbox = document.getElementById("chatbox");
+    const input = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    function sendMessage() {
+      const userText = input.value.trim();
+      if (!userText) return;
+
+      addMessage("Du", userText, "user");
+      respond(userText.toLowerCase());
+      input.value = "";
+    }
+
+    sendBtn.onclick = sendMessage;
+
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    function addMessage(sender, text, type) {
+      const msg = document.createElement("div");
+      msg.className = `message ${type}`;
+      msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    function respond(text) {
+      let reply = "Hmm... I didn't understand that 🤔";
+
+      if (text.includes("hej")) reply = "Hello! 👋 How are you?";
+      else if (text.includes("farvel")) reply = "Bye! Talk to you soon 🖐️";
+      else if (text.includes("spil")) reply = "🎮 I love games! What do you want to play?";
+      else if (text.includes("hvad kan du")) reply = "I can answer questions, send emojis, and keep you company. 😄";
+      else if (text.includes("hvordan går det")) reply = "Thanks for asking! I'm doing great —ready to chat 💬";
+      else if (text.includes("tak")) reply = "Thank you! 🙏";
+      else if (text.includes("hvem er du")) reply = "I am your digital friend 🤖 – a chatbot with style and a bit of personality!";
+      else if (text.includes("elsker dig")) reply = "Aww 😳 You're sweet! I'm here for you 💙";
+
+      addMessage("Bot", reply, "bot");
+    }
+  </script>
+</body>
+</html>

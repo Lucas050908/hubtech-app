@@ -1,0 +1,102 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-image: url('Vodka-Back.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  color: white;
+}
+
+.container {
+  display: flex;
+  justify-content: space-between;
+  padding: 2%;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.counter {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem 2.5rem;
+  border-radius: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.counter h2 {
+  margin: 0;
+  font-size: 2vw; /* responsiv font */
+}
+
+.counter p {
+  margin: 0;
+  font-size: 1.2vw;
+  color: #d0d0d0;
+}
+
+.vodka img {
+  width: 25vw; /* i stedet for 350px */
+  max-width: 350px;
+  height: auto;
+  cursor: pointer;
+}
+
+.shop {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-left: 2%;
+}
+
+.upgrade {
+  background: #0b1b63;
+  padding: 1rem 1.5rem;
+  margin: 1rem 0;
+  border-radius: 1rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.2vw;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.upgrade:hover {
+  background: #132b8c;
+}
+
+/* Mobiltilpasning */
+@media (max-width: 600px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .vodka img {
+    width: 60vw;
+  }
+
+  .shop {
+    width: 90%;
+    padding-left: 0;
+  }
+
+  .counter h2 {
+    font-size: 5vw;
+  }
+
+  .counter p,
+  .upgrade {
+    font-size: 4vw;
+  }
+}

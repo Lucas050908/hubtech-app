@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Docs Editor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1f1f2f, #2a2a3d);
+      color: #f0f0f0;
+      display: flex;
+      height: 100vh;
+    }
+
+    aside {
+      width: 260px;
+      background-color: #2b2b3c;
+      border-right: 1px solid #444;
+      padding: 1em;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+      overflow-y: auto;
+    }
+
+    aside h3 {
+      margin-top: 0;
+      color: #00f2ff;
+      text-shadow: 0 0 5px #00f2ff;
+    }
+
+    .doc-entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .doc-entry button {
+      background-color: #3a3a4f;
+      border: none;
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      flex: 1;
+      text-align: left;
+      color: #fff;
+      transition: background 0.2s;
+    }
+
+    .doc-entry button:hover {
+      background-color: #505070;
+    }
+
+    .doc-entry .delete-btn {
+      background-color: #ff4c4c;
+      color: white;
+      margin-left: 6px;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #newDocBtn {
+      margin-top: 1em;
+      background: linear-gradient(to right, #00f2ff, #00c6ff);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      box-shadow: 0 0 10px #00f2ff;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: white;
+      padding: 1em 2em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+    }
+
+    .toolbar button {
+      background-color: #fff;
+      color: #2575fc;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+
+    .toolbar button:hover {
+      background-color: #e0e0ff;
+    }
+
+    #editor {
+      margin: 1em 2em;
+      padding: 1.5em;
+      background-color: #fff;
+      flex: 1;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      outline: none;
+      line-height: 1.6;
+      overflow-y: auto;
+      font-size: 16px;
+      color: #333;
+    }
+
+    #editor:focus {
+      border: 2px solid #2575fc;
+    }
+
+    ::selection {
+      background: #2575fc;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <h3>📁 Documents</h3>
+    <div id="docList"></div>
+    <button id="newDocBtn">➕ New document</button>
+  </aside>
+
+  <main>
+    <header>
+      <h2 id="docTitle">Mini Docs</h2>
+      <div class="toolbar">
+        <button onclick="execCmd('bold')"><b>B</b></button>
+        <button onclick="execCmd('italic')"><i>I</i></button>
+        <button onclick="execCmd('underline')"><u>U</u></button>
+        <button onclick="execCmd('insertUnorderedList')">• List</button>
+        <button onclick="execCmd('createLink')">🔗 Link</button>
+      </div>
+    </header>
+
+    <div id="editor" contenteditable="true"></div>
+  </main>
+
+  <script>
+    let currentDoc = null;
+
+    function execCmd(command) {
+      if (command === 'createLink') {
+        const url = prompt("Insert URL:");
+        if (url) document.execCommand(command, false, url);
+      } else {
+        document.execCommand(command, false, null);
+      }
+      saveCurrentDoc();
+    }
+
+    function loadDocs() {
+      const docList = document.getElementById('docList');
+      docList.innerHTML = '';
+      const docs = JSON.parse(localStorage.getItem('docs') || '{}');
+      Object.keys(docs).forEach(name => {
+        const entry = document.createElement('div');
+        entry.className = 'doc-entry';
+
+        const btn = document.createElement('button');
+        btn.textContent = name;
+        btn.onclick = () => loadDoc(name);
+
+        const del = document.createElement('button');
+        del.textContent = '🗑️';
+        del.className = 'delete-btn';
+        del.onclick = () => deleteDoc(name);
+
+        entry.appendChild(btn);
+        entry.appendChild(del);
+        docList.appendChild(entry);
+      });
+    }
+
+    function loadDoc(name) {
+      const docs = JSON.parse(localStorage.getItem('docs') || '{}');
+      currentDoc = name;
+      document.getElementById('editor').innerHTML = docs[name] || '';
+      document.getElementById('docTitle').textContent = name;
+    }
+
+    function saveCurrentDoc() {
+      if (!currentDoc) return;
+      const content = document.getElementById('editor').innerHTML;
+      const docs = JSON.parse(localStorage.getItem('docs') || '{}');
+      docs[currentDoc] = content;
+      localStorage.setItem('docs', JSON.stringify(docs));
+    }
+
+    function deleteDoc(name) {
+      const docs = JSON.parse(localStorage.getItem('docs') || '{}');
+      delete docs[name];
+      localStorage.setItem('docs', JSON.stringify(docs));
+      if (currentDoc === name) {
+        currentDoc = null;
+        document.getElementById('editor').innerHTML = '';
+        document.getElementById('docTitle').textContent = 'Mini Docs';
+      }
+      loadDocs();
+    }
+
+    document.getElementById('newDocBtn').onclick = () => {
+      const name = prompt("Navn på nyt dokument:");
+      if (!name) return;
+      const docs = JSON.parse(localStorage.getItem('docs') || '{}');
+      docs[name] = '';
+      localStorage.setItem('docs', JSON.stringify(docs));
+      loadDocs();
+      loadDoc(name);
+    };
+
+    document.getElementById('editor').addEventListener('input', saveCurrentDoc);
+
+    loadDocs();
+  </script>
+</body>
+</html>
