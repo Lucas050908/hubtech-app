@@ -2,7 +2,7 @@
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { store, refreshSummary } from '../core/store.js';
-import { appById, isLearnApp } from '../core/registry.js';
+import { appById, isLearnApp, entryApps } from '../core/registry.js';
 import { todayPanel } from '../features/today.js';
 import { appCard, profileCard, activityPanel, shortcutsPanel, worldQuickPanel, seasonStrip, projectsPreview, learningPreview, panel } from '../features/widgets.js';
 
@@ -15,7 +15,7 @@ export default {
   render() {
     const u = store.get('user');
     const first = u.displayName.split(' ')[0];
-    const pinned = [...new Set([...(store.get('prefs').pinnedApps || []), 'learning'])].map(appById).filter(a => a && !isLearnApp(a)).slice(0, 4);
+    const pinned = entryApps([...new Set([...(store.get('prefs').pinnedApps || []), 'learning'])]).filter(a => !isLearnApp(a)).slice(0, 4);
     const profileSlot = h('div');
     const renderProfile = (s) => profileSlot.replaceChildren(profileCard(s));
     renderProfile(store.get('summary'));

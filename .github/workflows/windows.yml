@@ -35,6 +35,7 @@ jobs:
 
       - name: Server-tests (på Windows – til info, stopper ikke bygget)
         continue-on-error: true
+        timeout-minutes: 6
         run: python -m unittest discover -s tests -p "test_*.py"
 
       - uses: actions/setup-dotnet@v4

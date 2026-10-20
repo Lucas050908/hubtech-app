@@ -2,7 +2,7 @@
 import { h, clear } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { store, setWorld, setPref } from '../core/store.js';
-import { APPS, access, isLearnApp } from '../core/registry.js';
+import { APPS, access, isLearnApp, visible } from '../core/registry.js';
 import { GUIDES } from '../data/guides.js';
 import { COURSE } from '../data/course-servicetekniker.js';
 import { getProjects } from '../core/services.js';
@@ -29,6 +29,7 @@ function staticItems() {
   const user = store.get('user');
   const items = [];
   for (const a of APPS) {
+    if (!visible(a, user)) continue;
     const acc = access(a, user);
     items.push({ group: isLearnApp(a) ? 'Læring' : 'Apps', title: a.name, sub: acc.ok ? a.tagline : acc.reason, icon: a.icon, hue: a.hue, href: a.route, keywords: (a.keywords || []).join(' '), base: 5, disabled: !acc.ok });
   }

@@ -346,6 +346,21 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
     last_mail INTEGER NOT NULL DEFAULT 0
 );
 """,
+    # v7: Admin – who the owner has given access, and what the admins did (server/adminapp.py)
+    """
+    CREATE TABLE IF NOT EXISTS admin_access (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        granted_by INTEGER,
+        granted_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS admin_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        action TEXT NOT NULL,
+        detail TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+    );
+    """,
 ]
 
 

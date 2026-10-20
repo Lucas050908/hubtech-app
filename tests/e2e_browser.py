@@ -608,7 +608,7 @@ async def main():
         names = await page.locator(".launcher-item .app-card-name").all_text_contents()
         side = await page.locator(".nav-item").all_text_contents()
         check("læring: læringsapps samlet på læringssiden, ikke i launcher og menu",
-              tiles == ["Kodeskolen", "Huskekort", "CircuitPilot", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
+              tiles == ["Kodeskolen", "Kodestumper", "Huskekort", "CircuitPilot", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
 
         # ── Værktøjskasse: IT tools ──
         await page.goto(BASE + "/#/learn/toolkit")
@@ -910,6 +910,33 @@ async def main():
         paused = not await page.evaluate("import('/js/features/piano.js').then(m => m.isPlaying())")
         check("baggrundsmusik: klaveret spiller og kan sættes på pause", playing and paused)
         await page.keyboard.press("Escape")
+
+        # ── app groups: Planlæg / Service / Office share one menu entry with tabs; Kodestumper lives in Læring ──
+        await page.goto(BASE + "/#/apps/tasks"); await page.wait_for_selector(".suite-tabs")
+        tabs = await page.locator(".suite-tabs .learn-tab").all_text_contents()
+        check("app-grupper: Opgaver har faner for Planlæg", [t.strip() for t in tabs] == ["Kalender", "Opgaver", "Fokus"], tabs)
+        await page.goto(BASE + "/#/apps"); await page.wait_for_selector(".launcher-item")
+        names = await page.locator(".launcher-item .app-card-title, .launcher-item h3").all_text_contents()
+        joined = " | ".join(names)
+        check("app-grupper: én indgang for Planlæg og Service", "Planlæg" in joined and "Service" in joined and "Opgaver" not in joined and "Lager" not in joined, joined[:300])
+        await page.goto(BASE + "/#/apps/snippets"); await page.wait_for_timeout(800)
+        check("app-grupper: Kodestumper ligger under Guides & Læring", "/learn/snippets" in page.url)
+        # ── Minecraft-server: address with copy, editable by the owner ──
+        await page.goto(BASE + "/#/apps/minecraft"); await page.wait_for_selector(".mc-addr-btn")
+        check("minecraft: adressen vises", "b-cabin.gl.joinmc.link" in (await page.text_content(".mc-addr-btn") or ""))
+        await page.click(".app-hero >> text=Rediger"); await page.wait_for_selector(".mc-edit")
+        await page.fill(".mc-edit input[aria-label='Adresse (Java)']", "play.hubtech.dk:25566")
+        await page.fill(".mc-edit input[aria-label='Version']", "1.21.9")
+        await page.click(".mc-edit >> text=Gem"); await page.wait_for_selector(".mc-addr-btn")
+        check("minecraft: ejeren kan ændre adresse og version", "play.hubtech.dk:25566" in (await page.text_content(".mc-addr-btn") or "") and "1.21.9" in (await page.text_content(".app-hero") or ""))
+        await page.screenshot(path=f"{OUT}/e2e_minecraft.png", full_page=True)
+        # ── Admin: the owner sees it and can give access ──
+        await page.goto(BASE + "/#/apps/admin"); await page.wait_for_selector(".adm-tiles")
+        check("admin: ejeren ser overblikket", await page.locator(".adm-tile").count() >= 6)
+        await page.goto(BASE + "/#/apps/admin/users"); await page.wait_for_selector(".adm-user")
+        await page.screenshot(path=f"{OUT}/e2e_admin.png", full_page=True)
+        await page.goto(BASE + "/#/settings/apps"); await page.wait_for_selector(".settings-body >> text=På denne enhed")
+        check("indstillinger: notifikationer på enhed og mail", await page.locator(".settings-body >> text=På mail").count() >= 1 and await page.locator(".settings-body >> text=Mailserver").count() >= 1)
 
         # ── App-værkstedet: templates, live preview in a sandbox, console, AI writes files ──
         await page.goto(BASE + "/#/apps/studio")

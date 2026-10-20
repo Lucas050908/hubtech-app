@@ -17,6 +17,8 @@ export const DEFAULT_WORLD = {
   weather: 'auto',         // auto | clear | rain | snow | fog
   motion: 'system',        // system | full | reduced
   parallax: true,
+  meteors: 'auto',         // auto (night and dusk) | on | off – shooting stars
+  cloudShadows: true,      // shadows of clouds drifting over the land
   useLocation: false,      // hemisphere/daylight from geolocation (opt-in)
   lat: null,
   landscape: 'valley',     // valley | highlands | fjord | alps | hills | coast | lakes

@@ -11,7 +11,7 @@
  *  route        hash route the app lives at
  *  category     'workspace' | 'learning' | 'system'
  *  status       'available' | 'beta' | 'coming'
- *  requires     { role?: 'owner', integration?: 'cursor' | 'byteforge' }
+ *  requires     { role?: 'owner', admin?: true (owner + those the owner gave access – hidden for everyone else), integration?: 'cursor' | 'byteforge' }
  *  art          landscape thumbnail settings for its card
  *  page         lazy loader for the page module (export default { render(ctx) })
  *  keywords     extra words for search
@@ -148,9 +148,23 @@ export const APPS = [
   {
     id: 'snippets', name: 'Kodestumper', tagline: 'Dit bibliotek af kode og kommandoer.',
     description: 'Gem kodestykker, terminal-kommandoer og konfigurationer med sprog og tags. Søg, kopiér med ét klik, og hav dem med på alle dine enheder.',
-    icon: 'code', hue: 'var(--hue-snippets)', route: '#/apps/snippets', category: 'workspace', status: 'available',
+    icon: 'code', hue: 'var(--hue-snippets)', route: '#/learn/snippets', category: 'learning', status: 'available',
     art: { season: 'winter', time: 'night', focusX: 0.4, tint: '#c084fc' }, page: () => import('../pages/snippets.js'),
     keywords: ['kode', 'snippet', 'kommando', 'terminal', 'python', 'javascript', 'bash', 'config'],
+  },
+  {
+    id: 'minecraft', name: 'Minecraft-server', tagline: 'HUBTECH’s Minecraft-server – adresse, status og regler.',
+    description: 'Alt om HUBTECH’s Minecraft-server: adressen med en kopiér-knap, om serveren er online, hvor mange der spiller, hvordan du kommer ind, regler, links og nyheder. Ejeren og administratorerne kan ændre oplysningerne.',
+    icon: 'gamepad', hue: 'var(--hue-minecraft)', route: '#/apps/minecraft', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.5, tint: '#4ade80' }, page: () => import('../pages/minecraft.js'),
+    keywords: ['minecraft', 'server', 'ip', 'adresse', 'spil', 'java', 'bedrock', 'mc'],
+  },
+  {
+    id: 'admin', name: 'Admin', tagline: 'Styr platformen – kun for dem, du giver adgang.',
+    description: 'Overblik over brugere og aktivitet, anmeldelser fra Fællesskab, beskeder til alle og en log over, hvad administratorerne gør. Kun ejeren og dem, ejeren giver adgang, kan se og åbne appen.',
+    icon: 'shield', hue: 'var(--hue-admin)', route: '#/apps/admin', category: 'system', status: 'available', requires: { admin: true },
+    art: { season: 'winter', time: 'night', focusX: 0.5, tint: '#ef4444' }, page: () => import('../pages/admin.js'),
+    keywords: ['admin', 'administrator', 'brugere', 'moderation', 'anmeldelser', 'besked', 'adgang', 'kontrol'],
   },
   {
     id: 'learning', name: 'Guides & Læring', tagline: 'Kurser, guides og hjælp',
@@ -178,12 +192,39 @@ export const APPS = [
 export const appById = (id) => APPS.find(a => a.id === id);
 /** Learning apps live inside Guides & Læring (#/learn/<id>) instead of the app launcher and sidebar. */
 export const isLearnApp = (a) => !!a && a.category === 'learning' && a.id !== 'learning';
-const LEARN_ORDER = ['codeschool', 'flashcards', 'circuitpilot', 'toolkit'];
+const LEARN_ORDER = ['codeschool', 'snippets', 'flashcards', 'circuitpilot', 'toolkit'];
 export const LEARN_APPS = APPS.filter(isLearnApp).sort((a, b) => (LEARN_ORDER.indexOf(a.id) + 1 || 99) - (LEARN_ORDER.indexOf(b.id) + 1 || 99));
 
 /** Is the app usable by this user? Returns { ok, reason } */
 export function access(app, user) {
   if (app.status === 'coming') return { ok: false, reason: 'Kommer snart', kind: 'coming' };
   if (app.requires?.role === 'owner' && user?.role !== 'owner') return { ok: false, reason: 'Kun for platformens ejer', kind: 'locked' };
+  if (app.requires?.admin && !user?.admin) return { ok: false, reason: 'Kun for dem, ejeren har givet adgang', kind: 'hidden' };
   return { ok: true };
 }
+
+/** Apps the user may see at all (Admin is invisible to people without access). */
+export const visible = (app, user) => access(app, user).kind !== 'hidden';
+
+/**
+ * App groups: apps that belong together share one entry in the menu and the app overview, with tabs on top
+ * (like Guides & Læring). The first member is where the group opens. Old links to every app still work.
+ */
+export const SUITES = [
+  { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
+  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver og fokus-timer.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus'] },
+  { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
+];
+export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;
+/** The app as it is shown in menus: a group's first member carries the group's name; the others are hidden there. */
+export function entryApp(app) {
+  if (!app) return null;
+  const s = suiteOf(app.id);
+  if (!s) return app;
+  const lead = appById(s.members[0]);
+  return { ...lead, name: s.name, tagline: s.tagline || lead.tagline, icon: s.icon || lead.icon, hue: s.hue || lead.hue, suite: s.id,
+    description: `${s.tagline} Samlet i én app med faner: ${s.members.map(id => appById(id)?.name).join(', ')}.`,
+    keywords: s.members.flatMap(id => [appById(id)?.name.toLowerCase(), ...(appById(id)?.keywords || [])]) };
+}
+/** Unique menu entries for a list of app ids (pinned apps). */
+export const entryApps = (ids) => [...new Map(ids.map(appById).filter(Boolean).map(entryApp).map(a => [a.id, a])).values()];

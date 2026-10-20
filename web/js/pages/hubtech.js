@@ -289,7 +289,10 @@ function classicSection() {
     }
   })();
   const copyIp = h('button', { class: 'btn btn-sm', html: svg('copy') + '<span>Kopiér IP</span>' });
-  copyIp.addEventListener('click', async () => { try { await navigator.clipboard.writeText(MC_IP); toast('Server-IP kopieret', { type: 'ok', ms: 1500 }); } catch { toast('Kunne ikke kopiere', { type: 'bad' }); } });
+  let mcIp = MC_IP;
+  const mcSub = h('div', { class: 'row-sub mono' }, `${MC_IP} · version 1.21.8`);
+  api.get('/api/mc').then(({ server: s }) => { mcIp = s.port ? `${s.address}:${s.port}` : s.address; mcSub.textContent = [mcIp, s.version && `version ${s.version}`].filter(Boolean).join(' · '); }).catch(() => {});
+  copyIp.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); try { await navigator.clipboard.writeText(mcIp); toast('Server-IP kopieret', { type: 'ok', ms: 1500 }); } catch { toast('Kunne ikke kopiere', { type: 'bad' }); } });
   return h('details', { class: 'ofh-classic-wrap glass panel', style: { marginTop: '16px' } },
     h('summary', { class: 'panel-head' }, h('h2', { class: 'panel-title' }, icon('hubtech'), 'Klassisk HUBTECH'), h('span', { class: 'faint', style: { fontSize: 'var(--fs-xs)' } }, 'Pingochat, GameHub, chatbot, holdet og Minecraft-serveren'), icon('chevronDown')),
     modBox, cfg,
@@ -298,8 +301,8 @@ function classicSection() {
         h('ul', { class: 'ht-team' }, TEAM.map(([n, r]) => h('li', null, h('span', { class: 'avatar solid' }, n[0]), h('div', null, h('b', null, n), h('div', { class: 'faint' }, r)))))),
       h('div', null, h('h3', { class: 'ofh-sub' }, icon('bell'), 'Community'),
         h('div', { class: 'list' },
-          h('div', { class: 'row', style: { '--app': 'var(--hue-circuitpilot)' } }, h('span', { class: 'row-icon solid' }, icon('gamepad')),
-            h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'HUBTECH Minecraft-server'), h('div', { class: 'row-sub mono' }, `${MC_IP} · version 1.21.8`)), copyIp),
+          h('a', { class: 'row', href: '#/apps/minecraft', style: { '--app': 'var(--hue-minecraft)' } }, h('span', { class: 'row-icon solid' }, icon('gamepad')),
+            h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'HUBTECH Minecraft-server'), mcSub), copyIp),
           h('a', { class: 'row', href: 'https://discord.gg/7dCpmeBg', target: '_blank', rel: 'noopener' }, h('span', { class: 'row-icon solid' }, icon('chat')),
             h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Support på Discord'), h('div', { class: 'row-sub' }, 'Spørgsmål, idéer og hjælp'))),
           h('a', { class: 'row', href: 'mailto:HUBTECH2025@proton.me' }, h('span', { class: 'row-icon solid' }, icon('mail')),

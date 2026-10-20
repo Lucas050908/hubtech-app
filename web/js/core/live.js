@@ -8,6 +8,7 @@ import { store } from './store.js';
 import { toast } from './ui.js';
 import { navigate } from './router.js';
 import { getNotify, pling } from '../features/appsettings.js';
+import { api } from './api.js';
 import { isAndroidApp, showNotification } from './android.js';
 
 const subs = new Map();
@@ -78,6 +79,8 @@ function notify(title, text, path) {
   if (Date.now() - lastPing > 4000) { lastPing = Date.now(); try { navigator.vibrate?.(40); } catch { /* */ } }
 }
 const KIND = { friend: 'friend', snap: 'snap', 'cal-invite': 'calendar', report: 'report' };
+// the owner changed my access (fx to Admin) – fetch my profile again so menus update
+onLive('me-changed', () => { api.get('/api/me').then(r => store.set('user', r.user)).catch(() => {}); });
 onLive('notify', (ev) => { const k = KIND[ev.kind]; if (k && getNotify()[k] === false) return; pling(); notify(ev.title, ev.text, ev.path); });
 onLive('msg', (ev) => {
   const me = store.get('user');

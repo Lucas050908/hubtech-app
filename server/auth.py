@@ -176,4 +176,15 @@ def public_user(row) -> dict:
         "createdAt": row["created_at"],
         "lastLoginAt": row["last_login_at"],
         "onboarding": {"done": bool(row["onboarding_done"]), "step": row["onboarding_step"]},
+        "admin": _is_admin(row),
     }
+
+
+def _is_admin(row):
+    """Owner, or someone the owner gave access to the Admin app."""
+    if row["role"] == "owner":
+        return True
+    try:
+        return bool(db.one("SELECT 1 FROM admin_access WHERE user_id = ?", (row["id"],)))
+    except Exception:
+        return False

@@ -618,3 +618,53 @@ body.ai-open .toasts { right: 460px; bottom: 22px; }
 .as-preview.is-mirror { transform: scaleX(-1); }
 .as-test { display: grid; gap: 8px; justify-items: start; width: 100%; }
 .set-control .select { max-width: 100%; }
+
+/* ── Admin ── */
+.admin-page .adm-tabs { margin: 14px 0; overflow-x: auto; }
+.adm-body { display: grid; gap: 16px; }
+.adm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.adm-tile { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--r-lg); }
+.adm-tile-icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 12px; color: var(--hue-admin); background: color-mix(in srgb, var(--hue-admin) 16%, transparent); }
+.adm-tile-value { font: 700 22px/1.1 var(--font-display, inherit); }
+.adm-tile-label { font-size: var(--fs-sm); color: var(--text-2); }
+.adm-tile-hint { font-size: 12px; margin-top: 2px; }
+.adm-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.adm-head .input { max-width: 320px; }
+.adm-users, .adm-reports, .adm-log { display: grid; gap: 8px; }
+.adm-user { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--r-md); }
+.adm-user-text { flex: 1; min-width: 0; }
+.adm-user-text .faint { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.adm-user-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.adm-access { display: inline-flex; gap: 8px; align-items: center; font-size: var(--fs-sm); font-weight: 600; }
+.adm-report { display: grid; gap: 8px; padding: 12px 14px; border-radius: var(--r-md); }
+.adm-report-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.adm-snap { margin: 0; padding: 8px 12px; border-left: 3px solid var(--hue-admin); background: var(--glass-strong); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.adm-log-row { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.adm-log-row > div { flex: 1; min-width: 0; }
+.adm-announce textarea { resize: vertical; }
+@media (max-width: 640px) { .adm-user { flex-wrap: wrap; } .adm-user-actions { width: 100%; justify-content: flex-start; } }
+
+/* ── Minecraft-server ── */
+.mc-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+.mc-grid > .stack { display: grid; gap: 16px; }
+@media (max-width: 900px) { .mc-grid { grid-template-columns: 1fr; } }
+.mc-addr { display: grid; gap: 4px; margin-top: 10px; }
+.mc-addr-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--hue-minecraft) 60%, transparent); background: color-mix(in srgb, var(--hue-minecraft) 10%, var(--glass-strong)); color: var(--text); font-size: clamp(15px, 2.2vw, 20px); cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.mc-addr-btn:hover { background: color-mix(in srgb, var(--hue-minecraft) 18%, var(--glass-strong)); }
+.mc-addr-btn svg { flex: none; width: 18px; height: 18px; color: var(--hue-minecraft); }
+.mc-port { font-size: 12px; }
+.mc-st-row { display: flex; gap: 12px; align-items: center; padding: 8px 0; }
+.mc-st-main { flex: 1; min-width: 0; }
+.mc-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.mc-dot.is-on { background: var(--ok, #22c55e); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok, #22c55e) 25%, transparent); }
+.mc-dot.is-off { background: var(--bad, #ef4444); }
+.mc-motd { margin-top: 4px; font-family: var(--font-mono); font-size: 13px; color: var(--text-2); }
+.mc-players { display: grid; justify-items: end; } .mc-players b { font-size: 22px; }
+.mc-names { display: flex; gap: 6px; flex-wrap: wrap; }
+.mc-steps, .mc-rules { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 6px; }
+.mc-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.mc-news { display: grid; gap: 12px; margin-top: 8px; } .mc-news p { margin: 4px 0 0; white-space: pre-wrap; }
+.mc-news-edit { display: grid; gap: 6px; margin-bottom: 10px; }
+.mc-news-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--glass-strong); }
+.mc-edit textarea { resize: vertical; }
+.mc-edit .set-control .row .input:last-child { max-width: 110px; }

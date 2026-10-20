@@ -29,8 +29,8 @@ from email.utils import formataddr, make_msgid
 from . import db, live, p256
 from .api import ApiError, body_str, require_owner, require_user
 
-KINDS = ("dm", "mention", "friend", "snap", "calendar", "report", "call")
-LIVE_KIND = {"friend": "friend", "snap": "snap", "cal-invite": "calendar", "report": "report"}
+KINDS = ("dm", "mention", "friend", "snap", "calendar", "report", "call", "announce")
+LIVE_KIND = {"friend": "friend", "snap": "snap", "cal-invite": "calendar", "report": "report", "announce": "announce", "admin": "announce"}
 DEFAULT_PREFS = {"kinds": {k: True for k in KINDS}, "email": False, "emailDelay": 15}
 # push services of the browsers – the server never sends to any other host (no SSRF through a fake subscription)
 PUSH_HOSTS = re.compile(r"^(fcm\.googleapis\.com|android\.googleapis\.com|updates\.push\.services\.mozilla\.com|"

@@ -39,6 +39,7 @@ function apply() {
     intensity: w.intensity, brightness: w.brightness, parallax: w.parallax && !reduced,
     reduced: reduced || !!useImage,          // own picture: the landscape stays still (and hidden) – no CPU spent
     hq: w.quality === 'high',
+    meteors: w.meteors || 'auto', cloudShadows: w.cloudShadows !== false,
     focus,
   });
   // UI readability scrim: lighter on the landing page, stronger inside dense app screens

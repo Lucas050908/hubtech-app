@@ -118,7 +118,7 @@ export default {
       }
     }).catch(() => { clear(actList).appendChild(h('p', { class: 'faint' }, 'Historikken kunne ikke hentes.')); });
 
-    const quickApps = APPS.filter(a => a.status === 'available' && (a.id !== 'cursor' || owner)).slice(0, 6);
+    const quickApps = APPS.filter(a => a.status === 'available' && a.id !== 'admin' && (a.id !== 'cursor' || owner)).slice(0, 6);
     return h('div', { class: 'page dashboard' },
       h('div', { class: 'page-head' },
         h('div', null, h('div', { class: 'eyebrow' }, 'Personligt dashboard'), h('h1', null, 'Dit overblik'), h('p', null, 'Fremdrift, favoritter, integrationer og historik – samlet ét sted.')),

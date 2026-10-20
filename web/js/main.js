@@ -4,8 +4,8 @@ import { api, onUnauthorized } from './core/api.js';
 import { store, loadUserData, resetSessionState } from './core/store.js';
 import { route, startRouter, navigate, currentPath } from './core/router.js';
 import { buildShell, hasShell, getOutlet, setActiveNav } from './core/shell.js';
-import { appById, access, isLearnApp } from './core/registry.js';
-import { learnTabs } from './features/learnnav.js';
+import { appById, access, isLearnApp, suiteOf } from './core/registry.js';
+import { learnTabs, suiteTabs } from './features/learnnav.js';
 import { initAutoSync } from './features/autosync.js';
 import { startLive } from './core/live.js';
 import { initWorld, setFocus } from './world/controller.js';
@@ -135,6 +135,7 @@ async function showInShell(mod, { params = {}, app = null, title, focus } = {}, 
   if (seq !== renderSeq) { try { mod.destroy?.(); } catch { /* */ } return; }
   activePage = mod;
   if (currentPath().startsWith('/learn') && node?.classList?.contains('page')) node.prepend(learnTabs(currentPath()));
+  else if (app && suiteOf(app.id) && node?.classList?.contains('page')) node.prepend(suiteTabs(suiteOf(app.id), currentPath()));
   outlet.appendChild(node);
   document.title = `${title || mod.title || app?.name || 'HUBTECH'} · HUBTECH`;
   window.scrollTo(0, 0);

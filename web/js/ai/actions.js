@@ -2,7 +2,7 @@
 const pad = (n) => String(n).padStart(2, '0');
 
 // ── actions ──
-const PAGES = { kalender: '/apps/calendar', noter: '/apps/notes', opgaver: '/apps/tasks', kodestumper: '/apps/snippets', kunder: '/apps/customers', 'fællesskab': '/apps/community', faellesskab: '/apps/community', kodeskolen: '/learn/codeschool', indstillinger: '/settings', servicehjælp: '/apps/servicehelp', lager: '/apps/inventory', tidsregistrering: '/apps/timesheet' };
+const PAGES = { kalender: '/apps/calendar', noter: '/apps/notes', opgaver: '/apps/tasks', kodestumper: '/learn/snippets', kunder: '/apps/customers', 'fællesskab': '/apps/community', faellesskab: '/apps/community', kodeskolen: '/learn/codeschool', indstillinger: '/settings', servicehjælp: '/apps/servicehelp', lager: '/apps/inventory', tidsregistrering: '/apps/timesheet' };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/, TIME_RE = /^\d{1,2}[:.]\d{2}$/;
 const t5 = (s) => { if (!s || !TIME_RE.test(String(s).trim())) return null; const [h, m] = String(s).trim().split(/[:.]/); return `${pad(Math.min(23, +h))}:${m}`; };
 

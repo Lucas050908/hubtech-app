@@ -2,7 +2,7 @@
 import { h, clear, timeAgo } from './dom.js';
 import { icon, logo, svg } from './icons.js';
 import { store, setPref, setWorld } from './store.js';
-import { APPS, appById, access, isLearnApp } from './registry.js';
+import { APPS, appById, access, isLearnApp, visible, entryApps, suiteOf } from './registry.js';
 import { api } from './api.js';
 import { paintStill, describeWorld } from '../world/controller.js';
 import { SEASONS, SEASON_LABEL } from '../world/palettes.js';
@@ -80,7 +80,9 @@ export function setActiveNav(path) {
   }
   for (const a of appsNavEl.querySelectorAll('.nav-item')) {
     const app = appById(a.dataset.id);
-    const on = app && path.startsWith(app.route.replace(/^#/, '')) && app.route !== '#/';
+    const s = suiteOf(a.dataset.id);
+    const routes = s ? s.members.map(id => appById(id)?.route).filter(Boolean) : app ? [app.route] : [];
+    const on = routes.some(r => path.startsWith(r.replace(/^#/, '')) && r !== '#/');
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
 }
@@ -96,7 +98,7 @@ function renderAppsNav() {
   if (!appsNavEl) return;
   clear(appsNavEl);
   const user = store.get('user');
-  const pinned = (store.get('prefs').pinnedApps || []).map(appById).filter(a => a && !isLearnApp(a));
+  const pinned = entryApps(store.get('prefs').pinnedApps || []).filter(a => !isLearnApp(a) && visible(a, user));
   for (const app of pinned) {
     const acc = access(app, user);
     appsNavEl.appendChild(h('a', {

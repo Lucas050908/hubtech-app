@@ -258,6 +258,8 @@ function worldTab() {
       row('Animationer', 'Mængden af partikler og bevægelse', mkRange('intensity', 0, 1, 0.05, 'Animationernes intensitet')),
       row('Baggrundens lysstyrke', 'Dæmp verdenen for mere ro', mkRange('brightness', 0.4, 1.1, 0.05, 'Lysstyrke')),
       row('Dybdeeffekt', 'Landskabet bevæger sig let med musen', parallax),
+      row('Stjerneskud', 'Meteorer, der flyver over himlen – også små stjerneskudsregn', segmented([{ value: 'auto', label: 'Om aftenen og natten' }, { value: 'on', label: 'Altid' }, { value: 'off', label: 'Fra' }], w().meteors || 'auto', (v) => setWorld({ meteors: v }), { label: 'Stjerneskud' })),
+      row('Skyernes skygger', 'Bløde skygger, der driver hen over landskabet på klare dage', switchControl({ checked: w().cloudShadows !== false, label: 'Skyernes skygger', onChange: (v) => setWorld({ cloudShadows: v }) })),
       row('Bevægelse', 'Reduceret viser et stillbillede og slår overgange fra', motion),
       row('Ydeevne', 'Telefoner og langsomme computere starter i let tilstand, og verdenen skruer selv ned (til sidst et stillbillede), hvis den bliver for tung.', perfControl())));
 }
@@ -480,6 +482,7 @@ function notifyPanel() {
     t('snap', 'Snaps', 'Når du får en snap'),
     t('calendar', 'Kalenderinvitationer', 'Når nogen deler en kalender eller aftale med dig'),
     t('report', 'Anmeldelser', 'Når der kommer en anmeldelse på en server, du styrer'),
+    t('announce', 'Beskeder fra administratorerne', 'Nyheder og vigtige beskeder til alle brugere'),
     row('Lyd i appen', 'Et blødt pling, når HUBTECH er åben', sw('Lyd ved notifikationer', () => n.sound, (v) => setNotify({ sound: v }))));
 }
 

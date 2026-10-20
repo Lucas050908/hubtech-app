@@ -1415,15 +1415,16 @@ def cm_report(req, _):
     if server_id:
         notify |= {r["user_id"] for r in db.all_rows("SELECT user_id FROM cm_members WHERE server_id = ? AND role IN ('owner','admin','moderator')", (server_id,))}
     notify |= {r["id"] for r in db.all_rows("SELECT id FROM users WHERE role = 'owner'")}
+    notify |= {r["user_id"] for r in db.all_rows("SELECT user_id FROM admin_access")}
     live.publish(notify - {u["id"]}, {"type": "notify", "kind": "report", "title": "Ny anmeldelse", "text": "Noget er blevet anmeldt i Fællesskab.", "path": "/apps/community/reports"})
     return 201, {"ok": True}
 
 
 def cm_reports(req, _):
     """Moderators see reports from their servers; the platform owner sees everything."""
-    u = require_cm(req)
+    u = _report_user(req)
     show = _q(req, "show") or "open"
-    if u["role"] == "owner":
+    if u["role"] == "owner" or _platform_admin(u["id"]):
         sql, args = "SELECT * FROM cm_reports WHERE 1=1", []
     else:
         sids = [r["server_id"] for r in db.all_rows("SELECT server_id FROM cm_members WHERE user_id = ? AND role IN ('owner','admin','moderator')", (u["id"],))]
@@ -1441,12 +1442,23 @@ def cm_reports(req, _):
     } for r in rows]}
 
 
+def _platform_admin(uid):
+    from .adminapp import is_admin
+    return is_admin(uid)
+
+
+def _report_user(req):
+    """Platform admins (Admin app) handle reports without joining Fællesskab; others need a Fællesskab profile."""
+    u = require_user(req)
+    return u if _platform_admin(u["id"]) else require_cm(req)
+
+
 def cm_report_handle(req, params):
-    u = require_cm(req)
+    u = _report_user(req)
     r = db.one("SELECT * FROM cm_reports WHERE id = ?", (_int(params["id"]),))
     if not r:
         raise ApiError(404, "Anmeldelsen findes ikke.", "not_found")
-    if u["role"] != "owner":
+    if u["role"] != "owner" and not _platform_admin(u["id"]):
         if not r["server_id"]:
             raise ApiError(403, "Kun platformens ejer kan behandle denne anmeldelse.", "forbidden")
         _need(r["server_id"], u["id"], "moderator")

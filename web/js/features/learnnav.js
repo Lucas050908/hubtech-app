@@ -1,7 +1,7 @@
 /** Tab bar shown on every page under Guides & Læring, so all learning is one section. */
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { LEARN_APPS } from '../core/registry.js';
+import { LEARN_APPS, appById } from '../core/registry.js';
 
 export function learnTabs(path) {
   const tabs = [
@@ -11,6 +11,17 @@ export function learnTabs(path) {
   const nav = h('nav', { class: 'learn-tabs', 'aria-label': 'Guides & Læring' },
     tabs.map(t => h('a', { class: ['learn-tab', t.on && 'is-on'], href: t.href, 'aria-current': t.on ? 'page' : null, style: { '--app': t.hue } }, icon(t.icon), h('span', null, t.label))));
   // on a phone the bar scrolls sideways – keep the current tab visible (without scrolling the page)
+  requestAnimationFrame(() => { const on = nav.querySelector('.is-on'); if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2; });
+  return nav;
+}
+
+/** Tabs for an app group (Planlæg, Service, HUBTECH Office) – same look as Guides & Læring. */
+export function suiteTabs(suite, path) {
+  const nav = h('nav', { class: 'learn-tabs suite-tabs', 'aria-label': suite.name },
+    suite.members.map(appById).filter(Boolean).map(a => {
+      const on = path === a.route.slice(1) || path.startsWith(a.route.slice(1) + '/');
+      return h('a', { class: ['learn-tab', on && 'is-on'], href: a.route, 'aria-current': on ? 'page' : null, style: { '--app': a.hue } }, icon(a.icon), h('span', null, a.name));
+    }));
   requestAnimationFrame(() => { const on = nav.querySelector('.is-on'); if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2; });
   return nav;
 }

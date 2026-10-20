@@ -1177,8 +1177,10 @@ export class World {
     const off = (d) => -M + this.px * M * d;
     ctx.globalAlpha = alpha;
     ctx.drawImage(S.layers.sky, off(0.15), this.py * 3);
-    // clouds behind the mountains
     const sec = (t - this.time0) / 1000;
+    // shooting stars – in the sky, behind clouds and mountains
+    if (S === this.scene) this.meteors(S, sec, alpha, still);
+    // clouds behind the mountains
     for (const c of S.clouds) {
       const span = W + c.w * 2;
       const x = ((c.x * span + sec * c.speed * W * (still ? 0 : 0.6 + k * 0.6)) % span) - c.w + off(0.25) + M;
@@ -1191,6 +1193,82 @@ export class World {
     // living light on the lake
     this.lakeGlitter(S, sec, alpha, off(0.6));
     ctx.drawImage(S.layers.front, off(1), this.py * 10);
+    this.cloudShadows(S, sec, alpha, still);
+  }
+
+  /** Shooting stars: one now and then, and sometimes a small shower. Night and dusk (or always, if chosen). */
+  meteors(S, sec, alpha, still) {
+    const mode = this.cfg.meteors || 'auto';
+    const { W, H, T, P } = S;
+    const sky = P.time === 'night' ? 1 : P.time === 'dusk' ? 0.75 : P.time === 'dawn' ? 0.5 : 0.32;
+    if (still || mode === 'off' || this.quality >= 3 || P.overcast || S.weather === 'rain' || S.weather === 'fog') { this._met = []; return; }
+    if (mode === 'auto' && !(P.time === 'night' || P.time === 'dusk')) { this._met = []; return; }
+    const list = this._met ||= [];
+    const rng = this.rng, k = Math.max(0.25, this.cfg.intensity);
+    if (this._metNext == null || this._metNext - sec > 60) this._metNext = sec + 1.5 + rng() * 3;
+    if (sec >= this._metNext) {
+      const shower = rng() < 0.14 ? 3 + Math.floor(rng() * 4) : 1;
+      const left = rng() < 0.7;                                       // most fly towards the lower left
+      for (let i = 0; i < shower; i++) {
+        const ang = (left ? Math.PI * 0.78 : Math.PI * 0.22) + (rng() - 0.5) * 0.18;
+        list.push({ x: W * (left ? 0.3 + rng() * 0.75 : -0.05 + rng() * 0.7), y: H * T.horizon * (0.04 + rng() * 0.42),
+          dx: Math.cos(ang), dy: Math.sin(ang), v: W * (0.42 + rng() * 0.5), len: W * (0.08 + rng() * 0.1) * (shower > 1 ? 0.8 : 1),
+          life: 0.55 + rng() * 0.75, born: sec + i * (0.15 + rng() * 0.35), w: Math.max(1.6, 1.6 * S.scale) * (1 + rng() * 0.9) });
+      }
+      this._metNext = sec + ((P.time === 'night' ? 2.5 : 5) + rng() * (P.time === 'night' ? 7 : 12)) / k;
+    }
+    if (!list.length) return;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let i = list.length - 1; i >= 0; i--) {
+      const m = list[i], age = sec - m.born;
+      if (age < 0) continue;
+      if (age > m.life) { list.splice(i, 1); continue; }
+      const f = Math.sin(Math.PI * age / m.life);
+      const hx = m.x + m.dx * m.v * age + this.px * S.M * 0.15, hy = m.y + m.dy * m.v * age;
+      const tl = m.len * Math.min(1, age * 3.5);
+      const tx = hx - m.dx * tl, ty = hy - m.dy * tl;
+      const g = ctx.createLinearGradient(hx, hy, tx, ty);
+      g.addColorStop(0, `rgba(255,255,255,${Math.min(1, 1.2 * f * sky * alpha)})`);
+      g.addColorStop(0.3, `rgba(200,222,255,${0.6 * f * sky * alpha})`);
+      g.addColorStop(1, 'rgba(160,190,255,0)');
+      ctx.strokeStyle = g; ctx.lineWidth = m.w;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(tx, ty); ctx.stroke();
+      const r = m.w * 7;
+      ctx.globalAlpha = Math.min(1, f * sky * alpha);
+      ctx.drawImage(tintedGlow('#eaf2ff'), hx - r, hy - r, r * 2, r * 2);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  /** Soft shadows of clouds drifting over the land and the lake on bright days. */
+  cloudShadows(S, sec, alpha, still) {
+    const { W, H, T, P } = S;
+    if (this.cfg.cloudShadows === false || this.quality >= 3) return;
+    if (!(P.time === 'day' || P.time === 'dawn' || P.time === 'dusk') || P.overcast || S.weather === 'rain' || S.weather === 'fog') return;
+    if (!S.shadowImg) {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0, 'rgba(8,16,32,1)'); g.addColorStop(0.55, 'rgba(8,16,32,.55)'); g.addColorStop(1, 'rgba(8,16,32,0)');
+      x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+      S.shadowImg = c;
+      const r = this.rng;
+      S.shadowBlobs = Array.from({ length: 5 }, () => ({ x: r(), y: T.horizon + 0.04 + r() * (0.92 - T.horizon), w: 0.28 + r() * 0.34, h: 0.05 + r() * 0.07, v: 0.005 + r() * 0.006 }));
+    }
+    const ctx = this.ctx;
+    const base = (P.time === 'day' ? 0.2 : 0.12) * alpha * (0.5 + 0.5 * this.cfg.intensity);
+    for (const b of S.shadowBlobs) {
+      const bw = b.w * W, span = W + bw * 2;
+      const x = ((b.x * span + sec * b.v * W * (still ? 0 : 1)) % span) - bw + this.px * S.M * 0.6;
+      const yy = b.y * H + this.py * 8;
+      const persp = 0.55 + 0.9 * (b.y - T.horizon);                  // nearer = bigger
+      ctx.globalAlpha = base;
+      ctx.drawImage(S.shadowImg, x, yy - (b.h * H * persp) / 2, bw * persp, b.h * H * persp);
+    }
+    ctx.globalAlpha = 1;
   }
 
   lakeGlitter(S, sec, alpha, ox) {

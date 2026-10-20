@@ -23,12 +23,14 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "server"
 
-from server import api, auth, autosync, backup, byteforge_runner, calls, config, db, notify, social, studio  # noqa: E402
+from server import api, auth, autosync, backup, adminapp, byteforge_runner, calls, config, db, minecraft, notify, social, studio  # noqa: E402
 
 social.install(api)
 studio.install(api)
 calls.install(api)
 notify.install(api)
+adminapp.install(api)
+minecraft.install(api)
 
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")

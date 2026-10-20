@@ -2,7 +2,7 @@
 import { h, clear } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { store, setPref } from '../core/store.js';
-import { APPS, LEARN_APPS, access, isLearnApp } from '../core/registry.js';
+import { APPS, LEARN_APPS, access, isLearnApp, visible, suiteOf, entryApp } from '../core/registry.js';
 import { getIntegrations } from '../core/services.js';
 import { appCard } from '../features/widgets.js';
 import { segmented, toast } from '../core/ui.js';
@@ -37,7 +37,8 @@ export default {
       clear(grid);
       const user = store.get('user');
       const pinned = store.get('prefs').pinnedApps || [];
-      for (const app of APPS.filter(a => !isLearnApp(a) && (cat === 'all' || a.category === cat || (cat === 'workspace' && a.id === 'learning')))) {
+      for (const raw of APPS.filter(a => !isLearnApp(a) && visible(a, user) && (!suiteOf(a.id) || suiteOf(a.id).members[0] === a.id) && (cat === 'all' || a.category === cat || (cat === 'workspace' && a.id === 'learning')))) {
+        const app = entryApp(raw);
         const acc = access(app, user);
         const isPinned = pinned.includes(app.id);
         const pin = h('button', { class: ['btn', 'btn-sm', isPinned ? 'btn-app' : 'btn-ghost'], style: { '--app': app.hue }, 'aria-pressed': String(isPinned), disabled: !acc.ok, html: svg(isPinned ? 'check' : 'plus') + `<span>${isPinned ? 'Fastgjort' : 'Fastgør i menu'}</span>` });

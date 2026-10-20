@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from test_social import SocialTest  # noqa: E402
+import test_social  # noqa: E402  (not "from … import SocialTest": unittest would run its tests again)
 from server import p256  # noqa: E402
 
 
@@ -77,12 +77,17 @@ class FakeSmtp(threading.Thread):
             c.close()
 
 
-class NotifyTest(SocialTest):
+class NotifyTest(unittest.TestCase):
+    """Uses SocialTest's server and users (without running its tests again)."""
+    upload = test_social.SocialTest.upload
+    join_cm = test_social.SocialTest.join_cm
+    tearDownClass = classmethod(test_social.SocialTest.tearDownClass.__func__)
+
     @classmethod
     def setUpClass(cls):
         os.environ["HUBTECH_NO_NOTIFY_WORKER"] = "1"     # the test must not contact real push services
         try:
-            SocialTest.setUpClass.__func__(cls)
+            test_social.SocialTest.setUpClass.__func__(cls)
         finally:
             os.environ.pop("HUBTECH_NO_NOTIFY_WORKER", None)
 
