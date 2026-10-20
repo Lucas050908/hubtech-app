@@ -8,6 +8,8 @@
     <string name="save_failed">Filen kunne ikke gemmes</string>
     <string name="channel_reminders">Påmindelser</string>
     <string name="channel_reminders_desc">Deadlines fra Opgaver og aftaler fra Kalender</string>
+    <string name="channel_social">Beskeder og opkald</string>
+    <string name="channel_social_desc">Beskeder, opkald, venneanmodninger og snaps fra Fællesskab</string>
     <string name="widget_title">I dag</string>
     <string name="widget_empty">Åbn HUBTECH for at se dagens aftaler</string>
     <string name="widget_desc">Dagens aftaler, deadlines og hvad der venter</string>

@@ -35,7 +35,8 @@ export async function memberCard(cm, user, { server, myRole, onChanged, openDm }
   const run = async (fn, ok) => { try { await fn(); if (ok) toast(ok, { type: 'ok' }); m.close(); onChanged?.(); } catch (e) { err.textContent = e.message; } };
   const sid = server?.server?.id;
   const btns = [];
-  if (isFriend) btns.push(h('button', { class: 'btn btn-primary', onclick: () => { m.close(); openDm(user); } }, icon('chat'), 'Send besked'));
+  if (isFriend) btns.push(h('button', { class: 'btn btn-primary', onclick: () => { m.close(); openDm(user); } }, icon('chat'), 'Send besked'),
+    h('button', { class: 'btn', onclick: () => { m.close(); import('../features/calls.js').then(c => c.callUser(user)); } }, icon('phone'), 'Ring op'));
   else if (incoming) btns.push(h('button', { class: 'btn btn-primary', onclick: () => run(() => api.post(`/api/cm/friends/${user.id}/accept`), 'I er nu venner') }, icon('check'), 'Accepter venneanmodning'));
   else if (outgoing) btns.push(h('button', { class: 'btn', disabled: true }, icon('clock'), 'Anmodning sendt'));
   else if (!blocked) btns.push(h('button', { class: 'btn btn-primary', onclick: () => run(() => api.post('/api/cm/friends', { username: user.username }), 'Venneanmodning sendt') }, icon('userPlus'), 'Tilføj ven'));
@@ -122,13 +123,13 @@ export function serverSettings(cm, detail, { onChanged, onDeleted }) {
       const topic = h('input', { class: 'input', value: c.topic, placeholder: 'Emne', 'aria-label': 'Emne' });
       const slow = h('select', { class: 'select', 'aria-label': 'Langsom tilstand' }, [[0, 'Ingen ventetid'], [5, '5 sek.'], [30, '30 sek.'], [60, '1 min.'], [300, '5 min.']].map(([v, l]) => h('option', { value: v, selected: c.slow === v }, l)));
       const post = h('select', { class: 'select', 'aria-label': 'Hvem må skrive' }, ['member', 'moderator', 'admin'].map(r => h('option', { value: r, selected: c.postRole === r }, r === 'member' ? 'Alle kan skrive' : `Kun ${ROLE_DA[r].toLowerCase()}e+`)));
-      wrap.appendChild(h('div', { class: 'cm-chanrow' }, h('span', { class: 'cm-chan-ic' }, icon(c.kind === 'music' ? 'music' : 'hash')), nm, topic, slow, post,
+      wrap.appendChild(h('div', { class: 'cm-chanrow' }, h('span', { class: 'cm-chan-ic' }, icon(c.kind === 'music' ? 'music' : c.kind === 'voice' ? 'volume' : 'hash')), nm, topic, slow, post,
         h('button', { class: 'btn btn-sm', onclick: async () => { try { await api.patch(`/api/cm/channels/${c.id}`, { name: nm.value, topic: topic.value, slow: Number(slow.value), postRole: post.value }); toast('Kanalen er gemt', { type: 'ok' }); onChanged?.(); } catch (e) { err.textContent = e.message; } } }, 'Gem'),
         h('button', { class: 'icon-btn', 'aria-label': `Slet #${c.name}`, onclick: async () => { if (await confirmDialog({ title: `Slet #${c.name}?`, text: 'Alle beskeder i kanalen slettes.', confirmLabel: 'Slet', danger: true })) { try { await api.del(`/api/cm/channels/${c.id}`); onChanged?.(); m.close(); } catch (e) { err.textContent = e.message; } } } }, icon('trash'))));
     });
     const nn = h('input', { class: 'input', placeholder: 'ny-kanal', 'aria-label': 'Ny kanal' });
     let kind = 'text';
-    const k = segmented([{ value: 'text', label: 'Tekst', icon: 'hash' }, { value: 'music', label: 'Musik', icon: 'music' }], kind, (v) => { kind = v; }, { label: 'Type' });
+    const k = segmented([{ value: 'text', label: 'Tekst', icon: 'hash' }, { value: 'voice', label: 'Tale', icon: 'volume' }, { value: 'music', label: 'Musik', icon: 'music' }], kind, (v) => { kind = v; }, { label: 'Type' });
     wrap.appendChild(h('div', { class: 'cm-chanrow is-new' }, nn, k, h('button', { class: 'btn btn-primary btn-sm', onclick: async () => { try { await api.post(`/api/cm/servers/${s.id}/channels`, { name: nn.value, kind }); onChanged?.(); m.close(); toast('Kanalen er oprettet', { type: 'ok' }); } catch (e) { err.textContent = e.message; } } }, icon('plus'), 'Opret')));
     return [wrap];
   }

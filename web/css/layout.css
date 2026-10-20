@@ -1,8 +1,8 @@
 /* ════════════════ Workspace shell ════════════════ */
-.shell { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: 100vh; }
+.shell { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); min-height: calc(100vh / var(--z, 1)); }
 
 .sidebar {
-  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: var(--s2);
+  position: sticky; top: 0; height: calc(100vh / var(--z, 1)); display: flex; flex-direction: column; gap: var(--s2);
   padding: var(--s4) var(--s3) var(--s4); z-index: 30;
   background: linear-gradient(180deg, rgba(6, 13, 24, .74), rgba(6, 13, 24, .62));
   border-right: 1px solid var(--line);
@@ -103,7 +103,7 @@
 .pop-anchor { position: relative; }
 
 /* notifications popover */
-.notif-pop { width: min(360px, calc(100vw - 24px)); padding: 0; overflow: hidden; }
+.notif-pop { width: min(360px, calc(calc(100vw / var(--z, 1)) - 24px)); padding: 0; overflow: hidden; }
 .notif-pop header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 800; }
 .notif-pop .list { padding: 8px; max-height: 360px; overflow: auto; }
 
@@ -132,8 +132,8 @@
 .scrim-overlay { position: fixed; inset: 0; background: rgba(2, 6, 12, .5); z-index: 29; animation: fadeIn var(--t-med); }
 
 /* ════════════════ Public layout (landing / auth) ════════════════ */
-.public { min-height: 100vh; display: flex; flex-direction: column; }
-.public-nav { display: flex; align-items: center; gap: var(--s4); padding: var(--s5) clamp(16px, 4vw, 48px); position: relative; z-index: 5; }
+.public { min-height: calc(100vh / var(--z, 1)); display: flex; flex-direction: column; }
+.public-nav { display: flex; align-items: center; gap: var(--s4); padding: var(--s5) clamp(16px, calc(4vw / var(--z, 1)), 48px); position: relative; z-index: 5; }
 .public-nav .brand { padding: 0; }
 .public-nav nav { display: flex; gap: 4px; margin-left: auto; align-items: center; }
 .public-nav nav a:not(.btn) { padding: 8px 14px; border-radius: var(--r-pill); font-weight: 700; font-size: var(--fs-sm); color: var(--text-2); }
@@ -149,7 +149,7 @@
 }
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { position: fixed; left: 0; top: 0; width: min(300px, 86vw); transform: translateX(-102%); transition: transform var(--t-med) var(--ease-out); box-shadow: var(--shadow-2); background: var(--glass-strong); overflow-y: auto; }
+  .sidebar { position: fixed; left: 0; top: 0; width: min(300px, calc(86vw / var(--z, 1))); transform: translateX(-102%); transition: transform var(--t-med) var(--ease-out); box-shadow: var(--shadow-2); background: var(--glass-strong); overflow-y: auto; }
   .shell.nav-open .sidebar { transform: none; }
   .menu-btn { display: inline-grid; }
   .topbar { padding: 0 var(--s3); }
@@ -174,7 +174,7 @@
 /* Window Controls Overlay: the topbar becomes the title bar – drag to move, buttons stay clickable */
 .is-wco .topbar {
   -webkit-app-region: drag; app-region: drag;
-  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + var(--s4));
+  padding-right: calc(calc(100vw / var(--z, 1)) - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw / var(--z, 1))) + var(--s4));
   min-height: max(var(--topbar-h), env(titlebar-area-height, 0px));
 }
 .is-wco .topbar :is(a, button, input, select, [role="button"], .search-trigger, .user-chip) { -webkit-app-region: no-drag; app-region: no-drag; }

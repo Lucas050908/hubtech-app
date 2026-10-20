@@ -13,12 +13,16 @@ import { startOnboarding } from '../features/onboarding.js';
 import { saveBlob } from '../core/files.js';
 import { isAppWindow, canInstall, promptInstall, onInstallChange, systemInfo, shutdown } from '../core/desktop.js';
 import * as droid from '../core/android.js';
+import { getCall, setCall, getNotify, setNotify, getStudio, setStudio, mediaConstraints, applySpeaker } from '../features/appsettings.js';
+import * as piano from '../features/piano.js';
+import { SCALES, BACKDROPS, getScale, setScale, getBackdrop, setBackdrop, canBeTransparent, autoZoom } from '../core/display.js';
 
 const AVATARS = ['⚡', '🦊', '🐺', '🦁', '🐯', '🐻', '🦅', '🐉', '🔧', '💡', '🛸', '🔬', '🎯', '🚀', '🏆', '🌊', '🤖', '🔌', '🧠', '🌲', '🏔️', '🍂', '❄️', '🌸', '☀️'];
 const TABS = [
   { id: 'profile', label: 'Profil', icon: 'user' },
   { id: 'security', label: 'Sikkerhed', icon: 'lock' },
   { id: 'world', label: 'Verden & udseende', icon: 'mountain' },
+  { id: 'apps', label: 'Apps og opkald', icon: 'phone' },
   { id: 'integrations', label: 'Integrationer', icon: 'plug' },
   { id: 'users', label: 'Brugere', icon: 'users', owner: true },
   { id: 'data', label: 'Data & sikkerhedskopi', icon: 'database' },
@@ -215,6 +219,23 @@ function worldTab() {
   drawLoc();
   refresh();
   const parallax = switchControl({ checked: w().parallax, label: 'Dybdeeffekt (parallax)', onChange: (v) => setWorld({ parallax: v }) });
+  // ── screen: size (4K etc.) and a see-through window ──
+  const scaleSel = h('select', { class: 'select', 'aria-label': 'Størrelse på skærmen' }, SCALES.map(([v, l]) => h('option', { value: v, selected: getScale() === v }, v === 'auto' ? `${l} (${Math.round(autoZoom() * 100)} % her)` : l)));
+  scaleSel.addEventListener('change', () => setScale(scaleSel.value));
+  const screenInfo = h('p', { class: 'faint', style: { margin: 0 } }, `Skærmen: ${Math.round(screen.width * devicePixelRatio)} × ${Math.round(screen.height * devicePixelRatio)} pixels · Windows/browser-skalering ${Math.round(devicePixelRatio * 100)} %`);
+  const transBox = h('div', { class: 'set-stack' });
+  const drawTrans = () => {
+    clear(transBox);
+    if (!canBeTransparent()) {
+      transBox.append(switchControl({ checked: false, label: 'Gennemsigtig baggrund', onChange: () => {} }), h('p', { class: 'faint', style: { margin: 0 } }, 'Virker i HUBTECH-appen til Windows. En hjemmeside i en browser kan ikke se dit skrivebord.'));
+      transBox.querySelector('input').disabled = true;
+      return;
+    }
+    const cur = getBackdrop();
+    transBox.append(switchControl({ checked: cur !== 'off', label: 'Gennemsigtig baggrund', onChange: (v) => { setBackdrop(v ? 'acrylic' : 'off'); drawTrans(); } }));
+    if (cur !== 'off') transBox.append(segmented(BACKDROPS.map(([value, label]) => ({ value, label })), cur, (v) => setBackdrop(v), { label: 'Slags gennemsigtighed' }));
+  };
+  drawTrans();
   return h('div', { class: 'stack', dataset: { tour: 'world-settings' } },
     h('section', { class: 'glass panel world-hero' }, preview, h('div', { class: 'world-hero-text' }, h('h2', { class: 'panel-title' }, 'Den levende verden'), status)),
     h('section', { class: 'glass panel' },
@@ -229,6 +250,10 @@ function worldTab() {
       landGrid,
       row('Eget billede', 'Et foto eller et billede, du har lavet med AI. Gemmes på din konto og synkroniseres.', imgBox),
       row('Billedkvalitet', 'Høj tegner landskabet i fuld skarphed på store og skarpe skærme (bruger lidt mere strøm)', quality)),
+    h('section', { class: 'glass panel' },
+      h('h2', { class: 'panel-title' }, 'Skærm'),
+      row('Størrelse', 'Gør alt større eller mindre på denne skærm. Automatisk gør det større på store skærme som 4K.', h('div', { class: 'set-stack' }, scaleSel, screenInfo)),
+      row('Gennemsigtig baggrund', 'Se dit eget skrivebordsbaggrund bag HUBTECH i stedet for landskabet', transBox)),
     h('section', { class: 'glass panel' },
       row('Animationer', 'Mængden af partikler og bevægelse', mkRange('intensity', 0, 1, 0.05, 'Animationernes intensitet')),
       row('Baggrundens lysstyrke', 'Dæmp verdenen for mere ro', mkRange('brightness', 0.4, 1.1, 0.05, 'Lysstyrke')),
@@ -254,6 +279,291 @@ function perfControl() {
   };
   draw();
   return wrap;
+}
+
+// ── Apps og opkald ──
+const sw = (label, get, set) => switchControl({ checked: get(), label, onChange: set });
+
+function callPanel() {
+  const c = getCall();
+  const streams = new Set();
+  let meterRaf = 0, meterCtx = null;
+  const stopAll = () => {
+    streams.forEach(s => s.getTracks().forEach(t => t.stop())); streams.clear();
+    cancelAnimationFrame(meterRaf); meterCtx?.close().catch(() => {}); meterCtx = null;
+  };
+  addEventListener('hashchange', stopAll, { once: true });
+  addEventListener('pagehide', stopAll, { once: true });
+
+  const can = !!navigator.mediaDevices?.getUserMedia;
+  const sel = (label, kind) => {
+    const s = h('select', { class: 'select', 'aria-label': label }, h('option', { value: '' }, 'Standard'));
+    s.addEventListener('change', () => { setCall({ [kind]: s.value }); if (kind === 'mic' && micBtn.dataset.on) startMic(); if (kind === 'cam' && camBtn.dataset.on) startCam(); if (kind === 'speaker') applySpeaker(sound); });
+    return s;
+  };
+  const micSel = sel('Mikrofon', 'mic'), camSel = sel('Kamera', 'cam'), spkSel = sel('Højttaler', 'speaker');
+  const sinkOk = typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype;
+  const fill = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const list = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+    const put = (s, kind, cur, fallback) => {
+      const devs = list.filter(d => d.kind === kind && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+      clear(s); s.append(h('option', { value: '' }, 'Standard'));
+      devs.forEach((d, i) => s.append(h('option', { value: d.deviceId, selected: d.deviceId === cur }, d.label || `${fallback} ${i + 1}`)));
+      if (cur && !devs.some(d => d.deviceId === cur)) s.append(h('option', { value: cur, selected: true }, `${fallback} (ikke tilsluttet)`));
+    };
+    const cc = getCall();
+    put(micSel, 'audioinput', cc.mic, 'Mikrofon'); put(camSel, 'videoinput', cc.cam, 'Kamera'); put(spkSel, 'audiooutput', cc.speaker, 'Højttaler');
+    const named = list.some(d => d.label);
+    hint.hidden = named;
+  };
+  const hint = h('p', { class: 'faint', style: { margin: 0 } }, 'Navnene på dine enheder vises, når du har testet mikrofonen eller kameraet én gang.');
+  navigator.mediaDevices?.addEventListener?.('devicechange', fill);
+
+  // mic test
+  const meter = h('div', { class: 'as-meter', role: 'meter', 'aria-label': 'Mikrofonens lydniveau', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0 }, h('i'));
+  const micBtn = h('button', { class: 'btn btn-sm' });
+  const drawMicBtn = () => h(clear(micBtn), null, icon(micBtn.dataset.on ? 'micOff' : 'mic'), micBtn.dataset.on ? 'Stop test' : 'Test mikrofonen');
+  let micStream = null;
+  const stopMic = () => { micStream?.getTracks().forEach(t => t.stop()); streams.delete(micStream); micStream = null; cancelAnimationFrame(meterRaf); meterCtx?.close().catch(() => {}); meterCtx = null; meter.firstChild.style.width = '0'; delete micBtn.dataset.on; drawMicBtn(); };
+  async function startMic() {
+    stopMic();
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: mediaConstraints().audio, video: false });
+      streams.add(micStream); micBtn.dataset.on = '1'; drawMicBtn(); fill();
+      meterCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const an = meterCtx.createAnalyser(); an.fftSize = 512;
+      meterCtx.createMediaStreamSource(micStream).connect(an);
+      const buf = new Uint8Array(an.fftSize);
+      const tick = () => {
+        an.getByteTimeDomainData(buf);
+        let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+        const pct = Math.min(100, Math.round(peak / 128 * 160));
+        meter.firstChild.style.width = `${pct}%`; meter.setAttribute('aria-valuenow', pct);
+        meterRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) { stopMic(); toast('Mikrofonen kunne ikke bruges', { type: 'warn', text: e.name === 'NotAllowedError' ? 'Tillad mikrofonen i browseren eller telefonens indstillinger.' : 'Der blev ikke fundet nogen mikrofon.' }); }
+  }
+  micBtn.addEventListener('click', () => (micBtn.dataset.on ? stopMic() : startMic()));
+  drawMicBtn();
+
+  // camera preview
+  const video = h('video', { class: ['as-preview', c.mirror && 'is-mirror'], autoplay: true, playsinline: true, muted: true, hidden: true });
+  video.muted = true; video.setAttribute('playsinline', '');
+  const camBtn = h('button', { class: 'btn btn-sm' });
+  const drawCamBtn = () => h(clear(camBtn), null, icon(camBtn.dataset.on ? 'videoOff' : 'video'), camBtn.dataset.on ? 'Sluk kameraet' : 'Se kameraet');
+  let camStream = null;
+  const stopCam = () => { camStream?.getTracks().forEach(t => t.stop()); streams.delete(camStream); camStream = null; video.srcObject = null; video.hidden = true; delete camBtn.dataset.on; drawCamBtn(); };
+  async function startCam() {
+    stopCam();
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: mediaConstraints({ audio: false, video: true }).video });
+      streams.add(camStream); video.srcObject = camStream; video.hidden = false; camBtn.dataset.on = '1'; drawCamBtn(); fill();
+    } catch (e) { stopCam(); toast('Kameraet kunne ikke bruges', { type: 'warn', text: e.name === 'NotAllowedError' ? 'Tillad kameraet i browseren eller telefonens indstillinger.' : 'Der blev ikke fundet noget kamera.' }); }
+  }
+  camBtn.addEventListener('click', () => (camBtn.dataset.on ? stopCam() : startCam()));
+  drawCamBtn();
+
+  // speaker test
+  const sound = new Audio();
+  const spkBtn = h('button', { class: 'btn btn-sm', onclick: () => {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const dest = ac.createMediaStreamDestination();
+      [523.25, 659.25, 783.99].forEach((f, i) => { const o = ac.createOscillator(), g = ac.createGain(); const t = ac.currentTime + i * 0.18; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5); o.connect(g).connect(dest); o.start(t); o.stop(t + 0.55); });
+      sound.srcObject = dest.stream; applySpeaker(sound); sound.play().catch(() => {});
+      setTimeout(() => { ac.close().catch(() => {}); sound.srcObject = null; }, 1300);
+    } catch { /* */ }
+  } }, icon('volume'), 'Afspil testlyd');
+
+  const quality = h('select', { class: 'select', 'aria-label': 'Videokvalitet' },
+    [['auto', 'Automatisk (anbefalet)'], ['low', 'Lav – sparer data'], ['high', 'Høj – 720p']].map(([v, l]) => h('option', { value: v, selected: c.quality === v }, l)));
+  quality.addEventListener('change', () => { setCall({ quality: quality.value }); if (camBtn.dataset.on) startCam(); });
+
+  const ringVol = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: c.ringVolume, 'aria-label': 'Ringetonens lydstyrke', class: 'range' });
+  setRangeFill(ringVol);
+  ringVol.addEventListener('input', () => { setCall({ ringVolume: Number(ringVol.value) }); setRangeFill(ringVol); });
+
+  fill();
+  const testRows = can ? [
+    row('Mikrofon', 'Bruges i opkald og talekanaler', h('div', { class: 'as-test' }, micSel, micBtn, meter)),
+    row('Kamera', 'Bruges i videoopkald', h('div', { class: 'as-test' }, camSel, camBtn, video, hint)),
+    row('Højttaler', sinkOk ? 'Hvor du hører de andre i opkaldet' : 'Denne browser bruger altid systemets højttaler', h('div', { class: 'as-test' }, sinkOk ? spkSel : null, spkBtn)),
+  ] : [row('Mikrofon og kamera', null, h('span', { class: 'faint' }, 'Denne browser kan ikke bruge mikrofon og kamera her. Opkald kræver https eller localhost.'))];
+  const re = (k) => (v) => { setCall({ [k]: v }); if (micBtn.dataset.on && ['noise', 'echo', 'gain'].includes(k)) startMic(); };
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'Opkald'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Gælder opkald, gruppeopkald og talekanaler i Fællesskab. Gemmes på denne enhed.'),
+    ...testRows,
+    row('Støjdæmpning', 'Fjerner baggrundsstøj som tastatur og blæser', sw('Støjdæmpning', () => c.noise, re('noise'))),
+    row('Ekkodæmpning', 'Undgår at de andre hører sig selv, når du ikke bruger høretelefoner', sw('Ekkodæmpning', () => c.echo, re('echo'))),
+    row('Automatisk lydstyrke', 'Justerer mikrofonen, så du lyder lige højt hele tiden', sw('Automatisk lydstyrke', () => c.gain, re('gain'))),
+    row('Start videoopkald med kameraet slukket', 'Du kan tænde det, når opkaldet er i gang', sw('Start med kameraet slukket', () => c.camOff, (v) => setCall({ camOff: v }))),
+    row('Spejlvend mit billede', 'Kun sådan du selv ser det – de andre ser dig normalt', sw('Spejlvend mit billede', () => c.mirror, (v) => { setCall({ mirror: v }); video.classList.toggle('is-mirror', v); })),
+    row('Videokvalitet', 'Lav bruger mindre data på mobilnettet', quality),
+    row('Ringetone', 'Når nogen ringer til dig. Slået fra: telefonen vibrerer i stedet', sw('Ringetone', () => c.ring, (v) => setCall({ ring: v }))),
+    row('Ringetonens lydstyrke', null, ringVol));
+}
+
+function notifyPanel() {
+  const n = getNotify();
+  const sec = h('section', { class: 'glass panel' });
+  let server = null;
+  const sync = (k, v) => {
+    setNotify({ [k]: v });
+    if (k !== 'sound') api.put('/api/notify/prefs', { kinds: { [k === 'calendar' ? 'calendar' : k]: v } }).catch(() => {});
+  };
+  const t = (k, label, hint) => row(label, hint, sw(label, () => (server?.prefs.kinds[k] ?? n[k] ?? true), (v) => sync(k, v)));
+
+  // this device
+  const devBox = h('div', { class: 'set-stack' });
+  const drawDev = async () => {
+    const { pushState, enablePush, disablePush } = await import('../features/push.js');
+    const st = await pushState();
+    clear(devBox);
+    const test = h('button', { class: 'btn btn-sm' }, icon('bell'), 'Send en test');
+    test.addEventListener('click', busy(test, async () => {
+      try { await api.post('/api/notify/test', {}); toast('Testen er sendt', { type: 'ok', text: droid.isAndroidApp() ? 'Den kommer, næste gang appen tjekker i baggrunden (højst 15 min.), eller med det samme, når appen er i baggrunden.' : 'Luk eller skjul HUBTECH – så kommer den som en rigtig notifikation om lidt.' }); }
+      catch (e) { errorToast(e); }
+    }));
+    const on = h('button', { class: 'btn btn-primary btn-sm' }, icon('bell'), 'Slå notifikationer til');
+    on.addEventListener('click', busy(on, async () => {
+      try { const r = await enablePush(); if (r === 'denied') toast('Notifikationer blev ikke tilladt', { type: 'warn', text: 'Tillad dem for HUBTECH i browserens eller telefonens indstillinger.' }); else toast('Notifikationer er slået til på denne enhed', { type: 'ok' }); }
+      catch (e) { toast('Notifikationer kunne ikke slås til', { type: 'warn', text: e.message }); }
+      drawDev();
+    }));
+    const note = (txt) => h('p', { class: 'faint', style: { margin: 0 } }, txt);
+    if (st === 'android') {
+      const granted = droid.notificationState() === 'granted';
+      const bg = droid.backgroundNotify();
+      if (!granted) devBox.append(on, note('Telefonen skal tillade notifikationer fra HUBTECH.'));
+      else devBox.append(switchControl({ checked: bg, label: 'Tjek for nyt, mens appen er lukket', onChange: (v) => { droid.setBackgroundNotify(v); drawDev(); } }),
+        note(droid.serverUrl() ? 'Appen tjekker den fælles server for nyt ca. hvert 15. minut, også når den er lukket. Når appen er åben i baggrunden, kommer de med det samme.' : 'Appen bruger sin egen server på telefonen. Forbind til en fælles server under Om → Telefonen, så får du besked, når venner skriver eller ringer.'),
+        granted && bg ? test : null);
+    } else if (st === 'on') devBox.append(h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, h('span', { class: 'chip chip-ok' }, icon('check'), 'Slået til'), test,
+      h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await disablePush(); drawDev(); } }, 'Slå fra')), note('Du får besked, også når HUBTECH er lukket – så længe serveren kører.'));
+    else if (st === 'ready') devBox.append(on, note('Virker i Chrome, Edge og Firefox – også på Android.'));
+    else if (st === 'denied') devBox.append(note('Notifikationer er blokeret for HUBTECH. Tillad dem i browserens indstillinger for siden (låsen ved adressen), og kom tilbage hertil.'));
+    else if (st === 'ios-home') devBox.append(note('På iPhone og iPad: tryk på Del-knappen i Safari → “Føj til hjemmeskærm”, og åbn HUBTECH derfra. Så kan du slå notifikationer til her.'));
+    else if (st === 'insecure') devBox.append(note('Rigtige notifikationer kræver, at HUBTECH åbnes via https:// (eller på selve computeren). Brug fx “tailscale serve” – se Om → Netværk.'));
+    else devBox.append(note('Denne browser kan ikke vise notifikationer, når HUBTECH er lukket.'));
+  };
+
+  // e-mail
+  const mailBox = h('div', { class: 'set-stack' });
+  const drawMail = () => {
+    clear(mailBox);
+    if (!server) return;
+    const me = store.get('user');
+    if (!server.email) { mailBox.append(h('p', { class: 'faint', style: { margin: 0 } }, 'Skriv din e-mailadresse under ', h('a', { href: '#/settings/profile' }, 'Profil'), ' først.')); return; }
+    if (!server.mailReady) { mailBox.append(h('p', { class: 'faint', style: { margin: 0 } }, me.role === 'owner' ? 'Sæt en mailserver op nedenfor først.' : 'Ejeren af HUBTECH skal sætte en mailserver op først.')); return; }
+    const delay = h('select', { class: 'select', 'aria-label': 'Hvornår der sendes mail', disabled: !server.prefs.email },
+      [[5, 'efter 5 minutter'], [15, 'efter 15 minutter'], [60, 'efter 1 time'], [240, 'efter 4 timer']].map(([v, l]) => h('option', { value: v, selected: server.prefs.emailDelay === v }, `Når jeg har været væk ${l}`)));
+    delay.addEventListener('change', () => api.put('/api/notify/prefs', { emailDelay: Number(delay.value) }).then(r => { server.prefs = r.prefs; }).catch(errorToast));
+    mailBox.append(switchControl({ checked: server.prefs.email, label: 'Send mig en mail om det, jeg har misset', onChange: async (v) => {
+      try { server.prefs = (await api.put('/api/notify/prefs', { email: v })).prefs; drawMail(); } catch (e) { errorToast(e); drawMail(); }
+    } }), delay, h('p', { class: 'faint', style: { margin: 0 } }, `Til ${server.email}. Højst én mail pr. kvarter, og kun om det, du ikke allerede har set i appen.`));
+  };
+
+  api.get('/api/notify/prefs').then((r) => { server = r; drawMail(); }).catch(() => {});
+  drawDev();
+  return h(sec, null,
+    h('h2', { class: 'panel-title' }, 'Notifikationer'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Hvad HUBTECH skal give besked om – i appen, som notifikation på telefonen og på mail.'),
+    row('På denne enhed', 'Rigtige notifikationer, også når HUBTECH er lukket', devBox),
+    row('På mail', 'En kort opsummering, når du ikke har været inde', mailBox),
+    t('dm', 'Direkte beskeder', 'Når en ven skriver til dig'),
+    t('mention', 'Omtaler', 'Når nogen skriver @dig i en kanal'),
+    t('call', 'Opkald', 'Når nogen ringer, og ubesvarede opkald'),
+    t('friend', 'Venneanmodninger', 'Nye anmodninger og når nogen siger ja'),
+    t('snap', 'Snaps', 'Når du får en snap'),
+    t('calendar', 'Kalenderinvitationer', 'Når nogen deler en kalender eller aftale med dig'),
+    t('report', 'Anmeldelser', 'Når der kommer en anmeldelse på en server, du styrer'),
+    row('Lyd i appen', 'Et blødt pling, når HUBTECH er åben', sw('Lyd ved notifikationer', () => n.sound, (v) => setNotify({ sound: v }))));
+}
+
+function mailServerPanel() {
+  if (store.get('user').role !== 'owner') return null;
+  const f = { host: h('input', { class: 'input', placeholder: 'smtp.gmail.com', autocapitalize: 'off', spellcheck: 'false' }),
+    port: h('input', { class: 'input', type: 'number', min: 1, max: 65535, placeholder: '587' }),
+    security: h('select', { class: 'select' }, [['starttls', 'STARTTLS (port 587)'], ['ssl', 'SSL/TLS (port 465)'], ['none', 'Ingen kryptering']].map(([v, l]) => h('option', { value: v }, l))),
+    user: h('input', { class: 'input', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'dig@gmail.com' }),
+    password: h('input', { class: 'input', type: 'password', autocomplete: 'new-password', placeholder: 'App-adgangskode' }),
+    sender: h('input', { class: 'input', autocapitalize: 'off', spellcheck: 'false', placeholder: 'Samme som brugernavnet' }),
+    baseUrl: h('input', { class: 'input', type: 'url', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://min-pc.tailnet.ts.net' }) };
+  const status = h('p', { class: 'faint', style: { margin: 0 } });
+  api.get('/api/notify/smtp').then((c) => {
+    for (const k of ['host', 'port', 'security', 'user', 'sender', 'baseUrl']) f[k].value = c[k] ?? '';
+    f.password.placeholder = c.hasPassword ? '•••••••• (gemt – skriv for at ændre)' : 'App-adgangskode';
+    status.textContent = c.fromEnv ? 'Nogle værdier kommer fra HUBTECH_SMTP_* i .env og vinder over det, der står her.' : c.host ? 'Mailserveren er sat op.' : 'Ingen mailserver endnu.';
+  }).catch(() => {});
+  const save = h('button', { class: 'btn btn-primary btn-sm' }, icon('check'), 'Gem');
+  save.addEventListener('click', busy(save, async () => {
+    const b = { host: f.host.value.trim(), port: f.port.value, security: f.security.value, user: f.user.value.trim(), sender: f.sender.value.trim(), baseUrl: f.baseUrl.value.trim() };
+    if (f.password.value) b.password = f.password.value;
+    try { await api.put('/api/notify/smtp', b); f.password.value = ''; f.password.placeholder = '•••••••• (gemt – skriv for at ændre)'; status.textContent = 'Gemt.'; toast('Mailserveren er gemt', { type: 'ok' }); }
+    catch (e) { errorToast(e); }
+  }));
+  const test = h('button', { class: 'btn btn-sm' }, icon('send'), 'Send testmail til mig');
+  test.addEventListener('click', busy(test, async () => {
+    try { const r = await api.post('/api/notify/test', { email: true }); toast('Testmailen er sendt', { type: 'ok', text: `Se efter i ${r.to}.` }); }
+    catch (e) { errorToast(e); }
+  }));
+  f.security.addEventListener('change', () => { if (!f.port.value || ['587', '465', '25'].includes(f.port.value)) f.port.value = f.security.value === 'ssl' ? 465 : 587; });
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'Mailserver'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Så HUBTECH kan sende mails til brugerne. Med Gmail: slå totrinsbekræftelse til, lav en app-adgangskode på myaccount.google.com/apppasswords, og brug smtp.gmail.com, port 587. Kun du som ejer ser denne boks.'),
+    row('Server', null, h('div', { class: 'set-stack' }, f.host, h('div', { class: 'row', style: { gap: '8px' } }, f.security, f.port))),
+    row('Brugernavn', null, f.user),
+    row('Adgangskode', 'Gemmes i HUBTECH-databasen på denne computer', f.password),
+    row('Afsender', 'Valgfri', f.sender),
+    row('HUBTECH-adresse', 'Valgfri – bruges til “Åbn HUBTECH”-knappen i mails', f.baseUrl),
+    row('', null, h('div', { class: 'set-stack' }, h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, save, test), status)));
+}
+
+function musicPanel() {
+  const st = { playing: piano.isPlaying(), mood: piano.getMood(), volume: piano.getVolume() };
+  const play = h('button', { class: 'btn btn-sm' });
+  const drawPlay = () => h(clear(play), null, icon(st.playing ? 'pause' : 'play'), st.playing ? 'Sæt på pause' : 'Afspil');
+  play.addEventListener('click', () => piano.toggle());
+  const moodSel = h('select', { class: 'select', 'aria-label': 'Stemning' }, Object.entries(piano.MOODS).map(([id, m]) => h('option', { value: id, selected: id === st.mood }, m.name)));
+  moodSel.addEventListener('change', () => piano.setMood(moodSel.value));
+  const vol = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: st.volume, class: 'range', 'aria-label': 'Musikkens lydstyrke' });
+  setRangeFill(vol);
+  vol.addEventListener('input', () => { piano.setVolume(vol.value); setRangeFill(vol); });
+  const off = piano.onPiano((s) => { Object.assign(st, s); drawPlay(); moodSel.value = s.mood; });
+  addEventListener('hashchange', off, { once: true });
+  drawPlay();
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'Baggrundsmusik'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Rolig klaver, som HUBTECH selv komponerer i browseren – ingen ophavsret. Den er slået fra, til du starter den, og holder pause under opkald.'),
+    row('Musik', 'Kan også styres med nodeknappen i toppen', play),
+    row('Stemning', null, moodSel),
+    row('Lydstyrke', null, vol));
+}
+
+function aiPanel() {
+  const ai = () => import('../ai/panel.js');
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'AI-assistent'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Assistenten kører helt lokalt i browseren. Model, RAM-grænse og hvilke data den må læse, vælger du i dens egne indstillinger.'),
+    row('Model, RAM og datakilder', null, h('button', { class: 'btn btn-sm', onclick: () => ai().then(m => m.openAssistantSettings()) }, icon('sparkles'), 'Åbn assistentens indstillinger')),
+    row('Samtalen', 'Slet beskederne, som er gemt på denne enhed', h('button', { class: 'btn btn-sm', onclick: () => ai().then(m => { toast(m.clearAssistantChat() ? 'Samtalen er slettet' : 'Vent til assistenten er færdig med at svare', { type: 'ok' }); }) }, icon('trash'), 'Slet samtalen')));
+}
+
+function studioPanel() {
+  const s = getStudio();
+  const size = h('select', { class: 'select', 'aria-label': 'Skriftstørrelse i editoren' }, [[12, 'Lille'], [13.5, 'Normal'], [15, 'Stor'], [17, 'Meget stor']].map(([v, l]) => h('option', { value: v, selected: Number(s.fontSize) === v }, l)));
+  size.addEventListener('change', () => setStudio({ fontSize: Number(size.value) }));
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'App-værksted'),
+    row('Kør automatisk', 'Vis ændringer med det samme, når appen gemmes', sw('Kør automatisk', () => s.autoRun, (v) => setStudio({ autoRun: v }))),
+    row('Skriftstørrelse i editoren', null, size));
+}
+
+function appsTab() {
+  return h('div', { class: 'stack', style: { display: 'grid', gap: '16px' } }, callPanel(), notifyPanel(), mailServerPanel(), musicPanel(), aiPanel(), studioPanel());
 }
 
 function integrationsTab() {
@@ -697,6 +1007,19 @@ function phonePanel() {
   const lockOk = droid.lockAvailable();
   const lock = lockOk ? switchControl({ checked: droid.lockEnabled(), label: 'Lås med fingeraftryk eller ansigt', onChange: (v) => { droid.setLock(v); toast(v ? 'App-lås slået til' : 'App-lås slået fra', { type: 'ok', text: v ? 'HUBTECH beder om fingeraftryk, ansigt eller skærmlås, når den har været lukket i mere end 30 sekunder.' : '' }); } })
     : h('span', { class: 'faint' }, 'Kræver at telefonen har skærmlås (og evt. fingeraftryk/ansigt) slået til.');
+  const serverBox = h('div', { class: 'set-stack' });
+  const cur = droid.serverUrl();
+  const urlIn = h('input', { class: 'input', type: 'url', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://min-pc.tailnet.ts.net', value: cur, 'aria-label': 'Adressen på HUBTECH-serveren' });
+  const useBtn = h('button', { class: 'btn btn-primary btn-sm' }, icon('link'), 'Forbind');
+  const err = h('p', { class: 'field-error', style: { margin: 0 } });
+  useBtn.addEventListener('click', busy(useBtn, async () => {
+    err.textContent = '';
+    const r = await droid.setServerUrl(urlIn.value.trim());
+    if (r !== 'ok') err.textContent = r;
+  }));
+  serverBox.append(urlIn, h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, useBtn,
+    cur ? h('button', { class: 'btn btn-sm', onclick: () => droid.useLocalServer() }, icon('phone'), 'Brug appens egen server') : null), err,
+    h('p', { class: 'faint', style: { margin: 0 } }, 'Adressen skal være https://. Du skal logge ind på den anden server med en konto dér. Data på telefonens egen server bliver liggende, til du skifter tilbage.'));
   const upBox = h('div', { class: 'set-stack' });
   const check = h('button', { class: 'btn btn-sm' }, icon('refresh'), 'Søg efter opdatering');
   check.addEventListener('click', busy(check, async () => {
@@ -714,6 +1037,7 @@ function phonePanel() {
   return h('section', { class: 'glass panel' },
     h('h2', { class: 'panel-title' }, 'Telefonen'),
     h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, `HUBTECH-appen ${info.versionName || ''}`.trim()),
+    row('Server', droid.serverUrl() ? `Appen bruger ${droid.serverUrl()}. Alle dine data og venner ligger dér.` : 'Appen bruger sin egen server på telefonen. Skriv adressen på en anden HUBTECH (fx din computer eller en vens), så kan I skrive og ringe sammen.', serverBox),
     row('Påmindelser', 'Deadlines og aftaler som notifikationer – også når appen er lukket', notifyBox),
     row('App-lås', 'Fingeraftryk, ansigt eller telefonens kode, når du åbner HUBTECH', lock),
     row('Opdatering', 'Nye versioner bygges på GitHub og kan installeres herfra', upBox),
@@ -746,7 +1070,7 @@ export default {
     const owner = store.get('user').role === 'owner';
     const tabs = TABS.filter(t => !t.owner || owner);
     const tab = tabs.find(t => t.id === ctx.params.tab) ? ctx.params.tab : 'profile';
-    const body = { profile: profileTab, security: securityTab, world: worldTab, integrations: integrationsTab, users: usersTab, data: dataTab, about: aboutTab }[tab]();
+    const body = { profile: profileTab, security: securityTab, world: worldTab, apps: appsTab, integrations: integrationsTab, users: usersTab, data: dataTab, about: aboutTab }[tab]();
     return h('div', { class: 'page settings' },
       h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Indstillinger'), h('h1', null, TABS.find(t => t.id === tab).label))),
       h('div', { class: 'settings-layout' },

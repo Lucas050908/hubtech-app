@@ -1,5 +1,5 @@
 /** Reusable dashboard widgets shared by Home and Dashboard. */
-import { h, clear, timeAgo, animateNumber } from '../core/dom.js';
+import { h, clear, timeAgo, animateNumber, rect } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { store, setWorld, toggleFavorite, isFavorite, setPref } from '../core/store.js';
 import { APPS, appById, access } from '../core/registry.js';
@@ -207,7 +207,7 @@ function projectMenu(anchor, pr) {
       try { const { meta } = await api.patch(`/api/projects/${pr.id}/meta`, { favorite: !pr.meta?.favorite }); pr.meta = meta; toast(meta.favorite ? 'Favorit tilføjet' : 'Favorit fjernet', { type: 'ok', ms: 1500 }); }
       catch (e) { toast('Kunne ikke gemme', { type: 'bad', text: e.message }); }
     }));
-  const r = anchor.getBoundingClientRect();
+  const r = rect(anchor);
   menu.style.cssText = `position:fixed;top:${r.bottom + 6}px;left:${Math.max(8, r.right - 220)}px;width:220px;`;
   document.body.appendChild(menu);
   openKebab = menu;

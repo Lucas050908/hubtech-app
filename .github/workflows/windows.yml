@@ -1,0 +1,91 @@
+# Builds HUBTECH for Windows as an MSIX package for Microsoft Store – on GitHub's Windows servers.
+# Result: Actions → the newest run → Artifacts → "HUBTECH-windows" (HUBTECH.msixupload inside).
+# Upload that file in Partner Center → HUBTECH → Start submission → Packages. Microsoft signs it.
+#
+# The package holds: HUBTECH.exe (windows/launcher – a WebView2 window), its own Python (the official
+# "embeddable" Python from python.org, so nothing has to be installed) and HUBTECH's program files.
+name: Windows-app (Microsoft Store)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'windows/**'
+      - 'server/**'
+      - 'web/**'
+      - '.github/workflows/windows.yml'
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.12.10'
+
+jobs:
+  msix:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Server-tests (på Windows – til info, stopper ikke bygget)
+        continue-on-error: true
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Byg HUBTECH.exe
+        run: dotnet publish windows/launcher/HUBTECH.csproj -c Release -o build/layout
+
+      - name: Pak Python og HUBTECH ind
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $layout = 'build/layout'
+          # the official embeddable Python (no installer, no registry, only what we unpack)
+          Invoke-WebRequest "https://www.python.org/ftp/python/$env:PYTHON_VERSION/python-$env:PYTHON_VERSION-embed-amd64.zip" -OutFile build/python.zip
+          Expand-Archive build/python.zip -DestinationPath "$layout/python"
+          # HUBTECH's program files
+          New-Item -ItemType Directory "$layout/app" | Out-Null
+          foreach ($d in 'server','web','integrations','sources','tools') { Copy-Item $d "$layout/app/$d" -Recurse }
+          foreach ($f in 'LICENSE','THIRD_PARTY_NOTICES.md','README.md','hubtech.ico') { Copy-Item $f "$layout/app/" }
+          Get-ChildItem $layout -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
+          Get-ChildItem $layout -Recurse -Include '*.env','*.db','*.keystore' | Remove-Item -Force
+          # Store logos + manifest with this build's version (Store wants the last number to be 0)
+          Copy-Item windows/Assets "$layout/Assets" -Recurse
+          $v = "1.2.$($env:GITHUB_RUN_NUMBER).0"
+          (Get-Content windows/AppxManifest.xml -Raw).Replace('__VERSION__', $v) | Set-Content "$layout/AppxManifest.xml" -Encoding utf8
+          "VERSION=$v" | Out-File $env:GITHUB_ENV -Append
+          # quick check: the bundled Python can start the server code
+          & "$layout/python/python.exe" -c "import sys; sys.path.insert(0, r'$layout/app'); import server.app, sqlite3, ssl, smtplib; print('Python OK', sys.version)"
+
+      - name: Lav .msix
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $kit = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory | Where-Object { $_.Name -match '^10\.' } | Sort-Object Name -Descending | Select-Object -First 1
+          $bin = Join-Path $kit.FullName 'x64'
+          $layout = (Resolve-Path build/layout).Path
+          # resources.pri: lets Windows pick the right logo size for each screen (4K, 150 % …)
+          & "$bin\makepri.exe" createconfig /cf build/priconfig.xml /dq da-DK_en-US /pv 10.0.0 /o
+          & "$bin\makepri.exe" new /pr $layout /cf build/priconfig.xml /mn "$layout\AppxManifest.xml" /of "$layout\resources.pri" /o
+          New-Item -ItemType Directory dist | Out-Null
+          & "$bin\makeappx.exe" pack /d $layout /p "dist\HUBTECH-$env:VERSION.msix" /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx fejlede" }
+          # .msixupload = what Partner Center prefers (a zip with the package inside)
+          Compress-Archive "dist\HUBTECH-$env:VERSION.msix" "dist\HUBTECH-$env:VERSION.zip"
+          Rename-Item "dist\HUBTECH-$env:VERSION.zip" "HUBTECH-$env:VERSION.msixupload"
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HUBTECH-windows
+          path: dist/*
+          if-no-files-found: error

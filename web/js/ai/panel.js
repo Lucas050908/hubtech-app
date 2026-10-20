@@ -2,7 +2,7 @@
  * The AI assistant pop-up window. Runs a small language model on this device (see engine.js), reads your own data
  * when it helps (knowledge.js), proposes actions you confirm, and turns into a teacher in Kodeskolen.
  */
-import { h, clear } from '../core/dom.js';
+import { h, clear, rect, uiZoom, viewW, viewH } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { toast } from '../core/ui.js';
 import { navigate } from '../core/router.js';
@@ -57,6 +57,12 @@ export async function askAssistant(text) {
   await ask();
 }
 
+/** Open the assistant with its settings showing (Indstillinger → Apps og opkald). */
+export function openAssistantSettings() { toggleAssistant(true); els.settingsBox.hidden = false; drawSettings(); }
+
+/** Forget the conversation (Indstillinger → Apps og opkald). */
+export function clearAssistantChat() { if (busy) return false; messages = []; persistChat(); if (panel) drawMsgs(); return true; }
+
 export function initAssistant() {
   if (document.querySelector('.ai-fab')) return;
   const fab = h('button', { class: 'ai-fab', 'aria-label': 'Åbn AI-assistenten (Ctrl+J)', title: 'AI-assistent (Ctrl+J)', onclick: () => toggleAssistant() }, icon('sparkles'));
@@ -99,13 +105,14 @@ function build() {
   let drag = null;
   head.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button') || matchMedia('(max-width: 700px)').matches) return;
-    const r = panel.getBoundingClientRect();
-    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    const r = rect(panel), z = uiZoom();
+    drag = { dx: e.clientX / z - r.left, dy: e.clientY / z - r.top };
     head.setPointerCapture(e.pointerId);
   });
   head.addEventListener('pointermove', (e) => {
     if (!drag) return;
-    const x = Math.max(8, Math.min(innerWidth - panel.offsetWidth - 8, e.clientX - drag.dx)), y = Math.max(8, Math.min(innerHeight - 120, e.clientY - drag.dy));
+    const z = uiZoom();
+    const x = Math.max(8, Math.min(viewW() - panel.offsetWidth - 8, e.clientX / z - drag.dx)), y = Math.max(8, Math.min(viewH() - 120, e.clientY / z - drag.dy));
     Object.assign(panel.style, { left: x + 'px', top: y + 'px', right: 'auto', bottom: 'auto' });
   });
   head.addEventListener('pointerup', () => { drag = null; });

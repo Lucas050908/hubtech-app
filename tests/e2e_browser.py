@@ -726,7 +726,7 @@ async def main():
         await page.fill(".modal input[aria-label=Navn]", "Værkstedet")
         await page.click(".modal .btn-primary")
         await page.wait_for_selector(".cm-chan.is-active", timeout=8000)
-        check("fællesskab: server med 3 kanaler oprettes", await page.locator(".cm-chan").count() == 3)
+        check("fællesskab: server med 4 kanaler oprettes", await page.locator(".cm-chan").count() == 4)
         await page.click(".cm-chan:has-text('generelt')")
         await page.wait_for_selector(".cm-chan.is-active:has-text('generelt')")
         sid = (await api(page, "GET", "/api/cm/servers"))["data"]["servers"][0]["id"]
@@ -902,6 +902,15 @@ async def main():
         await mj.screenshot(path=f"{OUT}/e2e_ai_mobile.png")
         await cctx.close()
 
+        # ── background piano music: off until you turn it on, can be paused ──
+        check("baggrundsmusik: slået fra som standard", not await page.evaluate("import('/js/features/piano.js').then(m => m.isPlaying())"))
+        await page.click(".bgm-btn"); await page.click(".bgm-play"); await page.wait_for_timeout(800)
+        playing = await page.evaluate("import('/js/features/piano.js').then(m => m.isPlaying())")
+        await page.click(".bgm-play"); await page.wait_for_timeout(300)
+        paused = not await page.evaluate("import('/js/features/piano.js').then(m => m.isPlaying())")
+        check("baggrundsmusik: klaveret spiller og kan sættes på pause", playing and paused)
+        await page.keyboard.press("Escape")
+
         # ── App-værkstedet: templates, live preview in a sandbox, console, AI writes files ──
         await page.goto(BASE + "/#/apps/studio")
         await page.wait_for_selector(".studio-page")
@@ -947,6 +956,114 @@ async def main():
         check("app-værksted: AI-ændringen kan fortrydes", "Mine opgaver" in (await page.evaluate(f"fetch('/api/studio/apps/{sid_app}').then(r => r.json()).then(d => d.app.files['index.html'])")))
         await page.evaluate("localStorage.removeItem('hubtech.ai.chat')")
         await page.screenshot(path=f"{OUT}/e2e_studio.png")
+
+        # ── calls: a video call between two users (fake camera + microphone) and a voice channel ──
+        cbr = await p.chromium.launch(args=["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"])
+        async def call_user(name, pw, **kw):
+            cx = await cbr.new_context(permissions=["microphone", "camera"], **kw)
+            pg = await cx.new_page()
+            pg.on("pageerror", lambda e: errors.append(f"call {name}: " + str(e)))
+            await pg.goto(BASE + "/#/login"); await pg.wait_for_selector("#login-user")
+            await pg.fill("#login-user", name); await pg.fill("#login-pass", pw); await pg.click("button[type=submit]")
+            await pg.wait_for_selector(".home-title", timeout=8000)
+            return pg
+        ca = await call_user("oliver", "Sommer2026x!", viewport={"width": 1440, "height": 900})
+        cb = await call_user("maja", "Vinter2026xx", **p.devices["Pixel 7"])
+        await ca.evaluate("h => location.hash = h", f"#/apps/community/dm/{dm}")
+        await ca.wait_for_selector(".cm-main-h [title='Videoopkald']", timeout=10000)
+        await cb.evaluate("h => location.hash = h", "#/apps/notes")
+        await cb.wait_for_timeout(2500)
+        await ca.click(".cm-main-h [title='Videoopkald']")
+        await cb.wait_for_selector(".ring", timeout=30000)
+        check("opkald: det ringer hos vennen", True)
+        await cb.click(".ring [aria-label='Tag imod med video']")
+        ok = False
+        for _ in range(40):
+            va = await ca.evaluate("[...document.querySelectorAll('.call-tile:not(.is-self) video')].some(v => v.videoWidth > 0)")
+            vb = await cb.evaluate("[...document.querySelectorAll('.call-tile:not(.is-self) video')].some(v => v.videoWidth > 0)")
+            if va and vb and ":" in (await ca.text_content(".call-status") or ""):
+                ok = True; break
+            await ca.wait_for_timeout(500)
+        check("opkald: video og lyd forbundet begge veje", ok)
+        await cb.screenshot(path=f"{OUT}/e2e_call_phone.png")
+        await cb.click(".call [aria-label='Slå mikrofonen fra']")
+        check("opkald: mikrofonen kan slås fra", await cb.locator(".call [aria-label='Slå mikrofonen til']").count() == 1)
+        await ca.click(".call .is-end")
+        await cb.wait_for_timeout(2500)
+        check("opkald: læg på afslutter hos begge", await cb.locator(".call").count() == 0 and await ca.locator(".call").count() == 0)
+        vs = (await api(ca, "POST", "/api/cm/servers", {"name": "Talekanal-test"}))["data"]["server"]["id"]
+        vcode = (await api(ca, "POST", f"/api/cm/servers/{vs}/invites", {}))["data"]["code"]
+        await api(cb, "POST", f"/api/cm/invites/{vcode}/join"); await api(cb, "POST", f"/api/cm/servers/{vs}/rules")
+        await ca.evaluate("h => location.hash = h", f"#/apps/community/s/{vs}")
+        await ca.wait_for_selector(".cm-voice .cm-chan")
+        await ca.click(".cm-voice .cm-chan")
+        await ca.wait_for_selector(".call")
+        await cb.evaluate("h => location.hash = h", f"#/apps/community/s/{vs}")
+        await cb.wait_for_selector(".cm-back"); await cb.wait_for_timeout(600); await cb.click(".cm-back")
+        await cb.wait_for_selector(".cm-voice-u", timeout=10000)
+        await cb.click(".cm-voice .cm-chan")
+        ok = False
+        for _ in range(40):
+            if "2 med" in (await ca.text_content(".call-status") or "") and await ca.locator(".call-tile:not(.is-self)").count() == 1:
+                ok = True; break
+            await ca.wait_for_timeout(500)
+        check("talekanal: to deltagere forbundet", ok)
+        await ca.screenshot(path=f"{OUT}/e2e_voice.png")
+        # music for everyone in the call: HUBTECH's own piano music
+        await ca.click(".call [aria-label='Musik til alle']")
+        await ca.click(".call-music >> text=Klaver (uden ophavsret)")
+        await cb.wait_for_timeout(2500)
+        check("musik i opkald: de andre ser, hvad der spiller", "Klavermusik af HUBTECH" in (await cb.text_content(".call-status") or ""))
+        await cb.click(".call .is-end"); await ca.click(".call .is-end")
+        # group call: ring two friends at once
+        await api(ca, "POST", "/api/users", {"username": "sara", "displayName": "Sara", "password": "Foraar2026xx"})
+        cs = await call_user("sara", "Foraar2026xx", viewport={"width": 1280, "height": 800})
+        await api(cs, "POST", "/api/cm/me/age", {"birthYear": 2000, "acceptRules": True})
+        await api(ca, "POST", "/api/cm/friends", {"username": "sara"})
+        await api(cs, "POST", f"/api/cm/friends/{oid}/accept")
+        await cs.evaluate("h => location.hash = h", "#/apps/notes"); await cs.wait_for_timeout(2000)
+        await cb.evaluate("h => location.hash = h", "#/apps/notes"); await cb.wait_for_timeout(2000)
+        await ca.evaluate("h => location.hash = h", "#/apps/community/friends")
+        await ca.wait_for_selector(".cm-main-h >> text=Gruppeopkald")
+        await ca.click(".cm-main-h >> text=Gruppeopkald")
+        for box in await ca.locator(".modal .sn-friend input").all():
+            await box.check()
+        await ca.click(".modal .btn-primary")
+        await cb.wait_for_selector(".ring", timeout=30000); await cs.wait_for_selector(".ring", timeout=30000)
+        await cb.click(".ring [aria-label='Tag imod']"); await cs.click(".ring [aria-label='Tag imod']")
+        ok = False
+        for _ in range(50):
+            if "3 med" in (await ca.text_content(".call-status") or "") and await ca.locator(".call-tile:not(.is-self)").count() == 2 and await cs.locator(".call-tile:not(.is-self)").count() == 2:
+                ok = True; break
+            await ca.wait_for_timeout(500)
+        check("gruppeopkald: tre personer forbundet med hinanden", ok)
+        await ca.screenshot(path=f"{OUT}/e2e_group_call.png")
+        await ca.click(".call .is-end"); await ca.wait_for_timeout(1500)
+        check("gruppeopkald: fortsætter, når én lægger på", await cb.locator(".call").count() == 1 and await cs.locator(".call").count() == 1)
+        await cb.click(".call .is-end"); await cs.click(".call .is-end")
+        # ── Indstillinger → Apps og opkald: test the microphone and camera, and the setting reaches the call ──
+        await ca.wait_for_timeout(800)
+        await ca.goto(BASE + "/#/settings/apps"); await ca.wait_for_selector(".settings-body >> text=Støjdæmpning")
+        await ca.click("button:has-text('Test mikrofonen')")
+        lvl = 0
+        for _ in range(20):
+            lvl = max(lvl, int(await ca.get_attribute(".as-meter", "aria-valuenow") or 0))
+            if lvl > 0: break
+            await ca.wait_for_timeout(250)
+        check("indstillinger: mikrofontest viser lydniveau", lvl > 0, lvl)
+        await ca.click("button:has-text('Se kameraet')"); await ca.wait_for_timeout(1500)
+        check("indstillinger: kameraet vises", await ca.evaluate("(() => { const v = document.querySelector('.as-preview'); return !!v && !v.hidden && v.videoWidth > 0; })()"))
+        n_dev = await ca.evaluate("document.querySelectorAll('select[aria-label=Mikrofon] option').length")
+        check("indstillinger: mikrofoner kan vælges", n_dev >= 2, n_dev)
+        await ca.click("[aria-label='Start med kameraet slukket'] >> xpath=..")
+        await ca.screenshot(path=f"{OUT}/e2e_settings_apps.png", full_page=True)
+        await ca.goto(BASE + "/#/settings/profile"); await ca.wait_for_timeout(600)
+        check("indstillinger: mikrofon og kamera slukkes, når siden forlades", await ca.evaluate("!document.querySelector('.as-preview')"))
+        saved = await ca.evaluate("JSON.parse(localStorage.getItem('hubtech.call') || '{}').camOff === true")
+        check("indstillinger: 'start med kameraet slukket' gemmes", saved)
+        await ca.goto(BASE + "/#/apps/community/friends"); await ca.wait_for_timeout(1200)
+        await ca.evaluate("localStorage.setItem('hubtech.call', JSON.stringify({ camOff: false }))")
+        await cbr.close()
 
         # ── Android phone (Pixel 7 emulation, touch) ──
         mctx = await browser.new_context(**p.devices["Pixel 7"])

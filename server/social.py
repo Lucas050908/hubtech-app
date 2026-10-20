@@ -337,6 +337,8 @@ def live_poll(req, _):
     since = _int(_q(req, "since"), 0, 0)
     if since == 0:
         return 200, {"seq": live.current(), "events": [], "reset": False, "now": _now_ms()}
+    from . import calls
+    calls.sweep()
     seq, events, reset = live.wait(u["id"], since, timeout=min(25.0, max(1.0, float(_int(_q(req, "wait"), 25, 1, 25)))))
     return 200, {"seq": seq, "events": events, "reset": reset, "now": _now_ms()}
 
@@ -582,6 +584,7 @@ def cm_server_create(req, _):
     _add_channel(sid, "velkommen", "text", "Nyheder og regler fra serverens ledere.", "admin", 0)
     _add_channel(sid, "generelt", "text", "Snak om alt muligt.", "member", 1)
     _add_channel(sid, "musik", "music", "Lyt til musik sammen.", "member", 2)
+    _add_channel(sid, "snak", "voice", "Talekanal – tryk for at deltage.", "member", 3)
     return 201, {"server": _server_card(_server(sid), u["id"])}
 
 
@@ -594,7 +597,9 @@ def cm_server_get(req, params):
     users = _users([x["user_id"] for x in mem])
     members = [{**users[x["user_id"]], "role": x["role"], "muted": x["muted_until"] > db.now()} for x in mem if x["user_id"] in users]
     members.sort(key=lambda x: (-RANK.get(x["role"], 0), not x["online"], x["name"].lower()))
-    return 200, {"server": {**_server_card(s, u["id"]), "rules": s["rules"], "wordFilter": s["word_filter"] if RANK[m["role"]] >= 3 else None},
+    from . import calls   # (calls imports this module)
+    voice = calls.voice_state(s["id"])
+    return 200, {"server": {**_server_card(s, u["id"]), "rules": s["rules"], "wordFilter": s["word_filter"] if RANK[m["role"]] >= 3 else None}, "voice": voice,
                  "channels": [_channel_card(c, u["id"]) for c in chans], "members": members,
                  "me": {"role": m["role"], "rulesAccepted": bool(m["rules_accepted_at"]), "mutedUntil": m["muted_until"]}}
 
@@ -739,7 +744,7 @@ def cm_channel_create(req, params):
     b = req.json()
     if db.one("SELECT COUNT(*) AS n FROM cm_channels WHERE server_id = ?", (s["id"],))["n"] >= 50:
         raise ApiError(400, "En server kan højst have 50 kanaler.", "limit")
-    kind = b.get("kind") if b.get("kind") in ("text", "music") else "text"
+    kind = b.get("kind") if b.get("kind") in ("text", "music", "voice") else "text"
     cid = _add_channel(s["id"], _clean_channel_name(b.get("name")), kind, body_str(b, "topic", 200))
     live.publish(_server_member_ids(s["id"]), {"type": "server", "server": s["id"]})
     return 201, {"channel": _channel_card(db.one("SELECT * FROM cm_channels WHERE id = ?", (cid,)))}

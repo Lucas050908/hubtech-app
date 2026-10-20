@@ -2,7 +2,7 @@
  * First-run tour with a spotlight. Steps whose element is not visible on the current screen
  * are skipped automatically. Progress is stored on the account (/api/me/onboarding).
  */
-import { h, clear } from '../core/dom.js';
+import { h, clear, rect, viewW, viewH } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { store, refreshSummary } from '../core/store.js';
@@ -97,18 +97,18 @@ function runTour(allSteps, { persist, startAt = 0 }) {
 
   function position(el) {
     layer.classList.remove('is-center');
-    const r = el.getBoundingClientRect();
-    const pad = 8;
+    const r = rect(el);
+    const pad = 8, vw = viewW(), vh = viewH();
     hole.style.cssText = `left:${r.left - pad}px;top:${r.top - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px;`;
-    const cw = Math.min(360, innerWidth - 32);
+    const cw = Math.min(360, vw - 32);
     const ch = card.offsetHeight || 220;
     let left, top;
-    if (r.right + 16 + cw < innerWidth) { left = r.right + 16; top = Math.max(16, Math.min(innerHeight - ch - 16, r.top)); }
-    else if (r.left - 16 - cw > 0) { left = r.left - 16 - cw; top = Math.max(16, Math.min(innerHeight - ch - 16, r.top)); }
-    else if (r.bottom + 16 + ch < innerHeight) { left = Math.max(16, Math.min(innerWidth - cw - 16, r.left)); top = r.bottom + 16; }
-    else { left = Math.max(16, Math.min(innerWidth - cw - 16, r.left)); top = Math.max(16, r.top - ch - 16); }
-    left = Math.max(12, Math.min(innerWidth - cw - 12, left));
-    top = Math.max(12, Math.min(innerHeight - ch - 12, top));
+    if (r.right + 16 + cw < vw) { left = r.right + 16; top = Math.max(16, Math.min(vh - ch - 16, r.top)); }
+    else if (r.left - 16 - cw > 0) { left = r.left - 16 - cw; top = Math.max(16, Math.min(vh - ch - 16, r.top)); }
+    else if (r.bottom + 16 + ch < vh) { left = Math.max(16, Math.min(vw - cw - 16, r.left)); top = r.bottom + 16; }
+    else { left = Math.max(16, Math.min(vw - cw - 16, r.left)); top = Math.max(16, r.top - ch - 16); }
+    left = Math.max(12, Math.min(vw - cw - 12, left));
+    top = Math.max(12, Math.min(vh - ch - 12, top));
     card.style.cssText = `left:${left}px;top:${top}px;width:${cw}px;`;
   }
 

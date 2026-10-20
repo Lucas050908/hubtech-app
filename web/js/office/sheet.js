@@ -1,5 +1,5 @@
 /** HUBTECH Office – Regneark: a spreadsheet with formulas, formatting, multiple sheets and CSV/Excel export. */
-import { h, clear } from '../core/dom.js';
+import { h, clear, rect, uiZoom } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { toast, modal, confirmDialog } from '../core/ui.js';
 import { evaluateSheet, isErr, colName, ref, parseRef, parseInput, fmtNumber, ALIAS, fmtDate } from './formula.js';
@@ -328,8 +328,8 @@ export function sheetEditor(doc, ctx) {
   // ── column resize ──
   function startResize(e, c) {
     e.preventDefault(); e.stopPropagation();
-    const col = colgroup.children[c + 1], x0 = e.clientX, w0 = col.getBoundingClientRect().width;
-    const move = (ev) => { col.style.width = `${Math.max(40, Math.round(w0 + ev.clientX - x0))}px`; };
+    const col = colgroup.children[c + 1], x0 = e.clientX, w0 = rect(col).width, z = uiZoom();
+    const move = (ev) => { col.style.width = `${Math.max(40, Math.round(w0 + (ev.clientX - x0) / z))}px`; };
     const stop = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', stop); S().colW[colName(c)] = parseInt(col.style.width, 10); saver.touch(); applyFreeze(); };
     addEventListener('mousemove', move); addEventListener('mouseup', stop);
   }
@@ -374,11 +374,11 @@ export function sheetEditor(doc, ctx) {
   function frozenClass(c, r) { const f = frz(); return [r < f.r ? 'fz-r' : '', c < f.c ? 'fz-c' : '', r === f.r - 1 ? 'fz-r-end' : '', c === f.c - 1 ? 'fz-c-end' : ''].filter(Boolean).join(' '); }
   function applyFreeze() {
     const f = frz(), s = S();
-    const head = thead.firstChild?.getBoundingClientRect().height || 26;
+    const head = (thead.firstChild && rect(thead.firstChild).height) || 26;
     let top = head;
     for (let r = 0; r < s.rows; r++) {
       const rowTop = r < f.r ? top : null;
-      if (r < f.r) top += tds[r][0]?.getBoundingClientRect().height || 26;
+      if (r < f.r) top += (tds[r][0] && rect(tds[r][0]).height) || 26;
       const th = tbody.children[r]?.firstChild;
       if (th) { th.style.top = rowTop !== null ? `${rowTop}px` : ''; th.style.zIndex = rowTop !== null ? '4' : ''; th.style.position = 'sticky'; }
       let left = 46;

@@ -7,6 +7,8 @@
 import { store } from './store.js';
 import { toast } from './ui.js';
 import { navigate } from './router.js';
+import { getNotify, pling } from '../features/appsettings.js';
+import { isAndroidApp, showNotification } from './android.js';
 
 const subs = new Map();
 let running = false, seq = 0, ctrl = null, clockOffset = 0, failures = 0;
@@ -68,13 +70,15 @@ export function stopLive() { running = false; seq = 0; try { ctrl?.abort(); } ca
 // ── notifications (friend requests, snaps, invitations, mentions …) ──
 let lastPing = 0;
 function notify(title, text, path) {
+  if (document.hidden && isAndroidApp()) { showNotification(title, text, path); return; }
   if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
     try { const n = new Notification(title, { body: text, icon: '/assets/icons/app-192.png', tag: path || title }); n.onclick = () => { window.focus(); if (path) navigate(path); n.close(); }; return; } catch { /* */ }
   }
   toast(title, { text, icon: 'bell', action: path ? { label: 'Åbn', onClick: () => navigate(path) } : undefined, ms: 6000 });
   if (Date.now() - lastPing > 4000) { lastPing = Date.now(); try { navigator.vibrate?.(40); } catch { /* */ } }
 }
-onLive('notify', (ev) => notify(ev.title, ev.text, ev.path));
+const KIND = { friend: 'friend', snap: 'snap', 'cal-invite': 'calendar', report: 'report' };
+onLive('notify', (ev) => { const k = KIND[ev.kind]; if (k && getNotify()[k] === false) return; pling(); notify(ev.title, ev.text, ev.path); });
 onLive('msg', (ev) => {
   const me = store.get('user');
   if (!me || ev.message?.user?.id === me.id) return;
@@ -83,6 +87,9 @@ onLive('msg', (ev) => {
   const dm = ev.channel.startsWith('dm-');
   const mentioned = (ev.mentions || []).includes(me.id);
   if (!dm && !mentioned) return;
+  const pref = getNotify();
+  if ((dm && !pref.dm) || (!dm && !pref.mention)) return;
+  pling();
   const body = ev.message.body || (ev.message.file ? 'Sendte en fil' : 'Delte noget');
   const path = dm ? `/apps/community/dm/${ev.channel}` : `/apps/community/c/${ev.channel}`;
   notify(dm ? ev.message.user.name : `${ev.message.user.name} nævnte dig`, body.slice(0, 140), path);

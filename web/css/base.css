@@ -48,7 +48,7 @@ kbd {
 
 /* ── world layers ───────────────────────────────────────────────────── */
 #world {
-  position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none;
+  position: fixed; inset: 0; width: calc(100vw / var(--z, 1)); height: calc(100vh / var(--z, 1)); z-index: 0; pointer-events: none;
   transition: filter var(--t-slow) var(--ease);
 }
 #world-scrim {
@@ -92,3 +92,13 @@ kbd {
 #world-image[hidden] { display: none; }
 :root[data-world-source="image"] #world { visibility: hidden; }
 @keyframes world-drift { from { transform: scale(1) translate3d(0, 0, 0); } to { transform: scale(1.06) translate3d(-1%, -.6%, 0); } }
+
+/* ── see-through window (HUBTECH app for Windows): the desktop wallpaper shows behind HUBTECH ── */
+:root[data-transparent], :root[data-transparent] body { background: transparent !important; }
+:root[data-transparent] #world, :root[data-transparent] #world-image { display: none !important; }
+:root[data-transparent="clear"] #world-scrim { background: rgba(3, 8, 16, .18); }
+:root[data-transparent="acrylic"] #world-scrim, :root[data-transparent="mica"] #world-scrim { background: transparent; }
+:root[data-theme="light"][data-transparent="clear"] #world-scrim { background: rgba(235, 242, 250, .2); }
+/* panels a little more solid, so text stays readable on any wallpaper */
+:root[data-transparent="clear"] { --glass: rgba(9, 17, 30, .78); }
+:root[data-theme="light"][data-transparent="clear"] { --glass: rgba(255, 255, 255, .86); }

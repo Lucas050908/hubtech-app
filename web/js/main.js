@@ -13,6 +13,7 @@ import { stateBlock, toast, closeAllModals } from './core/ui.js';
 import { icon } from './core/icons.js';
 import { renderLogin, renderSignup } from './features/auth.js';
 import { maybeStartOnboarding } from './features/onboarding.js';
+import { applyDisplay } from './core/display.js';
 import { initDesktop } from './core/desktop.js';
 
 const root = document.getElementById('root');
@@ -26,6 +27,7 @@ function applyTheme() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', eff === 'light' ? '#dfe9f3' : '#0a1422');
 }
 store.on('prefs', applyTheme);
+applyDisplay();
 mq.addEventListener?.('change', applyTheme);
 applyTheme();
 
@@ -110,7 +112,7 @@ function showPublic(node, title, seq, focus = 1) {
 }
 
 async function showInShell(mod, { params = {}, app = null, title, focus } = {}, seq) {
-  if (!hasShell()) { buildShell(root); initAutoSync(); startLive(); import('./ai/panel.js').then(m => m.initAssistant()).catch(e => console.error(e)); }
+  if (!hasShell()) { buildShell(root); initAutoSync(); startLive(); import('./ai/panel.js').then(m => m.initAssistant()).catch(e => console.error(e)); import('./features/calls.js').then(m => m.initCalls()).catch(e => console.error(e)); import('./features/bgm.js').then(m => m.initBgm()).catch(e => console.error(e)); }
   const outlet = getOutlet();
   setActiveNav(currentPath());
   setFocus(focus ?? mod.focus ?? 1);

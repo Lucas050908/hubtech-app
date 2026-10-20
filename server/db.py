@@ -318,6 +318,34 @@ SCHEMA = [
     CREATE INDEX IF NOT EXISTS idx_studio_owner ON studio_apps(owner_id, updated_at);
     CREATE INDEX IF NOT EXISTS idx_studio_pub ON studio_apps(published, updated_at);
     """,
+    # v6: notifications that reach you when HUBTECH is closed (inbox, web push, e-mail) – see server/notify.py
+    """
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    text TEXT NOT NULL DEFAULT '',
+    path TEXT NOT NULL DEFAULT '/',
+    created_at INTEGER NOT NULL,
+    seen INTEGER NOT NULL DEFAULT 0,
+    emailed INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, id);
+CREATE TABLE IF NOT EXISTS push_subs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    hash TEXT NOT NULL UNIQUE,
+    last_id INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS notify_prefs (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    last_mail INTEGER NOT NULL DEFAULT 0
+);
+""",
 ]
 
 

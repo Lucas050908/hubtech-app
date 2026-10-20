@@ -1,5 +1,5 @@
 /** Opgaver — a kanban board (at gøre · i gang · færdig), saved per user on the server. */
-import { h, clear, debounce } from '../core/dom.js';
+import { h, clear, debounce, rect, uiZoom } from '../core/dom.js';
 import { query } from '../core/router.js';
 import { icon } from '../core/icons.js';
 import { store, logActivity } from '../core/store.js';
@@ -177,7 +177,7 @@ export default {
         e.preventDefault(); list.classList.remove('is-over');
         const t = st.tasks.find(x => x.id === e.dataTransfer.getData('text/plain'));
         if (!t) return;
-        const before = [...list.querySelectorAll('.kb-card:not(.is-dragging)')].find(el => e.clientY < el.getBoundingClientRect().top + el.offsetHeight / 2);
+        const before = [...list.querySelectorAll('.kb-card:not(.is-dragging)')].find(el => e.clientY / uiZoom() < rect(el).top + el.offsetHeight / 2);
         move(t, c.id, before?.dataset.id || null);
       });
       const clearDone = c.id === 'done' && items.length ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => {

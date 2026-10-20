@@ -140,7 +140,7 @@ class SocialTest(unittest.TestCase):
         sid = body["server"]["id"]
         srv = a.req("GET", f"/api/cm/servers/{sid}")[1]
         names = [ch["name"] for ch in srv["channels"]]
-        self.assertEqual(names, ["velkommen", "generelt", "musik"])
+        self.assertEqual(names, ["velkommen", "generelt", "musik", "snak"])
         general = srv["channels"][1]["id"]
         welcome = srv["channels"][0]["id"]
         # private server: join needs an invite
@@ -324,3 +324,120 @@ class SocialTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CallsTest(SocialTest):
+    """Voice/video calls: ringing friends, relaying WebRTC signals, voice channels."""
+
+    def poll(self, client, since, wait=3):
+        st, body, _ = client.req("GET", f"/api/live?since={since}&wait={wait}")
+        return body
+
+    def test_private_call(self):
+        a, b, c = self.a, self.b, self.c
+        self.join_cm(a, b, c)
+        a.req("POST", "/api/cm/friends", {"username": "bent"})
+        b.req("POST", f"/api/cm/friends/{self.ids['anna']}/accept")
+        for x in (a, b, c):   # mark everyone online
+            x.req("GET", "/api/live?since=0")
+        self.assertEqual(a.req("POST", "/api/cm/calls", {"to": self.ids["carl"]})[1]["code"], "not_friends")
+        seq_b = b.req("GET", "/api/live?since=0")[1]["seq"]
+        st, call, _ = a.req("POST", "/api/cm/calls", {"to": self.ids["bent"], "video": True})
+        self.assertEqual(st, 201, call)
+        self.assertTrue(call["ice"])
+        ev = self.poll(b, seq_b)
+        ring = [e for e in ev["events"] if e["type"] == "call-ring"]
+        self.assertEqual((ring[0]["from"]["username"], ring[0]["video"]), ("anna", True))
+        self.assertEqual(b.req("GET", "/api/cm/calls")[1]["ringing"]["id"], call["id"])
+        self.assertEqual(c.req("POST", f"/api/cm/calls/{call['id']}/join")[0], 404)       # not invited
+        st, j, _ = b.req("POST", f"/api/cm/calls/{call['id']}/join")
+        self.assertEqual([m["username"] for m in j["members"]], ["anna"])
+        self.assertEqual(c.req("POST", f"/api/cm/calls/{call['id']}/signal", {"to": self.ids["anna"], "data": {"sdp": "x"}})[0], 403)
+        seq_a = a.req("GET", "/api/live?since=0")[1]["seq"]
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{call['id']}/signal", {"to": self.ids["anna"], "data": {"type": "answer", "sdp": "v=0"}})[0], 200)
+        sig = [e for e in self.poll(a, seq_a)["events"] if e["type"] == "call-signal"]
+        self.assertEqual((sig[0]["from"], sig[0]["data"]["type"]), (self.ids["bent"], "answer"))
+        seq_b = b.req("GET", "/api/live?since=0")[1]["seq"]
+        a.req("POST", f"/api/cm/calls/{call['id']}/leave")
+        self.assertIn("call-end", [e["type"] for e in self.poll(b, seq_b)["events"]])
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{call['id']}/join")[0], 404)
+        # declining ends the call for the caller
+        call = a.req("POST", "/api/cm/calls", {"to": self.ids["bent"]})[1]
+        seq_a = a.req("GET", "/api/live?since=0")[1]["seq"]
+        b.req("POST", f"/api/cm/calls/{call['id']}/leave")
+        end = [e for e in self.poll(a, seq_a)["events"] if e["type"] == "call-end"]
+        self.assertEqual(end[0]["reason"], "declined")
+
+    def test_voice_channel(self):
+        a, b, c = self.a, self.b, self.c
+        self.join_cm(a, b, c)
+        sid = a.req("POST", "/api/cm/servers", {"name": "Snakkeklub"})[1]["server"]["id"]
+        code = a.req("POST", f"/api/cm/servers/{sid}/invites", {})[1]["code"]
+        b.req("POST", f"/api/cm/invites/{code}/join")
+        voice = [ch for ch in a.req("GET", f"/api/cm/servers/{sid}")[1]["channels"] if ch["kind"] == "voice"][0]["id"]
+        for x in (a, b, c):
+            x.req("GET", "/api/live?since=0")
+        self.assertEqual(c.req("POST", f"/api/cm/calls/{voice}/join")[1]["code"], "not_member")
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{voice}/join")[1]["code"], "rules")
+        b.req("POST", f"/api/cm/servers/{sid}/rules")
+        self.assertEqual(a.req("POST", f"/api/cm/calls/{voice}/join")[1]["members"], [])
+        self.assertEqual([m["username"] for m in b.req("POST", f"/api/cm/calls/{voice}/join")[1]["members"]], ["anna"])
+        occ = a.req("GET", f"/api/cm/servers/{sid}")[1]["voice"][voice]
+        self.assertEqual(sorted(m["username"] for m in occ), ["anna", "bent"])
+        b.req("POST", f"/api/cm/calls/{voice}/leave")
+        self.assertEqual([m["username"] for m in a.req("GET", f"/api/cm/servers/{sid}")[1]["voice"][voice]], ["anna"])
+        a.req("POST", f"/api/cm/servers/{sid}/members/{self.ids['bent']}/mute", {"minutes": 5})
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{voice}/join")[1]["code"], "muted")
+        a.req("POST", f"/api/cm/calls/{voice}/leave")
+        self.assertEqual(a.req("GET", f"/api/cm/servers/{sid}")[1]["voice"], {})
+
+
+class GroupCallTest(unittest.TestCase):
+    """Group calls: ring several friends, invite more, share what music is playing."""
+
+    @classmethod
+    def setUpClass(cls):
+        SocialTest.setUpClass.__func__(cls)
+
+    @classmethod
+    def tearDownClass(cls):
+        SocialTest.tearDownClass.__func__(cls)
+
+    def test_group_call(self):
+        a, b, c, d = self.a, self.b, self.c, self.d
+        for x in (a, b, c, d):
+            x.req("POST", "/api/cm/me/age", {"birthYear": 2000, "acceptRules": True})
+            x.req("GET", "/api/live?since=0")
+        for name, cl in (("bent", b), ("carl", c), ("dina", d)):
+            a.req("POST", "/api/cm/friends", {"username": name})
+            cl.req("POST", f"/api/cm/friends/{self.ids['anna']}/accept")
+        seq = {n: cl.req("GET", "/api/live?since=0")[1]["seq"] for n, cl in (("b", b), ("c", c), ("d", d))}
+        st, call, _ = a.req("POST", "/api/cm/calls", {"to": [self.ids["bent"], self.ids["carl"]]})
+        self.assertEqual((st, call["kind"]), (201, "group"), call)
+        for n, cl in (("b", b), ("c", c)):
+            ev = cl.req("GET", f"/api/live?since={seq[n]}&wait=3")[1]["events"]
+            self.assertTrue(any(e["type"] == "call-ring" and e.get("group") for e in ev), ev)
+        self.assertEqual([m["username"] for m in b.req("POST", f"/api/cm/calls/{call['id']}/join")[1]["members"]], ["anna"])
+        sa = a.req("GET", "/api/live?since=0")[1]["seq"]
+        c.req("POST", f"/api/cm/calls/{call['id']}/leave")   # carl declines – the call goes on
+        ev = a.req("GET", f"/api/live?since={sa}&wait=3")[1]["events"]
+        self.assertIn("call-decline", [e["type"] for e in ev])
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{call['id']}/signal", {"to": self.ids["anna"], "data": {"x": 1}})[0], 200)
+        # invite dina while the call is going
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{call['id']}/invite", {"to": [self.ids["dina"]]})[0], 403)   # bent isn't dina's friend
+        self.assertEqual(a.req("POST", f"/api/cm/calls/{call['id']}/invite", {"to": [self.ids["dina"]]})[1]["invited"], 1)
+        ev = d.req("GET", f"/api/live?since={seq['d']}&wait=3")[1]["events"]
+        self.assertTrue(any(e["type"] == "call-ring" for e in ev))
+        self.assertEqual(sorted(m["username"] for m in d.req("POST", f"/api/cm/calls/{call['id']}/join")[1]["members"]), ["anna", "bent"])
+        # music info goes to the others
+        sb = b.req("GET", "/api/live?since=0")[1]["seq"]
+        self.assertEqual(a.req("POST", f"/api/cm/calls/{call['id']}/info", {"music": "Min sang"})[0], 200)
+        ev = b.req("GET", f"/api/live?since={sb}&wait=3")[1]["events"]
+        self.assertEqual([e["music"]["title"] for e in ev if e["type"] == "call-info"], ["Min sang"])
+        self.assertEqual(c.req("POST", f"/api/cm/calls/{call['id']}/info", {"music": "x"})[0], 403)
+        # one leaving does not end a group call
+        a.req("POST", f"/api/cm/calls/{call['id']}/leave")
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{call['id']}/signal", {"to": self.ids["dina"], "data": {"x": 1}})[0], 200)
+        b.req("POST", f"/api/cm/calls/{call['id']}/leave")
+        d.req("POST", f"/api/cm/calls/{call['id']}/leave")
+        self.assertEqual(b.req("POST", f"/api/cm/calls/{call['id']}/join")[0], 404)

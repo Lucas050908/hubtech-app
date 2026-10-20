@@ -23,10 +23,12 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "server"
 
-from server import api, auth, autosync, backup, byteforge_runner, config, db, social, studio  # noqa: E402
+from server import api, auth, autosync, backup, byteforge_runner, calls, config, db, notify, social, studio  # noqa: E402
 
 social.install(api)
 studio.install(api)
+calls.install(api)
+notify.install(api)
 
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")
@@ -156,7 +158,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "same-origin")
         self.send_header("X-Frame-Options", "SAMEORIGIN")
-        self.send_header("Permissions-Policy", "camera=(self), microphone=(), geolocation=(self)")
+        self.send_header("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(self), display-capture=(self)")
         if csp:
             self.send_header("Content-Security-Policy", csp)
 
@@ -379,6 +381,7 @@ def _housekeeping():
             pass
         try:
             social.cleanup()
+            notify.cleanup()
         except Exception:
             traceback.print_exc()
 

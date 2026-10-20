@@ -42,3 +42,14 @@ export const setLock = (on) => call('setLock', !!on);
 
 // updates
 export const installUpdate = (url) => call('installUpdate', url);
+
+// which HUBTECH server the app shows: "" = the server inside the app, otherwise https://…
+export const serverUrl = () => call('serverUrl') || '';
+/** Switch to another HUBTECH server (checked first). Resolves with "ok" or a Danish error message. */
+export const setServerUrl = (url) => new Promise((resolve) => setTimeout(() => resolve(call('setServerUrl', url) || 'Det virker ikke i denne version af appen.'), 0));
+export const useLocalServer = () => call('useLocalServer');
+
+// notifications from the shared server while the app is closed (checked in the background)
+export const showNotification = (title, text, path) => call('showNotification', String(title || ''), String(text || ''), String(path || '/'));
+export const backgroundNotify = () => !!call('backgroundNotify');
+export const setBackgroundNotify = (on) => call('setBackgroundNotify', !!on);

@@ -483,7 +483,15 @@ def project_open(req, params):
     return 200, {"ok": ok, "message": msg, "deeplink": deeplink}
 
 
+_META_LOCK = __import__("threading").Lock()
+
+
 def _touch_meta(uid, pid, patch):
+    with _META_LOCK:   # two quick changes (e.g. status, then a tag) must not overwrite each other
+        return _touch_meta_locked(uid, pid, patch)
+
+
+def _touch_meta_locked(uid, pid, patch):
     row = db.one("SELECT data FROM project_meta WHERE user_id = ? AND project_id = ?", (uid, pid))
     cur = json.loads(row["data"]) if row else {}
     for k, v in patch.items():

@@ -99,3 +99,14 @@ export function animateNumber(el, to, ms = 900) {
   };
   requestAnimationFrame(step);
 }
+
+// ── screen size (Indstillinger → Verden & udseende → Størrelse på skærmen) ──
+// The UI is enlarged with CSS zoom on <body>. getBoundingClientRect() and mouse positions are then in screen
+// pixels, while style.left/top/width are in the page's own (zoomed) pixels – these helpers convert.
+export const uiZoom = () => document.body?.currentCSSZoom || parseFloat(document.body?.style.zoom) || 1;
+export function rect(el) {
+  const r = el.getBoundingClientRect(), z = uiZoom();
+  return z === 1 ? r : { left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z, width: r.width / z, height: r.height / z, x: r.x / z, y: r.y / z };
+}
+export const viewW = () => innerWidth / uiZoom();
+export const viewH = () => innerHeight / uiZoom();

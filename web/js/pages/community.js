@@ -12,6 +12,7 @@ import { chatView, fmtTime } from '../community/chat.js';
 import { musicView } from '../community/music.js';
 import { sendSnap, openSnap, storyStrip } from '../community/snaps.js';
 import { reportDialog, memberCard, inviteDialog, serverSettings, reportsView, ROLE_DA, RANK } from '../community/admin.js';
+import { callUser, callGroup, pickFriends, joinVoice, currentCall } from '../features/calls.js';
 
 const BASE = '/apps/community';
 const SERVER_ICONS = ['🔧', '💻', '🎮', '🎵', '📚', '⚡', '🏠', '⚽', '🚀', '🧪', '🎨', '🍕'];
@@ -125,8 +126,13 @@ function buildApp(cm, params) {
       d.me.role !== 'owner' ? h('button', { role: 'menuitem', onclick: () => { menu.hidden = true; reportDialog({ kind: 'server', ref: s.id, what: s.name }); } }, icon('flag'), 'Anmeld serveren') : null);
     const head = h('button', { class: 'cm-side-h is-server', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: (e) => { menu.hidden = !menu.hidden; e.currentTarget.setAttribute('aria-expanded', String(!menu.hidden)); } },
       h('span', { class: 'cm-srv-ic', style: { '--sc': s.color } }, s.icon || s.name.slice(0, 2).toUpperCase()), h('b', null, s.name), icon('chevronDown'));
-    const chans = d.channels.map(c => h('button', { class: ['cm-chan', S.view === c.id && 'is-active', c.unread && 'is-unread'], onclick: () => go(`/c/${c.id}`) },
-      icon(c.kind === 'music' ? 'music' : c.postRole !== 'member' ? 'lock' : 'hash'), h('span', null, c.name), c.unread && S.view !== c.id ? h('span', { class: 'cm-badge' }, String(c.unread)) : null));
+    const chans = d.channels.map(c => c.kind === 'voice'
+      ? h('div', { class: 'cm-voice' },
+        h('button', { class: ['cm-chan', currentCall()?.id === c.id && 'is-active'], title: 'Deltag i talekanalen', onclick: () => joinVoice(c.id, c.name) }, icon('volume'), h('span', null, c.name),
+          (d.voice?.[c.id] || []).length ? h('span', { class: 'cm-voice-n' }, String(d.voice[c.id].length)) : null),
+        (d.voice?.[c.id] || []).map(u => h('div', { class: 'cm-voice-u' }, h('span', { class: 'cm-ava cm-ava-sm' }, u.avatar), h('span', null, u.name))))
+      : h('button', { class: ['cm-chan', S.view === c.id && 'is-active', c.unread && 'is-unread'], onclick: () => go(`/c/${c.id}`) },
+        icon(c.kind === 'music' ? 'music' : c.postRole !== 'member' ? 'lock' : 'hash'), h('span', null, c.name), c.unread && S.view !== c.id ? h('span', { class: 'cm-badge' }, String(c.unread)) : null));
     h(clear(side), null, h('div', { class: 'cm-side-hw' }, head, menu),
       h('div', { class: 'cm-side-body' },
         s.description ? h('p', { class: 'faint cm-srv-desc' }, s.description) : null,
@@ -192,6 +198,7 @@ function buildApp(cm, params) {
       let content;
       if (tab === 'friends') content = f.friends.length ? f.friends.map(u => row(u, [
         h('button', { class: 'icon-btn', title: 'Send besked', 'aria-label': `Skriv til ${u.name}`, onclick: () => go(`/dm/${dmId(u.id)}`) }, icon('chat')),
+        h('button', { class: 'icon-btn', title: 'Ring op', 'aria-label': `Ring til ${u.name}`, onclick: () => callUser(u) }, icon('phone')),
         h('button', { class: 'icon-btn', title: 'Send snap', 'aria-label': `Send snap til ${u.name}`, onclick: () => sendSnap(cm, [u.id]) }, icon('camera')),
         h('button', { class: 'icon-btn', title: 'Fjern ven', 'aria-label': `Fjern ${u.name} som ven`, onclick: async () => { if (await confirmDialog({ title: `Fjern ${u.name} som ven?`, confirmLabel: 'Fjern', danger: true })) { await api.del(`/api/cm/friends/${u.id}`).catch(() => {}); await loadFriends(); loadDms(); draw(); } } }, icon('x'))]))
         : [stateBlock({ icon: 'users', title: 'Ingen venner endnu', text: 'Skriv et brugernavn ovenfor for at sende en venneanmodning. Venner kan skrive privat og sende snaps til hinanden.' })];
@@ -204,7 +211,8 @@ function buildApp(cm, params) {
       h(clear(body), null, h('div', { class: 'cm-addf' }, h('div', { class: 'cm-addf-in' }, add, sugg), h('button', { class: 'btn btn-primary', onclick: () => addFriend() }, icon('userPlus'), 'Tilføj ven')),
         h('div', { class: 'cm-pane-tools' }, seg), content);
     };
-    h(clear(main), null, header('users', 'Venner', 'Stories, venner og anmodninger', [h('button', { class: 'btn btn-sm', onclick: () => sendSnap(cm) }, icon('camera'), 'Snap')]), h('div', { class: 'cm-scroll' }, strip.el, body));
+    const groupCall = async () => { const f = S.friends?.friends || []; const pick = await pickFriends(f); if (pick?.length) callGroup(pick); };
+    h(clear(main), null, header('users', 'Venner', 'Stories, venner og anmodninger', [h('button', { class: 'btn btn-sm', onclick: groupCall }, icon('phone'), 'Gruppeopkald'), h('button', { class: 'btn btn-sm', onclick: () => sendSnap(cm) }, icon('camera'), 'Snap')]), h('div', { class: 'cm-scroll' }, strip.el, body));
     draw();
     if (!S.friends) { await loadFriends(); draw(); }
   }
@@ -282,6 +290,8 @@ function buildApp(cm, params) {
     const chat = chatView(cm, { channelId: cid, title: name, dm: true, placeholder: `Skriv til ${name}`, canWrite: () => true, onReport: reportDialog, onUser: openUser, onRead: () => { const d = S.dms.find(x => x.channel === cid); if (d && d.unread) { d.unread = 0; drawSide(); drawRail(); } } });
     S.chat = chat;
     h(clear(main), null, header('chat', name, other ? `@${other.username} · ${other.online ? 'online' : 'offline'}` : '', other ? [
+      h('button', { class: 'icon-btn', title: 'Ring op', 'aria-label': `Ring til ${name}`, onclick: () => callUser(other) }, icon('phone')),
+      h('button', { class: 'icon-btn', title: 'Videoopkald', 'aria-label': `Videoopkald med ${name}`, onclick: () => callUser(other, { video: true }) }, icon('video')),
       h('button', { class: 'icon-btn', title: 'Send snap', 'aria-label': 'Send snap', onclick: () => sendSnap(cm, [other.id]) }, icon('camera')),
       h('button', { class: 'icon-btn', title: 'Profil', 'aria-label': 'Profil', onclick: () => openUser(other) }, icon('user'))] : []), chat.el);
     setTimeout(() => chat.focus(), 50);
@@ -306,7 +316,7 @@ function buildApp(cm, params) {
     S.detail = d;
     const s0 = S.servers.find(x => x.id === sid);
     if (!s0) loadServers();
-    const c = d.channels.find(x => x.id === channelId) || d.channels.find(x => x.kind === 'text' && RANK[d.me.role] >= RANK[x.postRole]) || d.channels.find(x => x.kind === 'text') || d.channels[0];
+    const c = d.channels.find(x => x.id === channelId && x.kind !== 'voice') || d.channels.find(x => x.kind === 'text' && RANK[d.me.role] >= RANK[x.postRole]) || d.channels.find(x => x.kind === 'text') || d.channels[0];
     if (!c) return;
     if (c.id !== channelId) history.replaceState(null, '', `#${BASE}/c/${c.id}`);
     S.view = c.id;
@@ -413,6 +423,7 @@ function buildApp(cm, params) {
         if (S.chat && S.view === ev.channel) S.chat.onLive(ev);
         break;
       case 'music': S.music?.onLive(ev); break;
+      case 'voice': if (S.detail?.server.id === ev.server) { S.detail.voice = { ...(S.detail.voice || {}), [ev.channel]: ev.users }; drawSide(); } break;
       case 'server':
         reloadServers();
         if (S.detail?.server.id === ev.server) openServer(ev.server, S.view);

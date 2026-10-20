@@ -11,6 +11,7 @@ public class BootReceiver extends BroadcastReceiver {
         String a = in.getAction();
         if (Intent.ACTION_BOOT_COMPLETED.equals(a) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(a) || "android.intent.action.QUICKBOOT_POWERON".equals(a)) {
             Reminders.restore(c);
+            NotifyJob.sync(c);
         }
     }
 }

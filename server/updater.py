@@ -83,6 +83,8 @@ def _plan(zf):
 
 def check(raw: bytes):
     """Inspect an uploaded update. Returns info incl. an id to install it with."""
+    if config.STORE_APP:
+        raise UpdateError("Denne HUBTECH er installeret fra Microsoft Store og opdateres automatisk derfra.")
     if len(raw) > MAX_ZIP:
         raise UpdateError("Zip-filen er for stor.")
     try:

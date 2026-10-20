@@ -222,7 +222,7 @@ a.row:hover .row-end > svg, button.row:hover .row-end > svg { transform: transla
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ════════════════ Overlays ════════════════ */
-.toasts { position: fixed; z-index: 400; right: 20px; bottom: 20px; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toasts { position: fixed; z-index: 400; right: 20px; bottom: 20px; display: grid; gap: 10px; width: min(380px, calc(calc(100vw / var(--z, 1)) - 32px)); pointer-events: none; }
 .toast {
   pointer-events: auto; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-md);
   background: var(--glass-strong); border: 1px solid var(--line-2); box-shadow: var(--shadow-2);
@@ -241,7 +241,7 @@ a.row:hover .row-end > svg, button.row:hover .row-end > svg { transform: transla
 @keyframes toastOut { to { opacity: 0; transform: translateY(8px) scale(.98); } }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 300; background: rgba(2, 6, 12, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 16px; animation: fadeIn var(--t-med) var(--ease); }
-.modal { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: var(--s6); border-radius: var(--r-xl); background: var(--glass-strong); border: 1px solid var(--line-2); box-shadow: var(--shadow-2); animation: modalIn var(--t-med) var(--ease-out); }
+.modal { width: min(560px, 100%); max-height: calc(calc(100vh / var(--z, 1)) - 32px); overflow: auto; padding: var(--s6); border-radius: var(--r-xl); background: var(--glass-strong); border: 1px solid var(--line-2); box-shadow: var(--shadow-2); animation: modalIn var(--t-med) var(--ease-out); }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: var(--s4); }
 .modal-head h2 { font-size: var(--fs-xl); }
 .modal-actions { display: flex; gap: var(--s2); justify-content: flex-end; margin-top: var(--s5); flex-wrap: wrap; }

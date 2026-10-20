@@ -5,7 +5,7 @@
  *  - Network first, so updates always win; the stored copy is only used when the network fails.
  *  - API calls are never cached here: offline data is handled by js/core/offline.js (per user).
  */
-const CACHE = 'hubtech-shell-v2';
+const CACHE = 'hubtech-shell-v3';
 const CORE = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
@@ -39,4 +39,46 @@ self.addEventListener('fetch', (e) => {
     if (req.mode === 'navigate') return (await caches.match('/index.html')) || (await caches.match('/')) || Response.error();
     return Response.error();
   }));
+});
+
+// ── notifications when HUBTECH is closed (web push) ──
+// The server sends an empty push (no payload to encrypt); the text is fetched from the inbox. Each device has its
+// own place in the inbox, found from a hash of its push address, so the same thing never shows twice.
+async function subHash() {
+  const s = await self.registration.pushManager.getSubscription();
+  if (!s) return '';
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s.endpoint));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+self.addEventListener('push', (e) => {
+  e.waitUntil((async () => {
+    let items = [];
+    try {
+      const r = await fetch(`/api/notify/inbox?sub=${await subHash()}`, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'hubtech' } });
+      if (r.ok) items = (await r.json()).items || [];
+    } catch { /* offline – show a general notice */ }
+    const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (!items.length) {
+      if (open.some(c => c.visibilityState === 'visible')) return;     // nothing new and the app is in front
+      items = [{ id: 0, title: 'HUBTECH', text: 'Der er noget nyt til dig.', path: '/apps/community' }];
+    }
+    for (const n of items.slice(-4)) {
+      await self.registration.showNotification(n.title, {
+        body: n.text, tag: n.kind === 'dm' ? `ht-${n.path}` : `ht-${n.id}`, renotify: true,
+        icon: '/assets/icons/app-192.png', data: { path: n.path || '/' },
+        requireInteraction: n.kind === 'call', vibrate: n.kind === 'call' ? [400, 200, 400, 200, 400] : [80],
+      });
+    }
+  })());
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const path = (e.notification.data && e.notification.data.path) || '/';
+  const url = new URL(`/#${path}`, self.location.origin).href;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const w = wins.find(c => new URL(c.url).origin === self.location.origin);
+    if (w) { await w.focus(); try { await w.navigate(url); } catch { w.postMessage({ type: 'open', path }); } return; }
+    await self.clients.openWindow(url);
+  })());
 });

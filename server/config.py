@@ -72,6 +72,8 @@ HUBTECH_SITE_URL = os.environ.get("HUBTECH_SITE_URL", "").strip()
 MAX_STATE_BYTES = 4 * 1024 * 1024   # photos in Servicehjælp reports are stored as data URLs
 MAX_BODY_BYTES = 6 * 1024 * 1024
 VERSION = "1.2.0"
+# installed from Microsoft Store (windows/): the program folder is read-only and Store does the updates
+STORE_APP = os.environ.get("HUBTECH_STORE_APP", "") == "1"
 # Where the Android app looks for a newer APK (published by .github/workflows/android.yml on the "ci" branch).
 ANDROID_UPDATE_URL = os.environ.get("HUBTECH_ANDROID_UPDATE_URL", "https://raw.githubusercontent.com/Lucas050908/hubtech-app/ci/version.json")
 OFFICE_VERSION_SECONDS = _int("HUBTECH_OFFICE_VERSION_SECONDS", 600)

@@ -1141,7 +1141,7 @@ export class World {
   startLoop() {
     this.last = 0;
     if (!holdInstalled) installHold();
-    if (this.running || this.cfg.reduced || document.hidden || this.quality >= 4) return;
+    if (this.running || this.cfg.reduced || document.hidden || this.quality >= 4 || document.documentElement.dataset.transparent) return;
     this.running = true;
     const loop = (t) => {
       if (!this.running) return;

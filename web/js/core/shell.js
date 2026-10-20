@@ -9,6 +9,7 @@ import { SEASONS, SEASON_LABEL } from '../world/palettes.js';
 import { openPalette } from '../features/palette.js';
 import { startOnboarding } from '../features/onboarding.js';
 import { logout } from '../features/auth.js';
+import { bgmButton, initBgm } from '../features/bgm.js';
 import { modal, toast } from './ui.js';
 import { onOfflineChange, offlineStatus, replay } from './offline.js';
 
@@ -166,7 +167,7 @@ function buildTopbar() {
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Åbn menu', 'aria-controls': 'sidebar', onclick: () => shellEl.classList.toggle('nav-open') }, icon('menu')),
     h('button', { class: 'search-trigger', dataset: { tour: 'search' }, 'aria-label': 'Søg i platformen (Ctrl+K)', onclick: () => openPalette() },
       icon('search'), h('span', null, 'Søg i platformen, projekter, guides og mere...'), h('kbd', null, navigator.platform?.includes('Mac') ? '⌘ + K' : 'Ctrl + K')),
-    h('div', { class: 'top-actions' }, net, aiBtn, themeBtn, bellWrap, h('div', { class: 'top-sep' }), userChipWrap));
+    h('div', { class: 'top-actions' }, net, aiBtn, bgmButton(), themeBtn, bellWrap, h('div', { class: 'top-sep' }), userChipWrap));
 }
 
 function renderThemeBtn() {

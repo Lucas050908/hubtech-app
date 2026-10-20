@@ -11,6 +11,7 @@ _cond = threading.Condition()
 _events = deque(maxlen=4000)   # (seq, frozenset(user ids), payload)
 _seq = 0
 _seen = {}                     # user id -> last time the user was polling (presence)
+_hooks = []                    # called after publish (notifications for people who aren't here)
 BOOT = int(time.time() * 1000)
 
 
@@ -24,6 +25,16 @@ def publish(users, payload):
         _seq += 1
         _events.append((_seq, ids, payload))
         _cond.notify_all()
+    for fn in _hooks:
+        try:
+            fn(ids, payload)
+        except Exception:
+            pass
+
+
+def add_hook(fn):
+    if fn not in _hooks:
+        _hooks.append(fn)
 
 
 def current():

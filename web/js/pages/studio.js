@@ -13,6 +13,7 @@ import { appHero, heroBtn, heroGhost } from '../features/apphero.js';
 import { codeEditor } from '../features/codeeditor.js';
 import { saveBlob } from '../core/files.js';
 import { setAiContext } from '../ai/context.js';
+import { getStudio } from '../features/appsettings.js';
 import { TEMPLATES } from '../data/studio-templates.js';
 
 const BASE = '#/apps/studio';
@@ -159,7 +160,7 @@ async function runner(app, id) {
 async function editor(app, id) {
   const a = (await api.get(`/api/studio/apps/${id}`)).app;
   if (!a.mine) { navigate(`/apps/studio/run/${id}`, { replace: true }); return h('div'); }
-  let files = { ...a.files }, current = 'index.html', dirty = false, saving = false, saveTimer = 0, autoRun = true, view = 'code';
+  let files = { ...a.files }, current = 'index.html', dirty = false, saving = false, saveTimer = 0, autoRun = getStudio().autoRun, view = 'code';
   const undo = [];
   const logs = [];
   const status = h('span', { class: 'st-status faint', role: 'status' }, 'Gemt');
@@ -218,6 +219,7 @@ async function editor(app, id) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); save({ andRun: true }); }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save({ andRun: true }); }
     });
+    ed.el.style.setProperty('--st-font', `${getStudio().fontSize}px`);
     h(clear(edHost), null, ed.el);
     drawTabs();
   }

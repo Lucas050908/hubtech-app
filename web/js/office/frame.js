@@ -1,5 +1,5 @@
 /** Shared editor chrome for HUBTECH Office: top bar, toolbar, status bar, autosave, menus, print. */
-import { h, clear } from '../core/dom.js';
+import { h, clear, rect, viewW, viewH } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { toast, confirmDialog, errorToast, modal } from '../core/ui.js';
 import { navigate } from '../core/router.js';
@@ -22,9 +22,9 @@ export function popMenu(anchor, items) {
     onclick: () => { close(); it[2](); },
   }, icon(it[1]), it[0])));
   document.body.appendChild(m);
-  const r = anchor.getBoundingClientRect();
-  m.style.top = `${Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 6)}px`;
-  m.style.left = `${Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth))}px`;
+  const r = rect(anchor);
+  m.style.top = `${Math.min(viewH() - m.offsetHeight - 8, r.bottom + 6)}px`;
+  m.style.left = `${Math.max(8, Math.min(viewW() - m.offsetWidth - 8, r.right - m.offsetWidth))}px`;
   const close = () => { m.remove(); removeEventListener('mousedown', out, true); removeEventListener('keydown', esc, true); };
   const out = (e) => { if (!m.contains(e.target) && e.target !== anchor) close(); };
   const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); anchor.focus(); } };

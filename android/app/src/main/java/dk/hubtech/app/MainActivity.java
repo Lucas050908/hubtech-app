@@ -86,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
     private PermissionRequest pendingPermission;
     private Uri cameraUri;
     private int port = 0;
+    private String remote = "";      // another HUBTECH server (https://…) chosen under Indstillinger → Telefon
     private String pendingPath = null;
     private long stoppedAt = 0, updateDownload = -1;
     private boolean unlocked = false;
@@ -97,6 +98,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("hubtech", MODE_PRIVATE);
+        remote = prefs.getString("remote", "");
+        NotifyJob.sync(this);
         Reminders.ensureChannel(this);
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#0A1422"));
@@ -119,7 +122,29 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         handleIntent(getIntent());
-        startServer();
+        if (remote.isEmpty()) startServer();
+        else openRemote();
+    }
+
+    /** Use another HUBTECH (e.g. a friend's or your own computer via HTTPS) instead of the server inside the app. */
+    private void openRemote() {
+        ui.post(() -> {
+            String start = pendingPath != null ? "/#" + pendingPath : "/?source=app";
+            pendingPath = null;
+            web.loadUrl(remote + start);
+        });
+    }
+
+    private boolean ready() { return !remote.isEmpty() || port != 0; }
+
+    private boolean sameOrigin(Uri u) {
+        if (u == null) return false;
+        if (!remote.isEmpty()) {
+            Uri r = Uri.parse(remote);
+            return r.getScheme() != null && r.getScheme().equals(u.getScheme()) && r.getHost() != null && r.getHost().equalsIgnoreCase(u.getHost()) && r.getPort() == u.getPort();
+        }
+        String host = u.getHost();
+        return ("127.0.0.1".equals(host) || "localhost".equals(host)) && u.getPort() == port;
     }
 
     // ── splash / first start ──
@@ -176,11 +201,19 @@ public class MainActivity extends AppCompatActivity {
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
-                String host = u.getHost();
-                if (("127.0.0.1".equals(host) || "localhost".equals(host)) && u.getPort() == port) return false;
+                if (sameOrigin(u)) return false;
                 // links to other sites (and tel:/mailto:) open in the phone's own apps
                 try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (ActivityNotFoundException ignored) { }
                 return true;
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest req, android.webkit.WebResourceError err) {
+                if (!req.isForMainFrame() || remote.isEmpty()) return;
+                String html = "<!doctype html><html lang=da><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0a1422;color:#eef4fb;font:16px system-ui'>"
+                        + "<div style='max-width:340px;padding:24px;text-align:center'><h2>Serveren svarer ikke</h2><p style='color:#9fb0c4'>" + android.text.TextUtils.htmlEncode(remote) + " kunne ikke nås. Tjek internettet, eller om computeren med HUBTECH er tændt.</p>"
+                        + "<p><button style='font:inherit;padding:12px 18px;border:0;border-radius:12px;background:#4cc2ff;font-weight:700' onclick='location.href=" + JSONObject.quote(remote + "/") + "'>Prøv igen</button></p>"
+                        + "<p><button style='font:inherit;padding:12px 18px;border-radius:12px;background:none;color:#eef4fb;border:1px solid #445' onclick='HubtechAndroid.useLocalServer()'>Brug appens egen server</button></p></div>";
+                view.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
+                if (splash.getVisibility() == View.VISIBLE) { web.setVisibility(View.VISIBLE); splash.setVisibility(View.GONE); }
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (splash.getVisibility() == View.VISIBLE) {
@@ -207,18 +240,19 @@ public class MainActivity extends AppCompatActivity {
                 return openChooser(params, wantsImages);
             }
 
-            // getUserMedia (the barcode/QR scanner) – grant the camera when Android allows it
+            // getUserMedia: camera (scanner, snaps, video calls) and microphone (calls) – only for HUBTECH itself
             @Override public void onPermissionRequest(PermissionRequest request) {
                 ui.post(() -> {
-                    boolean video = false;
-                    for (String r : request.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) video = true;
-                    if (!video) { request.deny(); return; }
-                    if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                        request.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
-                    } else {
-                        pendingPermission = request;
-                        requestPermissions(new String[] { Manifest.permission.CAMERA }, REQ_CAMERA);
+                    if (!sameOrigin(request.getOrigin())) { request.deny(); return; }
+                    java.util.List<String> want = new java.util.ArrayList<>(), need = new java.util.ArrayList<>();
+                    for (String r : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) { want.add(r); if (!has(Manifest.permission.CAMERA)) need.add(Manifest.permission.CAMERA); }
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) { want.add(r); if (!has(Manifest.permission.RECORD_AUDIO)) need.add(Manifest.permission.RECORD_AUDIO); }
                     }
+                    if (want.isEmpty()) { request.deny(); return; }
+                    if (need.isEmpty()) { request.grant(want.toArray(new String[0])); return; }
+                    pendingPermission = request;
+                    requestPermissions(need.toArray(new String[0]), REQ_CAMERA);
                 });
             }
         });
@@ -273,7 +307,12 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(code, perms, res);
         boolean ok = res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED;
         if (code == REQ_CAMERA && pendingPermission != null) {
-            if (ok) pendingPermission.grant(new String[] { PermissionRequest.RESOURCE_VIDEO_CAPTURE });
+            java.util.List<String> grant = new java.util.ArrayList<>();
+            for (String r : pendingPermission.getResources()) {
+                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r) && has(Manifest.permission.CAMERA)) grant.add(r);
+                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r) && has(Manifest.permission.RECORD_AUDIO)) grant.add(r);
+            }
+            if (!grant.isEmpty()) pendingPermission.grant(grant.toArray(new String[0]));
             else { pendingPermission.deny(); Toast.makeText(this, R.string.camera_denied, Toast.LENGTH_LONG).show(); }
             pendingPermission = null;
         } else if (code == REQ_CAMERA_CHOOSER && pendingChooser != null) {
@@ -304,12 +343,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private String base() { return "http://127.0.0.1:" + port; }
+    private String base() { return remote.isEmpty() ? "http://127.0.0.1:" + port : remote; }
+
+    private boolean has(String perm) { return ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED; }
 
     private void openPath(String path) {
         if (path == null || path.isEmpty()) path = "/";
         if (!path.startsWith("/")) path = "/" + path;
-        if (port == 0) { pendingPath = path; return; }
+        if (!ready()) { pendingPath = path; return; }
         final String p = path;
         js("location.hash = " + JSONObject.quote(p) + ";");
     }
@@ -354,7 +395,7 @@ public class MainActivity extends AppCompatActivity {
         bg.execute(() -> {
             String path;
             try {
-                while (port == 0) SystemClock.sleep(200);
+                while (!ready()) SystemClock.sleep(200);
                 byte[] bytes;
                 try (InputStream is = getContentResolver().openInputStream(img); ByteArrayOutputStream bo = new ByteArrayOutputStream()) {
                     byte[] buf = new byte[65536]; int n;
@@ -547,6 +588,13 @@ public class MainActivity extends AppCompatActivity {
             return ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ? "granted" : "default";
         }
 
+        // Fællesskab notifications: shown now (app in the background) and checked while the app is closed
+        @JavascriptInterface public void showNotification(String title, String text, String path) {
+            NotifyJob.show(MainActivity.this, 30000 + (int) (System.currentTimeMillis() % 10000), title, text, path, false);
+        }
+        @JavascriptInterface public boolean backgroundNotify() { return prefs.getBoolean("bgNotify", true); }
+        @JavascriptInterface public void setBackgroundNotify(boolean on) { prefs.edit().putBoolean("bgNotify", on).apply(); NotifyJob.sync(MainActivity.this); }
+
         @JavascriptInterface public void requestNotifications() {
             if (Build.VERSION.SDK_INT >= 33) ui.post(() -> requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, REQ_NOTIFY));
         }
@@ -581,6 +629,36 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface public void setLock(boolean on) {
             prefs.edit().putBoolean("lock", on).apply();
             if (on) unlocked = true;     // you just proved it's you by turning it on
+        }
+
+        // which HUBTECH server the app shows ("" = the one inside the app)
+        @JavascriptInterface public String serverUrl() { return remote; }
+
+        /** Check and switch to another HUBTECH server. Returns "ok" or a Danish error message. */
+        @JavascriptInterface public String setServerUrl(String url) {
+            String u = url == null ? "" : url.trim().replaceAll("/+$", "");
+            if (u.isEmpty()) { useLocalServer(); return "ok"; }
+            if (!u.startsWith("https://")) return "Adressen skal starte med https:// (fx https://min-pc.tailnet.ts.net).";
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(u + "/api/health").openConnection();
+                c.setConnectTimeout(6000); c.setReadTimeout(6000);
+                int code = c.getResponseCode();
+                String body;
+                try (InputStream is = c.getInputStream(); ByteArrayOutputStream bo = new ByteArrayOutputStream()) {
+                    byte[] buf = new byte[2048]; int n; while ((n = is.read(buf)) > 0 && bo.size() < 8192) bo.write(buf, 0, n); body = bo.toString("UTF-8");
+                }
+                if (code != 200 || !body.contains("\"hubtech\"")) return "Der svarer ikke en HUBTECH-server på adressen.";
+            } catch (Exception e) { return "Serveren kunne ikke nås: " + e.getMessage(); }
+            prefs.edit().putString("remote", u).remove("notifySince").apply();
+            NotifyJob.sync(MainActivity.this);
+            ui.post(MainActivity.this::recreate);
+            return "ok";
+        }
+
+        @JavascriptInterface public void useLocalServer() {
+            prefs.edit().remove("remote").remove("notifySince").apply();
+            NotifyJob.sync(MainActivity.this);
+            ui.post(MainActivity.this::recreate);
         }
 
         // updates
