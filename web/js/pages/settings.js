@@ -420,7 +420,7 @@ function callPanel() {
         meterRaf = requestAnimationFrame(tick);
       };
       tick();
-    } catch (e) { stopMic(); toast('Mikrofonen kunne ikke bruges', { type: 'warn', text: e.name === 'NotAllowedError' ? 'Tillad mikrofonen i browseren eller telefonens indstillinger.' : 'Der blev ikke fundet nogen mikrofon.' }); }
+    } catch (e) { stopMic(); if (e.name === 'NotAllowedError') import('../features/mediahelp.js').then(m => m.showMediaHelp('mic')); else toast('Mikrofonen kunne ikke bruges', { type: 'warn', text: e.name === 'NotReadableError' ? 'Den bruges af et andet program.' : 'Der blev ikke fundet nogen mikrofon.' }); }
   }
   micBtn.addEventListener('click', () => (micBtn.dataset.on ? stopMic() : startMic()));
   drawMicBtn();
@@ -437,7 +437,7 @@ function callPanel() {
     try {
       camStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: mediaConstraints({ audio: false, video: true }).video });
       streams.add(camStream); video.srcObject = camStream; video.hidden = false; camBtn.dataset.on = '1'; drawCamBtn(); fill();
-    } catch (e) { stopCam(); toast('Kameraet kunne ikke bruges', { type: 'warn', text: e.name === 'NotAllowedError' ? 'Tillad kameraet i browseren eller telefonens indstillinger.' : 'Der blev ikke fundet noget kamera.' }); }
+    } catch (e) { stopCam(); if (e.name === 'NotAllowedError') import('../features/mediahelp.js').then(m => m.showMediaHelp('cam')); else toast('Kameraet kunne ikke bruges', { type: 'warn', text: e.name === 'NotReadableError' ? 'Det bruges af et andet program.' : 'Der blev ikke fundet noget kamera.' }); }
   }
   camBtn.addEventListener('click', () => (camBtn.dataset.on ? stopCam() : startCam()));
   drawCamBtn();

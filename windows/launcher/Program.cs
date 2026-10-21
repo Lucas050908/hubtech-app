@@ -325,6 +325,13 @@ namespace Hubtech
             if (!(e.Source ?? "").StartsWith(origin + "/")) return;
             string text = null;
             try { text = e.TryGetWebMessageAsString(); } catch { }
+            if (text != null && text.StartsWith("hubtech-open:ms-settings:privacy-"))
+            {
+                string page = text.Substring("hubtech-open:".Length);
+                if (System.Text.RegularExpressions.Regex.IsMatch(page, "^ms-settings:privacy-(microphone|webcam)$"))
+                    try { Process.Start(new ProcessStartInfo(page) { UseShellExecute = true }); } catch { }
+                return;
+            }
             if (text != null && text.StartsWith("hubtech-server:"))
             {
                 await UseServerAsync(text.Substring("hubtech-server:".Length).Trim());

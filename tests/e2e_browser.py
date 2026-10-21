@@ -1050,6 +1050,18 @@ async def main():
         check("venner: appens første skærm kan forbinde til en vens HUBTECH", "hubtech-server:https://min-pc.tail1234.ts.net" in await lp.evaluate("window.__sent"))
         await lp.screenshot(path=f"{OUT}/friends-connect.png")
         await lctx.close()
+        # mic blocked by the device: say exactly where to allow it (here: Windows in a browser)
+        bctx = await browser.new_context(viewport={"width": 1280, "height": 860}, storage_state=await ctx.storage_state())
+        await bctx.add_init_script("""navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('blocked', 'NotAllowedError'));
+          Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36' });""")
+        bp = await bctx.new_page()
+        await bp.goto(BASE + "/#/settings/apps"); await bp.wait_for_selector("button:has-text('Test mikrofonen')")
+        await bp.click("button:has-text('Test mikrofonen')")
+        await bp.wait_for_selector(".modal >> text=HUBTECH må ikke bruge mikrofonen", timeout=6000)
+        txt = await bp.inner_text(".modal")
+        check("mikrofon blokeret: præcis vejledning til enheden", "ikonet til venstre for adressen" in txt and "Giv skrivebordsapps adgang" in txt, txt[:200])
+        await bp.screenshot(path=f"{OUT}/mic-blocked.png")
+        await bctx.close()
         # ── Ejer: the owner's own app ──
         await page.goto(BASE + "/#/apps/owner"); await page.reload(); await page.wait_for_selector(".owner-page .adm-tile", timeout=10000)
         check("ejer-app: overblik for ejeren", await page.locator(".owner-page .adm-tile").count() == 6)

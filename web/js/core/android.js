@@ -42,6 +42,8 @@ export const setLock = (on) => call('setLock', !!on);
 
 // updates
 export const installUpdate = (url) => call('installUpdate', url);
+/** HUBTECH's page in the phone's settings (permissions: microphone, camera, notifications). */
+export const openAppSettings = () => call('openAppSettings');
 
 // which HUBTECH server the app shows: "" = the server inside the app, otherwise https://…
 export const serverUrl = () => call('serverUrl') || '';

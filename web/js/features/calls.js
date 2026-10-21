@@ -50,7 +50,8 @@ async function getMedia(video) {
   try { s = await navigator.mediaDevices.getUserMedia(mediaConstraints({ video })); }
   catch (e) {
     if (video) { try { s = await navigator.mediaDevices.getUserMedia(mediaConstraints({ video: false })); toast('Kameraet kunne ikke bruges', { type: 'warn', text: 'Opkaldet fortsætter med lyd.' }); return s; } catch { /* */ } }
-    throw new Error(e.name === 'NotAllowedError' ? 'Mikrofonen er ikke tilladt. Tillad den i browseren eller telefonens indstillinger.' : 'Der blev ikke fundet nogen mikrofon.');
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') { import('./mediahelp.js').then(m => m.showMediaHelp('mic')).catch(() => {}); throw new Error('Mikrofonen er ikke tilladt – se hvordan du giver lov.'); }
+    throw new Error(e.name === 'NotReadableError' ? 'Mikrofonen bruges af et andet program. Luk det, og prøv igen.' : 'Der blev ikke fundet nogen mikrofon.');
   }
   // "start video calls with the camera off" (Indstillinger → Apps → Opkald)
   if (video && getCall().camOff) s.getVideoTracks().forEach(t => { t.enabled = false; });

@@ -662,6 +662,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // updates
+        @JavascriptInterface public void openAppSettings() {
+            ui.post(() -> {
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e) { /* very old or locked-down phone */ }
+            });
+        }
+
         @JavascriptInterface public boolean installUpdate(String url) {
             final boolean[] ok = { false };
             ui.post(() -> ok[0] = startUpdate(url));
