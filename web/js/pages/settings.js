@@ -2,7 +2,9 @@
 import { h, clear, timeAgo, ava } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
+import { logout } from '../features/auth.js';
 import { friendWizard } from '../features/friendsetup.js';
+import { deleteUserDialog } from '../features/userdelete.js';
 import { store, setPref, setWorld, resetSessionState } from '../core/store.js';
 import { toast, busy, errorToast, segmented, switchControl, setRangeFill, confirmDialog, modal } from '../core/ui.js';
 import { navigate } from '../core/router.js';
@@ -151,6 +153,8 @@ function securityTab() {
   drawSessions();
   const revoke = h('button', { class: 'btn' }, icon('logout'), 'Log ud på alle andre enheder');
   revoke.addEventListener('click', busy(revoke, async () => { await api.post('/api/me/sessions/revoke'); toast('Andre enheder er logget ud', { type: 'ok' }); drawSessions(); }));
+  const outBtn = h('button', { class: 'btn btn-primary' }, icon('logout'), 'Log ud');
+  outBtn.addEventListener('click', () => logout());
   const delBtn = h('button', { class: 'btn btn-danger' }, icon('trash'), 'Slet min konto');
   delBtn.addEventListener('click', () => {
     const pw = h('input', { class: 'input', type: 'password', autocomplete: 'current-password', 'aria-label': 'Adgangskode' });
@@ -164,6 +168,7 @@ function securityTab() {
   });
   return h('div', { class: 'stack' },
     h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title', style: { marginBottom: '16px' } }, 'Adgangskode'), fCur, h('div', { class: 'grid-2' }, fNew, fNew2), save),
+    h('section', { class: 'glass panel' }, h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title' }, 'Log ud'), outBtn), h('p', { class: 'muted', style: { margin: 0 } }, 'Log ud af HUBTECH på denne enhed. Dine data bliver liggende – du logger bare ind igen næste gang.')),
     h('section', { class: 'glass panel' }, h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title' }, 'Aktive sessioner'), revoke), sessions),
     h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title', style: { marginBottom: '8px' } }, 'Farezone'), h('p', { class: 'muted', style: { marginBottom: '12px' } }, 'Sletning af kontoen fjerner alle dine data fra denne HUBTECH-installation.'), delBtn));
 }
@@ -760,13 +765,20 @@ function usersTab() {
   const list = h('div', { class: 'list' });
   async function draw() {
     try {
-      const { users, signupMode } = await api.get('/api/users');
+      const { users, signupMode, signupFromEnv } = await api.get('/api/users');
       clear(list);
-      list.appendChild(h('div', { class: 'callout', style: { marginBottom: '12px' } }, icon('info'), h('div', null, h('strong', null, `Tilmelding: ${{ open: 'åben for alle', first: 'kun via ejeren', closed: 'lukket' }[signupMode]}. `), 'Styres med HUBTECH_SIGNUP i .env (open, first eller closed).')));
+      if (signupFromEnv) list.appendChild(h('div', { class: 'callout', style: { marginBottom: '12px' } }, icon('info'), h('div', null, h('strong', null, `Tilmelding: ${{ open: 'åben for alle', first: 'kun via ejeren', closed: 'lukket' }[signupMode]}. `), 'Styres med HUBTECH_SIGNUP i .env.')));
+      else list.appendChild(row('Alle kan oprette en konto', signupMode === 'open' ? 'Login-siden viser “Opret en konto”. Nye konti er altid almindelige medlemmer – kun du er ejer.' : 'Kun du opretter konti (her nedenfor). Slå til, hvis venner selv skal kunne oprette sig – eller du vil lave en testkonto.',
+        switchControl({ checked: signupMode === 'open', label: 'Alle kan oprette en konto', onChange: async (on) => {
+          try { await api.put('/api/users/signup', { mode: on ? 'open' : 'first' }); toast(on ? 'Alle kan nu oprette en konto' : 'Kun du kan oprette konti', { type: 'ok', text: on ? 'Nye konti bliver almindelige medlemmer.' : '' }); }
+          catch (e) { errorToast(e); draw(); }
+        } })));
       users.forEach(u => list.appendChild(h('div', { class: 'row', style: { border: '1px solid var(--line)' } },
         h('span', { class: 'avatar' }, ava(u.avatar)),
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, u.displayName), h('div', { class: 'row-sub' }, `@${u.username} · ${u.lastLoginAt ? 'sidst aktiv ' + timeAgo(u.lastLoginAt) : 'aldrig logget ind'}`)),
-        h('span', { class: ['chip', u.role === 'owner' ? 'chip-info' : ''] }, u.role === 'owner' ? 'Ejer' : 'Medlem'))));
+        h('span', { class: ['chip', u.role === 'owner' ? 'chip-info' : ''] }, u.role === 'owner' ? 'Ejer' : 'Medlem'),
+        u.role === 'owner' ? null : h('button', { class: 'btn btn-sm btn-ghost', title: 'Slet kontoen', 'aria-label': `Slet ${u.displayName}s konto`,
+          onclick: () => deleteUserDialog({ id: u.id, name: u.displayName, username: u.username }, draw) }, icon('trash')))));
     } catch (e) { clear(list).appendChild(h('p', { class: 'faint' }, e.message)); }
   }
   draw();

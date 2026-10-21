@@ -33,7 +33,7 @@ export function friendWizard({ onDone, compact = false } = {}) {
 
   function showStart(info) {
     const go = h('button', { class: ['btn btn-primary', compact ? 'btn-sm' : null] }, icon('globe'), 'Sæt det op for mig');
-    go.addEventListener('click', () => run());
+    go.addEventListener('click', () => { box.dataset.started = '1'; run(); });
     const notes = [];
     if (!info.tailscale.installed) notes.push(info.canInstall ? 'HUBTECH installerer Tailscale (gratis). Windows spørger om lov – klik “Ja”. Ved at fortsætte accepterer du Tailscales vilkår.' : 'Først skal Tailscale (gratis) installeres – HUBTECH viser hvor.');
     notes.push('Du logger ind på Tailscale én gang (fx med Google, Microsoft eller GitHub) og tillader offentlig adgang. Resten klarer HUBTECH.');
@@ -112,9 +112,9 @@ export async function maybeOfferFriends() {
   if (isAndroidApp()) return;
   let info;
   try { info = await publicInfo(); } catch { return; }          // not on the computer HUBTECH runs on
-  try { localStorage.setItem(ASKED, '1'); } catch { /* */ }
-  if (info.tailscale.funnel || info.enabled) return;
-  if (currentPath() !== '/') return;
+  const answered = () => { try { localStorage.setItem(ASKED, '1'); } catch { /* */ } };
+  if (info.tailscale.funnel || info.enabled) { answered(); return; }
+  if (currentPath() !== '/' || document.querySelector('.modal, .tour-card')) return;
   const wiz = friendWizard({ onDone: () => { later.textContent = 'Luk'; } });
   const later = h('button', { class: 'btn btn-ghost' }, 'Ikke nu');
   const m = modal({
@@ -123,8 +123,12 @@ export async function maybeOfferFriends() {
       h('p', { class: 'muted', style: { margin: 0 } }, 'Så kan dine venner skrive, ringe og bruge HUBTECH sammen med dig – også når de er hjemme hos sig selv eller på mobilnet. HUBTECH sætter det op for dig med Tailscale (gratis, krypteret). Alle skal stadig logge ind.'),
       wiz),
     actions: [later],
-    onClose: () => wiz.stop?.(),
+    onClose: () => { wiz.stop?.(); removeEventListener('hashchange', away); if (!leftPage || wiz.dataset.started) answered(); },
   });
+  // went to another page without answering: close it, and ask again another time
+  let leftPage = false;
+  const away = () => { leftPage = true; m.close(); };
+  addEventListener('hashchange', away);
   later.addEventListener('click', () => { m.close(); if (later.textContent === 'Ikke nu') toast('Du kan altid gøre det senere', { text: 'Indstillinger → Om → Netværk → “Venner på andre netværk”.' }); });
 }
 

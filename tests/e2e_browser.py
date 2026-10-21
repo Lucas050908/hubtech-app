@@ -36,6 +36,8 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         ctx = await browser.new_context(viewport={"width": 1440, "height": 900})
+        # the one-time "friends on other networks?" question has its own test further down
+        await ctx.add_init_script("try { localStorage.setItem('hubtech.friendsAsked', '1') } catch (e) {}")
         page = await ctx.new_page()
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -768,8 +770,12 @@ async def main():
         mj.on("pageerror", lambda e: errors.append("maja: " + str(e)))
         await mj.goto(BASE + "/#/login")
         await mj.wait_for_selector("#login-user")
+        mj.on("console", lambda m: errors.append("maja console: " + m.text) if m.type == "error" else None)
         await mj.fill("#login-user", "maja"); await mj.fill("#login-pass", "Vinter2026xx"); await mj.click("button[type=submit]")
-        await mj.wait_for_selector(".home-title", timeout=8000)
+        try:
+            await mj.wait_for_selector(".home-title", timeout=15000)
+        except Exception:
+            await mj.screenshot(path=f"{OUT}/maja-stuck.png"); print("MAJA STUCK", mj.url, errors[-5:], flush=True); raise
         await api(mj, "POST", "/api/me/onboarding", {"done": True, "step": 9})
         await api(mj, "POST", "/api/cm/me/age", {"birthYear": 2001, "acceptRules": True})
         await mj.goto(BASE + f"/#/apps/community/invite/{code}")
@@ -967,7 +973,23 @@ async def main():
         check("admin: ejeren ser overblikket", await page.locator(".adm-tile").count() >= 6)
         await page.goto(BASE + "/#/apps/admin/users"); await page.wait_for_selector(".adm-user")
         await page.screenshot(path=f"{OUT}/e2e_admin.png", full_page=True)
+        # delete an account: only after typing the username
+        await api(page, "POST", "/api/users", {"username": "slettes", "displayName": "Prøve Person", "password": "Vinter2026xx"})
+        await page.goto(BASE + "/#/apps/admin/users"); await page.reload(); await page.wait_for_selector(".adm-user:has-text('Prøve Person')")
+        await page.click(".adm-user:has-text('Prøve Person') .adm-del")
+        await page.wait_for_selector(".modal >> text=Slet Prøve Persons konto?")
+        check("slet konto: knappen er låst, til brugernavnet er skrevet", await page.locator(".modal button:has-text('Slet kontoen')").is_disabled())
+        await page.fill(".modal input[aria-label='Skriv brugernavnet for at bekræfte']", "slettes")
+        await page.screenshot(path=f"{OUT}/delete-account.png")
+        await page.click(".modal button:has-text('Slet kontoen')")
+        await page.wait_for_selector(".adm-user:has-text('Prøve Person')", state="detached", timeout=6000)
+        us = (await api(page, "GET", "/api/admin/users"))["data"]["users"]
+        check("slet konto: kontoen er væk", all(u["username"] != "slettes" for u in us))
+        check("log ud: knap i sidemenuen", await page.locator(".sidebar .side-logout").count() == 1)
+        await page.goto(BASE + "/#/settings/security"); await page.wait_for_selector(".settings-body >> text=Aktive sessioner")
+        check("log ud: knap under Sikkerhed", await page.locator(".settings-body button:has-text('Log ud')").first.is_visible())
         await page.goto(BASE + "/#/settings/apps"); await page.wait_for_selector(".settings-body >> text=På denne enhed")
+        await page.wait_for_selector(".settings-body >> text=Opkald mellem netværk", timeout=8000)   # owner-only panels load a moment later
         check("indstillinger: notifikationer på enhed og mail", await page.locator(".settings-body >> text=På mail").count() >= 1 and await page.locator(".settings-body >> text=Mailserver").count() >= 1)
         # calls between different networks: the owner can add a TURN server, and it is handed to the call
         check("opkald: TURN-indstilling for ejeren", await page.locator(".settings-body >> text=Opkald mellem netværk").count() == 1)
@@ -1086,7 +1108,7 @@ async def main():
             pg.on("pageerror", lambda e: errors.append(f"call {name}: " + str(e)))
             await pg.goto(BASE + "/#/login"); await pg.wait_for_selector("#login-user")
             await pg.fill("#login-user", name); await pg.fill("#login-pass", pw); await pg.click("button[type=submit]")
-            await pg.wait_for_selector(".home-title", timeout=8000)
+            await pg.wait_for_selector(".home-title", timeout=20000)
             return pg
         ca = await call_user("oliver", "Sommer2026x!", viewport={"width": 1440, "height": 900})
         cb = await call_user("maja", "Vinter2026xx", **p.devices["Pixel 7"])

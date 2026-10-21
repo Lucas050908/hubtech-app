@@ -703,3 +703,4 @@ body.ai-open .toasts { right: 460px; bottom: 22px; }
 .call-state { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); padding: 3px 10px; border-radius: 99px; background: rgba(0, 0, 0, .6); color: #fff; font-size: 12px; white-space: nowrap; }
 .call-state.is-relay { top: auto; bottom: 8px; left: auto; right: 8px; transform: none; font-size: 11px; opacity: .85; }
 .call-tile.is-lost { outline: 2px solid var(--warn); outline-offset: -2px; }
+.adm-del:hover, .adm-del:focus-visible { color: var(--bad); }

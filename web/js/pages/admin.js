@@ -3,6 +3,7 @@
  * Tabs: Overblik · Brugere · Anmeldelser · Besked til alle · Log. Only the owner can change who has access.
  */
 import { h, clear, timeAgo, ava } from '../core/dom.js';
+import { deleteUserDialog } from '../features/userdelete.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { store } from '../core/store.js';
@@ -19,7 +20,7 @@ const TABS = [
   { value: 'errors', label: 'Fejl', icon: 'alert' },
   { value: 'log', label: 'Log', icon: 'clock' },
 ];
-const ACTION = { 'access-on': 'gav adgang til Admin', 'access-off': 'fjernede adgang til Admin', logout: 'loggede ud', announce: 'sendte beskeden', minecraft: 'ændrede Minecraft-serveren', 'errors-clear': 'ryddede fejllisten' };
+const ACTION = { 'delete-user': 'slettede kontoen', 'access-on': 'gav adgang til Admin', 'access-off': 'fjernede adgang til Admin', logout: 'loggede ud', announce: 'sendte beskeden', minecraft: 'ændrede Minecraft-serveren', 'errors-clear': 'ryddede fejllisten' };
 const mb = (b) => (b == null ? '–' : b > 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${(b / 1e6).toFixed(1)} MB`);
 const dur = (s) => (s < 3600 ? `${Math.round(s / 60)} min.` : s < 86400 ? `${Math.floor(s / 3600)} t. ${Math.round((s % 3600) / 60)} min.` : `${Math.floor(s / 86400)} d. ${Math.floor((s % 86400) / 3600)} t.`);
 const date = (t) => (t ? new Date(t * 1000).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '–');
@@ -75,11 +76,14 @@ async function usersTab(box) {
         try { const x = await api.post(`/api/admin/users/${u.id}/logout`, {}); u.sessions = 0; toast(`${u.name} er logget ud`, { type: 'ok', text: `${x.sessions} enhed(er).` }); draw(); }
         catch (e) { errorToast(e); }
       }));
+      const canDelete = u.id !== r.me && !owner && (r.isOwner || !u.admin);
+      const del = canDelete ? h('button', { class: 'btn btn-sm btn-ghost adm-del', title: 'Slet kontoen', 'aria-label': `Slet ${u.name}s konto` }, icon('trash'), 'Slet') : null;
+      del?.addEventListener('click', () => deleteUserDialog(u, () => { r.users = r.users.filter(x => x.id !== u.id); draw(); }));
       list.append(h('div', { class: 'adm-user glass' },
         h('span', { class: ['cm-ava', u.online && 'is-online'] }, ava(u.avatar)),
         h('div', { class: 'adm-user-text' }, h('b', null, u.name), h('div', { class: 'faint' }, `@${u.username}${u.email ? ` · ${u.email}` : ''}`),
           h('div', { class: 'faint' }, u.online ? 'Online nu' : u.lastLoginAt ? `Sidst logget ind ${timeAgo(u.lastLoginAt)}` : 'Har aldrig logget ind', ` · oprettet ${date(u.createdAt)}`)),
-        h('div', { class: 'adm-user-actions' }, access, out)));
+        h('div', { class: 'adm-user-actions' }, access, out, del)));
     }
   };
   q.addEventListener('input', draw);

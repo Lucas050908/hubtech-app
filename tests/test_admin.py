@@ -55,6 +55,36 @@ class AdminTest(unittest.TestCase):
         st, _, _ = x.req("POST", "/api/auth/login", {"username": "carl", "password": "forkert-kode1A"}, headers={"X-Forwarded-For": "198.51.100.4"})
         self.assertEqual(st, 401)   # another visitor is not throttled
 
+    def test_delete_accounts(self):
+        a, b = self.a, self.b
+        st, made, _ = a.req("POST", "/api/users", {"username": "dorte", "displayName": "Dorte", "password": "Vinter2026xx"})
+        self.assertEqual(st, 201, made)
+        did = made["user"]["id"]
+        d = test_social.Client(self.base)
+        self.assertEqual(d.req("POST", "/api/auth/login", {"username": "dorte", "password": "Vinter2026xx"})[0], 200)
+        d.req("PUT", "/api/state/notes", {"state": {"notes": [{"id": "n1", "title": "Hemmelig"}]}})
+        # an ordinary member may not delete anyone
+        self.assertEqual(self.c.req("DELETE", f"/api/admin/users/{did}", {"confirm": "dorte"})[0], 403)
+        # the username must be typed
+        st, r, _ = a.req("DELETE", f"/api/admin/users/{did}", {"confirm": "dort"})
+        self.assertEqual((st, r["code"]), (400, "confirm"))
+        # nobody deletes the owner or themselves from here
+        self.assertEqual(a.req("DELETE", f"/api/admin/users/{self.ids['anna']}", {"confirm": "anna"})[1]["code"], "self")
+        a.req("PUT", f"/api/admin/access/{self.ids['bent']}", {"admin": True})
+        self.assertEqual(b.req("DELETE", f"/api/admin/users/{self.ids['anna']}", {"confirm": "anna"})[0], 403)
+        a.req("PUT", f"/api/admin/access/{did}", {"admin": True})
+        self.assertEqual(b.req("DELETE", f"/api/admin/users/{did}", {"confirm": "dorte"})[0], 403)   # an admin can't delete another admin
+        a.req("PUT", f"/api/admin/access/{did}", {"admin": False})
+        st, r, _ = b.req("DELETE", f"/api/admin/users/{did}", {"confirm": "@Dorte"})                # an admin can delete a member
+        self.assertEqual(st, 200, r)
+        a.req("PUT", f"/api/admin/access/{self.ids['bent']}", {"admin": False})
+        # gone – logged out everywhere, data removed, logged
+        self.assertEqual(d.req("GET", "/api/me")[0], 401)
+        self.assertNotIn("dorte", [u["username"] for u in a.req("GET", "/api/admin/users")[1]["users"]])
+        self.assertEqual(test_social.Client(self.base).req("POST", "/api/auth/login", {"username": "dorte", "password": "Vinter2026xx"})[0], 401)
+        self.assertIn("delete-user", [e["action"] for e in a.req("GET", "/api/admin/log")[1]["log"]])
+        self.assertEqual(a.req("DELETE", f"/api/admin/users/{did}", {"confirm": "dorte"})[0], 404)
+
     def test_access_and_actions(self):
         a, b, c = self.a, self.b, self.c
         bent = self.ids["bent"]

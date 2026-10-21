@@ -128,6 +128,31 @@ def logout_user(req, params):
     return 200, {"ok": True, "sessions": n}
 
 
+def delete_user(req, params):
+    """Delete another person's account and everything it owns (messages, files, settings …). Cannot be undone.
+    The owner can delete anyone but themselves; an admin can delete ordinary members (not the owner or other admins).
+    The username must be typed to confirm, so a slip of the mouse never deletes anyone."""
+    me = require_admin(req)
+    uid = int(params["uid"])
+    target = db.one("SELECT id, username, display_name, role FROM users WHERE id = ?", (uid,))
+    if not target:
+        raise ApiError(404, "Brugeren findes ikke.", "not_found")
+    if uid == me["id"]:
+        raise ApiError(400, "Din egen konto sletter du under Indstillinger → Sikkerhed.", "self")
+    if target["role"] == "owner":
+        raise ApiError(403, "Ejerens konto kan ikke slettes herfra.", "forbidden")
+    if me["role"] != "owner" and is_admin(uid):
+        raise ApiError(403, "Kun ejeren kan slette en anden admin.", "forbidden")
+    confirm = str((req.json() or {}).get("confirm") or "").strip().lstrip("@").lower()
+    if confirm != target["username"].lower():
+        raise ApiError(400, f"Skriv brugernavnet ({target['username']}) for at bekræfte.", "confirm", {"field": "confirm"})
+    from . import avatars
+    avatars._remove_files(uid)
+    db.q("DELETE FROM users WHERE id = ?", (uid,))          # sessions, messages, files, prefs … go with it (ON DELETE CASCADE)
+    log(me["id"], "delete-user", f"{target['display_name']} (@{target['username']})")
+    return 200, {"ok": True}
+
+
 def announce(req, _):
     me = require_admin(req)
     b = req.json() or {}
@@ -153,6 +178,7 @@ ROUTES = [
     ("GET", r"/api/admin/users", users),
     ("PUT", r"/api/admin/access/(?P<uid>\d+)", set_access),
     ("POST", r"/api/admin/users/(?P<uid>\d+)/logout", logout_user),
+    ("DELETE", r"/api/admin/users/(?P<uid>\d+)", delete_user),
     ("POST", r"/api/admin/announce", announce),
     ("GET", r"/api/admin/log", admin_log),
 ]

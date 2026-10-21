@@ -52,6 +52,7 @@ export function buildShell(root) {
     appsNavEl,
     h('div', { class: 'sidebar-foot' },
       seasonMini,
+      h('button', { type: 'button', class: 'nav-item side-logout', onclick: () => logout() }, icon('logout'), h('span', null, 'Log ud')),
       h('div', { class: 'quote' }, icon('quote'), h('span', null, QUOTES[new Date().getDate() % QUOTES.length]))),
   );
   topbar = buildTopbar();

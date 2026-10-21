@@ -205,3 +205,5 @@
 @media (max-width: 900px) { .is-app:not(.is-wco) .topbar { padding-left: max(var(--s4, 16px), env(safe-area-inset-left, 0px)); padding-right: max(var(--s4, 16px), env(safe-area-inset-right, 0px)); } }
 .is-app body { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .is-app .toasts { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.side-logout { width: 100%; background: none; border: 0; font: inherit; cursor: pointer; color: var(--text-2); }
+.side-logout:hover { color: var(--text); }

@@ -65,11 +65,31 @@ def log_activity(user_id, app_id, kind, title, detail=None, ref=None):
          (user_id, user_id))
 
 
+def signup_mode():
+    """open = anyone can make an account on the login page (always as a member); first = only the owner makes
+    accounts (Indstillinger → Brugere); closed = nobody. HUBTECH_SIGNUP in .env wins over the owner's choice."""
+    if os.environ.get("HUBTECH_SIGNUP", "").strip():
+        return config.SIGNUP_MODE
+    v = db.get_server_setting("signup_mode", "first")
+    return v if v in ("open", "first", "closed") else "first"
+
+
 def signup_allowed():
     count = db.one("SELECT COUNT(*) AS n FROM users")["n"]
     if count == 0:
         return True  # the owner account can always be created on first run
-    return config.SIGNUP_MODE == "open"
+    return signup_mode() == "open"
+
+
+def set_signup(req, _):
+    require_owner(req)
+    if os.environ.get("HUBTECH_SIGNUP", "").strip():
+        raise ApiError(409, "Styres af HUBTECH_SIGNUP i .env.", "from_env")
+    mode = (req.json() or {}).get("mode")
+    if mode not in ("open", "first"):
+        raise ApiError(400, "Ukendt valg.", "invalid")
+    db.set_server_setting("signup_mode", mode)
+    return 200, {"signupMode": mode}
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────
@@ -80,7 +100,7 @@ def auth_status(req, _):
         "user": auth.public_user(req.user) if req.user else None,
         "firstRun": count == 0,
         "signupAllowed": signup_allowed(),
-        "signupMode": config.SIGNUP_MODE,
+        "signupMode": signup_mode(),
     }
 
 
@@ -108,11 +128,11 @@ def register(req, _):
     if db.one("SELECT 1 FROM users WHERE username = ?", (username,)):
         auth.record_failure(key)
         raise ApiError(409, "Brugernavnet er allerede taget.", "username_taken", {"field": "username"})
-    first = db.one("SELECT COUNT(*) AS n FROM users")["n"] == 0
+    # only the very first account becomes the owner – decided in the same statement, so two people signing up
+    # at the same moment can never both become owner; every later account is a member
     cur = db.q("INSERT INTO users(username, display_name, email, password_hash, role, created_at) "
-               "VALUES(?,?,?,?,?,?)",
-               (username, display, email or None, auth.hash_password(password), "owner" if first else "member",
-                db.now()))
+               "SELECT ?,?,?,?, CASE WHEN EXISTS (SELECT 1 FROM users WHERE role = 'owner') THEN 'member' ELSE 'owner' END, ?",
+               (username, display, email or None, auth.hash_password(password), db.now()))
     uid = cur.lastrowid
     db.q("INSERT INTO prefs(user_id, data, updated_at) VALUES(?, '{}', ?)", (uid, db.now()))
     log_activity(uid, "hubtech", "account", "Konto oprettet", "Velkommen til HUBTECH")
@@ -224,6 +244,8 @@ def delete_me(req, _):
         raise ApiError(400, "Adgangskoden er forkert.", "bad_credentials", {"field": "password"})
     if u["role"] == "owner" and db.one("SELECT COUNT(*) AS n FROM users")["n"] > 1:
         raise ApiError(400, "Ejeren kan ikke slette sin konto, mens der findes andre brugere.", "owner")
+    from . import avatars
+    avatars._remove_files(u["id"])
     db.q("DELETE FROM users WHERE id = ?", (u["id"],))
     return 200, {"ok": True}, {"Set-Cookie": auth.clear_cookie_header(is_https(req))}
 
@@ -611,7 +633,7 @@ def byteforge_start(req, _):
 def users_list(req, _):
     require_owner(req)
     rows = db.all_rows("SELECT * FROM users ORDER BY created_at")
-    return 200, {"users": [auth.public_user(r) for r in rows], "signupMode": config.SIGNUP_MODE}
+    return 200, {"users": [auth.public_user(r) for r in rows], "signupMode": signup_mode(), "signupFromEnv": bool(os.environ.get("HUBTECH_SIGNUP", "").strip())}
 
 
 def users_create(req, _):
@@ -1219,7 +1241,7 @@ def network_info(req, _):
     addrs = _lan_addresses() if lan else []
     return 200, {"lanAccess": bool(db.get_server_setting("lan_access", False)), "listening": host, "open": lan, "port": port,
                  "urls": [f"http://{a}:{port}" for a in addrs], "hostFromEnv": bool(os.environ.get("HUBTECH_HOST")),
-                 "tailscale": _tailscale(), "signup": config.SIGNUP_MODE, "restartable": SYSTEM.get("restart") is not None}
+                 "tailscale": _tailscale(), "signup": signup_mode(), "restartable": SYSTEM.get("restart") is not None}
 
 
 def network_set(req, _):
@@ -1551,5 +1573,6 @@ ROUTES = [
     ("POST", r"/api/integrations/byteforge/start", byteforge_start),
     ("GET", r"/api/users", users_list),
     ("POST", r"/api/users", users_create),
+    ("PUT", r"/api/users/signup", set_signup),
 ]
 COMPILED = [(m, re.compile("^" + p + "$"), h) for m, p, h in ROUTES]

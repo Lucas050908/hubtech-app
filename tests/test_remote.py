@@ -81,3 +81,56 @@ class RemoteAccessTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SignupTest(unittest.TestCase):
+    """The owner decides if people can make their own accounts; new accounts are never owners."""
+
+    @classmethod
+    def setUpClass(cls):
+        import subprocess
+        import urllib.request
+        from test_api import Client, ROOT, free_port
+        cls.Client = Client
+        cls.tmp = Path(tempfile.mkdtemp(prefix="hubtech-signup-"))
+        cls.port = free_port()
+        env = dict(os.environ, HUBTECH_DATA_DIR=str(cls.tmp), HUBTECH_QUIET="1", HUBTECH_SIGNUP="", HUBTECH_NO_NOTIFY_WORKER="1",
+                   HUBTECH_BYTEFORGE_AUTOSTART="false", HUBTECH_WRITE_RATE="5000")
+        cls.proc = subprocess.Popen([sys.executable, str(ROOT / "server" / "app.py"), "--port", str(cls.port)], env=env,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cls.base = f"http://127.0.0.1:{cls.port}"
+        for _ in range(60):
+            try:
+                urllib.request.urlopen(cls.base + "/api/health", timeout=1)
+                break
+            except OSError:
+                time.sleep(0.1)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.proc.terminate()
+        cls.proc.wait(5)
+
+    def test_owner_controls_signup_and_new_accounts_are_members(self):
+        C = self.Client
+        o = C(self.base)
+        st, r, _ = o.req("POST", "/api/auth/register", {"username": "lucas", "displayName": "Lucas", "password": "Sommer2026xx", "email": "andersenlucas84@gmail.com"})
+        self.assertEqual((st, r["user"]["role"]), (201, "owner"))
+        x = C(self.base)
+        self.assertEqual(x.req("GET", "/api/auth/status")[1]["signupAllowed"], False)       # default: only the owner makes accounts
+        self.assertEqual(x.req("POST", "/api/auth/register", {"username": "test1", "password": "Sommer2026xx"})[0], 403)
+        self.assertEqual(x.req("PUT", "/api/users/signup", {"mode": "open"})[0], 401)
+        self.assertEqual(o.req("PUT", "/api/users/signup", {"mode": "open"})[0], 200)
+        self.assertTrue(x.req("GET", "/api/auth/status")[1]["signupAllowed"])
+        # even with the owner's e-mail address, a new account is a member
+        st, r, _ = x.req("POST", "/api/auth/register", {"username": "test1", "password": "Sommer2026xx", "email": "andersenlucas84@gmail.com"})
+        self.assertEqual((st, r["user"]["role"]), (201, "member"))
+        # a member cannot change who may sign up
+        self.assertEqual(x.req("PUT", "/api/users/signup", {"mode": "first"})[0], 403)
+        self.assertEqual(o.req("PUT", "/api/users/signup", {"mode": "first"})[0], 200)
+        self.assertEqual(C(self.base).req("POST", "/api/auth/register", {"username": "test2", "password": "Sommer2026xx"})[0], 403)
+        # log out and in again
+        self.assertEqual(o.req("POST", "/api/auth/logout")[0], 200)
+        self.assertEqual(o.req("GET", "/api/me")[0], 401)
+        self.assertEqual(o.req("POST", "/api/auth/login", {"username": "lucas", "password": "Sommer2026xx"})[0], 200)
+        self.assertEqual(o.req("GET", "/api/me")[1]["user"]["role"], "owner")
