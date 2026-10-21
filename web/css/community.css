@@ -704,3 +704,24 @@ body.ai-open .toasts { right: 460px; bottom: 22px; }
 .call-state.is-relay { top: auto; bottom: 8px; left: auto; right: 8px; transform: none; font-size: 11px; opacity: .85; }
 .call-tile.is-lost { outline: 2px solid var(--warn); outline-offset: -2px; }
 .adm-del:hover, .adm-del:focus-visible { color: var(--bad); }
+
+/* ── Ejer (owner app) ── */
+.owner-page .adm-tile[href] { text-decoration: none; color: inherit; transition: transform var(--t-fast), border-color var(--t-fast); }
+.owner-page .adm-tile[href]:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--hue-owner) 45%, transparent); }
+.own-todo { display: grid; gap: 8px; margin-top: 10px; }
+.own-todo-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--glass); border: 1px solid var(--line-2); color: var(--text); text-decoration: none; font-weight: 600; }
+.own-todo-row:hover { border-color: color-mix(in srgb, var(--hue-owner) 50%, transparent); }
+.own-todo-row > svg:first-child { width: 20px; height: 20px; color: var(--hue-owner); flex: none; }
+.own-todo-row > span { flex: 1; }
+.own-todo-row > svg:last-child { width: 16px; height: 16px; color: var(--text-3); }
+.own-create { display: grid; grid-template-columns: 1fr 1fr 1.3fr auto; gap: 8px; align-items: center; margin-top: 10px; }
+.own-pw { display: flex; gap: 4px; align-items: center; }
+.own-pw .input { flex: 1; min-width: 0; }
+.own-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+section > .own-row:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.own-invite { white-space: pre-wrap; margin: 0; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(0, 0, 0, .25); font-size: 13px; }
+.own-share { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.own-qr { line-height: 0; flex: none; }
+.own-link { word-break: break-all; font-size: 15px; }
+@media (max-width: 900px) { .own-create { grid-template-columns: 1fr 1fr; } .own-create > .btn { grid-column: 1 / -1; } .own-pw { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .own-act-label { display: none; } .own-row { flex-direction: column; align-items: flex-start; } }

@@ -1219,3 +1219,22 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .note-toolbar { flex-wrap: wrap; row-gap: 6px; } .note-swatches { flex-wrap: wrap; }
 .set-sub { margin: 14px 0 8px; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 800; }
 .theme-grid .land-tile { background: #070a16; }
+
+/* ── Hent HUBTECH (#/hent) ── */
+.dl-card { max-width: 480px; text-align: center; }
+.dl-brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 26px; }
+.dl-btns { display: grid; gap: 10px; margin: 18px 0 16px; text-align: left; }
+.dl-btn { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--glass); color: var(--text); text-decoration: none; transition: transform var(--t-fast), border-color var(--t-fast); }
+.dl-btn:hover { transform: translateY(-2px); border-color: var(--accent); }
+.dl-btn > svg { width: 26px; height: 26px; flex: none; color: var(--accent); }
+.dl-btn span { display: grid; gap: 2px; }
+.dl-btn b { font-size: 16px; }
+.dl-btn small { color: var(--text-3); font-size: 13px; }
+.dl-btn.is-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: var(--text-inv); }
+.dl-btn.is-primary > svg, .dl-btn.is-primary small { color: inherit; opacity: .9; }
+.dl-steps { text-align: left; margin: 0 0 6px; padding-left: 20px; color: var(--text-2); display: grid; gap: 6px; font-size: 14px; }
+.dl-qrs { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 16px 0 6px; }
+.dl-qr { display: grid; gap: 4px; justify-items: center; width: 180px; text-align: center; }
+.dl-qr-code { line-height: 0; min-height: 150px; }
+.dl-qr b { font-size: 14px; }
+.dl-qr small { color: var(--text-3); font-size: 12px; line-height: 1.35; }

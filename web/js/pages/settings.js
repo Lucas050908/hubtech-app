@@ -2,6 +2,7 @@
 import { h, clear, timeAgo, ava } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
+import { qrSvg } from '../features/qr.js';
 import { logout } from '../features/auth.js';
 import { friendWizard } from '../features/friendsetup.js';
 import { deleteUserDialog } from '../features/userdelete.js';
@@ -571,7 +572,7 @@ function notifyPanel() {
 }
 
 /** Owner only: TURN server so calls work between all kinds of networks (not just the ones STUN can open). */
-function relayPanel() {
+export function relayPanel() {
   if (store.get('user').role !== 'owner') return null;
   const urls = h('input', { class: 'input', autocapitalize: 'off', spellcheck: 'false', placeholder: 'turn:turn.example.com:3478, turns:turn.example.com:443?transport=tcp', 'aria-label': 'TURN-adresser' });
   const user = h('input', { class: 'input', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Brugernavn' });
@@ -636,7 +637,7 @@ async function gatherTypes(iceServers) {
   return types;
 }
 
-function mailServerPanel() {
+export function mailServerPanel() {
   if (store.get('user').role !== 'owner') return null;
   const f = { host: h('input', { class: 'input', placeholder: 'smtp.gmail.com', autocapitalize: 'off', spellcheck: 'false' }),
     port: h('input', { class: 'input', type: 'number', min: 1, max: 65535, placeholder: '587' }),
@@ -847,7 +848,7 @@ function myDataPanel() {
     h('div', { class: 'desk-actions' }, exportBtn, importBtn, zipBtn), zipNote);
 }
 
-function backupPanel() {
+export function backupPanel() {
   const list = h('div', { class: 'bk-list' }, h('p', { class: 'muted' }, 'Henter…'));
   const info = h('p', { class: 'muted', style: { margin: '4px 0 14px' } });
   async function draw() {
@@ -1036,25 +1037,9 @@ function desktopPanel() {
   return panel;
 }
 
-async function qrSvg(text, size = 168) {
-  const { loadScript } = await import('../office/store.js');
-  const qrcode = await loadScript('vendor/qrcode.js', 'qrcode');
-  const q = qrcode(0, 'M');
-  q.addData(text); q.make();
-  const n = q.getModuleCount(), cell = size / (n + 8);
-  let d = '';
-  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${((c + 4) * cell).toFixed(2)} ${((r + 4) * cell).toFixed(2)}h${cell.toFixed(2)}v${cell.toFixed(2)}h-${cell.toFixed(2)}z`;
-  const NS = 'http://www.w3.org/2000/svg';
-  const svgEl = document.createElementNS(NS, 'svg');
-  svgEl.setAttribute('viewBox', `0 0 ${size} ${size}`); svgEl.setAttribute('width', size); svgEl.setAttribute('height', size);
-  svgEl.setAttribute('role', 'img'); svgEl.setAttribute('aria-label', `QR-kode til ${text}`); svgEl.classList.add('qr');
-  const bg = document.createElementNS(NS, 'rect'); bg.setAttribute('width', size); bg.setAttribute('height', size); bg.setAttribute('rx', 10); bg.setAttribute('fill', '#fff');
-  const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); p.setAttribute('fill', '#0a1422');
-  svgEl.append(bg, p);
-  return svgEl;
-}
+export { qrSvg } from '../features/qr.js';
 
-function networkPanel() {
+export function networkPanel() {
   const body = h('div', { class: 'desk-body' });
   const panel = h('section', { class: 'glass panel', hidden: true },
     h('div', { class: 'desk-head' }, h('span', { class: 'net-ico' }, icon('globe')),
@@ -1121,7 +1106,7 @@ function networkPanel() {
   return panel;
 }
 
-function updatePanel() {
+export function updatePanel() {
   const body = h('div', { class: 'desk-body' });
   const panel = h('section', { class: 'glass panel', hidden: true },
     h('h2', { class: 'panel-title' }, 'Opdatering'),

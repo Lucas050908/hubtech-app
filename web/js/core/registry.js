@@ -11,7 +11,7 @@
  *  route        hash route the app lives at
  *  category     'workspace' | 'learning' | 'system'
  *  status       'available' | 'beta' | 'coming'
- *  requires     { role?: 'owner', admin?: true (owner + those the owner gave access – hidden for everyone else), integration?: 'cursor' | 'byteforge' }
+ *  requires     { role?: 'owner', owner?: true (hidden for everyone else), admin?: true (owner + those the owner gave access – hidden for everyone else), integration?: 'cursor' | 'byteforge' }
  *  art          landscape thumbnail settings for its card
  *  page         lazy loader for the page module (export default { render(ctx) })
  *  keywords     extra words for search
@@ -167,6 +167,13 @@ export const APPS = [
     keywords: ['admin', 'administrator', 'brugere', 'moderation', 'anmeldelser', 'besked', 'adgang', 'kontrol'],
   },
   {
+    id: 'owner', name: 'Ejer', tagline: 'Alt, kun du som ejer bestemmer over.',
+    description: 'Brugere og adgangskoder, hvem der kan oprette en konto, venner på andre netværk, server og sikkerhedskopier – og siden, dine venner henter HUBTECH fra. Kun platformens ejer kan se appen.',
+    icon: 'crown', hue: 'var(--hue-owner)', route: '#/apps/owner', category: 'system', status: 'available', requires: { owner: true },
+    art: { season: 'autumn', time: 'dusk', focusX: 0.5, tint: '#f5b14c' }, page: () => import('../pages/owner.js'),
+    keywords: ['ejer', 'owner', 'brugere', 'adgangskode', 'tilmelding', 'venner', 'download', 'hent', 'server', 'backup'],
+  },
+  {
     id: 'learning', name: 'Guides & Læring', tagline: 'Kurser, guides og hjælp',
     description: 'Opstartskurset for servicetekniker, platformsguides og søgbar hjælp. Fremdrift gemmes på din konto.',
     icon: 'book', hue: 'var(--hue-learn)', route: '#/learn', category: 'learning', status: 'available',
@@ -200,6 +207,7 @@ export function access(app, user) {
   if (app.status === 'coming') return { ok: false, reason: 'Kommer snart', kind: 'coming' };
   if (app.requires?.role === 'owner' && user?.role !== 'owner') return { ok: false, reason: 'Kun for platformens ejer', kind: 'locked' };
   if (app.requires?.admin && !user?.admin) return { ok: false, reason: 'Kun for dem, ejeren har givet adgang', kind: 'hidden' };
+  if (app.requires?.owner && user?.role !== 'owner') return { ok: false, reason: 'Kun for platformens ejer', kind: 'hidden' };
   return { ok: true };
 }
 

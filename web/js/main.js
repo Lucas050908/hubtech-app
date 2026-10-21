@@ -50,6 +50,7 @@ const page = (loader, opts = {}) => ({ loader, auth: true, focus: 1, ...opts });
 route('/', { home: true });
 route('/login', { public: true, render: renderLogin, title: 'Log ind' });
 route('/signup', { public: true, render: renderSignup, title: 'Opret konto' });
+route('/hent', { public: true, open: true, render: () => import('./pages/download.js').then(m => m.renderDownload()), title: 'Hent HUBTECH' });
 route('/dashboard', page(() => import('./pages/dashboard.js')));
 route('/apps', page(() => import('./pages/launcher.js')));
 route('/projects', page(() => import('./pages/projects.js'), { app: 'cursor' }));
@@ -70,6 +71,7 @@ route('/settings/:tab', page(() => import('./pages/settings.js'), { app: 'settin
 route('/404', { notFound: true });
 
 let activePage = null;
+let updateChecked = false;
 let renderSeq = 0;
 
 async function onRoute({ path, route: r, params }) {
@@ -78,7 +80,7 @@ async function onRoute({ path, route: r, params }) {
   if (r.notFound) return showInShell(notFound(), { title: 'Ikke fundet' }, seq);
 
   if (r.public) {
-    if (user) return navigate('/', { replace: true });
+    if (user && !r.open) return navigate('/', { replace: true });
     return showPublic(await r.render(), r.title, seq);
   }
   if (r.home) {
@@ -156,6 +158,7 @@ async function showInShell(mod, { params = {}, app = null, title, focus } = {}, 
   bootDone();
   maybeStartOnboarding();
   if (store.get('user')?.onboarding?.done) setTimeout(() => import('./features/friendsetup.js').then(m => m.maybeOfferFriends()).catch(() => {}), 2500);
+  if (!updateChecked && store.get('user')) { updateChecked = true; setTimeout(() => import('./features/appupdate.js').then(m => m.checkAppUpdate()).catch(() => {}), 6000); }
 }
 
 function notFound() {

@@ -76,6 +76,8 @@ VERSION = "1.2.0"
 STORE_APP = os.environ.get("HUBTECH_STORE_APP", "") == "1"
 # Where the Android app looks for a newer APK (published by .github/workflows/android.yml on the "ci" branch).
 ANDROID_UPDATE_URL = os.environ.get("HUBTECH_ANDROID_UPDATE_URL", "https://raw.githubusercontent.com/Lucas050908/hubtech-app/ci/version.json")
+# always the newest Android app (the CI copies each build to this fixed name) – the "Hent"/"Opdatér" QR codes point here
+ANDROID_LATEST_APK = os.environ.get("HUBTECH_ANDROID_APK_URL", ANDROID_UPDATE_URL.rsplit("/", 1)[0] + "/HUBTECH.apk")
 OFFICE_VERSION_SECONDS = _int("HUBTECH_OFFICE_VERSION_SECONDS", 600)
 # write requests per minute (token bucket; half of it may come at once)
 WRITE_RATE_USER = _int("HUBTECH_WRITE_RATE", 360)

@@ -83,8 +83,8 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class SignupTest(unittest.TestCase):
-    """The owner decides if people can make their own accounts; new accounts are never owners."""
+class FreshServer(unittest.TestCase):
+    """A server of its own with no accounts and no HUBTECH_SIGNUP (so the owner's own choice counts)."""
 
     @classmethod
     def setUpClass(cls):
@@ -111,6 +111,11 @@ class SignupTest(unittest.TestCase):
         cls.proc.terminate()
         cls.proc.wait(5)
 
+
+
+class SignupTest(FreshServer):
+    """The owner decides if people can make their own accounts; new accounts are never owners."""
+
     def test_owner_controls_signup_and_new_accounts_are_members(self):
         C = self.Client
         o = C(self.base)
@@ -133,4 +138,49 @@ class SignupTest(unittest.TestCase):
         self.assertEqual(o.req("POST", "/api/auth/logout")[0], 200)
         self.assertEqual(o.req("GET", "/api/me")[0], 401)
         self.assertEqual(o.req("POST", "/api/auth/login", {"username": "lucas", "password": "Sommer2026xx"})[0], 200)
+        self.assertEqual(o.req("GET", "/api/me")[1]["user"]["role"], "owner")
+
+
+class OwnerAppTest(FreshServer):
+    """Ejer: new password for someone who forgot it, hand over ownership, the "Hent HUBTECH" page."""
+
+    def test_owner_app(self):
+        C = self.Client
+        o = C(self.base)
+        st, r, _ = o.req("POST", "/api/auth/register", {"username": "ejeren", "displayName": "Ejer", "password": "Sommer2026xx"})
+        self.assertEqual((st, r["user"]["role"]), (201, "owner"))
+        owner_pw = "Sommer2026xx"
+        st, made, _ = o.req("POST", "/api/users", {"username": "glemsom", "displayName": "Glemsom", "password": "Gammel2026xx"})
+        self.assertEqual(st, 201, made)
+        gid = made["user"]["id"]
+        g = C(self.base)
+        self.assertEqual(g.req("POST", "/api/auth/login", {"username": "glemsom", "password": "Gammel2026xx"})[0], 200)
+        # members can't use the owner app
+        self.assertEqual(g.req("GET", "/api/owner/overview")[0], 403)
+        self.assertEqual(g.req("POST", f"/api/owner/users/{gid}/password", {"password": "Ny2026xxAbc"})[0], 403)
+        self.assertEqual(o.req("GET", "/api/owner/overview")[0], 200)
+        # forgot the password: the owner gives a new one – logged out, old password no longer works
+        self.assertEqual(o.req("POST", f"/api/owner/users/{gid}/password", {"password": "kort"})[1]["code"], "weak_password")
+        self.assertEqual(o.req("POST", f"/api/owner/users/{gid}/password", {"password": "Kage-Sol-hav-4821"})[0], 200)
+        self.assertEqual(g.req("GET", "/api/me")[0], 401)
+        self.assertEqual(C(self.base).req("POST", "/api/auth/login", {"username": "glemsom", "password": "Gammel2026xx"})[0], 401)
+        self.assertEqual(g.req("POST", "/api/auth/login", {"username": "glemsom", "password": "Kage-Sol-hav-4821"})[0], 200)
+        # "Hent HUBTECH": anyone can read it, only the owner sets it, only real links
+        dl = C(self.base).req("GET", "/api/download")[1]
+        self.assertTrue(dl["latestApk"].endswith("/HUBTECH.apk"))       # Android: always the newest build
+        self.assertEqual(dl["apkUrl"], dl["latestApk"])
+        self.assertEqual(g.req("PUT", "/api/download", {"storeUrl": "https://apps.microsoft.com/detail/9abc"})[0], 403)
+        self.assertEqual(o.req("PUT", "/api/download", {"storeUrl": "https://evil.example/x"})[1]["code"], "invalid")
+        self.assertEqual(o.req("PUT", "/api/download", {"storeUrl": "https://apps.microsoft.com/detail/9abc", "apkUrl": "javascript:alert(1)"})[1]["code"], "invalid")
+        self.assertEqual(o.req("PUT", "/api/download", {"storeUrl": "https://apps.microsoft.com/detail/9abc"})[0], 200)
+        self.assertEqual(C(self.base).req("GET", "/api/download")[1]["storeUrl"], "https://apps.microsoft.com/detail/9abc")
+        # hand over ownership: needs the owner's password; afterwards exactly one owner
+        self.assertEqual(o.req("POST", f"/api/owner/users/{gid}/transfer", {"password": "forkert"})[0], 400)
+        self.assertEqual(o.req("POST", f"/api/owner/users/{gid}/transfer", {"password": owner_pw})[0], 200)
+        self.assertEqual(g.req("GET", "/api/me")[1]["user"]["role"], "owner")
+        me = o.req("GET", "/api/me")[1]["user"]
+        self.assertEqual((me["role"], me["admin"]), ("member", True))
+        self.assertEqual(o.req("GET", "/api/owner/overview")[0], 403)
+        # and back again
+        self.assertEqual(g.req("POST", f"/api/owner/users/{me['id']}/transfer", {"password": "Kage-Sol-hav-4821"})[0], 200)
         self.assertEqual(o.req("GET", "/api/me")[1]["user"]["role"], "owner")

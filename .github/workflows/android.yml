@@ -87,6 +87,7 @@ jobs:
             V=$(python -c "import re;print(re.search(r'^VERSION\s*=\s*\"([^\"]+)\"', open('server/config.py').read(), re.M).group(1))")
             printf '{"version":"%s","build":%s,"versionCode":%s,"apk":"%s","sha":"%s","date":"%s"}\n' "$V" "${{ github.run_number }}" "$((1000000 + ${{ github.run_number }}))" "$APK" "${{ github.sha }}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/ci/version.json
             cat /tmp/ci/version.json
+            cp "out/$APK" /tmp/ci/HUBTECH.apk   # fixed name = a link (and QR code) that always gives the newest app
           fi
           cd /tmp/ci
           git init -q -b ci
