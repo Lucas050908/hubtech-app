@@ -48,7 +48,7 @@ jobs:
             echo "::error::Hemmeligheden HUBTECH_KEYSTORE_B64 mangler – se docs/OFFENTLIG.md"
             exit 1
           fi
-          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/hubtech.keystore"
+          printf %s "$KS_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/hubtech.keystore"
           echo "HUBTECH_KEYSTORE=$RUNNER_TEMP/hubtech.keystore" >> "$GITHUB_ENV"
 
       - name: Byg APK
@@ -59,6 +59,9 @@ jobs:
           HUBTECH_KEY_PASSWORD: ${{ secrets.HUBTECH_KEYSTORE_PASSWORD }}
           HUBTECH_KEY_ALIAS: hubtech
         run: |
+          # copied from Notepad, a secret often ends with a line break or spaces – those are not part of the password
+          export HUBTECH_KEYSTORE_PASSWORD="$(printf %s "$HUBTECH_KEYSTORE_PASSWORD" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          export HUBTECH_KEY_PASSWORD="$HUBTECH_KEYSTORE_PASSWORD"
           chmod +x gradlew
           set -o pipefail
           ./gradlew --no-daemon --stacktrace assembleRelease 2>&1 | tee ../build.log
