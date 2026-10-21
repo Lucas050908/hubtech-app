@@ -296,3 +296,22 @@ code.inline { padding: 1px 6px; color: var(--text); }
 .crop-mask { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, transparent 0 calc(50% - 1px), rgba(3, 8, 16, .62) 50%); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .15); }
 .crop-mask::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .7); }
 .crop-zoom { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 320px; } .crop-zoom input { flex: 1; } .crop-zoom svg { width: 18px; height: 18px; color: var(--text-3); }
+
+/* inline text button */
+.link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:hover { color: var(--accent-2); }
+
+/* "Venner på andre netværk" – set-up wizard */
+.fw { display: grid; gap: 8px; margin: 8px 0; }
+.fw-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fw-actions:empty { display: none; }
+.fw-step { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-md); background: var(--glass); border: 1px solid var(--line-2); }
+.fw-step > svg { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--accent); }
+.fw-step > div { display: grid; gap: 8px; min-width: 0; }
+.fw-step.is-ok > svg { color: var(--ok); }
+.fw-step.is-busy > svg { animation: fwPulse 1.4s ease-in-out infinite; }
+.fw-url { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fw-url b { word-break: break-all; }
+@keyframes fwPulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .fw-step.is-busy > svg { animation: none; } }
+.fw-step > div > .btn, .fw-step > div > a { justify-self: start; }

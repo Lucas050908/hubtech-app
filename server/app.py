@@ -543,6 +543,9 @@ def main(argv=None):
     if bf["managed"]:
         print(f"  ◆ ByteForge startet sammen med HUBTECH (PID {bf['pid']}) – log i {config.DATA_DIR / 'byteforge.log'}")
     httpd = Server((args.host, args.port), Handler)
+    if not os.environ.get("HUBTECH_ANDROID"):
+        from server import remote_access
+        remote_access.resume(args.port)   # friends' public address (Tailscale Funnel) follows HUBTECH's port
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '') else args.host}:{args.port}"
     print(f"\n  ◆ HUBTECH kører på {url}\n    Data: {config.DB_PATH}\n    Stop med Ctrl+C\n", flush=True)
     if args.host not in ("127.0.0.1", "localhost", "::1"):

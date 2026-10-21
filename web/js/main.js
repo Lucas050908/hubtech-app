@@ -155,6 +155,7 @@ async function showInShell(mod, { params = {}, app = null, title, focus } = {}, 
   window.scrollTo(0, 0);
   bootDone();
   maybeStartOnboarding();
+  if (store.get('user')?.onboarding?.done) setTimeout(() => import('./features/friendsetup.js').then(m => m.maybeOfferFriends()).catch(() => {}), 2500);
 }
 
 function notFound() {

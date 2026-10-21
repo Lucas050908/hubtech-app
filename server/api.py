@@ -1235,6 +1235,28 @@ def network_set(req, _):
     return 200, {"lanAccess": on, "restarting": bool(restart and b.get("restart", True))}
 
 
+def public_access_info(req, _):
+    _require_local_owner(req)
+    if SYSTEM.get("android"):
+        raise ApiError(404, "Ikke tilgængelig i Android-appen.", "not_found")
+    from . import remote_access
+    st = remote_access.state()
+    return 200, {"tailscale": st, "job": remote_access.job_info(), "enabled": bool(db.get_server_setting("public_access", False)),
+                 "canInstall": bool(remote_access.winget()), "download": remote_access.DOWNLOAD, "port": SYSTEM.get("port") or config.PORT}
+
+
+def public_access_set(req, _):
+    _require_local_owner(req)
+    if SYSTEM.get("android"):
+        raise ApiError(404, "Ikke tilgængelig i Android-appen.", "not_found")
+    from . import remote_access
+    b = req.json()
+    if b.get("on") is False:
+        remote_access.turn_off()
+        return 200, {"step": "off"}
+    return 200, {"step": remote_access.next_step(SYSTEM.get("port") or config.PORT), "job": remote_access.job_info()}
+
+
 def _require_local_owner(req):
     require_owner(req)
     if not _local_direct(req):
@@ -1460,6 +1482,8 @@ ROUTES = [
     ("POST", r"/api/system/shutdown", system_shutdown),
     ("GET", r"/api/system/network", network_info),
     ("PUT", r"/api/system/network", network_set),
+    ("GET", r"/api/system/public-access", public_access_info),
+    ("POST", r"/api/system/public-access", public_access_set),
     ("POST", r"/api/system/update/check", update_check),
     ("POST", r"/api/system/update/install", update_install),
     ("GET", r"/api/system/backups", backups_list),

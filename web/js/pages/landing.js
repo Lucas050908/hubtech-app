@@ -1,5 +1,6 @@
 /** Public landing page — presents the universe and the way in. */
 import { h } from '../core/dom.js';
+import { canConnectToFriend, connectToFriendDialog } from '../features/friendsetup.js';
 import { icon, logo } from '../core/icons.js';
 import { store, setWorld } from '../core/store.js';
 import { APPS } from '../core/registry.js';
@@ -61,6 +62,8 @@ export default {
             h('a', { class: 'btn btn-primary btn-lg', href: first ? '#/signup' : status.signupAllowed ? '#/signup' : '#/login' }, first ? 'Opret ejerkonto' : 'Kom i gang', icon('arrowRight')),
             first ? null : h('a', { class: 'btn btn-lg', href: '#/login' }, 'Log ind')),
           first ? h('p', { class: 'landing-note' }, icon('sparkles'), 'Første gang? Den første konto bliver platformens ejer.') : null,
+          canConnectToFriend() ? h('p', { class: 'landing-note' }, icon('users'), 'Skal du være med på en vens HUBTECH? ',
+            h('button', { class: 'link-btn', type: 'button', onclick: () => connectToFriendDialog() }, 'Forbind til en vens HUBTECH')) : null,
           h('div', { class: 'landing-try' }, h('span', { class: 'faint' }, 'Prøv verdenen:'), seasonBtns)),
         h('button', { class: 'scroll-cue', 'aria-label': 'Rul ned', onclick: () => document.getElementById('apps')?.scrollIntoView({ behavior: 'smooth' }) }, icon('chevronDown'))),
       h('section', { class: 'landing-section', id: 'apps' },

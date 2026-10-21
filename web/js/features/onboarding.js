@@ -126,6 +126,7 @@ function runTour(allSteps, { persist, startAt = 0 }) {
     try {
       const { onboarding } = await api.post('/api/me/onboarding', { done: true, step: completed ? steps.length : i });
       store.set('user', { ...store.get('user'), onboarding });
+      if (!wasDone) setTimeout(() => import('./friendsetup.js').then(m => m.maybeOfferFriends()).catch(() => {}), 1500);
       if (completed && !wasDone) {
         toast('Introduktion gennemført', { type: 'xp', text: '+50 XP. Du kan altid starte den igen fra brugermenuen.' });
         refreshSummary();

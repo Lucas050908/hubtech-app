@@ -2,6 +2,7 @@
 import { h, clear, timeAgo, ava } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
+import { friendWizard } from '../features/friendsetup.js';
 import { store, setPref, setWorld, resetSessionState } from '../core/store.js';
 import { toast, busy, errorToast, segmented, switchControl, setRangeFill, confirmDialog, modal } from '../core/ui.js';
 import { navigate } from '../core/router.js';
@@ -1084,18 +1085,23 @@ function networkPanel() {
     if (ts.url) qrSvg(ts.url).then(svgEl => tsBody.querySelector('.net-ts-qr')?.replaceWith(svgEl)).catch(() => {});
     rows.push(h('details', { class: 'net-https', open: !!ts.url }, h('summary', null, icon('lock'), ' Installér HUBTECH som app på telefonen (HTTPS)'), tsBody,
       h('p', { class: 'faint small' }, 'Tailscale giver et rigtigt HTTPS-certifikat og et privat netværk kun for dine egne enheder – også når du ikke er hjemme. Du skal ikke installere certifikater selv, og HUBTECH skal ikke åbnes mod internettet.')));
-    // friends somewhere else: a public https address (Tailscale Funnel), so they can log in from any network
-    const pub = ts.funnel && ts.url;
-    const funnelBody = pub
-      ? h('div', null, h('div', { class: 'desk-status is-on' }, icon('checkCircle'), h('span', null, 'HUBTECH kan nås fra internettet på ', h('b', { class: 'mono' }, ts.url))),
-        h('p', { class: 'faint small' }, 'Send adressen til dine venner. De åbner den i en browser (eller skriver den i HUBTECH-appen under “Forbind til en anden HUBTECH”) og logger ind med den konto, du har lavet til dem under Brugere. Slå det fra igen med: ', h('code', { class: 'net-cmd' }, 'tailscale funnel reset')))
-      : h('ol', { class: 'net-steps' },
+    // friends somewhere else: HUBTECH sets up a public https address (Tailscale Funnel) by itself
+    const manual = h('details', { class: 'net-manual' }, h('summary', null, 'Gør det selv i en terminal'),
+      h('ol', { class: 'net-steps' },
         h('li', null, 'Installér ', h('b', null, 'Tailscale'), ' på denne computer og log ind (dine venner skal ', h('b', null, 'ikke'), ' have Tailscale).'),
-        h('li', null, 'Kør én gang i en terminal: ', h('code', { class: 'net-cmd' }, `tailscale funnel --bg ${n.port}`)),
-        h('li', null, 'Tailscale viser en https-adresse (…ts.net). Den virker fra alle netværk – også mobilnet.'),
-        h('li', null, 'Lav en konto til hver ven under ', h('b', null, 'Brugere'), ', og send dem adressen. Kom tilbage hertil for at se, om det virker.'));
-    rows.push(h('details', { class: 'net-https', open: !!pub }, h('summary', null, icon('globe'), ' Venner på andre netværk (over internettet)'), funnelBody,
-      h('p', { class: 'faint small' }, 'Alle skal logge ind, og forbindelsen er krypteret (https). Computeren skal være tændt, mens I bruger HUBTECH. Opkald går direkte mellem jer – virker de ikke fra et bestemt netværk, så tilføj en TURN-server under Apps og opkald.')));
+        h('li', null, 'Kør: ', h('code', { class: 'net-cmd' }, `tailscale funnel --bg ${n.port}`)),
+        h('li', null, 'Slå det fra igen med: ', h('code', { class: 'net-cmd' }, 'tailscale funnel reset'))));
+    const offBtn = h('button', { class: 'btn btn-sm btn-ghost' }, icon('x'), 'Slå adgang udefra fra');
+    offBtn.addEventListener('click', busy(offBtn, async () => {
+      if (!await confirmDialog({ title: 'Slå adgang udefra fra?', text: 'Venner på andre netværk kan ikke længere nå HUBTECH, før du slår det til igen.', confirmLabel: 'Slå fra', danger: true })) return;
+      try { await api.post('/api/system/public-access', { on: false }); toast('Adgang udefra er slået fra', { type: 'ok' }); draw(); } catch (e) { errorToast(e); }
+    }));
+    offBtn.hidden = !ts.funnel;
+    const wiz = friendWizard({ compact: true, onDone: () => { offBtn.hidden = false; } });
+    rows.push(h('details', { class: 'net-https', open: true }, h('summary', null, icon('globe'), ' Venner på andre netværk (over internettet)'),
+      h('p', { class: 'faint small' }, 'Dine venner kan skrive, ringe og bruge HUBTECH med dig – hjemme hos sig selv eller på mobilnet. HUBTECH sætter det op med Tailscale (gratis, krypteret, https). Alle skal logge ind, og computeren skal være tændt.'),
+      wiz, h('div', { class: 'fw-actions' }, offBtn), manual,
+      h('p', { class: 'faint small' }, 'Virker opkald ikke fra et bestemt netværk (fx skole- eller arbejds-wifi), så tilføj en TURN-server under Apps og opkald.')));
     if (n.open && n.signup === 'open') rows.push(h('div', { class: 'callout warn' }, icon('alert'), h('div', null, 'Tilmelding er åben (HUBTECH_SIGNUP=open). Alle på netværket kan oprette en konto. Overvej “first”.')));
     h(clear(body), null, rows);
   }
