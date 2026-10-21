@@ -357,3 +357,10 @@ a.ofh-file:hover { transform: translateY(-3px); border-color: color-mix(in srgb,
   .sh-tab, .sh-tab-x, .sh-tab-add { height: 40px; min-width: 40px; }
 }
 @media (pointer: coarse) { .sh-grid td { height: 34px; } .sh-scroll { touch-action: pan-x pan-y; } }
+
+/* conflict / unsaved-draft banner */
+.ofx-banner { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; width: min(760px, calc(100% - 32px)); box-shadow: 0 18px 50px rgba(0,0,0,.45); backdrop-filter: blur(14px); display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin: 0; padding: 12px 16px; border-radius: 14px; background: linear-gradient(var(--warn-soft), var(--warn-soft)), var(--surface-solid); color: var(--text); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); font-size: 14px; }
+.ofx-banner[hidden] { display: none; }
+.ofx-banner > svg { flex: none; width: 20px; height: 20px; color: var(--warn); }
+.ofx-banner > span { flex: 1 1 260px; }
+.ofx-banner-btns { display: flex; flex-wrap: wrap; gap: 6px; }

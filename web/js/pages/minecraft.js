@@ -73,7 +73,10 @@ function view(root, s, canEdit, onEdit) {
         h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, 'Sådan kommer du ind'), h('ol', { class: 'mc-steps' }, joinSteps.map(x => h('li', null, x))))),
       h('div', { class: 'stack' },
         s.rules.length ? h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, 'Regler'), h('ul', { class: 'mc-rules' }, s.rules.map(r => h('li', null, r)))) : null,
-        s.links.length ? h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, 'Links'), h('div', { class: 'mc-links' }, s.links.map(l => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer' }, icon('link'), l.label)))) : null,
+        h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, 'Snak med de andre'),
+          h('p', { class: 'muted', style: { margin: '4px 0 10px' } }, 'Spørgsmål, idéer og hjælp til serveren klares i HUBTECH’s eget Fællesskab.'),
+          h('div', { class: 'mc-links' }, h('a', { class: 'btn btn-primary', href: '#/apps/community' }, icon('chat'), 'Åbn Fællesskab'),
+            s.links.map(l => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer' }, icon('link'), l.label)))),
         h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, 'Nyheder'),
           s.news.length ? h('div', { class: 'mc-news' }, [...s.news].sort((a, b) => b.at - a.at).map(n => h('article', null, h('b', null, n.title), h('div', { class: 'faint' }, timeAgo(n.at)), n.text ? h('p', null, n.text) : null)))
             : h('p', { class: 'faint' }, canEdit ? 'Ingen nyheder endnu – tilføj en under Rediger.' : 'Ingen nyheder endnu.')))));
@@ -92,7 +95,7 @@ function editor(root, s, onDone) {
   const desc = h('textarea', { class: 'input', rows: 3, maxlength: 600, 'aria-label': 'Beskrivelse' }, s.description);
   const howTo = h('textarea', { class: 'input', rows: 4, maxlength: 1500, placeholder: 'Ét trin pr. linje. Tomt = HUBTECH skriver selv en vejledning.', 'aria-label': 'Sådan kommer du ind' }, s.howTo);
   const rules = h('textarea', { class: 'input', rows: 5, 'aria-label': 'Regler' }, s.rules.join('\n'));
-  const links = h('textarea', { class: 'input', rows: 3, placeholder: 'Discord | https://discord.gg/…', 'aria-label': 'Links' }, s.links.map(l => `${l.label} | ${l.url}`).join('\n'));
+  const links = h('textarea', { class: 'input', rows: 3, placeholder: 'Serverkort | https://…', 'aria-label': 'Links' }, s.links.map(l => `${l.label} | ${l.url}`).join('\n'));
   let showStatus = s.showStatus;
   const news = [...s.news];
   const newsBox = h('div', { class: 'mc-news-edit' });

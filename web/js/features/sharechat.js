@@ -1,5 +1,5 @@
 /** Share a note, event, task or code snippet from your own apps into a Fællesskab chat (DM or server channel). */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { modal, toast } from '../core/ui.js';
@@ -39,7 +39,7 @@ export async function shareToChat(attach) {
     };
     clear(list);
     if (dms.dms.length) list.appendChild(h('div', { class: 'sc-group' }, 'Venner'));
-    dms.dms.forEach(d => list.appendChild(item({ id: d.channel, label: d.user.name, path: `/apps/community/dm/${d.channel}` }, d.user.name, `@${d.user.username}`, d.user.avatar)));
+    dms.dms.forEach(d => list.appendChild(item({ id: d.channel, label: d.user.name, path: `/apps/community/dm/${d.channel}` }, d.user.name, `@${d.user.username}`, ava(d.user.avatar))));
     for (const s of servers.servers) {
       const srv = await api.get(`/api/cm/servers/${s.id}`).catch(() => null);
       const chans = (srv?.channels || []).filter(c => c.kind === 'text');

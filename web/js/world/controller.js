@@ -2,6 +2,7 @@
 import { World } from './landscape.js';
 import { seasonForDate, timeForDate, SEASON_LABEL, TIME_LABEL } from './palettes.js';
 import { store, setWorld } from '../core/store.js';
+import { SCENES } from './scenes.js';
 
 let world = null;
 let focus = 0;
@@ -32,20 +33,48 @@ function apply() {
   document.documentElement.dataset.season = r.season;
   document.documentElement.dataset.time = r.time;
   const useImage = w.source === 'image' && w.image?.url;
-  document.documentElement.dataset.worldSource = useImage ? 'image' : 'landscape';
+  const useScene = !useImage && w.source === 'scene' && SCENES[w.scene] ? w.scene : null;
+  document.documentElement.dataset.worldSource = useImage ? 'image' : useScene ? 'scene' : 'landscape';
   showImage(useImage ? w.image.url : null, w.brightness, reduced);
+  showScene(useScene, { time: r.time, intensity: w.intensity, reduced, hq: w.quality === 'high', brightness: w.brightness });
+  // the look of buttons and colours: chosen, or following the theme
+  const style = w.style && w.style !== 'auto' ? w.style : useScene ? SCENES[useScene].style : 'standard';
+  if (style === 'standard') delete document.documentElement.dataset.style; else document.documentElement.dataset.style = style;
   world.configure({
     season: r.season, time: r.time, weather: r.weather, landscape: r.landscape,
     intensity: w.intensity, brightness: w.brightness, parallax: w.parallax && !reduced,
-    reduced: reduced || !!useImage,          // own picture: the landscape stays still (and hidden) – no CPU spent
+    reduced: reduced || !!useImage || !!useScene,   // own picture or a theme scene: the landscape stays still (and hidden) – no CPU spent
     hq: w.quality === 'high',
     meteors: w.meteors || 'auto', cloudShadows: w.cloudShadows !== false,
     focus,
   });
   // UI readability scrim: lighter on the landing page, stronger inside dense app screens
   // vivid on Hjem/forside (like the mockup), calmer behind dense working screens
-  const base = (useImage ? 0.14 : 0) + ({ day: 0.22, dawn: 0.16, dusk: 0.14, night: 0.08 }[r.time] ?? 0.15);
+  const base = useScene ? ({ minimal: 0.04, silk: 0.06 }[useScene] ?? 0.12) : (useImage ? 0.14 : 0) + ({ day: 0.22, dawn: 0.16, dusk: 0.14, night: 0.08 }[r.time] ?? 0.15);
   document.documentElement.style.setProperty('--scrim', String(Math.min(0.85, base + focus * 0.3)));
+}
+
+/** A theme scene (cityscape.js) on a canvas of its own, loaded only when used. */
+let sceneEl = null, scene = null, sceneLoading = null;
+async function showScene(name, opt) {
+  if (!name) {
+    if (scene) { scene.stop(); }
+    if (sceneEl) sceneEl.hidden = true;
+    return;
+  }
+  if (!sceneEl) {
+    sceneEl = document.createElement('canvas');
+    sceneEl.id = 'world-scene';
+    sceneEl.setAttribute('aria-hidden', 'true');
+    document.getElementById('world')?.after(sceneEl);
+  }
+  sceneEl.hidden = false;
+  sceneEl.style.filter = `brightness(${Math.min(1.1, opt.brightness + 0.1)})`;
+  if (!scene) {
+    sceneLoading ||= import('./cityscape.js').then(m => { scene = new m.CityScene(sceneEl); window.__hubtechScene = scene; });
+    await sceneLoading;
+  }
+  scene.configure({ scene: name, time: opt.time, intensity: opt.intensity, reduced: opt.reduced, hq: opt.hq, light: document.documentElement.dataset.theme === 'light' });
 }
 
 /** Your own background picture (e.g. made with an AI image generator), shown instead of the landscape. */

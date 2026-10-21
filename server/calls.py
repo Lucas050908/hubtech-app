@@ -11,7 +11,7 @@ import time
 
 from . import db, live
 from .api import ApiError, require_user
-from .social import _are_friends, _blocked_between, _channel, _member, _server_member_ids, _user_card, require_cm, RANK
+from .social import _are_friends, _blocked_between, _channel, _member, _server_member_ids, _user_card, presence_of, require_cm, RANK
 
 MAX_ROOM = 8            # mesh: everyone connects to everyone, so keep rooms small
 RING_SECONDS = 45
@@ -20,8 +20,20 @@ _rooms = {}             # rid -> {"kind", "members": {uid: joined_ts}, "invited"
 _last_sweep = [0.0]
 
 
+DEFAULT_STUN = [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"]}]
+ICE_URL_RE = re.compile(r"^(stun|stuns|turn|turns):[A-Za-z0-9.\-\[\]:]{3,200}(\?transport=(udp|tcp))?$")
+
+
+def _relay_setting():
+    v = db.get_server_setting("ice_relay", None)
+    return v if isinstance(v, dict) else None
+
+
 def ice_servers():
-    """STUN/TURN servers for the browsers. HUBTECH_ICE_SERVERS may hold a JSON list (e.g. with your own TURN server)."""
+    """STUN/TURN servers for the browsers. HUBTECH_ICE_SERVERS may hold a JSON list (e.g. with your own TURN server);
+    otherwise the TURN server the owner saved under Indstillinger → Apps og opkald is added to the public STUN servers.
+    STUN finds a direct route between two networks; TURN relays the call when the networks block that (some mobile
+    networks, company and school wifi)."""
     raw = os.environ.get("HUBTECH_ICE_SERVERS", "").strip()
     if raw:
         try:
@@ -30,7 +42,44 @@ def ice_servers():
                 return v
         except ValueError:
             pass
-    return [{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}]
+    out = [dict(x) for x in DEFAULT_STUN]
+    r = _relay_setting()
+    if r and r.get("urls"):
+        out.append({"urls": r["urls"], "username": r.get("username", ""), "credential": r.get("credential", "")})
+    return out
+
+
+def ice_config_get(req, _):
+    u = require_user(req)
+    if u["role"] != "owner":
+        raise ApiError(403, "Kun ejeren kan ændre opkaldsindstillingerne.", "forbidden")
+    r = _relay_setting() or {}
+    return 200, {"fromEnv": bool(os.environ.get("HUBTECH_ICE_SERVERS", "").strip()), "urls": r.get("urls", []),
+                 "username": r.get("username", ""), "hasCredential": bool(r.get("credential")), "stun": DEFAULT_STUN[0]["urls"]}
+
+
+def ice_config_set(req, _):
+    u = require_user(req)
+    if u["role"] != "owner":
+        raise ApiError(403, "Kun ejeren kan ændre opkaldsindstillingerne.", "forbidden")
+    b = req.json()
+    urls = b.get("urls") or []
+    if isinstance(urls, str):
+        urls = [x.strip() for x in re.split(r"[\s,]+", urls) if x.strip()]
+    if not isinstance(urls, list) or len(urls) > 4:
+        raise ApiError(400, "Skriv højst 4 adresser.", "invalid")
+    for x in urls:
+        if not isinstance(x, str) or not ICE_URL_RE.match(x):
+            raise ApiError(400, f"“{str(x)[:60]}” er ikke en gyldig adresse. Den skal starte med turn:, turns: eller stun:.", "invalid", {"field": "urls"})
+    if not urls:
+        db.set_server_setting("ice_relay", None)
+        return 200, {"urls": [], "username": "", "hasCredential": False}
+    old = _relay_setting() or {}
+    username = str(b.get("username") or "")[:200]
+    cred = b.get("credential")
+    cred = old.get("credential", "") if cred is None else str(cred)[:200]   # empty field = keep the saved password
+    db.set_server_setting("ice_relay", {"urls": urls, "username": username, "credential": cred})
+    return 200, {"urls": urls, "username": username, "hasCredential": bool(cred)}
 
 
 def _cards(ids):
@@ -126,6 +175,9 @@ def call_start(req, _):
         raise ApiError(400, "Ugyldig modtager.", "invalid")
     if _blocked_between(u["id"], to) or not _are_friends(u["id"], to):
         raise ApiError(403, "Du kan kun ringe til dine venner.", "not_friends")
+    from .social import presence_of
+    if presence_of(to) == "busy":
+        raise ApiError(409, "Personen har sat sin status til “Optaget” og vil ikke forstyrres lige nu. Skriv en besked i stedet.", "dnd")
     sweep(True)
     with _lock:
         for rid, room in _rooms.items():
@@ -157,6 +209,9 @@ def _ring(u, rid, ids, video, members):
 def _group_start(u, b):
     """Ring several friends at once – everyone who answers joins the same call."""
     ids = _friends_only(u, b.get("to"))[:MAX_ROOM - 1]
+    ids = [x for x in ids if presence_of(x) != "busy"]          # "Optaget" isn't rung
+    if not ids:
+        raise ApiError(409, "Dem, du ringer til, er optaget lige nu.", "dnd")
     if not ids:
         raise ApiError(400, "Vælg mindst én ven.", "missing")
     sweep(True)
@@ -296,6 +351,8 @@ ROUTES = [
     ("POST", r"/api/cm/calls/(?P<id>[kc][0-9a-f]+)/signal", call_signal),
     ("POST", r"/api/cm/calls/(?P<id>[kc][0-9a-f]+)/invite", call_invite),
     ("POST", r"/api/cm/calls/(?P<id>[kc][0-9a-f]+)/info", call_info),
+    ("GET", r"/api/cm/calls/ice-config", ice_config_get),
+    ("PUT", r"/api/cm/calls/ice-config", ice_config_set),
 ]
 
 

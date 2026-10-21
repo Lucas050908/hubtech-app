@@ -57,9 +57,23 @@ function fire(t) {
   }
 }
 
-let timer = 0, lastFetch = 0;
+let timer = 0, lastFetch = 0, running = false;
+// reminders already shown on this device – overlapping checks, a reload or an older copy of the list saved from
+// another page (which loses the `reminded` flag) must never show the same reminder twice
+const FIRED_KEY = 'hubtech.reminded';
+const fired = new Set((() => { try { return JSON.parse(localStorage.getItem(FIRED_KEY) || '[]'); } catch { return []; } })());
+const once = (key) => {
+  if (fired.has(key)) return false;
+  fired.add(key);
+  try { localStorage.setItem(FIRED_KEY, JSON.stringify([...fired].slice(-300))); } catch { /* private mode */ }
+  return true;
+};
 async function check() {
-  if (!store.get('user')) return;
+  if (!store.get('user') || running) return;
+  running = true;
+  try { await checkNow(); } finally { running = false; }
+}
+async function checkNow() {
   let st;
   const force = Date.now() - lastFetch > 10 * 60000;   // pick up changes from other devices now and then
   try { st = await getState('tasks', { force }); } catch { return; }
@@ -72,7 +86,7 @@ async function check() {
     const at = t.remindAt ?? remindAt(t);
     if (!at || at > now) continue;
     t.reminded = true; changed = true;
-    if (now - at < 24 * 3600000) fire(t);   // don't nag about reminders that are more than a day old
+    if (now - at < 24 * 3600000 && once(`task-${t.id}-${at}`)) fire(t);   // don't nag about reminders that are more than a day old
   }
   if (changed) saveState('tasks', st);
   // Kalender: same rules, the event's date + start time is the "deadline"
@@ -85,7 +99,7 @@ async function check() {
     const at = e.remindAt ?? remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
     if (!at || at > now) continue;
     e.reminded = true; calChanged = true;
-    if (now - at < 24 * 3600000) fireEvent(e);
+    if (now - at < 24 * 3600000 && once(`event-${e.id}-${at}`)) fireEvent(e);
   }
   if (calChanged) saveState('calendar', cal);
   // the Android app shows the coming reminders as real notifications – also when HUBTECH is closed
@@ -125,8 +139,9 @@ function fireEvent(e) {
 }
 
 export function startReminders() {
-  clearInterval(timer);
+  clearInterval(timer); clearTimeout(startT);
   timer = setInterval(check, 30000);
-  setTimeout(check, 4000);
+  startT = setTimeout(check, 4000);
 }
+let startT = 0;
 export function stopReminders() { clearInterval(timer); timer = 0; lastFetch = 0; }

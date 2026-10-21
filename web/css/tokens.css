@@ -167,3 +167,19 @@
 }
 .on-world .btn, .page > .page-head .btn, .home-hero .btn, .guide-head .input, .course-top .day-pill, .public-nav .btn { text-shadow: none; }
 :root[data-theme="light"] :is(.on-world, .page > .page-head, .guide-head, .home-hero) .input { background: rgba(8, 16, 28, .5); color: #fff; }
+
+/* ── styles: colours and shapes that go with the theme scenes (Indstillinger → Verden & udseende → Stil) ── */
+:root[data-style="neon"] { --accent: #ff4fa8; --accent-2: #3df2ff; --accent-glow: rgba(255, 79, 168, .5); --accent-soft: rgba(255, 79, 168, .16); }
+:root[data-theme="dark"][data-style="neon"] { --glass: rgba(16, 8, 30, .64); --glass-strong: rgba(14, 7, 26, .82); --line: rgba(255, 120, 210, .13); --line-2: rgba(255, 120, 210, .24); }
+:root[data-style="futuristisk"] { --accent: #47e7ff; --accent-2: #ff6bd6; --accent-glow: rgba(71, 231, 255, .5); --accent-soft: rgba(71, 231, 255, .14); --r-md: 10px; --r-lg: 10px; --r-xl: 16px; }
+:root[data-theme="dark"][data-style="futuristisk"] { --glass: rgba(5, 10, 28, .62); --glass-strong: rgba(5, 9, 24, .82); --line: rgba(71, 231, 255, .14); --line-2: rgba(71, 231, 255, .26); }
+:root[data-style="zen"] { --accent: #f29bb8; --accent-2: #d8b47c; --accent-glow: rgba(242, 155, 184, .45); --accent-soft: rgba(242, 155, 184, .15); --r-md: 16px; --r-lg: 16px; --r-xl: 26px; }
+:root[data-theme="dark"][data-style="zen"] { --glass: rgba(22, 16, 28, .6); --glass-strong: rgba(20, 14, 26, .8); --line: rgba(255, 220, 230, .1); --line-2: rgba(255, 220, 230, .18); }
+:root[data-style="elegant"] { --accent: #d9b36c; --accent-2: #f1dfb8; --accent-glow: rgba(217, 179, 108, .45); --accent-soft: rgba(217, 179, 108, .15); --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif; }
+:root[data-theme="dark"][data-style="elegant"] { --glass: rgba(16, 13, 10, .66); --glass-strong: rgba(14, 11, 9, .84); --line: rgba(240, 210, 150, .12); --line-2: rgba(240, 210, 150, .22); }
+:root[data-theme="light"][data-style="elegant"] { --accent: #9a7330; --accent-soft: rgba(154, 115, 48, .14); }
+:root[data-style="minimal"] { --accent: #6d8cff; --accent-2: #a3b1ff; --accent-glow: rgba(109, 140, 255, .35); --accent-soft: rgba(109, 140, 255, .12); --blur: 10px; --r-md: 12px; --r-lg: 12px; }
+:root[data-theme="dark"][data-style="minimal"] { --glass: rgba(12, 18, 32, .78); --glass-strong: rgba(11, 16, 29, .9); }
+:root[data-theme="light"][data-style="neon"] { --accent: #d6187a; --accent-soft: rgba(214, 24, 122, .12); }
+:root[data-theme="light"][data-style="futuristisk"] { --accent: #0a8fb3; --accent-soft: rgba(10, 143, 179, .12); }
+:root[data-theme="light"][data-style="zen"] { --accent: #c0507a; --accent-soft: rgba(192, 80, 122, .12); }

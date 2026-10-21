@@ -3,7 +3,7 @@
  * The HUBTECH server only relays the connection messages (server/calls.py); sound and picture go directly
  * between the devices. Uses the "perfect negotiation" pattern, so either side may add a camera or a screen later.
  */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, modal } from '../core/ui.js';
@@ -57,6 +57,25 @@ async function getMedia(video) {
   return s;
 }
 
+// used until the server's list arrives (e.g. a signal that comes before our own join answer)
+const FALLBACK_ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+/** 'direct' (same network or a direct route found by STUN) or 'relay' (through a TURN server). */
+async function routeOf(pc) {
+  try {
+    const stats = await pc.getStats();
+    let pair = null;
+    stats.forEach((r) => { if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId); });
+    if (!pair) stats.forEach((r) => { if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; });
+    const local = pair && stats.get(pair.localCandidateId);
+    return local?.candidateType === 'relay' ? 'relay' : 'direct';
+  } catch { return 'direct'; }
+}
+
+// per-person volume in calls, remembered on this device
+const VOL_KEY = 'hubtech.callvol';
+function volumeFor(uid) { try { const v = JSON.parse(localStorage.getItem(VOL_KEY) || '{}')[uid]; return typeof v === 'number' ? v : 1; } catch { return 1; } }
+function saveVolume(uid, v) { try { const all = JSON.parse(localStorage.getItem(VOL_KEY) || '{}'); all[uid] = v; localStorage.setItem(VOL_KEY, JSON.stringify(all)); } catch { /* */ } }
+
 class Call {
   constructor({ id, kind, title, video, ice }) {
     Object.assign(this, { id, kind, title, video, ice, peers: new Map(), local: null, startedAt: 0, ended: false, mic: true, cam: false, screen: null, facing: 'user', mix: null, music: null, queue: [], nowPlaying: null });
@@ -67,8 +86,8 @@ class Call {
   peer(uid, card) {
     let p = this.peers.get(uid);
     if (p) { if (card) p.card = card; return p; }
-    const pc = new RTCPeerConnection({ iceServers: this.ice });
-    p = { pc, card: card || { id: uid, name: 'Deltager', avatar: '👤' }, polite: me() > uid, makingOffer: false, ignoreOffer: false, stream: new MediaStream(), tile: null };
+    const pc = new RTCPeerConnection({ iceServers: this.ice?.length ? this.ice : FALLBACK_ICE });
+    p = { pc, card: card || { id: uid, name: 'Deltager', avatar: '👤' }, polite: me() > uid, makingOffer: false, ignoreOffer: false, stream: new MediaStream(), tile: null, volume: volumeFor(uid) };
     this.peers.set(uid, p);
     for (const t of this.sendTracks()) pc.addTrack(t, this.local);
     pc.onnegotiationneeded = async () => {
@@ -78,12 +97,30 @@ class Call {
     pc.onicecandidate = (e) => { if (e.candidate) this.signal(uid, { candidate: e.candidate.toJSON() }); };
     pc.ontrack = (e) => { if (!p.stream.getTracks().includes(e.track)) p.stream.addTrack(e.track); e.track.onunmute = () => this.drawTiles(); e.track.onended = () => this.drawTiles(); this.drawTiles(); };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected' && !this.startedAt) { this.startedAt = Date.now(); stopTone(); }
-      if (pc.connectionState === 'failed') { try { pc.restartIce(); } catch { /* */ } toast('Forbindelsen til ' + p.card.name + ' er dårlig', { type: 'warn', text: 'Prøver igen … Virker det ikke, kræver netværket en TURN-server (se docs/OFFENTLIG.md).' }); }
+      const st = pc.connectionState;
+      if (st === 'connected') { if (!this.startedAt) { this.startedAt = Date.now(); stopTone(); } if (p.lost) toast(`Forbindelsen til ${p.card.name} er tilbage`, { type: 'ok', ms: 2500 }); p.lost = false; clearTimeout(p.retry); clearTimeout(p.slow); routeOf(pc).then((r) => { p.route = r; this.drawTiles(); }); }
+      // a short drop (wifi → mobile data, a tunnel …): wait a moment, then ask for a new route
+      if (st === 'disconnected') { p.lost = true; clearTimeout(p.retry); p.retry = setTimeout(() => { if (pc.connectionState !== 'connected') { try { pc.restartIce(); } catch { /* */ } } }, 4000); }
+      if (st === 'failed') {
+        p.lost = true;
+        try { pc.restartIce(); } catch { /* */ }
+        this.warnRoute(p);
+      }
       this.drawStatus(); this.drawTiles();
     };
+    // two different networks that never find each other: say why instead of "Forbinder …" forever
+    p.slow = setTimeout(() => { if (!this.ended && pc.connectionState !== 'connected' && this.peers.get(uid) === p) this.warnRoute(p); }, 20000);
     this.drawTiles();
     return p;
+  }
+
+  warnRoute(p) {
+    if (p.warned) return;
+    p.warned = true;
+    const relay = (this.ice || []).some(s => [].concat(s.urls || []).some(u => /^turns?:/.test(u)));
+    toast(`Kan ikke få forbindelse til ${p.card.name}`, { type: 'warn', ms: 14000,
+      text: relay ? 'Prøver igen … Tjek internetforbindelsen hos jer begge. Hjælper det ikke, så tjek TURN-serveren under Indstillinger → Apps og opkald.'
+        : 'I er sikkert på to netværk, der blokerer direkte forbindelser (fx mobilnet, skole- eller arbejds-wifi). Ejeren af HUBTECH kan tilføje en TURN-server under Indstillinger → Apps og opkald – så virker opkald mellem alle netværk.' });
   }
 
   async onSignal(from, data) {
@@ -216,6 +253,7 @@ class Call {
   drop(uid) {
     const p = this.peers.get(uid);
     if (!p) return;
+    clearTimeout(p.slow); clearTimeout(p.retry);
     try { p.pc.close(); } catch { /* */ }
     this.peers.delete(uid);
     this.drawTiles(); this.drawStatus();
@@ -334,23 +372,31 @@ class Call {
     this.el.classList.toggle('is-live', !!this.startedAt);
   }
 
-  tile(stream, card, { self = false, mic = true } = {}) {
+  tile(stream, card, { self = false, mic = true, peer = null } = {}) {
     const hasVideo = stream.getVideoTracks().some(t => t.readyState === 'live' && (self ? t.enabled : !t.muted));
     const v = h('video', { autoplay: true, playsinline: true, class: ['call-video', self && this.facing === 'user' && !this.screen && getCall().mirror && 'is-mirror'], hidden: !hasVideo });
     v.srcObject = stream; v.muted = self; v.setAttribute('playsinline', '');
     if (!self) applySpeaker(v);
+    if (peer) v.volume = peer.volume;
     v.play?.().catch(() => {});
-    return h('div', { class: ['call-tile', self && 'is-self', !hasVideo && 'is-audio'] }, v,
-      hasVideo ? null : h('span', { class: 'call-ava' }, card.avatar || '👤'),
-      h('span', { class: 'call-name' }, self ? 'Dig' : card.name, mic ? null : icon('micOff')));
+    // the volume of this one person (only on this device – remembered for next time)
+    const vol = peer ? h('label', { class: 'call-vol', title: `Lydstyrke for ${card.name}` }, icon(peer.volume ? 'volume' : 'mute'),
+      h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: peer.volume, 'aria-label': `Lydstyrke for ${card.name}`,
+        oninput: (e) => { peer.volume = Number(e.target.value); v.volume = peer.volume; saveVolume(card.id, peer.volume); } })) : null;
+    const state = peer?.lost ? h('span', { class: 'call-state' }, 'Genopretter forbindelsen …') : peer && peer.pc.connectionState !== 'connected' ? h('span', { class: 'call-state' }, 'Forbinder …')
+      : peer?.route === 'relay' ? h('span', { class: 'call-state is-relay', title: 'Jeres netværk tillader ikke en direkte forbindelse, så opkaldet går via TURN-serveren.' }, 'Via relæ') : null;
+    return h('div', { class: ['call-tile', self && 'is-self', !hasVideo && 'is-audio', peer?.lost && 'is-lost'] }, v,
+      hasVideo ? null : h('span', { class: 'call-ava' }, ava(card.avatar, '👤')),
+      state,
+      h('span', { class: 'call-name' }, self ? 'Dig' : card.name, mic ? null : icon('micOff')), vol);
   }
 
   drawTiles() {
     if (this.ended) return;
-    const tiles = [...this.peers.values()].map(p => this.tile(p.stream, p.card));
+    const tiles = [...this.peers.values()].map(p => this.tile(p.stream, p.card, { peer: p }));
     const myCard = { name: 'Dig', avatar: store.get('user')?.avatar };
     const selfStream = this.screen ? new MediaStream([...this.screen.getVideoTracks(), ...(this.local?.getAudioTracks() || [])]) : this.local || new MediaStream();
-    h(clear(this.tilesEl), null, tiles.length ? tiles : h('div', { class: 'call-wait' }, h('span', { class: 'call-ava call-pulse' }, this.kind === 'dm' ? (this.peerCard?.avatar || '👤') : '🔊'),
+    h(clear(this.tilesEl), null, tiles.length ? tiles : h('div', { class: 'call-wait' }, h('span', { class: 'call-ava call-pulse' }, this.kind === 'dm' ? (ava(this.peerCard?.avatar, '👤')) : '🔊'),
       h('span', null, this.kind === 'dm' ? `Ringer til ${this.title} …` : this.kind === 'group' ? 'Ringer op … Dem, der tager imod, kommer med her.' : 'Du er den eneste her. Andre kan deltage fra kanallisten.')),
     this.local ? this.tile(selfStream, myCard, { self: true, mic: this.mic }) : null);
     this.tilesEl.dataset.n = String(tiles.length);
@@ -391,7 +437,7 @@ export function pickFriends(friends, title = 'Gruppeopkald', okLabel = 'Ring op'
     let done = false;
     const list = h('div', { class: 'sn-pick' }, friends.map(f => h('label', { class: 'sn-friend' },
       h('input', { type: 'checkbox', onchange: (e) => { e.target.checked ? chosen.add(f) : chosen.delete(f); } }),
-      h('span', { class: ['cm-ava', f.online && 'is-online'] }, f.avatar), h('span', null, f.name, f.online ? '' : ' (offline)'))));
+      h('span', { class: ['cm-ava', f.online && 'is-online', f.presence === 'busy' && 'is-busy'] }, ava(f.avatar)), h('span', null, f.name, f.online ? '' : ' (offline)'))));
     const m = modal({ title, label: 'Opkald', size: 440, body: h('div', { class: 'stack', style: { gap: '10px' } }, list, h('p', { class: 'faint', style: { margin: 0 } }, `Højst 7 andre. Det ringer kun hos venner, der har HUBTECH åben.`)),
       actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), h('button', { class: 'btn btn-primary', onclick: () => { done = true; m.close(); resolve([...chosen]); } }, icon('phone'), okLabel)],
       onClose: () => { if (!done) resolve(null); } });
@@ -433,7 +479,7 @@ function showRing(ev) {
     void r;
   };
   const el = h('div', { class: 'ring glass', role: 'alertdialog', 'aria-label': `${ev.from.name} ringer` },
-    h('span', { class: 'call-ava call-pulse' }, ev.from.avatar || '👤'),
+    h('span', { class: 'call-ava call-pulse' }, ava(ev.from.avatar, '👤')),
     h('div', { class: 'ring-t' }, h('b', null, ev.from.name), h('span', { class: 'faint' }, `${ev.group ? 'Gruppeopkald' : ev.video ? 'Videoopkald' : 'Ringer'}${ev.others?.length ? ` med ${ev.others.join(', ')}` : ''} …`)),
     h('div', { class: 'ring-b' },
       h('button', { class: 'call-btn is-end', 'aria-label': 'Afvis', title: 'Afvis', onclick: () => { api.post(`/api/cm/calls/${ev.id}/leave`).catch(() => {}); closeRing(); } }, icon('phoneOff')),

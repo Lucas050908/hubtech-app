@@ -604,16 +604,23 @@ export function toExcelFormula(f) {
 
 /** Open an Excel/OpenDocument file (.xlsx, .xls, .ods) as sheet data. */
 export async function importWorkbookFile(file) {
-  const X = await loadXlsx();
-  const wb = X.read(await readFile(file, 'buffer'), { type: 'array', cellFormula: true, sheetStubs: true });
+  const buf = await readFile(file, 'buffer');
+  // parsed in a worker of its own (see xlsx-worker.js): a crafted file can't touch the page, and can't freeze it
+  const wb = await new Promise((resolve, reject) => {
+    const w = new Worker('/js/office/xlsx-worker.js');
+    const t = setTimeout(() => { w.terminate(); reject(new Error('Filen tog for lang tid at læse. Er det en gyldig regnearksfil?')); }, 30000);
+    w.onmessage = (e) => { clearTimeout(t); w.terminate(); e.data?.ok ? resolve(e.data.wb) : reject(new Error(`Filen kunne ikke læses: ${e.data?.error || 'ukendt fejl'}`)); };
+    w.onerror = (e) => { clearTimeout(t); w.terminate(); reject(new Error(`Filen kunne ikke læses: ${e.message || 'ukendt fejl'}`)); };
+    w.postMessage(buf, [buf]);
+  });
   const sheets = wb.SheetNames.slice(0, 20).map((name) => {
     const ws = wb.Sheets[name], s = blankSheet(name.slice(0, 30));
-    const range = ws['!ref'] ? X.utils.decode_range(ws['!ref']) : { e: { r: 0, c: 0 } };
+    const range = { e: ws['!range'] || { r: 0, c: 0 } };
     for (const [id, cell] of Object.entries(ws)) {
       if (id[0] === '!') continue;
       const p = parseRef(id); if (!p || p.r > 4999 || p.c > 51) continue;
       if (cell.f) s.cells[id] = { v: '=' + cell.f };
-      else if (cell.v != null && cell.v !== '') s.cells[id] = { v: typeof cell.v === 'boolean' ? (cell.v ? 'SAND' : 'FALSK') : cell.v instanceof Date ? cell.v.toLocaleDateString('da-DK') : String(cell.v) };
+      else if (cell.v != null && cell.v !== '') s.cells[id] = { v: typeof cell.v === 'boolean' ? (cell.v ? 'SAND' : 'FALSK') : /^\d{4}-\d\d-\d\dT/.test(cell.v) ? new Date(cell.v).toLocaleDateString('da-DK') : String(cell.v) };
     }
     s.rows = Math.min(5000, Math.max(100, range.e.r + 21));
     s.cols = Math.min(52, Math.max(26, range.e.c + 3));

@@ -1,5 +1,5 @@
 /** Fællesskab: reporting, member cards (moderation), invitations, server settings and the reports queue. */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, modal, confirmDialog, segmented } from '../core/ui.js';
@@ -62,7 +62,7 @@ export async function memberCard(cm, user, { server, myRole, onChanged, openDm }
   }
   const m = modal({ title: user.name, label: `@${user.username}`, size: 460,
     body: h('div', { class: 'stack', style: { gap: '12px' } },
-      h('div', { class: 'cm-card-h' }, h('span', { class: 'cm-ava cm-ava-xl' }, user.avatar || '👤'),
+      h('div', { class: 'cm-card-h' }, h('span', { class: 'cm-ava cm-ava-xl' }, ava(user.avatar, '👤')),
         h('div', null, h('b', null, user.name), h('div', { class: 'faint' }, `@${user.username}`), target ? h('span', { class: ['chip', `cm-role-${target.role}`] }, ROLE_DA[target.role]) : null,
           h('div', { class: ['cm-online', user.online && 'is-on'] }, user.online ? 'Online' : 'Offline'))),
       h('div', { class: 'cm-card-btns' }, btns), modBox, err),
@@ -136,7 +136,7 @@ export function serverSettings(cm, detail, { onChanged, onDeleted }) {
   function bans() {
     const box = h('div', { class: 'stack', style: { gap: '8px' } }, h('p', { class: 'faint' }, 'Henter …'));
     const log = h('div', { class: 'cm-log' });
-    api.get(`/api/cm/servers/${s.id}/bans`).then(d => h(clear(box), null, d.bans.length ? d.bans.map(b => h('div', { class: 'cm-chanrow' }, h('span', { class: 'cm-ava' }, b.user?.avatar || '👤'), h('span', { style: { flex: 1 } }, h('b', null, b.user?.name || '?'), h('span', { class: 'faint' }, ` · ${b.reason || 'ingen årsag'} · af ${b.by || '?'} ${fmtTime(b.at)}`)),
+    api.get(`/api/cm/servers/${s.id}/bans`).then(d => h(clear(box), null, d.bans.length ? d.bans.map(b => h('div', { class: 'cm-chanrow' }, h('span', { class: 'cm-ava' }, ava(b.user?.avatar, '👤')), h('span', { style: { flex: 1 } }, h('b', null, b.user?.name || '?'), h('span', { class: 'faint' }, ` · ${b.reason || 'ingen årsag'} · af ${b.by || '?'} ${fmtTime(b.at)}`)),
       h('button', { class: 'btn btn-sm', onclick: async () => { await api.del(`/api/cm/servers/${s.id}/bans/${b.user.id}`); toast('Udelukkelsen er ophævet', { type: 'ok' }); m.close(); } }, 'Ophæv'))) : h('p', { class: 'faint' }, 'Ingen er udelukket.'))).catch(e => { box.textContent = e.message; });
     const ACT = { mute: 'gjorde tavs', unmute: 'ophævede tavshed for', kick: 'smed ud', ban: 'udelukkede', unban: 'ophævede udelukkelse af', delete: 'slettede en besked fra' };
     api.get(`/api/cm/servers/${s.id}/log`).then(d => h(clear(log), null, d.log.length ? d.log.slice(0, 60).map(x => h('div', { class: 'cm-logrow' }, h('span', { class: 'faint' }, fmtTime(x.at)), ` ${x.by} ${ACT[x.action] || x.action} ${x.target}`, x.detail ? h('span', { class: 'faint' }, ` – ${x.detail}`) : null)) : h('p', { class: 'faint' }, 'Ingen handlinger endnu.'))).catch(() => {});

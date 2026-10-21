@@ -1,5 +1,5 @@
 /** Indstillinger: profile, security, appearance & world, integrations, users, about. */
-import { h, clear, timeAgo } from '../core/dom.js';
+import { h, clear, timeAgo, ava } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { store, setPref, setWorld, resetSessionState } from '../core/store.js';
@@ -15,6 +15,7 @@ import { isAppWindow, canInstall, promptInstall, onInstallChange, systemInfo, sh
 import * as droid from '../core/android.js';
 import { getCall, setCall, getNotify, setNotify, getStudio, setStudio, mediaConstraints, applySpeaker } from '../features/appsettings.js';
 import * as piano from '../features/piano.js';
+import { SCENES, STYLES } from '../world/scenes.js';
 import { SCALES, BACKDROPS, getScale, setScale, getBackdrop, setBackdrop, canBeTransparent, autoZoom } from '../core/display.js';
 
 const AVATARS = ['⚡', '🦊', '🐺', '🦁', '🐯', '🐻', '🦅', '🐉', '🔧', '💡', '🛸', '🔬', '🎯', '🚀', '🏆', '🌊', '🤖', '🔌', '🧠', '🌲', '🏔️', '🍂', '❄️', '🌸', '☀️'];
@@ -54,11 +55,53 @@ function profileTab() {
     b.addEventListener('click', () => { avatar = a; grid.querySelectorAll('.avatar-opt').forEach(x => x.setAttribute('aria-checked', String(x === b))); });
     return b;
   }));
+  // ── profile picture from this device ──
+  const photoBox = h('div', { class: 'photo-box' });
+  const drawPhoto = () => {
+    const cur = store.get('user').avatar;
+    const pic = String(cur || '').startsWith('/api/avatars/');
+    const pick = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp,image/*', hidden: true, id: 'avatar-file' });
+    const cam = h('input', { type: 'file', accept: 'image/*', capture: 'user', hidden: true, id: 'avatar-cam' });
+    const onFile = async (inp) => {
+      const f = inp.files?.[0]; inp.value = '';
+      if (!f) return;
+      try {
+        const { cropAvatar } = await import('../features/avatarcrop.js');
+        const blob = await cropAvatar(f);
+        if (!blob) return;
+        const r = await fetch('/api/me/avatar', { method: 'POST', body: blob, headers: { 'Content-Type': blob.type, 'X-Requested-With': 'hubtech' }, credentials: 'same-origin' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'Billedet kunne ikke gemmes.');
+        store.set('user', d.user); avatar = d.user.avatar;
+        toast('Profilbilledet er gemt', { type: 'ok', text: 'Det vises nu overalt i HUBTECH – også for dine venner.' });
+        drawPhoto();
+      } catch (e) { toast('Billedet kunne ikke bruges', { type: 'bad', text: e.message }); }
+    };
+    pick.addEventListener('change', () => onFile(pick));
+    cam.addEventListener('change', () => onFile(cam));
+    const remove = h('button', { class: 'btn btn-sm btn-ghost' }, icon('trash'), 'Fjern billede');
+    remove.addEventListener('click', busy(remove, async () => {
+      try { const { user } = await api.del('/api/me/avatar'); store.set('user', user); avatar = user.avatar; toast('Profilbilledet er fjernet', { type: 'ok' }); drawPhoto(); }
+      catch (e) { toast('Kunne ikke fjerne billedet', { type: 'bad', text: e.message }); }
+    }));
+    h(clear(photoBox), null,
+      h('span', { class: 'avatar avatar-photo' }, ava(cur)),
+      h('div', { class: 'set-stack' },
+        h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+          h('label', { class: 'btn btn-sm btn-primary', for: 'avatar-file' }, icon('upload'), pic ? 'Skift billede' : 'Upload billede'),
+          matchMedia('(pointer: coarse)').matches ? h('label', { class: 'btn btn-sm', for: 'avatar-cam' }, icon('camera'), 'Tag et billede') : null,
+          pic ? remove : null),
+        h('p', { class: 'faint', style: { margin: 0 } }, 'JPG, PNG eller WebP fra din computer, tablet eller telefon. Du kan beskære det, før det gemmes.')),
+      pick, cam);
+  };
+  drawPhoto();
   const save = h('button', { class: 'btn btn-primary' }, 'Gem profil');
   save.addEventListener('click', busy(save, async () => {
     if (!name.value.trim()) return fName.setError('Skriv dit navn.');
     try {
-      const { user } = await api.patch('/api/me', { displayName: name.value.trim(), email: email.value.trim(), avatar });
+      const body = { displayName: name.value.trim(), email: email.value.trim() };
+      if (avatar && !String(avatar).startsWith('/api/avatars/')) body.avatar = avatar;   // a picture is saved by itself when uploaded
+      const { user } = await api.patch('/api/me', body);
       store.set('user', user);
       toast('Profil gemt', { type: 'ok' });
     } catch (e) { (e.field === 'email' ? fEmail : fName).setError(e.message); }
@@ -66,7 +109,8 @@ function profileTab() {
   return h('div', { class: 'stack' },
     h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title', style: { marginBottom: '16px' } }, 'Din profil'),
       h('div', { class: 'grid-2' }, fName, fEmail),
-      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Avatar'), grid),
+      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Profilbillede'), photoBox),
+      h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Eller vælg en figur'), grid),
       h('dl', { class: 'kv', style: { margin: '8px 0 18px' } }, h('dt', null, 'Brugernavn'), h('dd', { class: 'mono' }, u.username), h('dt', null, 'Rolle'), h('dd', null, u.role === 'owner' ? 'Ejer (adgang til lokale projekter og integrationer)' : 'Medlem'), h('dt', null, 'Oprettet'), h('dd', null, new Date(u.createdAt * 1000).toLocaleDateString('da-DK', { dateStyle: 'long' }))),
       save),
     h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title', style: { marginBottom: '12px' } }, 'Introduktion'),
@@ -165,12 +209,32 @@ function worldTab() {
     const d = describeWorld();
     h(clear(landGrid), null, LANDS.map(([k, label]) => {
       const cv = h('canvas', { 'aria-hidden': 'true' });
-      const on = w().source !== 'image' && (w().landscape || 'valley') === k;
-      const b = h('button', { type: 'button', class: ['land-tile', on && 'is-on'], role: 'radio', 'aria-checked': String(on), onclick: () => { setWorld({ landscape: k, source: 'landscape' }); drawLands(); drawSource(); refresh(); } }, cv, h('span', null, label));
+      const on = (w().source || 'landscape') === 'landscape' && (w().landscape || 'valley') === k;
+      const b = h('button', { type: 'button', class: ['land-tile', on && 'is-on'], role: 'radio', 'aria-checked': String(on), onclick: () => { setWorld({ landscape: k, source: 'landscape' }); drawLands(); drawScenes(); drawSource(); refresh(); drawStyle(); } }, cv, h('span', null, label));
       requestAnimationFrame(() => paintStill(cv, { season: d.season, time: d.time, landscape: k, focusX: 0.5, focusY: 0.4 }));
       return b;
     }));
   };
+  // ── theme scenes: cities, Japan, minimal, elegant ──
+  const sceneGrid = h('div', { class: 'land-grid theme-grid', role: 'radiogroup', 'aria-label': 'Temaer' });
+  const drawScenes = () => {
+    const d = describeWorld();
+    h(clear(sceneGrid), null, Object.entries(SCENES).map(([k, sc]) => {
+      const cv = h('canvas', { 'aria-hidden': 'true' });
+      const on = w().source === 'scene' && w().scene === k;
+      const b = h('button', { type: 'button', class: ['land-tile', on && 'is-on'], role: 'radio', 'aria-checked': String(on), title: sc.desc,
+        onclick: () => { setWorld({ source: 'scene', scene: k }); drawScenes(); drawLands(); drawSource(); refresh(); drawStyle(); } }, cv, h('span', null, sc.name));
+      requestAnimationFrame(() => import('../world/cityscape.js').then(m => m.paintScene(cv, k, { time: ['tokyo', 'neon', 'future'].includes(k) ? 'night' : d.time, light: document.documentElement.dataset.theme === 'light' })));
+      return b;
+    }));
+  };
+  const styleSel = h('select', { class: 'select', 'aria-label': 'Stil' });
+  const drawStyle = () => {
+    const auto = w().source === 'scene' && SCENES[w().scene] ? SCENES[w().scene].style : 'standard';
+    h(clear(styleSel), null, STYLES.map(([v, l]) => h('option', { value: v, selected: (w().style || 'auto') === v }, v === 'auto' ? `${l} (${STYLES.find(x => x[0] === auto)?.[1] || 'Standard'})` : l)));
+  };
+  styleSel.addEventListener('change', () => { setWorld({ style: styleSel.value }); drawStyle(); });
+  drawStyle();
   const imgBox = h('div', { class: 'own-image' });
   const PROMPT = 'Et roligt, malerisk landskab i bredformat (16:9, 3840×2160): bjerge, en sø og blød morgentåge i dæmpede farver. Ingen tekst, ingen personer, ingen logoer. Motivet må gerne være lidt mørkt foroven og nederst, så hvid tekst kan læses ovenpå.';
   const upload = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', class: 'sr-only', id: 'world-upload' });
@@ -200,7 +264,7 @@ function worldTab() {
       h('pre', { class: 'own-prompt' }, PROMPT),
       h('button', { class: 'btn btn-sm', onclick: async () => { try { await navigator.clipboard.writeText(PROMPT); toast('Kopieret', { type: 'ok', ms: 1400 }); } catch { toast('Kunne ikke kopiere', { type: 'bad' }); } } }, icon('copy'), 'Kopiér prompt')));
   };
-  drawLands(); drawSource();
+  drawLands(); drawScenes(); drawSource();
   const quality = segmented([{ value: 'normal', label: 'Normal' }, { value: 'high', label: 'Høj' }], w().quality || 'normal', (v) => setWorld({ quality: v }), { label: 'Billedkvalitet' });
   const locBox = h('div');
   const drawLoc = () => {
@@ -246,8 +310,12 @@ function worldTab() {
       row('Vejr', 'Regn, sne og tåge', weather)),
     h('section', { class: 'glass panel' },
       h('h2', { class: 'panel-title' }, 'Baggrund'),
-      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'Syv landskaber, der alle følger årstid, tid på dagen og vejr – eller dit eget billede.'),
+      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'Vælg et tema eller et af de syv landskaber, der følger årstid, tid på dagen og vejr – eller brug dit eget billede. Dine øvrige indstillinger bliver, som de er.'),
+      h('h3', { class: 'set-sub' }, 'Temaer'),
+      sceneGrid,
+      h('h3', { class: 'set-sub' }, 'Landskaber'),
       landGrid,
+      row('Stil', 'Farver og former på knapper og paneler. “Følger temaet” skifter med baggrunden.', styleSel),
       row('Eget billede', 'Et foto eller et billede, du har lavet med AI. Gemmes på din konto og synkroniseres.', imgBox),
       row('Billedkvalitet', 'Høj tegner landskabet i fuld skarphed på store og skarpe skærme (bruger lidt mere strøm)', quality)),
     h('section', { class: 'glass panel' },
@@ -469,12 +537,22 @@ function notifyPanel() {
   };
 
   api.get('/api/notify/prefs').then((r) => { server = r; drawMail(); }).catch(() => {});
+  // who may send friend requests (Fællesskab)
+  const contactRow = h('div', { hidden: true });
+  api.get('/api/cm/me').then((me) => {
+    if (!me.ageOk) return;
+    const sel = h('select', { class: 'select', 'aria-label': 'Hvem må sende dig venneanmodninger' },
+      [['everyone', 'Alle'], ['fof', 'Kun venners venner'], ['nobody', 'Ingen']].map(([v, l]) => h('option', { value: v, selected: me.contact === v }, l)));
+    sel.addEventListener('change', () => api.patch('/api/cm/me', { contact: sel.value }).then(() => toast('Gemt', { type: 'ok' })).catch(errorToast));
+    contactRow.replaceWith(row('Venneanmodninger fra', 'Hvem der kan finde dig og sende en anmodning i Fællesskab. Opkald kommer altid kun fra dine venner.', sel));
+  }).catch(() => {});
   drawDev();
   return h(sec, null,
     h('h2', { class: 'panel-title' }, 'Notifikationer'),
     h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Hvad HUBTECH skal give besked om – i appen, som notifikation på telefonen og på mail.'),
     row('På denne enhed', 'Rigtige notifikationer, også når HUBTECH er lukket', devBox),
     row('På mail', 'En kort opsummering, når du ikke har været inde', mailBox),
+    contactRow,
     t('dm', 'Direkte beskeder', 'Når en ven skriver til dig'),
     t('mention', 'Omtaler', 'Når nogen skriver @dig i en kanal'),
     t('call', 'Opkald', 'Når nogen ringer, og ubesvarede opkald'),
@@ -484,6 +562,72 @@ function notifyPanel() {
     t('report', 'Anmeldelser', 'Når der kommer en anmeldelse på en server, du styrer'),
     t('announce', 'Beskeder fra administratorerne', 'Nyheder og vigtige beskeder til alle brugere'),
     row('Lyd i appen', 'Et blødt pling, når HUBTECH er åben', sw('Lyd ved notifikationer', () => n.sound, (v) => setNotify({ sound: v }))));
+}
+
+/** Owner only: TURN server so calls work between all kinds of networks (not just the ones STUN can open). */
+function relayPanel() {
+  if (store.get('user').role !== 'owner') return null;
+  const urls = h('input', { class: 'input', autocapitalize: 'off', spellcheck: 'false', placeholder: 'turn:turn.example.com:3478, turns:turn.example.com:443?transport=tcp', 'aria-label': 'TURN-adresser' });
+  const user = h('input', { class: 'input', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Brugernavn' });
+  const pass = h('input', { class: 'input', type: 'password', autocomplete: 'new-password', 'aria-label': 'Adgangskode' });
+  const status = h('p', { class: 'faint', style: { margin: 0 }, 'aria-live': 'polite' });
+  let fromEnv = false;
+  api.get('/api/cm/calls/ice-config').then((c) => {
+    fromEnv = c.fromEnv;
+    urls.value = (c.urls || []).join(', '); user.value = c.username || '';
+    pass.placeholder = c.hasCredential ? '•••••••• (gemt – skriv for at ændre)' : '';
+    status.textContent = c.fromEnv ? 'HUBTECH_ICE_SERVERS i .env bruges og vinder over det, der står her.' : c.urls?.length ? 'TURN-serveren er sat op – opkald virker også mellem netværk, der blokerer direkte forbindelser.' : 'Ingen TURN-server endnu. Opkald virker mellem de fleste hjemmenetværk, men ikke altid fra mobilnet, skole- eller arbejds-wifi.';
+  }).catch(() => {});
+  const save = h('button', { class: 'btn btn-primary btn-sm' }, icon('check'), 'Gem');
+  save.addEventListener('click', busy(save, async () => {
+    const b = { urls: urls.value.trim(), username: user.value.trim() };
+    if (pass.value) b.credential = pass.value;
+    try {
+      const r = await api.put('/api/cm/calls/ice-config', b);
+      pass.value = ''; pass.placeholder = r.hasCredential ? '•••••••• (gemt – skriv for at ændre)' : '';
+      status.textContent = r.urls.length ? 'Gemt. Gælder fra næste opkald.' : 'TURN-serveren er fjernet.';
+      toast(r.urls.length ? 'TURN-serveren er gemt' : 'TURN-serveren er fjernet', { type: 'ok' });
+    } catch (e) { errorToast(e); }
+  }));
+  const test = h('button', { class: 'btn btn-sm' }, icon('refresh'), 'Test forbindelsen');
+  test.addEventListener('click', busy(test, async () => {
+    status.textContent = 'Tester … (op til 10 sekunder)';
+    const list = urls.value.split(/[\s,]+/).filter(Boolean);
+    const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
+    if (list.length) servers.push({ urls: list, username: user.value.trim(), credential: pass.value || undefined });
+    if (list.length && !pass.value && !fromEnv) status.textContent = 'Tester … (skriv adgangskoden igen for at teste TURN – den gemte vises ikke her)';
+    const found = await gatherTypes(servers);
+    const msg = found.has('relay') ? '✓ TURN-serveren virker – opkald kan gå via relæ, når direkte forbindelse ikke kan lade sig gøre.'
+      : found.has('srflx') ? (list.length ? '⚠ Direkte forbindelser (STUN) virker, men TURN-serveren svarede ikke. Tjek adresse, brugernavn og adgangskode.' : '✓ Direkte forbindelser (STUN) virker fra dette netværk. Tilføj en TURN-server for at være sikker på alle netværk.')
+      : '✗ Hverken STUN eller TURN svarede. Netværket her blokerer måske UDP – prøv en turns:…:443?transport=tcp-adresse.';
+    status.textContent = msg;
+  }));
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'Opkald mellem netværk'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Når I ringer fra hver jeres netværk, finder HUBTECH selv en direkte vej (STUN). Nogle netværk – mobilnet, skole- og arbejds-wifi – blokerer det. Så skal opkaldet sendes via en TURN-server. Du kan bruge en TURN-tjeneste (flere har en gratis kvote) eller din egen. Kun du som ejer ser denne boks.'),
+    row('TURN-adresser', 'Én eller flere, adskilt med komma', urls),
+    row('Brugernavn', null, user),
+    row('Adgangskode', 'Gemmes i HUBTECH-databasen på denne computer. Deles med brugerne, når de ringer (sådan virker TURN).', pass),
+    row('', null, h('div', { class: 'set-stack' }, h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, save, test), status)));
+}
+
+/** Which kinds of ICE candidates these servers give from this network: host, srflx (STUN) and/or relay (TURN). */
+async function gatherTypes(iceServers) {
+  const types = new Set();
+  let pc;
+  try { pc = new RTCPeerConnection({ iceServers }); } catch { return types; }
+  pc.createDataChannel('test');
+  await new Promise((resolve) => {
+    const done = setTimeout(resolve, 10000);
+    pc.onicecandidate = (e) => {
+      if (!e.candidate) { clearTimeout(done); resolve(); return; }
+      const m = / typ (\w+)/.exec(e.candidate.candidate); if (m) types.add(m[1]);
+      if (types.has('relay')) { clearTimeout(done); resolve(); }
+    };
+    pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => { clearTimeout(done); resolve(); });
+  });
+  try { pc.close(); } catch { /* */ }
+  return types;
 }
 
 function mailServerPanel() {
@@ -566,7 +710,7 @@ function studioPanel() {
 }
 
 function appsTab() {
-  return h('div', { class: 'stack', style: { display: 'grid', gap: '16px' } }, callPanel(), notifyPanel(), mailServerPanel(), musicPanel(), aiPanel(), studioPanel());
+  return h('div', { class: 'stack', style: { display: 'grid', gap: '16px' } }, callPanel(), relayPanel(), notifyPanel(), mailServerPanel(), musicPanel(), aiPanel(), studioPanel());
 }
 
 function integrationsTab() {
@@ -619,7 +763,7 @@ function usersTab() {
       clear(list);
       list.appendChild(h('div', { class: 'callout', style: { marginBottom: '12px' } }, icon('info'), h('div', null, h('strong', null, `Tilmelding: ${{ open: 'åben for alle', first: 'kun via ejeren', closed: 'lukket' }[signupMode]}. `), 'Styres med HUBTECH_SIGNUP i .env (open, first eller closed).')));
       users.forEach(u => list.appendChild(h('div', { class: 'row', style: { border: '1px solid var(--line)' } },
-        h('span', { class: 'avatar' }, u.avatar),
+        h('span', { class: 'avatar' }, ava(u.avatar)),
         h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, u.displayName), h('div', { class: 'row-sub' }, `@${u.username} · ${u.lastLoginAt ? 'sidst aktiv ' + timeAgo(u.lastLoginAt) : 'aldrig logget ind'}`)),
         h('span', { class: ['chip', u.role === 'owner' ? 'chip-info' : ''] }, u.role === 'owner' ? 'Ejer' : 'Medlem'))));
     } catch (e) { clear(list).appendChild(h('p', { class: 'faint' }, e.message)); }
@@ -940,6 +1084,18 @@ function networkPanel() {
     if (ts.url) qrSvg(ts.url).then(svgEl => tsBody.querySelector('.net-ts-qr')?.replaceWith(svgEl)).catch(() => {});
     rows.push(h('details', { class: 'net-https', open: !!ts.url }, h('summary', null, icon('lock'), ' Installér HUBTECH som app på telefonen (HTTPS)'), tsBody,
       h('p', { class: 'faint small' }, 'Tailscale giver et rigtigt HTTPS-certifikat og et privat netværk kun for dine egne enheder – også når du ikke er hjemme. Du skal ikke installere certifikater selv, og HUBTECH skal ikke åbnes mod internettet.')));
+    // friends somewhere else: a public https address (Tailscale Funnel), so they can log in from any network
+    const pub = ts.funnel && ts.url;
+    const funnelBody = pub
+      ? h('div', null, h('div', { class: 'desk-status is-on' }, icon('checkCircle'), h('span', null, 'HUBTECH kan nås fra internettet på ', h('b', { class: 'mono' }, ts.url))),
+        h('p', { class: 'faint small' }, 'Send adressen til dine venner. De åbner den i en browser (eller skriver den i HUBTECH-appen under “Forbind til en anden HUBTECH”) og logger ind med den konto, du har lavet til dem under Brugere. Slå det fra igen med: ', h('code', { class: 'net-cmd' }, 'tailscale funnel reset')))
+      : h('ol', { class: 'net-steps' },
+        h('li', null, 'Installér ', h('b', null, 'Tailscale'), ' på denne computer og log ind (dine venner skal ', h('b', null, 'ikke'), ' have Tailscale).'),
+        h('li', null, 'Kør én gang i en terminal: ', h('code', { class: 'net-cmd' }, `tailscale funnel --bg ${n.port}`)),
+        h('li', null, 'Tailscale viser en https-adresse (…ts.net). Den virker fra alle netværk – også mobilnet.'),
+        h('li', null, 'Lav en konto til hver ven under ', h('b', null, 'Brugere'), ', og send dem adressen. Kom tilbage hertil for at se, om det virker.'));
+    rows.push(h('details', { class: 'net-https', open: !!pub }, h('summary', null, icon('globe'), ' Venner på andre netværk (over internettet)'), funnelBody,
+      h('p', { class: 'faint small' }, 'Alle skal logge ind, og forbindelsen er krypteret (https). Computeren skal være tændt, mens I bruger HUBTECH. Opkald går direkte mellem jer – virker de ikke fra et bestemt netværk, så tilføj en TURN-server under Apps og opkald.')));
     if (n.open && n.signup === 'open') rows.push(h('div', { class: 'callout warn' }, icon('alert'), h('div', null, 'Tilmelding er åben (HUBTECH_SIGNUP=open). Alle på netværket kan oprette en konto. Overvej “first”.')));
     h(clear(body), null, rows);
   }
@@ -1048,9 +1204,39 @@ function phonePanel() {
     row('Del til HUBTECH', 'Del tekst, links og billeder fra andre apps – vælg HUBTECH i delemenuen', h('span', { class: 'chip' }, icon('upload'), 'Indbygget')));
 }
 
+/** Only in the Windows app: use HUBTECH on this computer, or connect to another HUBTECH (a friend's, over the internet). */
+function winServerPanel() {
+  const d = window.hubtechDesktop, wv = window.chrome?.webview;
+  if (!d || !wv) return null;
+  const cur = d.server || '';
+  const urlIn = h('input', { class: 'input', type: 'url', inputmode: 'url', autocapitalize: 'off', spellcheck: 'false', placeholder: 'https://vens-pc.tailnet.ts.net', value: cur, 'aria-label': 'Adressen på den anden HUBTECH' });
+  const err = h('p', { class: 'field-error', style: { margin: 0 }, 'aria-live': 'polite' });
+  const go = h('button', { class: 'btn btn-primary btn-sm' }, icon('link'), 'Forbind');
+  const onMsg = (e) => { if (typeof e.data === 'string' && e.data.startsWith('hubtech-server-error:')) { err.textContent = e.data.slice(21); go.disabled = false; go.classList.remove('is-loading'); } };
+  wv.addEventListener('message', onMsg);
+  addEventListener('hashchange', () => wv.removeEventListener('message', onMsg), { once: true });
+  go.addEventListener('click', () => {
+    err.textContent = '';
+    const v = urlIn.value.trim();
+    if (!v) { err.textContent = 'Skriv adressen på den anden HUBTECH.'; return; }
+    go.disabled = true; go.classList.add('is-loading');
+    wv.postMessage('hubtech-server:' + v);
+    setTimeout(() => { go.disabled = false; go.classList.remove('is-loading'); }, 12000);
+  });
+  urlIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') go.click(); });
+  const back = cur ? h('button', { class: 'btn btn-sm', onclick: async () => {
+    if (await confirmDialog({ title: 'Brug HUBTECH på denne computer?', text: 'Appen skifter tilbage til sin egen server. Dine data på den anden server bliver liggende dér.', confirmLabel: 'Skift' })) wv.postMessage('hubtech-server:');
+  } }, icon('home'), 'Brug HUBTECH på denne computer') : null;
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title' }, 'Server'),
+    h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, cur ? `Appen er forbundet til ${cur}. Du skriver og ringer med alle, der bruger den server.` : 'Appen bruger sin egen HUBTECH på denne computer. Vil du skrive og ringe med venner, der bruger en anden HUBTECH, så forbind til deres server – de finder adressen under Om → Netværk → “Venner på andre netværk”.'),
+    row(cur ? 'Skift server' : 'Forbind til en anden HUBTECH', 'Adressen skal starte med https://. Du logger ind med en konto på den anden server.', h('div', { class: 'set-stack' }, urlIn, h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, go, back), err)));
+}
+
 function aboutTab() {
   return h('div', { class: 'stack', style: { display: 'grid', gap: '16px' } },
     phonePanel(),
+    winServerPanel(),
     desktopPanel(),
     networkPanel(),
     updatePanel(),

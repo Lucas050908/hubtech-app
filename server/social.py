@@ -58,9 +58,23 @@ def _q(req, key, default=""):
     return v[0] if v else default
 
 
+_PRESENCE = {}          # uid -> 'online' | 'busy' | 'invisible' (cached; changed in cm_profile_update)
+
+
+def presence_of(uid):
+    if uid not in _PRESENCE:
+        r = db.one("SELECT presence FROM cm_profiles WHERE user_id = ?", (uid,))
+        _PRESENCE[uid] = (r["presence"] if r else None) or "online"
+        if len(_PRESENCE) > 20000:
+            _PRESENCE.clear()
+    return _PRESENCE.get(uid, "online")
+
+
 def _user_card(row):
+    p = presence_of(row["id"])
+    on = live.online(row["id"]) and p != "invisible"
     return {"id": row["id"], "username": row["username"], "name": row["display_name"], "avatar": row["avatar"],
-            "online": live.online(row["id"])}
+            "online": on, "presence": ("busy" if p == "busy" else "online") if on else "offline"}
 
 
 def _users(ids):
@@ -361,6 +375,7 @@ def cm_me(req, _):
     p = _profile(u["id"])
     ok = bool(p and p["age_ok_at"])
     out = {"ageOk": ok, "minAge": MIN_AGE, "user": _user_card(u), "bio": p["bio"] if p else "", "status": p["status"] if p else "",
+           "presence": (p["presence"] if p else None) or "online", "contact": (p["contact"] if p else None) or "everyone",
            "isPlatformOwner": u["role"] == "owner", "emoji": EMOJI}
     if ok:
         out["counts"] = {
@@ -388,7 +403,14 @@ def cm_age(req, _):
 def cm_profile_update(req, _):
     u = require_cm(req)
     b = req.json()
-    db.q("UPDATE cm_profiles SET bio = ?, status = ? WHERE user_id = ?", (body_str(b, "bio", 300), body_str(b, "status", 80), u["id"]))
+    cur = db.one("SELECT * FROM cm_profiles WHERE user_id = ?", (u["id"],))
+    pres = b.get("presence", cur["presence"] if cur else "online")
+    contact = b.get("contact", cur["contact"] if cur else "everyone")
+    if pres not in ("online", "busy", "invisible") or contact not in ("everyone", "fof", "nobody"):
+        raise ApiError(400, "Ugyldigt valg.", "invalid")
+    db.q("UPDATE cm_profiles SET bio = ?, status = ?, presence = ?, contact = ? WHERE user_id = ?",
+         (body_str(b, "bio", 300, default=cur["bio"] if cur else ""), body_str(b, "status", 80, default=cur["status"] if cur else ""), pres, contact, u["id"]))
+    _PRESENCE[u["id"]] = pres
     return cm_me(req, None)
 
 
@@ -424,6 +446,16 @@ def cm_friend_add(req, _):
     a, b = u["id"], who["id"]
     if a == b:
         raise ApiError(400, "Du kan ikke tilføje dig selv.", "self")
+    pref = db.one("SELECT contact FROM cm_profiles WHERE user_id = ?", (b,))
+    contact = (pref["contact"] if pref else None) or "everyone"
+    already = db.one("SELECT status FROM cm_friends WHERE user_id = ? AND friend_id = ?", (min(a, b), max(a, b)))
+    if not already and contact == "nobody":
+        raise ApiError(403, "Personen tager ikke imod venneanmodninger.", "no_requests")
+    if not already and contact == "fof":
+        mine = {r["x"] for r in db.all_rows("SELECT CASE WHEN user_id = ? THEN friend_id ELSE user_id END AS x FROM cm_friends WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'", (a, a, a))}
+        theirs = {r["x"] for r in db.all_rows("SELECT CASE WHEN user_id = ? THEN friend_id ELSE user_id END AS x FROM cm_friends WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'", (b, b, b))}
+        if not mine & theirs:
+            raise ApiError(403, "Personen tager kun imod anmodninger fra venners venner.", "no_requests")
     if _blocked_between(a, b):
         raise ApiError(403, "Du kan ikke sende en venneanmodning til denne bruger.", "blocked")
     if not _profile(b) or not _profile(b)["age_ok_at"]:
@@ -1005,6 +1037,11 @@ def cm_messages(req, params):
     blocked = [r["blocked_id"] for r in db.all_rows("SELECT blocked_id FROM cm_blocks WHERE user_id = ?", (u["id"],))]
     sql = "SELECT * FROM cm_messages WHERE channel_id = ?" + (" AND id < ?" if before else "")
     args = [cid] + ([before] if before else [])
+    q = (_q(req, "q") or "").strip()[:80]
+    if q:                                    # search in this conversation
+        like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        sql += " AND deleted = 0 AND body LIKE ? ESCAPE '\\'"
+        args.append(like)
     if blocked:
         sql += f" AND user_id NOT IN ({','.join('?' * len(blocked))})"
         args += blocked

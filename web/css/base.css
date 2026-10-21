@@ -102,3 +102,8 @@ kbd {
 /* panels a little more solid, so text stays readable on any wallpaper */
 :root[data-transparent="clear"] { --glass: rgba(9, 17, 30, .78); }
 :root[data-theme="light"][data-transparent="clear"] { --glass: rgba(255, 255, 255, .86); }
+
+/* theme scenes (world/cityscape.js) */
+#world-scene { position: fixed; inset: 0; width: calc(100vw / var(--z, 1)); height: calc(100vh / var(--z, 1)); z-index: 0; pointer-events: none; }
+:root[data-world-source="scene"] #world { visibility: hidden; }
+:root[data-transparent] #world-scene { display: none !important; }

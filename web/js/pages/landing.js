@@ -73,7 +73,7 @@ export default {
         h('div', { class: 'glass panel foot-card' },
           h('div', null, h('div', { class: 'eyebrow' }, 'Folkene bag HUBTECH'), h('ul', { class: 'team' }, TEAM.map(([n, r]) => h('li', null, h('b', null, n), h('span', { class: 'faint' }, r))))),
           h('div', { class: 'foot-links' },
-            h('a', { class: 'btn', href: 'https://discord.gg/7dCpmeBg', target: '_blank', rel: 'noopener' }, icon('chat'), 'Support på Discord'),
+            h('a', { class: 'btn', href: '#/login?next=%2Fapps%2Fcommunity' }, icon('chat'), 'Support i Fællesskab'),
             h('a', { class: 'btn', href: 'mailto:HUBTECH2025@proton.me' }, icon('mail'), 'Skriv til os'),
             h('a', { class: 'btn', href: 'https://github.com/Lucas050908/ByteForge', target: '_blank', rel: 'noopener' }, icon('code'), 'ByteForge på GitHub'))),
         h('p', { class: 'faint foot-copy' }, '© HUBTECH · Kører lokalt · Dine data bliver hos dig')));

@@ -81,4 +81,4 @@ OFFICE_VERSION_SECONDS = _int("HUBTECH_OFFICE_VERSION_SECONDS", 600)
 WRITE_RATE_USER = _int("HUBTECH_WRITE_RATE", 360)
 WRITE_RATE_ANON = _int("HUBTECH_WRITE_RATE_ANON", 40)
 # endpoints that legitimately receive large uploads (whole-database restore, personal data import)
-BIG_BODY_PATHS = {"/api/system/restore": 1024 * 1024 * 1024, "/api/me/import": 256 * 1024 * 1024, "/api/sync/apply": 64 * 1024 * 1024, "/api/office/files": 16 * 1024 * 1024, "/api/cm/files": 26 * 1024 * 1024, "/api/system/update/check": 300 * 1024 * 1024}
+BIG_BODY_PATHS = {"/api/me/avatar": 2 * 1024 * 1024 + 4096, "/api/system/restore": 1024 * 1024 * 1024, "/api/me/import": 256 * 1024 * 1024, "/api/sync/apply": 64 * 1024 * 1024, "/api/office/files": 16 * 1024 * 1024, "/api/cm/files": 26 * 1024 * 1024, "/api/system/update/check": 300 * 1024 * 1024}

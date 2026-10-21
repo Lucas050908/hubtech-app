@@ -101,7 +101,7 @@ def register(req, _):
     err = auth.validate_password(password)
     if err:
         raise ApiError(400, err, "weak_password", {"field": "password"})
-    key = "reg:" + req.client_ip
+    key = "reg:" + getattr(req, "visitor_ip", req.client_ip)
     wait = auth.throttled(key)
     if wait:
         raise ApiError(429, f"For mange forsøg. Prøv igen om {wait} sekunder.", "throttled")
@@ -127,7 +127,7 @@ def login(req, _):
     password = b.get("password", "")
     if not isinstance(password, str) or not password:
         raise ApiError(400, "Skriv din adgangskode.", "missing", {"field": "password"})
-    key = f"login:{req.client_ip}:{username.lower()}"
+    key = f"login:{getattr(req, 'visitor_ip', req.client_ip)}:{username.lower()}"
     wait = auth.throttled(key)
     if wait:
         raise ApiError(429, f"For mange mislykkede forsøg. Prøv igen om {wait} sekunder.", "throttled",
@@ -171,8 +171,10 @@ def update_me(req, _):
             raise ApiError(400, "E-mailadressen ser ikke gyldig ud.", "invalid_email", {"field": "email"})
         fields.append("email = ?"); args.append(v or None)
     if "avatar" in b:
-        v = body_str(b, "avatar", 8)
-        if v not in AVATARS:
+        v = body_str(b, "avatar", 80)
+        if v == u["avatar"]:
+            pass                                 # unchanged (e.g. an uploaded picture) – nothing to check
+        elif v not in AVATARS:
             raise ApiError(400, "Ukendt avatar.", "invalid")
         fields.append("avatar = ?"); args.append(v)
     if fields:
@@ -760,6 +762,10 @@ def office_update(req, params):
         if not isinstance(b["data"], (dict, list)):
             raise ApiError(400, "Feltet 'data' skal være et objekt.", "invalid")
         raw = json.dumps(b["data"])
+        # edited on another device since this one opened it? Don't overwrite silently (the client decides)
+        base = b.get("base")
+        if isinstance(base, int) and not b.get("force") and r["updated_at"] > base and raw != r["data"]:
+            raise ApiError(409, "Dokumentet er blevet ændret et andet sted, siden du åbnede det.", "conflict", {"updatedAt": r["updated_at"]})
         sets += ["data = ?", "size = ?"]; vals += [raw, len(raw)]
         if raw != r["data"]:
             _maybe_snapshot(u, r)
@@ -1189,8 +1195,16 @@ def _tailscale():
         r = subprocess.run([exe, "status", "--json"], capture_output=True, text=True, timeout=4, creationflags=flags)
         data = json.loads(r.stdout or "{}")
         dns = ((data.get("Self") or {}).get("DNSName") or "").rstrip(".")
+        serving = funnel = False
+        try:   # is HUBTECH shared on the tailnet (serve) or on the whole internet (funnel)?
+            r2 = subprocess.run([exe, "serve", "status", "--json"], capture_output=True, text=True, timeout=4, creationflags=flags)
+            sv = json.loads(r2.stdout or "{}")
+            serving = bool(sv.get("TCP") or sv.get("Web"))
+            funnel = any(bool(v) for v in (sv.get("AllowFunnel") or {}).values())
+        except Exception:
+            pass
         return {"installed": True, "running": data.get("BackendState") == "Running", "dnsName": dns or None,
-                "url": f"https://{dns}" if dns else None}
+                "url": f"https://{dns}" if dns else None, "serving": serving, "funnel": funnel}
     except Exception:
         return {"installed": True, "running": False}
 

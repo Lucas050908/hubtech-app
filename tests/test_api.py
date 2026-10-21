@@ -239,6 +239,22 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(_clean_remote("https://user:token@github.com/a/b.git"), "https://github.com/a/b.git")
 
     # ── HUBTECH Office ──
+    def test_office_conflict_is_not_silently_overwritten(self):
+        st, b, _ = self.owner.req("POST", "/api/office/docs", {"kind": "doc", "title": "Konflikt", "data": {"html": "<p>A</p>"}})
+        doc = b["doc"]
+        # saved from another device with an older base: refused, nothing changed
+        st, b, _ = self.owner.req("PUT", f"/api/office/docs/{doc['id']}", {"data": {"html": "<p>B</p>"}, "base": doc["updatedAt"] - 5})
+        self.assertEqual(st, 409); self.assertEqual(b["code"], "conflict")
+        st, b, _ = self.owner.req("GET", f"/api/office/docs/{doc['id']}")
+        self.assertIn("A", b["doc"]["data"]["html"])
+        # up-to-date base saves; force overwrites deliberately
+        st, b, _ = self.owner.req("PUT", f"/api/office/docs/{doc['id']}", {"data": {"html": "<p>C</p>"}, "base": doc["updatedAt"]})
+        self.assertEqual(st, 200)
+        st, b, _ = self.owner.req("PUT", f"/api/office/docs/{doc['id']}", {"data": {"html": "<p>D</p>"}, "base": doc["updatedAt"] - 5, "force": True})
+        self.assertEqual(st, 200)
+        st, b, _ = self.owner.req("GET", f"/api/office/docs/{doc['id']}")
+        self.assertIn("D", b["doc"]["data"]["html"])
+
     def test_office_documents_lifecycle(self):
         st, b, _ = self.owner.req("POST", "/api/office/docs", {"kind": "doc", "title": "Rapport", "data": {"html": "<p>Hej</p>"}, "preview": "Hej"})
         self.assertEqual(st, 201)

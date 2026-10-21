@@ -197,6 +197,8 @@ async def main():
                 break
             await page.wait_for_timeout(250)
         check("tasks: reminder shown when it is due", await page.locator(".toast:has-text('Ring til kunden')").count() >= 1)
+        await page.wait_for_timeout(4500)
+        check("tasks: reminder shown only once", await page.locator(".toast:has-text('Ring til kunden')").count() == 1)
         await page.wait_for_timeout(1200)
         st2 = (await api(page, "GET", "/api/state/tasks"))["data"]["state"]
         card = page.locator(".kb-col").nth(0).locator(".kb-card").first
@@ -253,6 +255,29 @@ async def main():
         doc_id = page.url.split("/")[-1]
         d = (await api(page, "GET", f"/api/office/docs/{doc_id}"))["data"]["doc"]
         check("office: document autosaved with formatting", "Rapport om printeren" in d["data"]["html"] and ("<b>" in d["data"]["html"] or "font-weight" in d["data"]["html"]), d["data"]["html"][:120])
+        # another device edits the file while it is open here → banner, nothing overwritten silently
+        await page.wait_for_timeout(1100)
+        await api(page, "PUT", f"/api/office/docs/{doc_id}", {"data": {"html": "<p>Fra telefonen</p>"}})
+        await page.click(".doc-page"); await page.keyboard.press("End"); await page.keyboard.type(" mere")
+        await page.wait_for_selector(".ofx-banner:not([hidden])", timeout=8000)
+        check("office: conflict banner shown", "anden enhed" in await page.inner_text(".ofx-banner"))
+        check("påmindelse: ikke vist igen senere", await page.locator(".toast:has-text('Ring til kunden')").count() == 0)
+        d = (await api(page, "GET", f"/api/office/docs/{doc_id}"))["data"]["doc"]
+        check("office: other device's version kept until you choose", "Fra telefonen" in d["data"]["html"])
+        await page.screenshot(path=f"{OUT}/office-conflict.png")
+        await page.click(".ofx-banner button:has-text('Behold min version')")
+        await page.wait_for_timeout(800)
+        d = (await api(page, "GET", f"/api/office/docs/{doc_id}"))["data"]["doc"]
+        check("office: 'Behold min version' saves mine", "mere" in d["data"]["html"], d["data"]["html"][:80])
+        # unsaved draft from last time (closed with no connection) → offered on open
+        await page.evaluate("""(id) => localStorage.setItem('hubtech.draft.' + id, JSON.stringify({ at: Date.now() + 60000, payload: { data: { html: '<p>Gemt lokalt</p>' } } }))""", doc_id)
+        await page.reload(); await page.wait_for_selector(".ofx-banner:not([hidden])", timeout=8000)
+        check("office: unsaved draft offered on open", "ikke blev gemt" in await page.inner_text(".ofx-banner"))
+        await page.screenshot(path=f"{OUT}/office-draft.png")
+        await page.click(".ofx-banner button:has-text('Gendan')")
+        await page.wait_for_timeout(1500)
+        d = (await api(page, "GET", f"/api/office/docs/{doc_id}"))["data"]["doc"]
+        check("office: draft restored to the account", "Gemt lokalt" in d["data"]["html"])
         await page.goto(BASE + "/#/apps/hubtech")
         await page.wait_for_selector(".ofh-tpl")
         await page.locator(".ofh-tpl", has_text="Tomt regneark").click()
@@ -698,7 +723,14 @@ async def main():
         await page.click(".land-tile:has-text('Kysten')")
         await page.wait_for_timeout(1400)
         prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
-        check("baggrund: 7 landskaber, valget gemmes", await page.locator(".land-tile").count() == 7 and prefs["world"]["landscape"] == "coast", prefs["world"].get("landscape"))
+        check("baggrund: 7 landskaber + 8 temaer, valget gemmes", await page.locator(".land-tile").count() == 15 and prefs["world"]["landscape"] == "coast" and prefs["world"]["source"] == "landscape", prefs["world"])
+        await page.click(".land-tile:has-text('Tokyo')")
+        await page.wait_for_timeout(1400)
+        prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
+        check("tema: Tokyo om natten vælges og tegnes", prefs["world"]["source"] == "scene" and prefs["world"]["scene"] == "tokyo" and await page.locator("#world-scene").count() == 1, prefs["world"])
+        await page.screenshot(path=f"{OUT}/theme-tokyo.png")
+        await page.click(".land-tile:has-text('Kysten')")
+        await page.wait_for_timeout(800)
         await page.click(".land-tile:has-text('Dalen')")
 
         # ── scanner: without a camera the code can be typed ──
@@ -937,6 +969,35 @@ async def main():
         await page.screenshot(path=f"{OUT}/e2e_admin.png", full_page=True)
         await page.goto(BASE + "/#/settings/apps"); await page.wait_for_selector(".settings-body >> text=På denne enhed")
         check("indstillinger: notifikationer på enhed og mail", await page.locator(".settings-body >> text=På mail").count() >= 1 and await page.locator(".settings-body >> text=Mailserver").count() >= 1)
+        # calls between different networks: the owner can add a TURN server, and it is handed to the call
+        check("opkald: TURN-indstilling for ejeren", await page.locator(".settings-body >> text=Opkald mellem netværk").count() == 1)
+        tp = page.locator("section:has-text('Opkald mellem netværk')")
+        await tp.locator("input[aria-label='TURN-adresser']").fill("turn:turn.example.com:3478")
+        await tp.locator("input[aria-label='Brugernavn']").fill("hub")
+        await tp.locator("input[aria-label='Adgangskode']").fill("hemmelig")
+        await tp.locator("button:has-text('Gem')").click(); await page.wait_for_timeout(700)
+        ic = (await api(page, "GET", "/api/cm/calls/ice-config"))["data"]
+        check("opkald: TURN-server gemt", ic["urls"] == ["turn:turn.example.com:3478"] and ic["hasCredential"], ic)
+        await tp.screenshot(path=f"{OUT}/turn-settings.png")
+        await api(page, "PUT", "/api/cm/calls/ice-config", {"urls": ""})
+        # the Windows app: connect to a friend's HUBTECH (the window's bridge is simulated here)
+        wctx = await browser.new_context(viewport={"width": 1280, "height": 860}, storage_state=await ctx.storage_state())
+        await wctx.add_init_script("""window.hubtechDesktop = { version: 1, server: '' }; window.__sent = [];
+          window.chrome = window.chrome || {}; const ls = [];
+          window.chrome.webview = { postMessage: (m) => { window.__sent.push(m); if (typeof m === 'string' && m.includes('ikke-til')) setTimeout(() => ls.forEach(f => f({ data: 'hubtech-server-error:Serveren kunne ikke nås.' })), 200); },
+            addEventListener: (t, f) => ls.push(f), removeEventListener: () => {} };""")
+        wp = await wctx.new_page()
+        await wp.goto(BASE + "/#/settings/about"); await wp.wait_for_selector("text=Forbind til en anden HUBTECH")
+        await wp.fill("input[aria-label='Adressen på den anden HUBTECH']", "https://ikke-til.example")
+        await wp.click("section:has-text('Forbind til en anden HUBTECH') button:has-text('Forbind')")
+        await wp.wait_for_selector("text=Serveren kunne ikke nås.")
+        sent = await wp.evaluate("window.__sent")
+        check("windows-app: forbind sender adressen til vinduet og viser fejl", "hubtech-server:https://ikke-til.example" in sent, sent)
+        await wp.screenshot(path=f"{OUT}/windows-server.png")
+        await wctx.close()
+        # behind Tailscale: the network page explains how friends on other networks get in
+        await page.goto(BASE + "/#/settings/about"); await page.wait_for_timeout(1200)
+        check("netværk: guide til venner på andre netværk", await page.locator("text=Venner på andre netværk").count() == 1)
 
         # ── App-værkstedet: templates, live preview in a sandbox, console, AI writes files ──
         await page.goto(BASE + "/#/apps/studio")

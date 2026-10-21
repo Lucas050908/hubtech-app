@@ -6,6 +6,8 @@
 Serves the web app from ./web and the JSON API under /api.
 """
 import argparse
+import gzip
+import re
 import http.server
 import json
 import mimetypes
@@ -23,7 +25,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "server"
 
-from server import api, auth, autosync, backup, adminapp, byteforge_runner, calls, config, db, minecraft, notify, social, studio  # noqa: E402
+from server import api, auth, autosync, backup, adminapp, avatars, byteforge_runner, calls, clientlog, config, db, minecraft, notify, social, studio  # noqa: E402
 
 social.install(api)
 studio.install(api)
@@ -31,6 +33,8 @@ calls.install(api)
 notify.install(api)
 adminapp.install(api)
 minecraft.install(api)
+clientlog.install(api)
+avatars.install(api)
 
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")
@@ -56,6 +60,44 @@ CSP_SITES = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://acco
              "frame-ancestors 'self'; object-src 'none'")
 
 # Explicit types: on Windows the registry can map .js to text/plain, which breaks ES modules.
+# ── static files: compressed once and kept in memory; big files streamed (with Range for seeking) ──
+_STATIC_CACHE = {}          # (path, mtime, size) -> (bytes, gzip bytes or None)
+_STATIC_LOCK = threading.Lock()
+COMPRESSIBLE = ("text/", "application/javascript", "application/json", "image/svg+xml", "application/manifest+json", "application/wasm")
+STREAM_OVER = 4 * 1024 * 1024
+_PRELOAD = {"key": None, "tags": b""}
+
+
+def _module_graph(web):
+    """The modules main.js imports up front (not the lazy ones) – preloaded so the browser fetches them in parallel."""
+    seen, todo = [], ["js/main.js"]
+    rx = re.compile(r"""^\s*import\s+(?:[^'"]+?\s+from\s+)?['"](\.{1,2}/[^'"]+\.js)['"]""", re.M)
+    while todo and len(seen) < 80:
+        rel = todo.pop(0)
+        if rel in seen:
+            continue
+        seen.append(rel)
+        try:
+            src = (web / rel).read_text("utf-8")
+        except OSError:
+            continue
+        base = Path(rel).parent
+        for m in rx.finditer(src):
+            dep = os.path.normpath(str(base / m.group(1))).replace("\\", "/")
+            if dep not in seen and (web / dep).is_file():
+                todo.append(dep)
+    return seen[1:]
+
+
+def _preload_tags(web):
+    js = web / "js"
+    key = max((f.stat().st_mtime for f in js.rglob("*.js")), default=0)
+    if _PRELOAD["key"] != key:
+        _PRELOAD["tags"] = "".join(f'<link rel="modulepreload" href="{m}">' for m in _module_graph(web)).encode()
+        _PRELOAD["key"] = key
+    return _PRELOAD["tags"]
+
+
 CONTENT_TYPES = {
     ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
     ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
@@ -133,6 +175,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
     @property
     def client_ip(self):
         return self.client_address[0]
+
+    @property
+    def visitor_ip(self):
+        """Who is really asking – for rate limits and login throttling. Behind a proxy on this computer
+        (e.g. "tailscale serve/funnel") every visitor arrives from 127.0.0.1, so the proxy's X-Forwarded-For is
+        used then (only trusted on loopback connections, where nothing else can set it)."""
+        ip = self.client_address[0]
+        if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+            fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()
+            if fwd and len(fwd) <= 45 and all(c in "0123456789abcdefABCDEF.:" for c in fwd):
+                return fwd
+        return ip
 
     def raw_body(self):
         if not hasattr(self, "_raw"):
@@ -245,7 +299,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 raise api.ApiError(403, "Forespørgslen blev afvist (CSRF-beskyttelse).", "csrf")
             if self.command in MUTATING:
                 key, rate, burst = ((f"u{self.user['id']}", config.WRITE_RATE_USER, config.WRITE_RATE_USER // 2) if self.user
-                                    else (f"ip{self.client_ip}", config.WRITE_RATE_ANON, config.WRITE_RATE_ANON // 2))
+                                    else (f"ip{self.visitor_ip}", config.WRITE_RATE_ANON, config.WRITE_RATE_ANON // 2))
                 ok, wait = WRITE_LIMIT.allow(key, rate, max(10, burst))
                 if not ok:
                     return self.send_json(429, {"error": "For mange ændringer på kort tid. Vent et øjeblik, og prøv igen.", "code": "rate_limited"},
@@ -273,9 +327,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if e.status == 401 and self.session_token:
                 headers = {"Set-Cookie": auth.clear_cookie_header()}
             return self.send_json(e.status, {"error": e.message, "code": e.code, **e.extra}, headers)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            self.close_connection = True   # the browser left (e.g. a long-poll when changing page) – not a server error
+            return None
         except Exception:
             traceback.print_exc()
-            return self.send_json(500, {"error": "Der opstod en uventet fejl på serveren.", "code": "server_error"})
+            try:
+                return self.send_json(500, {"error": "Der opstod en uventet fejl på serveren.", "code": "server_error"})
+            except OSError:
+                self.close_connection = True
 
     def _static(self, path):
         web = config.WEB_DIR
@@ -315,18 +375,43 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
-        data = target.read_bytes()
         rel = target.relative_to(web).as_posix()
-        if rel in THEMED_SITES:
-            # the original pages stay untouched on disk; when shown inside HUBTECH they get the platform look
-            data = data.replace(b"</head>", THEME_INJECT + b"</head>", 1)
+        is_html = target.suffix.lower() == ".html"
+        posix = rel
+        if stat.st_size > STREAM_OVER and not is_html and not (ctype == "application/wasm" and stat.st_size < 40 * 1024 * 1024):
+            return self._stream_file(target, ctype, etag, stat.st_size)
+        key = (rel, stat.st_mtime, stat.st_size)
+        with _STATIC_LOCK:
+            hit = _STATIC_CACHE.get(key)
+        if hit is None:
+            data = target.read_bytes()
+            if rel in THEMED_SITES:
+                # the original pages stay untouched on disk; when shown inside HUBTECH they get the platform look
+                data = data.replace(b"</head>", THEME_INJECT + b"</head>", 1)
+            if rel == "index.html":
+                data = data.replace(b'<script type="module" src="js/main.js"></script>', _preload_tags(web) + b'<script type="module" src="js/main.js"></script>', 1)
+            gz = gzip.compress(data, 6, mtime=0) if len(data) > 1024 and ctype.startswith(COMPRESSIBLE) else None
+            if gz is not None and len(gz) >= len(data) * 0.9:
+                gz = None
+            hit = (data, gz)
+            if rel != "index.html":          # index.html carries the preload list, which follows the js files
+                with _STATIC_LOCK:
+                    if len(_STATIC_CACHE) > 3000:
+                        _STATIC_CACHE.clear()
+                    _STATIC_CACHE[key] = hit
+        data, gz = hit
+        use_gz = gz is not None and "gzip" in (self.headers.get("Accept-Encoding") or "")
+        body = gz if use_gz else data
         self.send_response(200)
         self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Length", str(len(body)))
+        if use_gz:
+            self.send_header("Content-Encoding", "gzip")
+        if gz is not None:
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("ETag", etag)
         self.send_header("Cache-Control", "no-cache")
-        is_html = target.suffix.lower() == ".html"
-        posix = target.relative_to(web).as_posix()
+        data = body
         if posix.startswith("sites/"):
             csp = CSP_SITES
         elif posix.startswith("apps/circuitpilot/") or posix.startswith("apps/servicehelp/"):
@@ -337,6 +422,46 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(data)
+
+    def _stream_file(self, target, ctype, etag, size):
+        """Big files (AI engine, videos, models): sent in pieces, with Range support so players can seek."""
+        start, end, status = 0, size - 1, 200
+        rng = self.headers.get("Range") or ""
+        m = re.match(r"^bytes=(\d*)-(\d*)$", rng.strip())
+        if m and (m.group(1) or m.group(2)):
+            if m.group(1):
+                start = int(m.group(1))
+                end = min(int(m.group(2)), size - 1) if m.group(2) else size - 1
+            else:
+                start = max(0, size - int(m.group(2)))
+            if start > end or start >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            status = 206
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(end - start + 1))
+        self.send_header("Accept-Ranges", "bytes")
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("ETag", etag)
+        self.send_header("Cache-Control", "no-cache")
+        self._security_headers(None)
+        self.end_headers()
+        if self.command == "HEAD":
+            return
+        with open(target, "rb") as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = f.read(min(1024 * 1024, left))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
 
     def do_GET(self):
         self._handle()

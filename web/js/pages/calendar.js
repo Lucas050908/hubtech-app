@@ -1,5 +1,5 @@
 /** Kalender — month view and agenda, with reminders, Danish holidays, task deadlines and .ics import/export. */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { logActivity } from '../core/store.js';
 import { getState, saveState, flushState } from '../core/services.js';
@@ -313,7 +313,7 @@ export default {
       const refresh = (nc) => { if (nc) c = nc; drawList(); loadShared(); };
       function drawList() {
         h(clear(list), null, c.members.map(mb => h('div', { class: 'cal-member' },
-          h('span', { class: 'cm-ava', 'aria-hidden': 'true' }, mb.avatar || '👤'),
+          h('span', { class: 'cm-ava', 'aria-hidden': 'true' }, ava(mb.avatar, '👤')),
           h('span', { class: 'cal-member-n' }, h('b', null, mb.name), h('span', { class: 'faint' }, ` @${mb.username}${mb.status === 'pending' ? ' · inviteret' : ''}`)),
           owner() && mb.role !== 'owner'
             ? h('select', { class: 'select select-sm', 'aria-label': `Rettighed for ${mb.name}`, onchange: async (x) => { try { refresh((await api.patch(`/api/calendars/${c.id}/members/${mb.id}`, { role: x.target.value })).calendar); } catch (y) { err.textContent = y.message; } } },

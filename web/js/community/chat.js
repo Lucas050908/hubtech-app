@@ -1,5 +1,5 @@
 /** Fællesskab: one chat (a server channel or a private conversation) – messages, composer, typing, reactions. */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, confirmDialog, modal } from '../core/ui.js';
@@ -212,7 +212,7 @@ export function chatView(cm, opt) {
     const f = m.file;
     const el = h('article', { class: ['cm-msg', grouped && 'is-grouped', mine && 'is-mine', m.deleted && 'is-deleted', (m.body || '').toLowerCase().includes('@' + meName.toLowerCase()) && 'is-mention'], dataset: { id: m.id }, 'aria-label': `${m.user.name}, ${fmtTime(m.at)}` },
       grouped ? h('span', { class: 'cm-msg-gt', 'aria-hidden': 'true' }, new Date(m.at * 1000).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' }))
-        : h('button', { type: 'button', class: 'cm-ava cm-ava-lg', 'aria-label': `Profil: ${m.user.name}`, onclick: () => opt.onUser?.(m.user) }, m.user.avatar || '👤'),
+        : h('button', { type: 'button', class: 'cm-ava cm-ava-lg', 'aria-label': `Profil: ${m.user.name}`, onclick: () => opt.onUser?.(m.user) }, ava(m.user.avatar, '👤')),
       h('div', { class: 'cm-msg-b' },
         grouped ? null : h('div', { class: 'cm-msg-h' }, h('button', { type: 'button', class: 'cm-name', onclick: () => opt.onUser?.(m.user) }, m.user.name), h('time', { class: 'faint', datetime: new Date(m.at * 1000).toISOString() }, fmtTime(m.at))),
         m.reply ? h('button', { type: 'button', class: 'cm-reply', onclick: () => list.querySelector(`[data-id="${m.reply.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, icon('reply'), h('b', null, m.reply.user), ' ', m.reply.body) : null,
@@ -310,8 +310,19 @@ export function chatView(cm, opt) {
   load();
 
   const el = h('div', { class: 'cm-chat' }, list, composer);
+  /** Show one message (from search): loaded already → scroll to it; else load the messages around it. */
+  async function jumpTo(id) {
+    if (!messages.some(m => m.id === id)) {
+      try { const r = await api.get(`/api/cm/channels/${cid}/messages?before=${id + 1}&limit=40`); messages = r.messages; more = r.more; draw('keep'); }
+      catch (e) { toast('Beskeden kunne ikke hentes', { type: 'bad', text: e.message }); return; }
+    }
+    const el = list.querySelector(`.cm-msg[data-id="${id}"]`);
+    if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('is-found'); setTimeout(() => el.classList.remove('is-found'), 2400); }
+  }
+
   return {
     el,
+    jumpTo,
     focus: () => input.focus(),
     refreshComposer: drawComposer,
     reload: load,

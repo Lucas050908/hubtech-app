@@ -3,7 +3,7 @@
  * snaps and stories (like Snapchat), and music rooms where everyone listens together. Everything stays on this
  * HUBTECH server; live updates come through core/live.js.
  */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, modal, confirmDialog, stateBlock, segmented } from '../core/ui.js';
@@ -12,6 +12,9 @@ import { chatView, fmtTime } from '../community/chat.js';
 import { musicView } from '../community/music.js';
 import { sendSnap, openSnap, storyStrip } from '../community/snaps.js';
 import { reportDialog, memberCard, inviteDialog, serverSettings, reportsView, ROLE_DA, RANK } from '../community/admin.js';
+
+const PRESENCE = { online: 'Online', busy: 'Optaget', invisible: 'Usynlig' };
+const PRESENCE_HINT = { online: 'Venner kan se, at du er her, og ringe til dig.', busy: 'Ingen opkald, og telefonen holder sig stille. Beskeder kommer stadig.', invisible: 'Du ser offline ud for andre, men kan bruge alt som normalt.' };
 import { callUser, callGroup, pickFriends, joinVoice, currentCall } from '../features/calls.js';
 
 const BASE = '/apps/community';
@@ -102,7 +105,8 @@ function buildApp(cm, params) {
     if (S.detail) return drawServerSide();
     const item = (path, ic, label, n, key) => h('button', { class: ['cm-nav', S.view === key && 'is-active'], onclick: () => go(path) }, icon(ic), h('span', null, label), n ? h('span', { class: 'cm-badge' }, String(n)) : null);
     h(clear(side), null,
-      h('header', { class: 'cm-side-h' }, h('span', { class: 'cm-ava' }, cm.me.user.avatar), h('div', null, h('b', null, cm.me.user.name), h('div', { class: 'faint' }, `@${cm.me.user.username}`))),
+      h('header', { class: 'cm-side-h' }, h('span', { class: ['cm-ava', 'is-online', cm.me.presence === 'busy' && 'is-busy', cm.me.presence === 'invisible' && 'is-invisible'] }, ava(cm.me.user.avatar)),
+        h('div', { class: 'cm-side-who' }, h('b', null, cm.me.user.name), h('button', { class: 'cm-presence-btn', 'aria-haspopup': 'menu', title: 'Skift din status', onclick: (e) => presenceMenu(e.currentTarget) }, h('span', { class: ['cm-pdot', `is-${cm.me.presence || 'online'}`] }), PRESENCE[cm.me.presence || 'online'], icon('chevronDown')))),
       h('div', { class: 'cm-side-body' },
         item('', 'users', 'Venner', S.friends?.incoming.length, 'friends'),
         item('/snaps', 'camera', 'Snaps', S.dms.reduce((n, d) => n + d.snaps, 0), 'snaps'),
@@ -110,7 +114,7 @@ function buildApp(cm, params) {
         item('/reports', 'shield', 'Anmeldelser', 0, 'reports'),
         h('div', { class: 'cm-side-sec' }, h('span', null, 'Private beskeder')),
         S.dms.length ? S.dms.map(d => h('button', { class: ['cm-dm', S.view === d.channel && 'is-active', d.unread && 'is-unread'], onclick: () => go(`/dm/${d.channel}`) },
-          h('span', { class: ['cm-ava', d.user.online && 'is-online'] }, d.user.avatar),
+          h('span', { class: ['cm-ava', d.user.online && 'is-online', d.user.presence === 'busy' && 'is-busy'] }, ava(d.user.avatar)),
           h('span', { class: 'cm-dm-t' }, h('b', null, d.user.name), h('span', { class: 'faint' }, d.snaps ? `📸 ${d.snaps} ny snap` : d.last ? `${d.last.mine ? 'Dig: ' : ''}${d.last.body}` : 'Sig hej 👋')),
           d.unread ? h('span', { class: 'cm-badge' }, String(d.unread)) : null))
           : h('p', { class: 'faint cm-side-empty' }, 'Når du har venner, kan I skrive sammen her.')));
@@ -130,7 +134,7 @@ function buildApp(cm, params) {
       ? h('div', { class: 'cm-voice' },
         h('button', { class: ['cm-chan', currentCall()?.id === c.id && 'is-active'], title: 'Deltag i talekanalen', onclick: () => joinVoice(c.id, c.name) }, icon('volume'), h('span', null, c.name),
           (d.voice?.[c.id] || []).length ? h('span', { class: 'cm-voice-n' }, String(d.voice[c.id].length)) : null),
-        (d.voice?.[c.id] || []).map(u => h('div', { class: 'cm-voice-u' }, h('span', { class: 'cm-ava cm-ava-sm' }, u.avatar), h('span', null, u.name))))
+        (d.voice?.[c.id] || []).map(u => h('div', { class: 'cm-voice-u' }, h('span', { class: 'cm-ava cm-ava-sm' }, ava(u.avatar)), h('span', null, u.name))))
       : h('button', { class: ['cm-chan', S.view === c.id && 'is-active', c.unread && 'is-unread'], onclick: () => go(`/c/${c.id}`) },
         icon(c.kind === 'music' ? 'music' : c.postRole !== 'member' ? 'lock' : 'hash'), h('span', null, c.name), c.unread && S.view !== c.id ? h('span', { class: 'cm-badge' }, String(c.unread)) : null));
     h(clear(side), null, h('div', { class: 'cm-side-hw' }, head, menu),
@@ -149,7 +153,7 @@ function buildApp(cm, params) {
     if (membersEl.hidden) return;
     const groups = ['owner', 'admin', 'moderator', 'member'].map(r => [r, d.members.filter(m => m.role === r)]).filter(([, l]) => l.length);
     h(clear(membersEl), null, groups.map(([r, l]) => h('section', null, h('div', { class: 'cm-side-sec' }, h('span', null, `${r === 'member' ? 'Medlemmer' : ROLE_DA[r] + (r === 'owner' ? '' : 'e')} – ${l.length}`)),
-      l.map(m => h('button', { class: ['cm-member', !m.online && 'is-off'], onclick: () => openUser(m) }, h('span', { class: ['cm-ava', m.online && 'is-online'] }, m.avatar),
+      l.map(m => h('button', { class: ['cm-member', !m.online && 'is-off'], onclick: () => openUser(m) }, h('span', { class: ['cm-ava', m.online && 'is-online', m.presence === 'busy' && 'is-busy'] }, ava(m.avatar)),
         h('span', null, m.name), r === 'owner' ? icon('crown') : null, m.muted ? h('span', { class: 'faint', title: 'Gjort tavs' }, icon('mute')) : null)))));
   }
 
@@ -184,13 +188,13 @@ function buildApp(cm, params) {
         if (q.length < 2) { sugg.hidden = true; return; }
         try {
           const r = await api.get(`/api/cm/users?q=${encodeURIComponent(q)}`);
-          h(clear(sugg), null, r.users.map(u => h('button', { type: 'button', role: 'option', class: 'sc-item', onclick: () => addFriend(u.username) }, h('span', { class: 'cm-ava' }, u.avatar), h('span', null, h('b', null, u.name), h('span', { class: 'faint' }, `@${u.username}`)))));
+          h(clear(sugg), null, r.users.map(u => h('button', { type: 'button', role: 'option', class: 'sc-item', onclick: () => addFriend(u.username) }, h('span', { class: 'cm-ava' }, ava(u.avatar)), h('span', null, h('b', null, u.name), h('span', { class: 'faint' }, `@${u.username}`)))));
           sugg.hidden = !r.users.length;
         } catch { sugg.hidden = true; }
       }, 220);
     });
     add.addEventListener('keydown', (e) => { if (e.key === 'Enter') addFriend(); });
-    const row = (u, actions) => h('div', { class: 'cm-frow' }, h('button', { class: ['cm-ava', u.online && 'is-online'], 'aria-label': `Profil: ${u.name}`, onclick: () => openUser(u) }, u.avatar),
+    const row = (u, actions) => h('div', { class: 'cm-frow' }, h('button', { class: ['cm-ava', u.online && 'is-online', u.presence === 'busy' && 'is-busy'], 'aria-label': `Profil: ${u.name}`, onclick: () => openUser(u) }, ava(u.avatar)),
       h('span', { class: 'cm-frow-t' }, h('b', null, u.name), h('span', { class: 'faint' }, `@${u.username} · ${u.online ? 'online' : 'offline'}`)), h('div', { class: 'cm-frow-a' }, actions));
     const draw = () => {
       const f = S.friends || { friends: [], incoming: [], outgoing: [], blocked: [] };
@@ -293,8 +297,56 @@ function buildApp(cm, params) {
       h('button', { class: 'icon-btn', title: 'Ring op', 'aria-label': `Ring til ${name}`, onclick: () => callUser(other) }, icon('phone')),
       h('button', { class: 'icon-btn', title: 'Videoopkald', 'aria-label': `Videoopkald med ${name}`, onclick: () => callUser(other, { video: true }) }, icon('video')),
       h('button', { class: 'icon-btn', title: 'Send snap', 'aria-label': 'Send snap', onclick: () => sendSnap(cm, [other.id]) }, icon('camera')),
+      h('button', { class: 'icon-btn', title: 'Søg i samtalen', 'aria-label': 'Søg i samtalen', onclick: () => searchDialog(cid, name) }, icon('search')),
       h('button', { class: 'icon-btn', title: 'Profil', 'aria-label': 'Profil', onclick: () => openUser(other) }, icon('user'))] : []), chat.el);
     setTimeout(() => chat.focus(), 50);
+  }
+
+  /** Your status: online, busy (no calls, phone stays quiet) or invisible (shown as offline). */
+  function presenceMenu(anchor) {
+    document.querySelector('.cm-presence-menu')?.remove();
+    const pick = async (p) => {
+      menu.remove();
+      try { await api.patch('/api/cm/me', { presence: p }); cm.me.presence = p; drawSide(); toast(`Din status: ${PRESENCE[p]}`, { type: 'ok', text: PRESENCE_HINT[p] }); }
+      catch (e) { toast('Status kunne ikke ændres', { type: 'bad', text: e.message }); }
+    };
+    const menu = h('div', { class: 'menu glass glass-strong cm-presence-menu', role: 'menu' }, Object.keys(PRESENCE).map(p => h('button', { type: 'button', role: 'menuitemradio', 'aria-checked': String((cm.me.presence || 'online') === p), onclick: () => pick(p) },
+      h('span', { class: ['cm-pdot', `is-${p}`] }), h('span', null, h('b', null, PRESENCE[p]), h('small', { class: 'faint' }, PRESENCE_HINT[p])))));
+    anchor.closest('.cm-side-h').appendChild(menu);
+    const off = (e) => { if (!menu.contains(e.target) && e.target !== anchor) { menu.remove(); document.removeEventListener('pointerdown', off, true); } };
+    setTimeout(() => document.addEventListener('pointerdown', off, true));
+    menu.querySelector('button')?.focus();
+  }
+
+  /** Search the messages of a conversation and jump to a result. */
+  function searchDialog(cid, title) {
+    const q = h('input', { class: 'input', type: 'search', placeholder: 'Søg efter ord i beskederne', 'aria-label': `Søg i ${title}`, autocomplete: 'off' });
+    const list = h('div', { class: 'sc-list cm-search-res', role: 'list' });
+    let t = 0, seq = 0;
+    const mark = (text, word) => {
+      const out = [], low = text.toLowerCase(), w = word.toLowerCase();
+      let i = 0, j;
+      while (w && (j = low.indexOf(w, i)) >= 0 && out.length < 40) { out.push(text.slice(i, j), h('mark', null, text.slice(j, j + w.length))); i = j + w.length; }
+      out.push(text.slice(i));
+      return out;
+    };
+    const run = async () => {
+      const word = q.value.trim(), my = ++seq;
+      if (word.length < 2) { h(clear(list), null, h('p', { class: 'faint' }, 'Skriv mindst to bogstaver.')); return; }
+      try {
+        const r = await api.get(`/api/cm/channels/${cid}/messages?q=${encodeURIComponent(word)}&limit=50`);
+        if (my !== seq) return;
+        const res = [...r.messages].reverse();
+        h(clear(list), null, res.length ? res.map(m => h('button', { class: 'sc-item cm-search-hit', role: 'listitem', onclick: () => { md.close(); S.chat?.jumpTo(m.id); } },
+          h('span', { class: 'cm-ava' }, ava(m.user.avatar)),
+          h('div', null, h('div', null, h('b', null, m.user.name), h('span', { class: 'faint' }, ' · ' + new Date(m.at * 1000).toLocaleString('da-DK', { dateStyle: 'medium', timeStyle: 'short' }))),
+            h('div', { class: 'cm-search-body' }, mark((m.body || '').slice(0, 220), word)))))
+          : h('p', { class: 'faint' }, `Ingen beskeder med “${word}”.`));
+      } catch (e) { h(clear(list), null, h('p', { class: 'field-error' }, e.message)); }
+    };
+    q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 250); });
+    const md = modal({ title: `Søg i ${title}`, label: 'Fællesskab', size: 560, body: h('div', { class: 'stack', style: { gap: '10px' } }, q, list), actions: [h('button', { class: 'btn', onclick: () => md.close() }, 'Luk')] });
+    setTimeout(() => q.focus(), 50);
   }
 
   function rulesDialog(d) {
@@ -340,6 +392,7 @@ function buildApp(cm, params) {
     const myRank = RANK[d.me.role];
     h(clear(main), null,
       header(c.kind === 'music' ? 'music' : 'hash', c.name, c.topic || d.server.name, [
+        h('button', { class: 'icon-btn', title: `Søg i #${c.name}`, 'aria-label': `Søg i #${c.name}`, onclick: () => searchDialog(c.id, `#${c.name}`) }, icon('search')),
         myRank >= 2 ? h('button', { class: 'icon-btn', title: 'Invitér folk', 'aria-label': 'Invitér folk', onclick: () => inviteDialog(d.server) }, icon('userPlus')) : null,
         h('button', { class: 'icon-btn', title: 'Medlemmer', 'aria-label': 'Vis medlemmer', 'aria-pressed': String(S.showMembers), onclick: (e) => { S.showMembers = !S.showMembers; e.currentTarget.setAttribute('aria-pressed', String(S.showMembers)); if (matchMedia('(max-width: 900px)').matches) { S.showMembers = false; membersSheet(); } drawMembers(); } }, icon('users'))]),
       musicEl, chat.el);
@@ -349,7 +402,7 @@ function buildApp(cm, params) {
   function membersSheet() {
     const d = S.detail;
     const m = modal({ title: `Medlemmer – ${d.members.length}`, label: d.server.name, size: 420,
-      body: h('div', { class: 'sc-list' }, d.members.map(x => h('button', { class: 'sc-item', onclick: () => { m.close(); openUser(x); } }, h('span', { class: ['cm-ava', x.online && 'is-online'] }, x.avatar), h('span', null, h('b', null, x.name), h('span', { class: 'faint' }, `${ROLE_DA[x.role]} · ${x.online ? 'online' : 'offline'}`))))),
+      body: h('div', { class: 'sc-list' }, d.members.map(x => h('button', { class: 'sc-item', onclick: () => { m.close(); openUser(x); } }, h('span', { class: ['cm-ava', x.online && 'is-online', x.presence === 'busy' && 'is-busy'] }, ava(x.avatar)), h('span', null, h('b', null, x.name), h('span', { class: 'faint' }, `${ROLE_DA[x.role]} · ${x.online ? 'online' : 'offline'}`))))),
       actions: [h('button', { class: 'btn btn-primary', onclick: () => m.close() }, 'Luk')] });
   }
 

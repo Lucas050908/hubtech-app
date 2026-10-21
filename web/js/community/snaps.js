@@ -1,5 +1,5 @@
 /** Fællesskab: snaps (a picture a friend can open once) and stories (visible to friends for 24 hours). */
-import { h, clear } from '../core/dom.js';
+import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, modal, confirmDialog } from '../core/ui.js';
@@ -72,7 +72,7 @@ function viewer({ src, caption, seconds, from, at, onNext, onPrev, onClose, extr
   const key = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') { close(); onNext?.(); } if (e.key === 'ArrowLeft') { close(); onPrev?.(); } };
   const el = h('div', { class: 'sv', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Fra ${from?.name || ''}` },
     ring,
-    h('div', { class: 'sv-head' }, h('span', { class: 'cm-ava' }, from?.avatar || '👤'), h('b', null, from?.name || ''), h('span', { class: 'faint' }, at ? fmtTime(at) : ''), extra || null,
+    h('div', { class: 'sv-head' }, h('span', { class: 'cm-ava' }, ava(from?.avatar, '👤')), h('b', null, from?.name || ''), h('span', { class: 'faint' }, at ? fmtTime(at) : ''), extra || null,
       h('button', { class: 'icon-btn', 'aria-label': 'Luk', onclick: close }, icon('x'))),
     h('img', { class: 'sv-img', src, alt: caption || 'Billede', draggable: 'false' }),
     caption ? h('div', { class: 'sv-cap' }, caption) : null,
@@ -112,7 +112,7 @@ export async function sendSnap(cm, preselect = []) {
   const secs = h('select', { class: 'select', 'aria-label': 'Hvor længe kan den ses' }, [3, 5, 8, 10, 15].map(n => h('option', { value: n, selected: n === 8 }, `${n} sekunder`)));
   const list = h('div', { class: 'sn-pick', role: 'group', 'aria-label': 'Send til' }, friends.map(f => {
     const cb = h('input', { type: 'checkbox', checked: chosen.has(f.id), onchange: (e) => { e.target.checked ? chosen.add(f.id) : chosen.delete(f.id); } });
-    return h('label', { class: 'sn-friend' }, cb, h('span', { class: 'cm-ava' }, f.avatar), h('span', null, f.name));
+    return h('label', { class: 'sn-friend' }, cb, h('span', { class: 'cm-ava' }, ava(f.avatar)), h('span', null, f.name));
   }));
   const go = async (btn) => {
     if (!chosen.size) { toast('Vælg mindst én ven', { type: 'warn' }); return; }
@@ -179,7 +179,7 @@ async function views(s) {
   let d;
   try { d = await api.get(`/api/cm/stories/${s.id}/views`); } catch (e) { toast('Kunne ikke hente visninger', { type: 'bad', text: e.message }); return; }
   const m = modal({ title: `Set af ${d.views.length}`, label: 'Din story', size: 420,
-    body: d.views.length ? h('div', { class: 'sc-list' }, d.views.map(x => h('div', { class: 'sc-item' }, h('span', { class: 'cm-ava' }, x.user.avatar), h('span', null, h('b', null, x.user.name), h('span', { class: 'faint' }, fmtTime(x.at)))))) : h('p', { class: 'faint' }, 'Ingen har set den endnu.'),
+    body: d.views.length ? h('div', { class: 'sc-list' }, d.views.map(x => h('div', { class: 'sc-item' }, h('span', { class: 'cm-ava' }, ava(x.user.avatar)), h('span', null, h('b', null, x.user.name), h('span', { class: 'faint' }, fmtTime(x.at)))))) : h('p', { class: 'faint' }, 'Ingen har set den endnu.'),
     actions: [h('button', { class: 'btn btn-primary', onclick: () => m.close() }, 'Luk')] });
 }
 
@@ -192,10 +192,10 @@ export function storyStrip(cm, { onReport }) {
     const mine = groups.find(g => g.mine);
     h(clear(el), null,
       h('button', { class: 'st-ring is-add', role: 'listitem', onclick: async () => { if (mine) playStories(groups, groups.indexOf(mine), { onReport, onChange: load }); else if (await postStory()) load(); } },
-        h('span', { class: 'st-ava' }, cm.me.user.avatar, mine ? null : h('i', { class: 'st-plus' }, '+')), h('span', null, mine ? 'Din story' : 'Tilføj story')),
+        h('span', { class: 'st-ava' }, ava(cm.me.user.avatar), mine ? null : h('i', { class: 'st-plus' }, '+')), h('span', null, mine ? 'Din story' : 'Tilføj story')),
       mine ? h('button', { class: 'st-ring is-new', role: 'listitem', 'aria-label': 'Tilføj en story mere', onclick: async () => { if (await postStory()) load(); } }, h('span', { class: 'st-ava' }, '+'), h('span', null, 'Ny')) : null,
       groups.filter(g => !g.mine).map(g => h('button', { class: ['st-ring', g.unseen && 'is-unseen'], role: 'listitem', 'aria-label': `Stories fra ${g.user.name}${g.unseen ? ', nye' : ''}`, onclick: () => playStories(groups, groups.indexOf(g), { onReport, onChange: load }) },
-        h('span', { class: 'st-ava' }, g.user.avatar), h('span', null, g.user.name))));
+        h('span', { class: 'st-ava' }, ava(g.user.avatar)), h('span', null, g.user.name))));
   };
   load();
   return { el, reload: load };

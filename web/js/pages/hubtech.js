@@ -303,8 +303,8 @@ function classicSection() {
         h('div', { class: 'list' },
           h('a', { class: 'row', href: '#/apps/minecraft', style: { '--app': 'var(--hue-minecraft)' } }, h('span', { class: 'row-icon solid' }, icon('gamepad')),
             h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'HUBTECH Minecraft-server'), mcSub), copyIp),
-          h('a', { class: 'row', href: 'https://discord.gg/7dCpmeBg', target: '_blank', rel: 'noopener' }, h('span', { class: 'row-icon solid' }, icon('chat')),
-            h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Support på Discord'), h('div', { class: 'row-sub' }, 'Spørgsmål, idéer og hjælp'))),
+          h('a', { class: 'row', href: '#/apps/community' }, h('span', { class: 'row-icon solid' }, icon('chat')),
+            h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Support i Fællesskab'), h('div', { class: 'row-sub' }, 'Spørgsmål, idéer og hjælp – i HUBTECH’s egen chat'))),
           h('a', { class: 'row', href: 'mailto:HUBTECH2025@proton.me' }, h('span', { class: 'row-icon solid' }, icon('mail')),
             h('div', { class: 'row-main' }, h('div', { class: 'row-title' }, 'Kontakt os'), h('div', { class: 'row-sub' }, 'HUBTECH2025@proton.me')))))));
 }

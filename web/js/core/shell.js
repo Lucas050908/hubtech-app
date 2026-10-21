@@ -1,5 +1,5 @@
 /** The logged-in workspace frame: sidebar, topbar, content outlet. Built once, updated reactively. */
-import { h, clear, timeAgo } from './dom.js';
+import { h, clear, timeAgo, ava } from './dom.js';
 import { icon, logo, svg } from './icons.js';
 import { store, setPref, setWorld } from './store.js';
 import { APPS, appById, access, isLearnApp, visible, entryApps, suiteOf } from './registry.js';
@@ -184,7 +184,7 @@ function renderUserChip() {
   clear(userChipWrap);
   if (!u) return;
   const btn = h('button', { class: 'user-chip', 'aria-haspopup': 'menu', 'aria-label': `Brugermenu for ${u.displayName}` },
-    h('span', { class: 'avatar' }, u.avatar),
+    h('span', { class: 'avatar' }, ava(u.avatar)),
     h('span', { class: 'user-chip-text' }, h('div', { class: 'user-chip-name' }, u.displayName), h('div', { class: 'user-chip-role' }, u.role === 'owner' ? 'Ejer' : 'Medlem')),
     icon('chevronDown'));
   btn.addEventListener('click', (e) => { e.stopPropagation(); toggleUserMenu(userChipWrap); });

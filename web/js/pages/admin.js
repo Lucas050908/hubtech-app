@@ -2,7 +2,7 @@
  * Admin – the platform's control room. Only the owner and the people the owner gives access can open it.
  * Tabs: Overblik · Brugere · Anmeldelser · Besked til alle · Log. Only the owner can change who has access.
  */
-import { h, clear, timeAgo } from '../core/dom.js';
+import { h, clear, timeAgo, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { store } from '../core/store.js';
@@ -16,9 +16,10 @@ const TABS = [
   { value: 'users', label: 'Brugere', icon: 'users' },
   { value: 'reports', label: 'Anmeldelser', icon: 'flag' },
   { value: 'announce', label: 'Besked til alle', icon: 'bell' },
+  { value: 'errors', label: 'Fejl', icon: 'alert' },
   { value: 'log', label: 'Log', icon: 'clock' },
 ];
-const ACTION = { 'access-on': 'gav adgang til Admin', 'access-off': 'fjernede adgang til Admin', logout: 'loggede ud', announce: 'sendte beskeden', minecraft: 'ændrede Minecraft-serveren' };
+const ACTION = { 'access-on': 'gav adgang til Admin', 'access-off': 'fjernede adgang til Admin', logout: 'loggede ud', announce: 'sendte beskeden', minecraft: 'ændrede Minecraft-serveren', 'errors-clear': 'ryddede fejllisten' };
 const mb = (b) => (b == null ? '–' : b > 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${(b / 1e6).toFixed(1)} MB`);
 const dur = (s) => (s < 3600 ? `${Math.round(s / 60)} min.` : s < 86400 ? `${Math.floor(s / 3600)} t. ${Math.round((s % 3600) / 60)} min.` : `${Math.floor(s / 86400)} d. ${Math.floor((s % 86400) / 3600)} t.`);
 const date = (t) => (t ? new Date(t * 1000).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '–');
@@ -75,7 +76,7 @@ async function usersTab(box) {
         catch (e) { errorToast(e); }
       }));
       list.append(h('div', { class: 'adm-user glass' },
-        h('span', { class: ['cm-ava', u.online && 'is-online'] }, u.avatar),
+        h('span', { class: ['cm-ava', u.online && 'is-online'] }, ava(u.avatar)),
         h('div', { class: 'adm-user-text' }, h('b', null, u.name), h('div', { class: 'faint' }, `@${u.username}${u.email ? ` · ${u.email}` : ''}`),
           h('div', { class: 'faint' }, u.online ? 'Online nu' : u.lastLoginAt ? `Sidst logget ind ${timeAgo(u.lastLoginAt)}` : 'Har aldrig logget ind', ` · oprettet ${date(u.createdAt)}`)),
         h('div', { class: 'adm-user-actions' }, access, out)));
@@ -134,11 +135,26 @@ function announceTab(box) {
     h('div', { class: 'set-stack' }, title, text, h('div', null, send))));
 }
 
+async function errorsTab(box) {
+  const r = await api.get('/api/admin/errors');
+  const clearBtn = h('button', { class: 'btn btn-sm btn-ghost' }, icon('trash'), 'Ryd listen');
+  clearBtn.addEventListener('click', busy(clearBtn, async () => { await api.del('/api/admin/errors'); toast('Listen er ryddet', { type: 'ok' }); navigate('/apps/admin/errors', { replace: true }); }));
+  const KIND = { 'ai-load': 'AI: start', 'ai-chat': 'AI: svar', js: 'Script', promise: 'Script' };
+  box.append(h('section', { class: 'glass panel' },
+    h('div', { class: 'adm-head' }, h('h2', { class: 'panel-title' }, 'Fejl fra brugernes enheder'), r.errors.length ? clearBtn : null),
+    h('p', { class: 'muted', style: { margin: '0 0 12px' } }, 'Tekniske fejl, som browserne har sendt – fx når AI-assistenten ikke kan starte. Der gemmes ingen samtaler eller indtastninger.'),
+    r.errors.length ? h('div', { class: 'adm-log' }, r.errors.map(x => h('div', { class: 'adm-err' },
+      h('div', { class: 'adm-report-top' }, h('span', { class: 'chip' }, KIND[x.kind] || x.kind), h('span', { class: 'faint' }, `${x.user || 'Ikke logget ind'} · ${timeAgo(x.at)}${x.page ? ` · ${x.page}` : ''}`)),
+      h('div', { class: 'mono adm-err-msg' }, x.message),
+      Object.keys(x.extra || {}).length ? h('div', { class: 'faint adm-err-extra' }, Object.entries(x.extra).map(([k, v]) => `${k}: ${v}`).join(' · ')) : null)))
+      : stateBlock({ icon: 'check', title: 'Ingen fejl', text: 'Der er ikke kommet nogen fejl fra brugernes enheder.' })));
+}
+
 async function logTab(box) {
   const r = await api.get('/api/admin/log');
   box.append(h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, 'Hvad administratorerne har gjort'),
     r.log.length ? h('div', { class: 'adm-log' }, r.log.map(l => h('div', { class: 'adm-log-row' },
-      h('span', { class: 'cm-ava' }, l.avatar), h('div', null, h('b', null, l.user), ` ${ACTION[l.action] || l.action}`, l.detail ? h('span', null, ` “${l.detail}”`) : null),
+      h('span', { class: 'cm-ava' }, ava(l.avatar)), h('div', null, h('b', null, l.user), ` ${ACTION[l.action] || l.action}`, l.detail ? h('span', null, ` “${l.detail}”`) : null),
       h('span', { class: 'faint' }, timeAgo(l.at)))))
       : h('p', { class: 'faint' }, 'Intet endnu.')));
 }
@@ -150,7 +166,7 @@ export default {
     const user = store.get('user');
     const tab = TABS.some(t => t.value === ctx.params?.sub) ? ctx.params.sub : 'overview';
     const box = h('div', { class: 'adm-body stack' });
-    const run = { overview: overviewTab, users: usersTab, reports: reportsTab, announce: announceTab, log: logTab }[tab];
+    const run = { overview: overviewTab, users: usersTab, reports: reportsTab, announce: announceTab, errors: errorsTab, log: logTab }[tab];
     Promise.resolve(run(box)).catch((e) => box.append(stateBlock({ kind: 'error', icon: 'alert', title: 'Kunne ikke hentes', text: e.message })));
     return h('div', { class: 'page admin-page' },
       appHero(app, { eyebrow: user.role === 'owner' ? 'Du er ejer' : 'Du er administrator', lead: 'Styr platformen: brugere, anmeldelser og beskeder til alle.', compact: true }),

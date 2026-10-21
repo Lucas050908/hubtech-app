@@ -1,5 +1,5 @@
 /** Reusable dashboard widgets shared by Home and Dashboard. */
-import { h, clear, timeAgo, animateNumber, rect } from '../core/dom.js';
+import { h, clear, timeAgo, animateNumber, rect, ava } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { store, setWorld, toggleFavorite, isFavorite, setPref } from '../core/store.js';
 import { APPS, appById, access } from '../core/registry.js';
@@ -55,7 +55,7 @@ export function profileCard(summary) {
   const xp = h('span', null, '0');
   const card = h('section', { class: 'glass panel profile-card', dataset: { tour: 'progress' } },
     h('div', { class: 'profile-top' },
-      h('span', { class: 'avatar avatar-lg' }, u.avatar),
+      h('span', { class: 'avatar avatar-lg' }, ava(u.avatar)),
       h('div', { class: 'profile-id' },
         h('div', { class: 'profile-name' }, u.displayName),
         h('div', { class: 'faint profile-mail' }, u.email || '@' + u.username),

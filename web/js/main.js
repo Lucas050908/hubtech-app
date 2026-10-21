@@ -28,6 +28,20 @@ function applyTheme() {
 }
 store.on('prefs', applyTheme);
 applyDisplay();
+
+// ── uncaught errors go to the server log (Admin → Fejl), at most 10 per visit, each message once ──
+const sentErrors = new Set();
+function reportError(kind, message, extra = {}) {
+  const m = String(message || '').slice(0, 500);
+  if (!m || sentErrors.has(m) || sentErrors.size >= 10 || /ResizeObserver loop|Script error\.?$/.test(m)) return;
+  sentErrors.add(m);
+  try {
+    fetch('/api/client-errors', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'hubtech' },
+      body: JSON.stringify({ kind, message: m, page: location.hash.split('?')[0].slice(0, 120), extra: { ...extra, ua: navigator.userAgent.slice(0, 160) } }) }).catch(() => {});
+  } catch { /* */ }
+}
+addEventListener('error', (e) => { if (e.message) reportError('js', e.message, { at: `${(e.filename || '').split('/').slice(-2).join('/')}:${e.lineno}` }); });
+addEventListener('unhandledrejection', (e) => { const r = e.reason; if (r?.name === 'AbortError') return; reportError('promise', r?.message || String(r)); });
 mq.addEventListener?.('change', applyTheme);
 applyTheme();
 

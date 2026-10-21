@@ -2,6 +2,8 @@
 // Starts HUBTECH's Python server (bundled in the package, no Python installation needed), shows HUBTECH in a
 // WebView2 window and stops the server again when the window is closed. The page can ask for a see-through
 // window (Indstillinger → Verden & udseende → Gennemsigtig baggrund); then the desktop wallpaper shows behind HUBTECH.
+// It can also connect to another HUBTECH (a friend's or your own computer, via https) instead of its own server –
+// Indstillinger → Om → Denne computer → Forbind til en anden HUBTECH. Then you write and call with everyone there.
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -41,6 +43,11 @@ namespace Hubtech
         Label status;
         string backdrop = "off";
         bool closing;
+        string remote = "";          // https://… of another HUBTECH, or "" for the one in this package
+        string origin = "";
+        Panel errorPanel;
+        string ServerFile => Path.Combine(dataDir, "server.txt");
+        string LocalOrigin => $"http://127.0.0.1:{port}";
 
         public MainForm()
         {
@@ -76,6 +83,21 @@ namespace Hubtech
             try
             {
                 Directory.CreateDirectory(dataDir);
+                try { remote = NormalizeRemote(File.ReadAllText(ServerFile).Trim()) ?? ""; } catch { remote = ""; }
+                if (remote != "") { await StartWebAsync(); return; }
+                await StartLocalAsync();
+                await StartWebAsync();
+            }
+            catch (Exception e)
+            {
+                status.Text = "HUBTECH kunne ikke starte.\n\n" + e.Message + "\n\nLog: " + Path.Combine(dataDir, "hubtech.log");
+            }
+        }
+
+        async Task StartLocalAsync()
+        {
+            if (server != null && !server.HasExited) return;
+            {
                 string env = Environment.GetEnvironmentVariable("HUBTECH_PORT");
                 if (int.TryParse(env, out int ep) && ep > 0) port = ep;
                 string h = await Task.Run(() => Health(port));
@@ -85,12 +107,111 @@ namespace Hubtech
                     if (h == "other") throw new Exception($"Port {port} bruges af et andet program.");
                 }
                 if (h == null) await Task.Run(StartServer);
-                await StartWebAsync();
             }
-            catch (Exception e)
+        }
+
+        // ── another HUBTECH ──
+        /// <summary>"https://host[:port]" (http only for addresses on your own network), or null if not usable.</summary>
+        static string NormalizeRemote(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+            if (!url.Contains("://")) url = "https://" + url;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri u)) return null;
+            if (u.Scheme != "https" && !(u.Scheme == "http" && PrivateHost(u.Host))) return null;
+            return u.GetLeftPart(UriPartial.Authority);
+        }
+
+        static bool PrivateHost(string host)
+        {
+            if (!IPAddress.TryParse(host, out IPAddress ip)) return host.EndsWith(".local");
+            var b = ip.GetAddressBytes();
+            if (b.Length != 4) return IPAddress.IsLoopback(ip);
+            return b[0] == 10 || b[0] == 127 || (b[0] == 192 && b[1] == 168) || (b[0] == 172 && b[1] >= 16 && b[1] < 32) || (b[0] == 100 && b[1] >= 64 && b[1] < 128);
+        }
+
+        static string RemoteHealth(string baseUrl)
+        {
+            try
             {
-                status.Text = "HUBTECH kunne ikke starte.\n\n" + e.Message + "\n\nLog: " + Path.Combine(dataDir, "hubtech.log");
+                var req = (HttpWebRequest)WebRequest.Create(baseUrl + "/api/health");
+                req.Timeout = 8000;
+                using (var res = (HttpWebResponse)req.GetResponse())
+                using (var r = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
+                    return r.ReadToEnd().Contains("\"hubtech\"") ? null : "Adressen svarer, men det er ikke en HUBTECH-server.";
             }
+            catch (WebException e) when (e.Response != null) { return "Adressen svarer, men det er ikke en HUBTECH-server."; }
+            catch { return "Serveren kunne ikke nås. Tjek adressen, internettet, og at computeren med HUBTECH er tændt."; }
+        }
+
+        async Task UseServerAsync(string url)
+        {
+            var core = web?.CoreWebView2;
+            if (core == null) return;
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                remote = "";
+                try { File.Delete(ServerFile); } catch { }
+                HideError();
+                try { await StartLocalAsync(); } catch (Exception e) { ShowError("HUBTECH kunne ikke starte på denne computer.", e.Message, false); return; }
+                origin = LocalOrigin;
+                await SetPageInfoAsync();
+                core.Navigate(origin + "/?source=app");
+                return;
+            }
+            string n = NormalizeRemote(url);
+            if (n == null) { Reply("Adressen skal starte med https:// (http:// kun for adresser på dit eget netværk)."); return; }
+            string err = await Task.Run(() => RemoteHealth(n));
+            if (err != null) { Reply(err); return; }
+            remote = n;
+            try { File.WriteAllText(ServerFile, n); } catch { }
+            await Task.Run(StopServer);
+            origin = remote;
+            await SetPageInfoAsync();
+            core.Navigate(origin + "/?source=app");
+        }
+
+        string pageScript;
+        async Task SetPageInfoAsync()
+        {
+            var core = web.CoreWebView2;
+            if (pageScript != null) try { core.RemoveScriptToExecuteOnDocumentCreated(pageScript); } catch { }
+            pageScript = await core.AddScriptToExecuteOnDocumentCreatedAsync("window.hubtechDesktop = { version: 1, server: " + JsString(remote) + " };");
+        }
+
+        void Reply(string error)
+        {
+            try { web.CoreWebView2.PostWebMessageAsString("hubtech-server-error:" + error); } catch { }
+        }
+
+        void ShowError(string title, string text, bool remoteMode)
+        {
+            HideError();
+            errorPanel = new Panel { Dock = DockStyle.Fill, BackColor = Dark };
+            var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, BackColor = Dark, WrapContents = false };
+            var head = new Label { Text = title, ForeColor = Color.White, Font = new Font("Segoe UI Semibold", 15f), AutoSize = true, MaximumSize = new Size(460, 0), Margin = new Padding(0, 0, 0, 8) };
+            var body = new Label { Text = text, ForeColor = Color.FromArgb(160, 176, 196), Font = new Font("Segoe UI", 10.5f), AutoSize = true, MaximumSize = new Size(460, 0), Margin = new Padding(0, 0, 0, 16) };
+            var retry = new Button { Text = "Prøv igen", AutoSize = true, FlatStyle = FlatStyle.Flat, ForeColor = Color.FromArgb(10, 20, 34), BackColor = Color.FromArgb(76, 194, 255), Font = new Font("Segoe UI Semibold", 10.5f), Padding = new Padding(10, 4, 10, 4) };
+            retry.FlatAppearance.BorderSize = 0;
+            retry.Click += (s, e) => { HideError(); web.CoreWebView2.Navigate(origin + "/?source=app"); };
+            box.Controls.Add(head); box.Controls.Add(body); box.Controls.Add(retry);
+            if (remoteMode)
+            {
+                var local = new Button { Text = "Brug HUBTECH på denne computer", AutoSize = true, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(28, 42, 60), Font = new Font("Segoe UI", 10.5f), Padding = new Padding(10, 4, 10, 4), Margin = new Padding(0, 8, 0, 0) };
+                local.FlatAppearance.BorderSize = 0;
+                local.Click += async (s, e) => await UseServerAsync("");
+                box.Controls.Add(local);
+            }
+            errorPanel.Controls.Add(box);
+            errorPanel.Resize += (s, e) => box.Location = new Point(Math.Max(16, (errorPanel.Width - box.Width) / 2), Math.Max(16, (errorPanel.Height - box.Height) / 2));
+            Controls.Add(errorPanel);
+            errorPanel.BringToFront();
+            box.Location = new Point(Math.Max(16, (errorPanel.Width - box.Width) / 2), Math.Max(16, (errorPanel.Height - box.Height) / 2));
+        }
+
+        void HideError()
+        {
+            if (errorPanel == null) return;
+            Controls.Remove(errorPanel); errorPanel.Dispose(); errorPanel = null;
         }
 
         void StartServer()
@@ -156,7 +277,15 @@ namespace Hubtech
             core.Settings.UserAgent += " HubtechDesktop/1";
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = true;
-            string origin = $"http://127.0.0.1:{port}";
+            origin = remote != "" ? remote : LocalOrigin;
+            // tells the page which server this window uses (Indstillinger → Om shows it and lets you switch)
+            await SetPageInfoAsync();
+            core.NavigationCompleted += (s, e) =>
+            {
+                if (e.IsSuccess || closing) return;
+                if (e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled) return;
+                if (remote != "") ShowError("Serveren svarer ikke", remote + " kunne ikke nås. Tjek internettet, og om computeren med HUBTECH er tændt.", true);
+            };
             core.PermissionRequested += (s, e) =>
             {
                 if (e.Uri.StartsWith(origin)) e.State = CoreWebView2PermissionState.Allow;   // camera, microphone, notifications for HUBTECH itself
@@ -183,8 +312,24 @@ namespace Hubtech
                 try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
         }
 
-        void OnMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        static string JsString(string v)
         {
+            var sb = new StringBuilder("\"");
+            foreach (char c in v ?? "") { if (c == '"' || c == '\\') sb.Append('\\').Append(c); else if (c < 32 || c == '<' || c == '>') sb.Append("\\u").Append(((int)c).ToString("x4")); else sb.Append(c); }
+            return sb.Append('"').ToString();
+        }
+
+        async void OnMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            // switching server is only accepted from the HUBTECH this window shows (never from other pages)
+            if (!(e.Source ?? "").StartsWith(origin + "/")) return;
+            string text = null;
+            try { text = e.TryGetWebMessageAsString(); } catch { }
+            if (text != null && text.StartsWith("hubtech-server:"))
+            {
+                await UseServerAsync(text.Substring("hubtech-server:".Length).Trim());
+                return;
+            }
             string json;
             try { json = e.WebMessageAsJson; } catch { return; }
             if (json.Contains("\"backdrop\""))

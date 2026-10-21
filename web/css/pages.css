@@ -1217,3 +1217,5 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .scan-manual .input { flex: 1; }
 .inv-scan { flex: none; }
 .note-toolbar { flex-wrap: wrap; row-gap: 6px; } .note-swatches { flex-wrap: wrap; }
+.set-sub { margin: 14px 0 8px; font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); font-weight: 800; }
+.theme-grid .land-tile { background: #070a16; }

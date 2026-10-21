@@ -1,9 +1,9 @@
 /** Shared editor chrome for HUBTECH Office: top bar, toolbar, status bar, autosave, menus, print. */
 import { h, clear, rect, viewW, viewH } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
-import { toast, confirmDialog, errorToast, modal } from '../core/ui.js';
+import { toast, confirmDialog, errorToast, modal, busy } from '../core/ui.js';
 import { navigate } from '../core/router.js';
-import { KINDS, autosaver, updateDoc, duplicateDoc, docHref, listVersions, getVersion, restoreVersion } from './store.js';
+import { KINDS, autosaver, updateDoc, duplicateDoc, docHref, listVersions, getVersion, restoreVersion, readDraft, dropDraft } from './store.js';
 import { sanitizeHtml, textOf } from './sanitize.js';
 
 export const toolBtn = (ic, label, onClick, cls) => {
@@ -126,11 +126,42 @@ export function editorFrame(doc, ctx, { getData, onPrint, exportMenu = [], extra
   const state = h('span', { class: 'ofx-state', 'aria-live': 'polite' }, icon('checkCircle'), 'Gemt');
   const setState = (s, err) => {
     state.dataset.s = s;
-    const t = { saving: ['refresh', 'Gemmer…'], saved: ['checkCircle', 'Gemt på din konto'], dirty: ['edit', 'Ændringer…'], error: ['alert', 'Ikke gemt – prøver igen'] }[s] || ['checkCircle', 'Gemt'];
+    const t = { saving: ['refresh', 'Gemmer…'], saved: ['checkCircle', 'Gemt på din konto'], dirty: ['edit', 'Ændringer…'], error: ['alert', 'Ikke gemt – prøver igen (kopi gemt på enheden)'], conflict: ['alert', 'Ændret et andet sted'] }[s] || ['checkCircle', 'Gemt'];
     h(clear(state), null, icon(t[0]), t[1]);
     if (s === 'error' && err?.status === 413) toast('Dokumentet er for stort', { type: 'bad', text: 'Fjern nogle billeder, eller del det op i flere dokumenter.' });
+    if (s === 'conflict') conflictBar();
   };
-  const saver = autosaver(doc.id, () => ({ title: title.value.trim() || doc.title, ...getData() }), setState);
+  const saver = autosaver(doc.id, () => ({ title: title.value.trim() || doc.title, ...getData() }), setState, { base: doc.updatedAt });
+  // edited on another device while open here: let the person choose – nothing is overwritten silently
+  const banner = h('div', { class: 'ofx-banner', hidden: true, role: 'alert' });
+  function conflictBar() {
+    const keep = h('button', { class: 'btn btn-sm btn-primary' }, 'Behold min version');
+    keep.addEventListener('click', busy(keep, async () => { await saver.overwrite(); banner.hidden = true; toast('Din version er gemt', { type: 'ok', text: 'Den anden version kan findes i versionshistorikken.' }); }));
+    const copy = h('button', { class: 'btn btn-sm' }, 'Gem min som kopi');
+    copy.addEventListener('click', busy(copy, async () => {
+      try {
+        const { createDoc } = await import('./store.js');
+        const cur = getData();
+        const d = await createDoc(doc.kind, `${title.value.trim() || doc.title} (min version)`, cur.data, cur.preview || '');
+        dropDraft(doc.id); toast('Din version er gemt som en kopi', { type: 'ok' }); navigate(docHref(d).slice(1));
+      } catch (e) { errorToast(e, 'Kunne ikke lave kopien'); }
+    }));
+    const take = h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { dropDraft(doc.id); location.reload(); } }, 'Hent den anden version');
+    h(clear(banner), null, icon('alert'), h('span', null, h('b', null, 'Dokumentet er ændret på en anden enhed.'), ' Hvad vil du gøre med dine ændringer?'), h('div', { class: 'ofx-banner-btns' }, keep, copy, take));
+    banner.hidden = false;
+  }
+  // unsaved changes from last time (window closed, crash, no connection): offer to bring them back
+  const draft = readDraft(doc.id);
+  if (draft && draft.at > (doc.updatedAt || 0) * 1000 + 1500) {
+    const restore = h('button', { class: 'btn btn-sm btn-primary' }, 'Gendan ændringerne');
+    restore.addEventListener('click', busy(restore, async () => {
+      try { await updateDoc(doc.id, { ...draft.payload, force: true }); dropDraft(doc.id); toast('Ændringerne er gendannet', { type: 'ok' }); location.reload(); }
+      catch (e) { errorToast(e, 'Kunne ikke gendanne'); }
+    }));
+    const drop = h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { dropDraft(doc.id); banner.hidden = true; } }, 'Kassér dem');
+    h(banner, null, icon('info'), h('span', null, h('b', null, 'Du har ændringer, der ikke blev gemt'), ` (fra ${new Date(draft.at).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })}).`), h('div', { class: 'ofx-banner-btns' }, restore, drop));
+    banner.hidden = false;
+  } else if (draft) dropDraft(doc.id);
   title.addEventListener('input', () => saver.touch());
   title.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); title.blur(); } });
 
@@ -166,7 +197,7 @@ export function editorFrame(doc, ctx, { getData, onPrint, exportMenu = [], extra
       h('span', { class: 'ofx-kind', title: K.label }, icon(K.icon)),
       h('div', { class: 'ofx-titlewrap' }, title, h('div', { class: 'ofx-sub' }, h('span', null, `HUBTECH Office · ${K.label}`), state)),
       ...extraActions, star, exportBtn, more),
-    toolbar, body, status);
+    banner, toolbar, body, status);
 
   const onKey = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saver.flush().then(() => toast('Gemt', { type: 'ok', ms: 1200 })); }

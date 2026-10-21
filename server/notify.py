@@ -68,10 +68,17 @@ def deliver(users, kind, title, text="", path="/", *, push=True):
         if not prefs(uid)["kinds"].get(kind, True):
             continue
         seen = 1 if live.online(uid, 40) else 0       # the open app shows it right away
+        do_push = push
+        try:
+            from .social import presence_of
+            if presence_of(uid) == "busy" and kind != "announce":
+                do_push = False                       # "Optaget": kept in the inbox, but no buzzing phone
+        except Exception:
+            pass
         db.q("INSERT INTO notifications(user_id, kind, title, text, path, created_at, seen) VALUES(?,?,?,?,?,?,?)",
              (uid, kind, title, text, path, db.now(), seen))
         sent.append(uid)
-        if push and (not seen or kind == "call"):
+        if do_push and (not seen or kind == "call"):
             _push_q.put(uid)
     _ensure_worker()
     return sent

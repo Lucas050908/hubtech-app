@@ -26,7 +26,7 @@ DEFAULTS = {
     "description": "HUBTECH's egen Minecraft-server. Kom og byg med!",
     "howTo": "",
     "rules": ["Vær sød ved hinanden", "Ingen griefing – byg ikke i andres ting uden lov", "Ingen snyd eller hacks"],
-    "links": [{"label": "Discord", "url": "https://discord.gg/7dCpmeBg"}],
+    "links": [],
     "news": [],
     "showStatus": True,
 }

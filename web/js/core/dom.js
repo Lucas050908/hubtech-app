@@ -110,3 +110,15 @@ export function rect(el) {
 }
 export const viewW = () => innerWidth / uiZoom();
 export const viewH = () => innerHeight / uiZoom();
+
+/** An avatar: the emoji, or the user's own picture (users.avatar = "/api/avatars/…"). Used wherever avatars show. */
+export function ava(v, fallback = '👤') {
+  const s = v || fallback;
+  if (typeof s === 'string' && s.startsWith('/api/avatars/')) {
+    const img = document.createElement('img');
+    img.className = 'ava-img'; img.src = s; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.draggable = false;
+    img.onerror = () => img.replaceWith(document.createTextNode(fallback));
+    return img;
+  }
+  return s;
+}

@@ -361,6 +361,23 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
         created_at INTEGER NOT NULL
     );
     """,
+    # v8: errors reported by the browsers (server/clientlog.py)
+    """
+    CREATE TABLE IF NOT EXISTS client_errors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        kind TEXT NOT NULL,
+        message TEXT NOT NULL,
+        page TEXT NOT NULL DEFAULT '',
+        extra TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL
+    );
+    """,
+    # v9: presence (online / busy / invisible) and who may send friend requests
+    """
+    ALTER TABLE cm_profiles ADD COLUMN presence TEXT NOT NULL DEFAULT 'online';
+    ALTER TABLE cm_profiles ADD COLUMN contact TEXT NOT NULL DEFAULT 'everyone';
+    """,
 ]
 
 

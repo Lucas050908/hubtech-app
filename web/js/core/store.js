@@ -17,13 +17,15 @@ export const DEFAULT_WORLD = {
   weather: 'auto',         // auto | clear | rain | snow | fog
   motion: 'system',        // system | full | reduced
   parallax: true,
+  scene: 'tokyo',          // theme scene when source = 'scene' (world/scenes.js)
+  style: 'auto',           // look of buttons and colours: auto (follows the theme) | standard | neon | futuristisk | zen | elegant | minimal
   meteors: 'auto',         // auto (night and dusk) | on | off – shooting stars
   cloudShadows: true,      // shadows of clouds drifting over the land
   useLocation: false,      // hemisphere/daylight from geolocation (opt-in)
   lat: null,
   landscape: 'valley',     // valley | highlands | fjord | alps | hills | coast | lakes
   quality: 'normal',       // normal | high (sharper on big / high-dpi screens)
-  source: 'landscape',     // landscape | image (your own picture as the background)
+  source: 'landscape',     // landscape | scene (a theme: Tokyo, neon …) | image (your own picture as the background)
   image: null,             // { url, name } – uploaded to /api/office/files
 };
 

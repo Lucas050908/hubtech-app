@@ -20,26 +20,45 @@ export const docHref = (d) => `#/apps/hubtech/${KINDS[d.kind].route}/${d.id}`;
  * Autosaver: call .touch() after every change; it saves `get()` 900 ms after the last change.
  * onState(state) receives 'saving' | 'saved' | 'error'.
  */
-export function autosaver(id, get, onState) {
-  let timer = null, inflight = null, dirty = false, dead = false;
+export function autosaver(id, get, onState, { base = null } = {}) {
+  let timer = null, inflight = null, dirty = false, dead = false, conflict = false, force = false, draftTimer = 0;
+  // a copy on this device until the server has it – survives a closed window, a crash or lost connection
+  const keepDraft = () => { clearTimeout(draftTimer); draftTimer = setTimeout(() => saveDraft(id, get()), 400); };
   const run = async () => {
     if (dead && !dirty) return;
     if (inflight) { await inflight.catch(() => {}); }
-    if (!dirty) return;
+    if (!dirty || conflict) return;
     dirty = false;
     onState?.('saving');
-    inflight = updateDoc(id, get());
-    try { await inflight; onState?.(dirty ? 'saving' : 'saved'); }
-    catch (e) { dirty = true; onState?.('error', e); clearTimeout(timer); timer = setTimeout(run, 6000); }
-    finally { inflight = null; }
+    inflight = updateDoc(id, { ...get(), base, ...(force ? { force: true } : {}) });
+    try {
+      const doc = await inflight;
+      if (doc?.updatedAt) base = doc.updatedAt;
+      force = false;
+      if (!dirty) { clearTimeout(draftTimer); dropDraft(id); }
+      onState?.(dirty ? 'saving' : 'saved');
+    } catch (e) {
+      dirty = true;
+      if (e.status === 409 && e.code === 'conflict') { conflict = true; onState?.('conflict', e); return; }
+      onState?.('error', e); clearTimeout(timer); timer = setTimeout(run, 6000);
+    } finally { inflight = null; }
   };
   return {
-    touch() { if (dead) return; dirty = true; onState?.('dirty'); clearTimeout(timer); timer = setTimeout(run, 900); },
+    touch() { if (dead) return; dirty = true; onState?.('dirty'); keepDraft(); clearTimeout(timer); timer = setTimeout(run, 900); },
     flush() { clearTimeout(timer); return run(); },
     stop() { dead = true; clearTimeout(timer); return run(); },
+    /** After a conflict: save this version over the other one. */
+    overwrite() { conflict = false; force = true; dirty = true; return run(); },
     get dirty() { return dirty; },
+    get conflict() { return conflict; },
   };
 }
+
+// ── unsaved changes kept on this device (localStorage) ──
+const DRAFT = (id) => `hubtech.draft.${id}`;
+export function saveDraft(id, payload) { try { localStorage.setItem(DRAFT(id), JSON.stringify({ at: Date.now(), payload })); } catch { /* full or private mode */ } }
+export function dropDraft(id) { try { localStorage.removeItem(DRAFT(id)); } catch { /* */ } }
+export function readDraft(id) { try { return JSON.parse(localStorage.getItem(DRAFT(id)) || 'null'); } catch { return null; } }
 
 /** Trigger a file download of text content. */
 export function download(name, content, type = 'text/plain;charset=utf-8') {

@@ -4,7 +4,7 @@
  */
 import { h, clear, rect, uiZoom, viewW, viewH } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { toast } from '../core/ui.js';
+import { toast, modal } from '../core/ui.js';
 import { navigate } from '../core/router.js';
 import { store } from '../core/store.js';
 import { fmtBody } from '../community/chat.js';
@@ -154,7 +154,8 @@ function startCard() {
   const r = resolved();
   const st = engine?.state || {};
   if (st.status === 'loading') return h('div', { class: 'ai-card ai-load' }, h('b', null, 'Henter og starter modellen …'), h('div', { class: 'ai-bar' }, h('i', { style: { width: `${Math.round((st.progress || 0) * 100)}%` } })),
-    h('p', { class: 'faint' }, 'Første gang hentes modellen fra Hugging Face og gemmes i browseren. Næste gang starter den uden download.'));
+    h('p', { class: 'faint' }, st.noCache ? 'Der er ikke plads til at gemme modellen i browseren, så den hentes direkte ind i hukommelsen – og hentes igen næste gang. Frigør plads på disken for at undgå det.'
+      : 'Første gang hentes modellen fra Hugging Face og gemmes i browseren. Næste gang starter den uden download.'));
   const dev = deviceRam();
   return h('div', { class: 'ai-card' },
     h('div', { class: 'ai-hello' }, icon('bot'), h('div', null, h('b', null, tutor() ? 'Din programmeringslærer' : builder() ? 'Din app-bygger' : 'Hej! Jeg er din lokale assistent'),
@@ -167,7 +168,33 @@ function startCard() {
       h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { els.settingsBox.hidden = false; drawSettings(); } }, 'Skift')),
     r.tooSmall ? h('p', { class: 'faint' }, 'RAM-grænsen er meget lav – den mindste model bruges med kort hukommelse.') : null,
     dev.mobile ? h('p', { class: 'faint' }, 'På telefonen: brug Wi-Fi første gang, og hold appen åben, mens modellen hentes.') : null,
-    h('button', { class: 'btn btn-primary', disabled: !!unsupported, onclick: () => start() }, icon('play'), 'Start assistenten'));
+    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn btn-primary', disabled: !!unsupported, onclick: () => start(st.status === 'error') }, icon(st.status === 'error' ? 'refresh' : 'play'), st.status === 'error' ? 'Prøv igen' : 'Start assistenten'),
+      st.status === 'error' ? h('button', { class: 'btn btn-ghost', onclick: () => diagnose() }, icon('info'), 'Tjek min enhed') : null));
+}
+
+/** What the device can do – shown when something goes wrong, and from the assistant's settings. */
+async function diagnose() {
+  const e = await eng();
+  const rows = [];
+  const ok = (label, good, text) => rows.push(h('li', { class: good ? 'is-ok' : 'is-bad' }, icon(good ? 'check' : 'alert'), h('span', null, h('b', null, label), ' – ', text)));
+  const bad = e.supported();
+  ok('WebAssembly', !bad, bad || 'virker');
+  ok('Hurtig motor (JSPI)', !!WebAssembly.Suspending, WebAssembly.Suspending ? 'tilgængelig' : 'ikke tilgængelig – den langsommere kompatible motor bruges (virker stadig)');
+  let free = null;
+  try { const est = await navigator.storage?.estimate?.(); if (est?.quota) free = est.quota - (est.usage || 0); } catch { /* */ }
+  const need = resolved().model?.size || 0;
+  ok('Plads i browseren', free == null || free > need * 1.08, free == null ? 'ukendt' : `${mb(free)} ledig${need ? ` – modellen fylder ${mb(need)}` : ''}${free < need * 1.08 ? ' (modellen hentes i stedet direkte ind i hukommelsen)' : ''}`);
+  const dm = navigator.deviceMemory;
+  ok('Hukommelse', !dm || dm >= 4, dm ? `ca. ${dm} GB eller mere` : 'ukendt (browseren oplyser det ikke)');
+  let net = false;
+  try { await fetch('https://huggingface.co/api/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF', { mode: 'no-cors', cache: 'no-store' }); net = true; } catch { net = false; }
+  ok('Forbindelse til Hugging Face', net, net ? 'virker' : 'blokeret eller offline – tjek internet, firewall og annonceblokering');
+  const have = await e.downloaded();
+  ok('Hentede modeller', true, have.length ? have.map(m => `${m.url.split('/').pop()} (${mb(m.size)})`).join(', ') : 'ingen endnu');
+  const close = h('button', { class: 'btn btn-primary' }, 'Luk');
+  const m = modal({ title: 'Tjek af den lokale AI', label: 'AI-assistent', size: 520, body: h('ul', { class: 'ai-diag' }, rows), actions: [close] });
+  close.addEventListener('click', () => m.close());
 }
 
 function render(m, i) {
@@ -280,6 +307,7 @@ function drawSettings() {
     h('div', { class: 'ai-set-btns' },
       st === 'ready' ? h('button', { class: 'btn btn-sm', onclick: async () => { await (await eng()).unload(); drawAll(); toast('Assistenten er stoppet', { text: 'Hukommelsen er frigivet.' }); } }, icon('power'), 'Stop og frigiv RAM') : null,
       h('button', { class: 'btn btn-sm', onclick: () => start(true) }, icon('refresh'), st === 'ready' ? 'Genstart med valget' : 'Start med valget'),
+      h('button', { class: 'btn btn-sm btn-ghost', onclick: () => diagnose() }, icon('info'), 'Tjek min enhed'),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { try { const e = await eng(); await e.unload(); await e.clearDownloads(); toast('Hentede modeller er slettet', { type: 'ok', text: 'Pladsen i browseren er frigivet.' }); drawAll(); } catch (x) { toast('Kunne ikke slette', { type: 'bad', text: x.message }); } } }, icon('trash'), 'Slet hentede modeller')),
     h('p', { class: 'faint ai-note' }, 'Modellerne er open source (Qwen 2.5: Apache 2.0, Llama 3.2: Llama Community License) og hentes fra Hugging Face første gang.'));
 }
