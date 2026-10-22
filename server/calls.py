@@ -49,6 +49,14 @@ def ice_servers():
     return out
 
 
+def ice_for_test(req, _):
+    """The same STUN/TURN servers a real call gets – for "Test opkald" under Indstillinger."""
+    require_user(req)
+    ice = ice_servers()
+    relay = any(str(u).startswith(("turn:", "turns:")) for s_ in ice for u in ([s_.get("urls")] if isinstance(s_.get("urls"), str) else s_.get("urls") or []))
+    return 200, {"ice": ice, "relay": relay}
+
+
 def ice_config_get(req, _):
     u = require_user(req)
     if u["role"] != "owner":
@@ -352,6 +360,7 @@ ROUTES = [
     ("POST", r"/api/cm/calls/(?P<id>[kc][0-9a-f]+)/invite", call_invite),
     ("POST", r"/api/cm/calls/(?P<id>[kc][0-9a-f]+)/info", call_info),
     ("GET", r"/api/cm/calls/ice-config", ice_config_get),
+    ("GET", r"/api/cm/calls/ice", ice_for_test),
     ("PUT", r"/api/cm/calls/ice-config", ice_config_set),
 ]
 

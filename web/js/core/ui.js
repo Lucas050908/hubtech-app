@@ -22,9 +22,11 @@ export function toast(title, opts = {}) {
       opts.text ? h('div', { class: 'toast-text' }, opts.text) : null,
       opts.action ? h('button', { class: 'btn btn-sm btn-ghost', style: { marginTop: '6px', marginLeft: '-12px' }, onclick: () => { opts.action.onClick(); dismiss(); } }, opts.action.label) : null),
     h('button', { class: 'icon-btn', style: { width: '28px', height: '28px', marginTop: '-4px', marginRight: '-6px' }, 'aria-label': 'Luk', onclick: () => dismiss() }, icon('x')));
+  if (opts.action) el.dataset.action = '1';
   host().appendChild(el);
-  const kids = host().children;
-  if (kids.length > 4) kids[0].remove();
+  // at most 4 at a time: the oldest without a button goes first, so "Skift tilbage", "Opdatér nu" … stay
+  const kids = [...host().children];
+  if (kids.length > 4) (kids.find(k => !k.dataset.action) || kids[0]).remove();
   let gone = false;
   function dismiss() {
     if (gone) return; gone = true;

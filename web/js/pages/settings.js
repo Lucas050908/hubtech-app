@@ -3,6 +3,7 @@ import { h, clear, timeAgo, ava } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { qrSvg } from '../features/qr.js';
+import { callTestBox } from '../features/calltest.js';
 import { logout } from '../features/auth.js';
 import { friendWizard } from '../features/friendsetup.js';
 import { deleteUserDialog } from '../features/userdelete.js';
@@ -472,6 +473,7 @@ function callPanel() {
   return h('section', { class: 'glass panel' },
     h('h2', { class: 'panel-title' }, 'Opkald'),
     h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Gælder opkald, gruppeopkald og talekanaler i Fællesskab. Gemmes på denne enhed.'),
+    row('Test opkald', 'Tjek mikrofonen og om du kan ringe med folk på andre netværk – uden at skulle ringe til nogen', callTestBox()),
     ...testRows,
     row('Støjdæmpning', 'Fjerner baggrundsstøj som tastatur og blæser', sw('Støjdæmpning', () => c.noise, re('noise'))),
     row('Ekkodæmpning', 'Undgår at de andre hører sig selv, når du ikke bruger høretelefoner', sw('Ekkodæmpning', () => c.echo, re('echo'))),

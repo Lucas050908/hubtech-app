@@ -117,6 +117,7 @@ function teardown() {
 }
 
 function showPublic(node, title, seq, focus = 1) {
+  import('./features/offline.js').then(m => m.initOffline()).catch(() => {});
   if (seq !== renderSeq) return;
   teardown();
   clear(root);
@@ -158,6 +159,7 @@ async function showInShell(mod, { params = {}, app = null, title, focus } = {}, 
   bootDone();
   maybeStartOnboarding();
   if (store.get('user')?.onboarding?.done) setTimeout(() => import('./features/friendsetup.js').then(m => m.maybeOfferFriends()).catch(() => {}), 2500);
+  import('./features/offline.js').then(m => m.initOffline()).catch(() => {});
   if (!updateChecked && store.get('user')) { updateChecked = true; setTimeout(() => import('./features/appupdate.js').then(m => m.checkAppUpdate()).catch(() => {}), 6000); }
 }
 

@@ -315,3 +315,19 @@ code.inline { padding: 1px 6px; color: var(--text); }
 @keyframes fwPulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .fw-step.is-busy > svg { animation: none; } }
 .fw-step > div > .btn, .fw-step > div > a { justify-self: start; }
+
+/* "Test opkald" */
+.ct-out { display: grid; gap: 6px; }
+.ct-out:empty { display: none; }
+.ct-line { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.ct-line > svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.ct-line > div { display: grid; gap: 1px; }
+.ct-line small { color: var(--text-3); font-size: 12.5px; }
+.ct-line.is-ok > svg { color: var(--ok); }
+.ct-line.is-bad > svg { color: var(--bad); }
+.ct-line.is-warn > svg { color: var(--warn); }
+.ct-line.is-busy > svg { color: var(--accent); animation: fwPulse 1.2s ease-in-out infinite; }
+.ct-verdict { margin-top: 4px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line-2); font-size: 14px; }
+.ct-verdict.is-ok { background: var(--ok-soft); }
+.ct-verdict.is-warn { background: var(--warn-soft); }
+.ct-verdict.is-bad { background: var(--bad-soft); }

@@ -1062,6 +1062,19 @@ async def main():
         check("mikrofon blokeret: præcis vejledning til enheden", "ikonet til venstre for adressen" in txt and "Giv skrivebordsapps adgang" in txt, txt[:200])
         await bp.screenshot(path=f"{OUT}/mic-blocked.png")
         await bctx.close()
+        # the Android app on its own: the computer is off → the phone's own HUBTECH, and "Skift tilbage" when it's back
+        octx = await browser.new_context(**p.devices["Pixel 7"], storage_state=await ctx.storage_state())
+        await octx.add_init_script("""window.__back = 0; window.HubtechAndroid = { isAndroidApp: () => true, appInfo: () => '{"versionCode":1000099}',
+          offlineState: () => '{"remote":"https://min-pc.tail1234.ts.net","offline":true}', backToRemote: () => { window.__back++; } };
+          try { localStorage.setItem('hubtech.updateCheck', String(Date.now())); localStorage.setItem('hubtech.friendsAsked', '1'); } catch (e) {}""")
+        op = await octx.new_page()
+        await op.goto(BASE + "/#/"); await op.wait_for_selector(".toast:has-text('Du bruger HUBTECH på telefonen')", timeout=12000)
+        check("mobil uden computer: siger at telefonens egen HUBTECH bruges", True)
+        await op.screenshot(path=f"{OUT}/offline-phone.png")
+        await op.evaluate("window.hubtechServerBack(); 0")
+        await op.click(".toast button:has-text('Skift tilbage')")
+        check("mobil uden computer: 'Skift tilbage' når computeren er tændt igen", await op.evaluate("window.__back") == 1)
+        await octx.close()
         # ── Ejer: the owner's own app ──
         await page.goto(BASE + "/#/apps/owner"); await page.reload(); await page.wait_for_selector(".owner-page .adm-tile", timeout=10000)
         check("ejer-app: overblik for ejeren", await page.locator(".owner-page .adm-tile").count() == 6)
@@ -1235,6 +1248,11 @@ async def main():
         # ── Indstillinger → Apps og opkald: test the microphone and camera, and the setting reaches the call ──
         await ca.wait_for_timeout(800)
         await ca.goto(BASE + "/#/settings/apps"); await ca.wait_for_selector(".settings-body >> text=Støjdæmpning")
+        await ca.click("button:has-text('Test opkald')")
+        await ca.wait_for_selector(".ct-verdict", timeout=45000)
+        ct = await ca.inner_text(".ct")
+        check("test opkald: mikrofon og prøveopkald tjekkes uden en anden person", "Mikrofonen virker" in ct and "prøveopkald kunne forbindes" in ct, ct)
+        await ca.screenshot(path=f"{OUT}/call-test.png")
         await ca.click("button:has-text('Test mikrofonen')")
         lvl = 0
         for _ in range(20):

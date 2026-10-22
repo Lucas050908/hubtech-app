@@ -50,6 +50,9 @@ export const serverUrl = () => call('serverUrl') || '';
 /** Switch to another HUBTECH server (checked first). Resolves with "ok" or a Danish error message. */
 export const setServerUrl = (url) => new Promise((resolve) => setTimeout(() => resolve(call('setServerUrl', url) || 'Det virker ikke i denne version af appen.'), 0));
 export const useLocalServer = () => call('useLocalServer');
+/** { remote, offline }: offline = the chosen computer can't be reached, so the HUBTECH inside the app is used meanwhile. */
+export function offlineState() { try { return JSON.parse(call('offlineState') || '{}'); } catch { return {}; } }
+export const backToRemote = () => call('backToRemote');
 
 // notifications from the shared server while the app is closed (checked in the background)
 export const showNotification = (title, text, path) => call('showNotification', String(title || ''), String(text || ''), String(path || '/'));

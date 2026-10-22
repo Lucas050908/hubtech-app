@@ -87,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
     private Uri cameraUri;
     private int port = 0;
     private String remote = "";      // another HUBTECH server (https://…) chosen under Indstillinger → Telefon
+    private volatile boolean offline = false;   // the other HUBTECH can't be reached → using the server inside the app for now
+    private final java.util.concurrent.ScheduledExecutorService watch = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
     private String pendingPath = null;
     private long stoppedAt = 0, updateDownload = -1;
     private boolean unlocked = false;
@@ -123,7 +125,30 @@ public class MainActivity extends AppCompatActivity {
         });
         handleIntent(getIntent());
         if (remote.isEmpty()) startServer();
-        else openRemote();
+        else bg.execute(() -> { if (reachable(remote, 4000)) openRemote(); else goOffline(); });
+    }
+
+    /** Does a HUBTECH answer at this address? (short timeout – used before opening it and to notice it is back) */
+    private static boolean reachable(String base, int timeoutMs) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/health").openConnection();
+            c.setConnectTimeout(timeoutMs); c.setReadTimeout(timeoutMs);
+            int code = c.getResponseCode();
+            c.disconnect();
+            return code == 200;
+        } catch (Exception e) { return false; }
+    }
+
+    /** The computer is off (or out of reach): keep working with the HUBTECH inside the app, and watch for the computer. */
+    private void goOffline() {
+        if (offline) return;
+        offline = true;
+        ui.post(() -> Toast.makeText(this, R.string.offline_now, Toast.LENGTH_LONG).show());
+        if (port == 0) startServer();
+        else ui.post(() -> web.loadUrl(base() + "/?source=app"));
+        watch.scheduleWithFixedDelay(() -> {
+            if (offline && reachable(remote, 5000)) js("window.hubtechServerBack && window.hubtechServerBack();");
+        }, 20, 30, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     /** Use another HUBTECH (e.g. a friend's or your own computer via HTTPS) instead of the server inside the app. */
@@ -135,11 +160,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private boolean ready() { return !remote.isEmpty() || port != 0; }
+    private boolean ready() { return (!remote.isEmpty() && !offline) || port != 0; }
 
     private boolean sameOrigin(Uri u) {
         if (u == null) return false;
-        if (!remote.isEmpty()) {
+        if (!remote.isEmpty() && !offline) {
             Uri r = Uri.parse(remote);
             return r.getScheme() != null && r.getScheme().equals(u.getScheme()) && r.getHost() != null && r.getHost().equalsIgnoreCase(u.getHost()) && r.getPort() == u.getPort();
         }
@@ -207,7 +232,8 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest req, android.webkit.WebResourceError err) {
-                if (!req.isForMainFrame() || remote.isEmpty()) return;
+                if (!req.isForMainFrame() || remote.isEmpty() || offline) return;
+                if (req.getUrl() != null && sameOrigin(req.getUrl())) { goOffline(); return; }
                 String html = "<!doctype html><html lang=da><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0a1422;color:#eef4fb;font:16px system-ui'>"
                         + "<div style='max-width:340px;padding:24px;text-align:center'><h2>Serveren svarer ikke</h2><p style='color:#9fb0c4'>" + android.text.TextUtils.htmlEncode(remote) + " kunne ikke nås. Tjek internettet, eller om computeren med HUBTECH er tændt.</p>"
                         + "<p><button style='font:inherit;padding:12px 18px;border:0;border-radius:12px;background:#4cc2ff;font-weight:700' onclick='location.href=" + JSONObject.quote(remote + "/") + "'>Prøv igen</button></p>"
@@ -343,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private String base() { return remote.isEmpty() ? "http://127.0.0.1:" + port : remote; }
+    private String base() { return remote.isEmpty() || offline ? "http://127.0.0.1:" + port : remote; }
 
     private boolean has(String perm) { return ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED; }
 
@@ -498,6 +524,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override protected void onDestroy() {
         if (updateReceiver != null) try { unregisterReceiver(updateReceiver); } catch (Exception ignored) { }
+        watch.shutdownNow();
         super.onDestroy();
     }
 
@@ -653,6 +680,19 @@ public class MainActivity extends AppCompatActivity {
             NotifyJob.sync(MainActivity.this);
             ui.post(MainActivity.this::recreate);
             return "ok";
+        }
+
+        @JavascriptInterface public String offlineState() {
+            try { return new JSONObject().put("remote", remote).put("offline", offline).toString(); } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface public void backToRemote() {
+            if (remote.isEmpty()) return;
+            bg.execute(() -> {
+                if (!reachable(remote, 6000)) { ui.post(() -> Toast.makeText(MainActivity.this, R.string.offline_still, Toast.LENGTH_LONG).show()); return; }
+                offline = false;
+                ui.post(() -> web.loadUrl(remote + "/?source=app"));
+            });
         }
 
         @JavascriptInterface public void useLocalServer() {

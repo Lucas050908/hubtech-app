@@ -26,4 +26,6 @@
     <string name="update_allow">Tillad at HUBTECH installerer opdateringer, og tryk Installér igen</string>
     <string name="camera_denied">Kameraet er ikke tilladt for HUBTECH</string>
     <string name="share_sending">Gemmer billedet …</string>
+    <string name="offline_now">Computeren svarer ikke – du bruger HUBTECH på telefonen i mellemtiden.</string>
+    <string name="offline_still">Computeren svarer stadig ikke.</string>
 </resources>
