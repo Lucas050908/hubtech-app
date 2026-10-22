@@ -3,7 +3,7 @@ import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, modal, confirmDialog, segmented } from '../core/ui.js';
-import { fmtTime } from './chat.js';
+import { fmtTime, customEmoji } from './chat.js';
 
 export const ROLE_DA = { owner: 'Ejer', admin: 'Admin', moderator: 'Moderator', member: 'Medlem' };
 export const RANK = { member: 1, moderator: 2, admin: 3, owner: 4 };
@@ -88,6 +88,26 @@ export async function inviteDialog(server) {
 }
 
 /** Server settings for admins: overview, rules, channels, word filter, bans and the moderation log. */
+/** Make a picture fit as an emoji: at most 128 × 128 and 256 KB (animated GIFs are kept as they are). */
+export async function prepareEmoji(file) {
+  const LIMIT = 256 * 1024;
+  if (file.type === 'image/gif') { if (file.size > LIMIT) throw new Error('GIF’en er for stor (højst 256 KB). Gør den mindre i et billedprogram.'); return file; }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('Filen er ikke et billede, der kan åbnes.')); i.src = url; });
+    if (img.naturalWidth <= 128 && img.naturalHeight <= 128 && file.size <= LIMIT && /^image\/(png|webp|jpeg)$/.test(file.type)) return file;
+    const k = Math.min(1, 128 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise(ok => c.toBlob(ok, 'image/png'));
+    if (blob && blob.size <= LIMIT) return blob;
+    return await new Promise(ok => c.toBlob(ok, 'image/webp', 0.85));
+  } finally { URL.revokeObjectURL(url); }
+}
+/** A file name → a good emoji name (a–z, 0–9 and _). */
+export const emojiName = (n) => String(n || '').replace(/\.[a-z0-9]+$/i, '').toLowerCase().replace(/æ/g, 'ae').replace(/ø/g, 'oe').replace(/å/g, 'aa').replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32);
+
 export function serverSettings(cm, detail, { onChanged, onDeleted }) {
   const s = detail.server, me = detail.me;
   let tab = 'general';
@@ -142,7 +162,55 @@ export function serverSettings(cm, detail, { onChanged, onDeleted }) {
     api.get(`/api/cm/servers/${s.id}/log`).then(d => h(clear(log), null, d.log.length ? d.log.slice(0, 60).map(x => h('div', { class: 'cm-logrow' }, h('span', { class: 'faint' }, fmtTime(x.at)), ` ${x.by} ${ACT[x.action] || x.action} ${x.target}`, x.detail ? h('span', { class: 'faint' }, ` – ${x.detail}`) : null)) : h('p', { class: 'faint' }, 'Ingen handlinger endnu.'))).catch(() => {});
     return [h('div', { class: 'field-label' }, 'Udelukkede'), box, h('div', { class: 'field-label', style: { marginTop: '10px' } }, 'Moderatorlog'), log];
   }
-  const tabs = { general: ['Oversigt', general], rules: ['Regler og filter', rules], channels: ['Kanaler', channels], bans: ['Udelukkede og log', bans] };
+  function emojis() {
+    const grid = h('div', { class: 'cm-emoji-admin' }, h('p', { class: 'faint' }, 'Henter …'));
+    const count = h('span', { class: 'faint' });
+    const fileIn = h('input', { type: 'file', accept: 'image/png,image/gif,image/webp,image/jpeg', hidden: true });
+    const nameIn = h('input', { class: 'input', placeholder: 'navn', maxlength: 32, 'aria-label': 'Emojiens navn', style: { width: '180px' } });
+    const preview = h('span', { class: 'cm-emoji-preview' });
+    let picked = null;
+    const load = () => api.get(`/api/cm/servers/${s.id}/emojis`).then(d => {
+      count.textContent = `${d.emojis.length} af ${d.max}`;
+      h(clear(grid), null, d.emojis.length ? d.emojis.map(e => {
+        const nm = h('input', { class: 'input input-sm', value: e.name, maxlength: 32, 'aria-label': `Navn på :${e.name}:` });
+        const rename = async () => { const v = emojiName(nm.value); if (!v || v === e.name) { nm.value = e.name; return; } try { await api.patch(`/api/cm/emojis/${e.id}`, { name: v }); toast(`Omdøbt til :${v}:`, { type: 'ok' }); load(); } catch (x) { err.textContent = x.message; nm.value = e.name; } };
+        nm.addEventListener('change', rename);
+        return h('div', { class: 'cm-emoji-item' }, customEmoji(e.name, e.id, true), nm,
+          h('button', { class: 'icon-btn', 'aria-label': `Slet :${e.name}:`, onclick: async () => { if (!await confirmDialog({ title: `Slet :${e.name}:?`, text: 'Den forsvinder fra gamle beskeder og reaktioner.', confirmLabel: 'Slet', danger: true })) return; try { await api.del(`/api/cm/emojis/${e.id}`); load(); } catch (x) { err.textContent = x.message; } } }, icon('trash')));
+      }) : h('p', { class: 'faint' }, 'Serveren har ingen egne emojis endnu. Upload den første!'));
+    }).catch(e => { grid.textContent = e.message; });
+    fileIn.addEventListener('change', async () => {
+      const f = fileIn.files[0]; fileIn.value = ''; err.textContent = '';
+      if (!f) return;
+      try {
+        picked = await prepareEmoji(f);
+        if (!nameIn.value) nameIn.value = emojiName(f.name);
+        const u = URL.createObjectURL(picked);
+        h(clear(preview), null, h('img', { src: u, alt: 'Forhåndsvisning', onload: () => URL.revokeObjectURL(u) }));
+        addBtn.disabled = false;
+      } catch (e) { err.textContent = e.message; }
+    });
+    const addBtn = h('button', { class: 'btn btn-primary', disabled: true, onclick: async () => {
+      err.textContent = '';
+      const name = emojiName(nameIn.value);
+      if (!picked) return;
+      if (name.length < 2) { err.textContent = 'Giv emojien et navn på mindst 2 tegn (a–z, tal og _).'; return; }
+      addBtn.disabled = true;
+      try {
+        const r = await fetch(`/api/cm/servers/${s.id}/emojis`, { method: 'POST', credentials: 'same-origin', body: picked,
+          headers: { 'X-Requested-With': 'hubtech', 'Content-Type': 'application/octet-stream', 'X-Emoji-Name': encodeURIComponent(name) } });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || `Upload mislykkedes (${r.status})`);
+        toast(`:${d.emoji.name}: er klar`, { type: 'ok', text: 'Skriv navnet med koloner i en besked – eller find den under smiley-knappen.' });
+        picked = null; nameIn.value = ''; clear(preview); load();
+      } catch (e) { err.textContent = e.message; addBtn.disabled = false; }
+    } }, icon('plus'), 'Tilføj emoji');
+    load();
+    return [h('p', { class: 'muted', style: { margin: 0 } }, 'Serverens egne emojis kan bruges af alle medlemmer – i beskeder (skriv ', h('code', null, ':navn:'), ') og som reaktioner. Store billeder bliver automatisk gjort mindre.'),
+      h('div', { class: 'cm-emoji-add' }, h('button', { class: 'btn', onclick: () => fileIn.click() }, icon('upload'), 'Vælg billede'), preview, nameIn, addBtn, fileIn),
+      h('div', { class: 'row', style: { justifyContent: 'space-between' } }, h('span', { class: 'field-label' }, 'Emojis'), count), grid];
+  }
+  const tabs = { general: ['Oversigt', general], rules: ['Regler og filter', rules], channels: ['Kanaler', channels], emojis: ['Emojis', emojis], bans: ['Udelukkede og log', bans] };
   const draw = () => h(clear(body), null, tabs[tab][1]());
   const seg = segmented(Object.entries(tabs).map(([v, [l]]) => ({ value: v, label: l })), tab, (v) => { tab = v; draw(); }, { label: 'Indstillinger' });
   draw();

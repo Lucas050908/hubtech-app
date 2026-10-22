@@ -9,7 +9,7 @@
 HUBTECH er en server, der kører på din egen enhed. Alt, hvad du laver, gemmes i en database på den enhed, HUBTECH kører på (på Windows i mappen `.hubtech` i din brugermappe, på Android inde i appen):
 
 - **Din konto:** brugernavn, navn, valgfri e-mailadresse, profilbillede og din adgangskode (gemt krypteret – den kan ikke læses af nogen).
-- **Det, du laver i apps:** noter, opgaver, kalender, Office-dokumenter, beskeder i Fællesskab, indstillinger osv.
+- **Det, du laver i apps:** noter, opgaver, kalender, Office-dokumenter, beskeder i Fællesskab, serverens egne emojis (billeder, som moderatorer uploader, og som alle medlemmer kan se), indstillinger osv.
 - **Tekniske fejl:** hvis noget går galt i appen (fx når AI-assistenten ikke kan starte), gemmes en kort fejlbeskrivelse på samme enhed, så ejeren af HUBTECH kan se den. Der gemmes ingen samtaler eller indtastninger i den.
 
 Den person, der har installeret HUBTECH på sin computer ("ejeren"), kan se listen over brugere på sin HUBTECH og administrere dem. Andre brugere kan se det, de selv eller deres venner har delt med dem.

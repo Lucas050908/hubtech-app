@@ -93,7 +93,7 @@ onLive('msg', (ev) => {
   const pref = getNotify();
   if ((dm && !pref.dm) || (!dm && !pref.mention)) return;
   pling();
-  const body = ev.message.body || (ev.message.file ? 'Sendte en fil' : 'Delte noget');
+  const body = (ev.message.body || (ev.message.file ? 'Sendte en fil' : 'Delte noget')).replace(/<:([a-z0-9_]{2,32}):e[0-9a-f]{16}>/g, ':$1:');
   const path = dm ? `/apps/community/dm/${ev.channel}` : `/apps/community/c/${ev.channel}`;
   notify(dm ? ev.message.user.name : `${ev.message.user.name} nævnte dig`, body.slice(0, 140), path);
 });

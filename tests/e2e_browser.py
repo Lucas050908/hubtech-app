@@ -6,6 +6,7 @@
 Exercises the real user flows and prints PASS/FAIL per check. Exit code 1 on any failure.
 """
 import asyncio
+import base64
 import json
 import urllib.parse
 import os
@@ -798,6 +799,41 @@ async def main():
         await page.keyboard.press("Enter")
         await page.wait_for_selector(".cm-msg .cm-ic")
         check("fællesskab: kode, fed og @omtale formateres", await page.locator(".cm-msg b:has-text('fed')").count() == 1 and await page.locator(".cm-mention").count() >= 1)
+        # the server's own emoji: upload in the settings, use it with :navn: and as a reaction
+        await page.click(".cm-side-h.is-server"); await page.click(".cm-menu button:has-text('Indstillinger')")
+        await page.click(".modal .segmented button:has-text('Emojis')")
+        emoji_png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAALElEQVR4nGNgGJ7g/xaG/7gwRZoJGkKMZryGjBowGAwg1hCcmokxhKBmugMAdZwl2rXFLMoAAAAASUVORK5CYII=")
+        await page.set_input_files(".cm-emoji-add input[type=file]", files=[{"name": "Hub Kat.png", "mimeType": "image/png", "buffer": emoji_png}])
+        await page.wait_for_selector(".cm-emoji-add .btn-primary:not([disabled])", timeout=5000)
+        check("emojis: navnet foreslås ud fra filen", await page.input_value(".cm-emoji-add input.input") == "hub_kat")
+        await page.click(".cm-emoji-add .btn-primary")
+        await page.wait_for_selector(".cm-emoji-item", timeout=8000)
+        await page.screenshot(path=f"{OUT}/e2e_cm_emojis.png")
+        await page.click(".modal button:has-text('Luk')"); await page.wait_for_timeout(800)
+        await page.fill(".cm-input", "Se min nye "); await page.type(".cm-input", ":hub")
+        await page.wait_for_selector(".cm-emoji-suggest:not([hidden]) .cm-sugg", timeout=5000)
+        check("emojis: :hub foreslår serverens emoji", "hub_kat" in (await page.inner_text(".cm-emoji-suggest")))
+        await page.keyboard.press("Tab")
+        check("emojis: Tab indsætter navnet", (await page.input_value(".cm-input")).endswith(":hub_kat: "))
+        await page.keyboard.press("Enter")
+        await page.wait_for_selector(".cm-msg img.cm-cemoji[alt=':hub_kat:']", timeout=8000)
+        await mj.wait_for_selector(".cm-msg img.cm-cemoji[alt=':hub_kat:']", timeout=15000)
+        loaded = False
+        for _ in range(20):
+            loaded = await mj.evaluate("[...document.querySelectorAll('.cm-msg img.cm-cemoji')].some(i => i.complete && i.naturalWidth > 0)")
+            if loaded:
+                break
+            await mj.wait_for_timeout(250)
+        check("emojis: vises som billede hos begge", loaded)
+        await page.fill(".cm-input", ":hub_kat:"); await page.keyboard.press("Escape"); await page.keyboard.press("Enter")
+        await page.wait_for_selector(".cm-text.is-jumbo img.cm-cemoji", timeout=8000)
+        check("emojis: en besked med kun emoji vises stort", True)
+        last = page.locator(".cm-msg").last
+        await last.hover(); await last.locator("[aria-label=Reagér]").click()
+        await page.click(".cm-react-pop [aria-label='Reagér med :hub_kat:']")
+        await mj.wait_for_selector(".cm-react img.cm-cemoji", timeout=15000)
+        check("emojis: reaktion med serverens emoji ses hos den anden", True)
+        await page.screenshot(path=f"{OUT}/e2e_cm_emoji_chat.png")
         ov = await mj.evaluate("Math.max(document.documentElement.scrollWidth, innerWidth) - screen.width")
         check("fællesskab: ingen vandret scroll på mobil", ov <= 1, ov)
         await mj.screenshot(path=f"{OUT}/e2e_cm_mobile_chat.png")
@@ -1330,6 +1366,19 @@ async def main():
         await page.screenshot(path=f"{OUT}/app-chess.png")
         await page.click(".ch-page button:has-text('Fortryd')"); await page.wait_for_timeout(300)
         check("skak: fortryd tager dit og computerens træk tilbage", await page.locator(".ch-moves li").count() == 1)
+        await page.click(".ch-page button:has-text('Hint')")
+        check("skak: hint viser et træk", await page.locator(".ch-sq.is-hint").count() == 2)
+        # two on one screen with a clock
+        await page.click(".ch-page button:has-text('Nyt parti')"); await page.wait_for_timeout(400)
+        if await page.locator(".modal button:has-text('Nyt parti')").count():
+            await page.click(".modal button:has-text('Nyt parti')")
+        await page.wait_for_selector(".ch-setup-row")
+        await page.click(".ch-setup-row button:has-text('To på samme skærm')"); await page.click(".ch-setup-row button:has-text('3 min + 2 s')")
+        await page.click(".ch-page button:has-text('Start partiet')"); await page.wait_for_selector(".ch-clock")
+        await page.click(".ch-sq[data-sq='d2']"); await page.click(".ch-sq[data-sq='d4']"); await page.wait_for_timeout(1500)
+        black = await page.inner_text(".ch-clock.is-on")
+        check("skak: skakuret går for den, der skal trække", black.startswith("2:5"), black)
+        await page.screenshot(path=f"{OUT}/app-chess-clock.png")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))
@@ -1444,6 +1493,12 @@ async def main():
         await p2.click(".ch-sq[data-sq='c7']"); await p2.click(".ch-sq[data-sq='c5']")
         await p1.wait_for_selector(".ch-moves li:has-text('c5')", timeout=8000)
         check("skak online: trækkene går begge veje live", True)
+        check("skak online: skakur hos begge", await p2.locator(".ch-clock").count() == 2 and await p1.locator(".ch-clock.is-on").count() == 1)
+        await p1.click(".ch-page button:has-text('Tilbyd remis')")
+        await p2.wait_for_selector(".ch-offer:has-text('tilbyder remis')", timeout=8000)
+        await p2.click(".ch-offer button:has-text('Tag imod')")
+        await p1.wait_for_selector(".ch-status.is-over:has-text('Uafgjort')", timeout=8000)
+        check("skak online: remis efter aftale", True)
         await p2.wait_for_timeout(500); await p2.screenshot(path=f"{OUT}/online-chess-phone.png")
         await p1.goto(BASE + "/#/"); await p2.goto(BASE + "/#/")
         # race

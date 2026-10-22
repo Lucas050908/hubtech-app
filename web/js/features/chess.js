@@ -159,13 +159,18 @@ function notation(s, m, all) {
 }
 
 /** Play the move from → to (promo: 'q','r','b','n'). Returns the move or null if it isn't legal. Sets s.result when the game ends. */
-export function play(s, from, to, promo = 'q') {
-  if (s.result) return null;
+export function play(s, from, to, promo = 'q', now = Date.now()) {
+  if (s.result || checkFlag(s, now)) return null;
   const all = legalMoves(s);
   const m = all.find(x => x.from === from && x.to === to && (!x.promo || x.promo === promo));
   if (!m) return null;
   let san = notation(s, m, all);
   const mover = s.turn, piece = s.board[from];
+  if (s.clock) {        // the mover's clock stops and gets the increment; the other one's starts
+    if (s.clock.since != null) s.clock[mover] -= now - s.clock.since;
+    if (s.clock.since != null || mover === 'w') s.clock[mover] += s.clock.inc;
+    s.clock.since = now;
+  }
   make(s, m);
   if (mover === 'b') s.full++;
   const key = posKey(s);
@@ -180,8 +185,39 @@ export function play(s, from, to, promo = 'q') {
   else if (insufficient(s.board)) s.result = { winner: null, why: 'material' };
   return m;
 }
+// ── the chess clock: { base, inc, w, b, since } in ms; it starts when white has made the first move ──
+export const CLOCKS = [{ id: 'none', label: 'Uden ur' }, { id: '3+2', label: '3 min + 2 s', base: 180e3, inc: 2e3 }, { id: '5+0', label: '5 min', base: 300e3, inc: 0 }, { id: '10+0', label: '10 min', base: 600e3, inc: 0 }, { id: '15+10', label: '15 min + 10 s', base: 900e3, inc: 10e3 }];
+export function setClock(s, id) {
+  const c = CLOCKS.find(x => x.id === id);
+  s.clock = c?.base ? { id, base: c.base, inc: c.inc, w: c.base, b: c.base, since: null } : null;
+  return s;
+}
+/** Time left for colour c at time `now` (the side to move is ticking). */
+export function clockLeft(s, c, now = Date.now()) {
+  const k = s.clock; if (!k) return Infinity;
+  return k[c] - (c === s.turn && k.since != null && !s.result ? now - k.since : 0);
+}
+/** The side to move has run out of time: the other one wins – unless it only has its king left. */
+export function checkFlag(s, now = Date.now()) {
+  if (!s.clock || s.result || s.clock.since == null || clockLeft(s, s.turn, now) > 0) return false;
+  const c = s.turn, o = other(c);
+  s.clock[c] = 0; s.clock.since = null;
+  const canWin = s.board.some(p => p && colorOf(p) === o && p.toLowerCase() !== 'k');
+  s.result = canWin ? { winner: o, why: 'time' } : { winner: null, why: 'timeDraw' };
+  return true;
+}
+/** Pause the clock (e.g. after the app was closed): the time away doesn't count. */
+export function resumeClock(s, now = Date.now()) { if (s.clock?.since != null && !s.result) s.clock.since = now; }
+export const fmtClock = (ms) => {
+  if (!isFinite(ms)) return '';
+  const t = Math.max(0, ms);
+  if (t < 10e3) return `0:0${(Math.floor(t / 100) / 10).toFixed(1)}`;
+  const sec = Math.ceil(t / 1000);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+};
+export function agreeDraw(s) { if (!s.result) { s.result = { winner: null, why: 'agreed' }; if (s.clock) s.clock.since = null; } }
 export function resign(s, color) { if (!s.result) s.result = { winner: other(color), why: 'resign' }; }
-export const RESULT_TEXT = { mate: 'Skakmat', stalemate: 'Pat – uafgjort', fifty: 'Uafgjort – 50 træk uden slag eller bondetræk', repeat: 'Uafgjort – samme stilling tre gange', material: 'Uafgjort – for lidt materiale til at sætte mat', resign: 'Opgivet', agreed: 'Uafgjort efter aftale', time: 'Tiden løb ud' };
+export const RESULT_TEXT = { mate: 'Skakmat', stalemate: 'Pat – uafgjort', fifty: 'Uafgjort – 50 træk uden slag eller bondetræk', repeat: 'Uafgjort – samme stilling tre gange', material: 'Uafgjort – for lidt materiale til at sætte mat', resign: 'Opgivet', agreed: 'Uafgjort efter aftale', time: 'Tiden løb ud', timeDraw: 'Uafgjort – tiden løb ud, men modstanderen kan ikke sætte mat' };
 
 /** Captured pieces so far, for the bars beside the board. */
 export function captured(s) {

@@ -378,6 +378,19 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
     ALTER TABLE cm_profiles ADD COLUMN presence TEXT NOT NULL DEFAULT 'online';
     ALTER TABLE cm_profiles ADD COLUMN contact TEXT NOT NULL DEFAULT 'everyone';
     """,
+    # custom emojis for a server (Fællesskab)
+    """
+    CREATE TABLE IF NOT EXISTS cm_emojis (
+        id TEXT PRIMARY KEY,
+        server_id TEXT NOT NULL REFERENCES cm_servers(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        data BLOB NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at INTEGER NOT NULL,
+        UNIQUE (server_id, name)
+    );
+    """,
 ]
 
 

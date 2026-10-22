@@ -8,7 +8,7 @@ import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, modal, confirmDialog, stateBlock, segmented } from '../core/ui.js';
 import { onLive } from '../core/live.js';
-import { chatView, fmtTime } from '../community/chat.js';
+import { chatView, fmtTime, tokensToNames } from '../community/chat.js';
 import { musicView } from '../community/music.js';
 import { sendSnap, openSnap, storyStrip } from '../community/snaps.js';
 import { reportDialog, memberCard, inviteDialog, serverSettings, reportsView, ROLE_DA, RANK } from '../community/admin.js';
@@ -82,7 +82,9 @@ function buildApp(cm, params) {
   }
   function setPane(p) { shell.dataset.pane = p; }
 
-  async function loadServers() { try { S.servers = (await api.get('/api/cm/servers')).servers; } catch { /* */ } drawRail(); }
+  async function loadServers() { try { S.servers = (await api.get('/api/cm/servers')).servers; } catch { /* */ } drawRail(); loadEmojis(); }
+  /** the servers' own emojis that I can use (in every chat) */
+  async function loadEmojis() { try { cm.emojis = (await api.get('/api/cm/emojis')).emojis; } catch { /* */ } }
   async function loadDms() { try { S.dms = (await api.get('/api/cm/dms')).dms; } catch { /* */ } if (!S.detail) drawSide(); drawRail(); }
   async function loadFriends() { try { S.friends = await api.get('/api/cm/friends'); } catch { /* */ } if (!S.detail) drawSide(); drawRail(); }
   const reloadServers = debounce(loadServers, 400), reloadDms = debounce(loadDms, 400);
@@ -116,7 +118,7 @@ function buildApp(cm, params) {
         h('div', { class: 'cm-side-sec' }, h('span', null, 'Private beskeder')),
         S.dms.length ? S.dms.map(d => h('button', { class: ['cm-dm', S.view === d.channel && 'is-active', d.unread && 'is-unread'], onclick: () => go(`/dm/${d.channel}`) },
           h('span', { class: ['cm-ava', d.user.online && 'is-online', d.user.presence === 'busy' && 'is-busy'] }, ava(d.user.avatar)),
-          h('span', { class: 'cm-dm-t' }, h('b', null, d.user.name), h('span', { class: 'faint' }, d.snaps ? `📸 ${d.snaps} ny snap` : d.last ? `${d.last.mine ? 'Dig: ' : ''}${d.last.body}` : 'Sig hej 👋')),
+          h('span', { class: 'cm-dm-t' }, h('b', null, d.user.name), h('span', { class: 'faint' }, d.snaps ? `📸 ${d.snaps} ny snap` : d.last ? `${d.last.mine ? 'Dig: ' : ''}${tokensToNames(d.last.body)}` : 'Sig hej 👋')),
           d.unread ? h('span', { class: 'cm-badge' }, String(d.unread)) : null))
           : h('p', { class: 'faint cm-side-empty' }, 'Når du har venner, kan I skrive sammen her.')));
   }
@@ -343,7 +345,7 @@ function buildApp(cm, params) {
         h(clear(list), null, res.length ? res.map(m => h('button', { class: 'sc-item cm-search-hit', role: 'listitem', onclick: () => { md.close(); S.chat?.jumpTo(m.id); } },
           h('span', { class: 'cm-ava' }, ava(m.user.avatar)),
           h('div', null, h('div', null, h('b', null, m.user.name), h('span', { class: 'faint' }, ' · ' + new Date(m.at * 1000).toLocaleString('da-DK', { dateStyle: 'medium', timeStyle: 'short' }))),
-            h('div', { class: 'cm-search-body' }, mark((m.body || '').slice(0, 220), word)))))
+            h('div', { class: 'cm-search-body' }, mark(tokensToNames(m.body || '').slice(0, 220), word)))))
           : h('p', { class: 'faint' }, `Ingen beskeder med “${word}”.`));
       } catch (e) { h(clear(list), null, h('p', { class: 'field-error' }, e.message)); }
     };
@@ -386,7 +388,7 @@ function buildApp(cm, params) {
         h('button', { class: 'btn btn-primary', onclick: async () => { try { await api.post(`/api/cm/servers/${sid}/rules`); S.detail.me.rulesAccepted = true; S.chat?.refreshComposer(); toast('Velkommen! Nu kan du skrive.', { type: 'ok' }); } catch (e) { toast('Det mislykkedes', { type: 'bad', text: e.message }); } } }, icon('check'), 'Jeg accepterer reglerne'));
     };
     const readOnlyText = () => S.detail.me.mutedUntil * 1000 > Date.now() ? `Du er gjort tavs indtil ${new Date(S.detail.me.mutedUntil * 1000).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' })}.` : `Kun ${ROLE_DA[c.postRole].toLowerCase()}e og højere kan skrive i #${c.name}.`;
-    const chat = chatView(cm, { channelId: c.id, title: c.name, topic: c.topic, canWrite, gate, readOnlyText, onReport: reportDialog, onUser: openUser,
+    const chat = chatView(cm, { channelId: c.id, serverId: sid, title: c.name, topic: c.topic, canWrite, gate, readOnlyText, onReport: reportDialog, onUser: openUser,
       canModerate: () => RANK[S.detail?.me.role] >= 2, placeholder: c.kind === 'music' ? `Snak om musikken i #${c.name}` : `Skriv i #${c.name}`,
       onRead: () => { const ch = S.detail?.channels.find(x => x.id === c.id); if (ch && ch.unread) { const srv = S.servers.find(x => x.id === sid); if (srv) srv.unread = Math.max(0, srv.unread - ch.unread); ch.unread = 0; drawSide(); drawRail(); } } });
     S.chat = chat;
@@ -491,6 +493,7 @@ function buildApp(cm, params) {
       case 'friends': loadFriends().then(() => { if (S.view === 'friends') friendsView(); }); loadDms(); break;
       case 'snap': case 'snap-opened': reloadDms(); if (S.view === 'snaps') S.reloadSnaps?.(); break;
       case 'stories': S.strip?.reload(); break;
+      case 'emojis': loadEmojis(); break;
       case 'reset':
         loadServers(); loadDms(); loadFriends();
         if (S.chat) S.chat.reload();

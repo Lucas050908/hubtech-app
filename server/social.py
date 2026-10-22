@@ -1006,6 +1006,9 @@ def _messages_out(rows, uid):
     reacts = {}
     for x in db.all_rows(f"SELECT message_id, user_id, emoji FROM cm_reactions WHERE message_id IN ({','.join('?' * len(ids))})", ids):
         e = reacts.setdefault(x["message_id"], {}).setdefault(x["emoji"], {"emoji": x["emoji"], "count": 0, "me": False})
+        if x["emoji"].startswith("c:") and "custom" not in e:
+            ce = db.one("SELECT id, name, server_id FROM cm_emojis WHERE id = ?", (x["emoji"][2:],))
+            e["custom"] = _emoji_card(ce) if ce else None
         e["count"] += 1
         e["me"] = e["me"] or x["user_id"] == uid
     files = {}
@@ -1069,6 +1072,7 @@ def cm_message_send(req, params):
             raise ApiError(400, "Filen findes ikke.", "invalid")
     if not body and not attach and not fid:
         raise ApiError(400, "Skriv en besked.", "empty")
+    body = _expand_emojis(body, u["id"], c["server_id"] if c else None)
     if c:
         if c["kind"] == "music" and fid:
             pass
@@ -1117,6 +1121,7 @@ def cm_message_edit(req, params):
         raise ApiError(403, "Du kan kun rette dine egne beskeder.", "forbidden")
     audience, c, _, _ = _channel_access(r["channel_id"], u["id"])
     body = body_str(req.json(), "body", MAX_MSG, required=not r["file_id"] and not r["attach"])
+    body = _expand_emojis(body, u["id"], c["server_id"] if c else None)
     if c:
         body = _mask(body, _server(c["server_id"])["word_filter"])
     db.q("UPDATE cm_messages SET body = ?, edited_at = ? WHERE id = ?", (body, db.now(), r["id"]))
@@ -1146,7 +1151,11 @@ def cm_message_react(req, params):
     if c and not mem["rules_accepted_at"]:
         raise ApiError(403, "Accepter serverens regler først.", "rules")
     emoji = req.json().get("emoji")
-    if emoji not in EMOJI:
+    if isinstance(emoji, str) and emoji.startswith("c:"):     # a custom emoji from a server you're in
+        e = db.one("SELECT server_id FROM cm_emojis WHERE id = ?", (emoji[2:40],))
+        if not e or not _member(e["server_id"], u["id"]):
+            raise ApiError(400, "Den emoji kan du ikke bruge.", "invalid")
+    elif emoji not in EMOJI:
         raise ApiError(400, "Den reaktion findes ikke.", "invalid")
     if db.one("SELECT 1 FROM cm_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?", (r["id"], u["id"], emoji)):
         db.q("DELETE FROM cm_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?", (r["id"], u["id"], emoji))
@@ -1279,6 +1288,121 @@ def cm_file_get(req, params):
         return 206, data[start:end + 1], headers
     headers["Accept-Ranges"] = "bytes"
     return 200, data, headers
+
+
+# ══ Custom emojis: each server can have its own (moderators upload them) ══
+EMOJI_NAME_RE = re.compile(r"^[a-z0-9_]{2,32}$")
+EMOJI_TOKEN_RE = re.compile(r"<:([a-z0-9_]{2,32}):(e[0-9a-f]{16})>")
+MAX_EMOJIS = 50
+MAX_EMOJI_BYTES = 256 * 1024
+
+
+def _emoji_card(e, server_name=None):
+    out = {"id": e["id"], "name": e["name"], "serverId": e["server_id"], "url": f"/api/cm/emojis/{e['id']}"}
+    if server_name is not None:
+        out["serverName"] = server_name
+    return out
+
+
+def _my_emojis(uid):
+    return db.all_rows("SELECT e.id, e.name, e.server_id, s.name AS server_name FROM cm_emojis e JOIN cm_members m ON m.server_id = e.server_id AND m.user_id = ? "
+                       "JOIN cm_servers s ON s.id = e.server_id ORDER BY s.name, e.name", (uid,))
+
+
+def _expand_emojis(body, uid, server_id=None):
+    """:navn: becomes <:navn:id> when you can use a custom emoji by that name (this server's own first)."""
+    if ":" not in body:
+        return body
+    mine = _my_emojis(uid)
+    if not mine:
+        return body
+    by_name = {}
+    for e in sorted(mine, key=lambda e: e["server_id"] != server_id):
+        by_name.setdefault(e["name"], e["id"])
+    # leave code and existing tokens alone
+    parts = re.split(r"(```[\s\S]*?```|`[^`\n]+`|<:[a-z0-9_]{2,32}:e[0-9a-f]{16}>)", body)
+    for i in range(0, len(parts), 2):
+        parts[i] = re.sub(r":([a-z0-9_]{2,32}):", lambda m: f"<:{m.group(1)}:{by_name[m.group(1)]}>" if m.group(1) in by_name else m.group(0), parts[i])
+    return "".join(parts)
+
+
+def cm_emojis(req, _):
+    u = require_cm(req)
+    return 200, {"emojis": [_emoji_card(e, e["server_name"]) for e in _my_emojis(u["id"])], "max": MAX_EMOJIS}
+
+
+def cm_server_emojis(req, params):
+    u = require_cm(req)
+    s = _server(params["sid"])
+    _need(s["id"], u["id"])
+    rows = db.all_rows("SELECT * FROM cm_emojis WHERE server_id = ? ORDER BY name", (s["id"],))
+    return 200, {"emojis": [_emoji_card(e) for e in rows], "max": MAX_EMOJIS}
+
+
+def cm_emoji_add(req, params):
+    u = require_cm(req)
+    s = _server(params["sid"])
+    _need(s["id"], u["id"], "moderator")
+    from urllib.parse import unquote
+    name = unquote(req.headers.get("X-Emoji-Name") or "").strip().lower().strip(":")
+    name = re.sub(r"[^a-z0-9_]+", "_", name.replace("æ", "ae").replace("ø", "oe").replace("å", "aa")).strip("_")[:32]
+    if not EMOJI_NAME_RE.match(name):
+        raise ApiError(400, "Navnet skal være 2–32 tegn: bogstaver a–z, tal og _.", "invalid", {"field": "name"})
+    raw = req.raw_body()
+    if not raw:
+        raise ApiError(400, "Ingen fil modtaget.", "invalid")
+    kind, mime = _sniff(raw)
+    if kind != "image":
+        raise ApiError(400, "En emoji skal være et billede (PNG, GIF, WebP eller JPEG).", "invalid_type")
+    if len(raw) > MAX_EMOJI_BYTES:
+        raise ApiError(413, "Billedet er for stort til en emoji (højst 256 KB). Gør det mindre, fx 128 × 128 pixels.", "too_large")
+    if db.one("SELECT COUNT(*) AS n FROM cm_emojis WHERE server_id = ?", (s["id"],))["n"] >= MAX_EMOJIS:
+        raise ApiError(409, f"Serveren har allerede {MAX_EMOJIS} emojis. Slet en først.", "full")
+    if db.one("SELECT 1 FROM cm_emojis WHERE server_id = ? AND name = ?", (s["id"], name)):
+        raise ApiError(409, f"Der er allerede en emoji, der hedder :{name}:.", "exists", {"field": "name"})
+    eid = _uid("e")
+    db.q("INSERT INTO cm_emojis(id, server_id, name, mime, data, user_id, created_at) VALUES(?,?,?,?,?,?,?)", (eid, s["id"], name, mime, raw, u["id"], db.now()))
+    e = db.one("SELECT * FROM cm_emojis WHERE id = ?", (eid,))
+    live.publish(_server_member_ids(s["id"]), {"type": "emojis", "server": s["id"]})
+    return 201, {"emoji": _emoji_card(e)}
+
+
+def _emoji_row(eid):
+    e = db.one("SELECT * FROM cm_emojis WHERE id = ?", (eid,)) if re.match(r"^e[0-9a-f]{16}$", eid or "") else None
+    if not e:
+        raise ApiError(404, "Emojien findes ikke.", "not_found")
+    return e
+
+
+def cm_emoji_rename(req, params):
+    u = require_cm(req)
+    e = _emoji_row(params["eid"])
+    _need(e["server_id"], u["id"], "moderator")
+    name = str(req.json().get("name") or "").strip().lower().strip(":")
+    if not EMOJI_NAME_RE.match(name):
+        raise ApiError(400, "Navnet skal være 2–32 tegn: bogstaver a–z, tal og _.", "invalid", {"field": "name"})
+    if db.one("SELECT 1 FROM cm_emojis WHERE server_id = ? AND name = ? AND id != ?", (e["server_id"], name, e["id"])):
+        raise ApiError(409, f"Der er allerede en emoji, der hedder :{name}:.", "exists", {"field": "name"})
+    db.q("UPDATE cm_emojis SET name = ? WHERE id = ?", (name, e["id"]))
+    live.publish(_server_member_ids(e["server_id"]), {"type": "emojis", "server": e["server_id"]})
+    return 200, {"emoji": _emoji_card(db.one("SELECT * FROM cm_emojis WHERE id = ?", (e["id"],)))}
+
+
+def cm_emoji_delete(req, params):
+    u = require_cm(req)
+    e = _emoji_row(params["eid"])
+    _need(e["server_id"], u["id"], "moderator")
+    db.q("DELETE FROM cm_emojis WHERE id = ?", (e["id"],))
+    db.q("DELETE FROM cm_reactions WHERE emoji = ?", ("c:" + e["id"],))
+    live.publish(_server_member_ids(e["server_id"]), {"type": "emojis", "server": e["server_id"]})
+    return 200, {"ok": True}
+
+
+def cm_emoji_get(req, params):
+    require_cm(req)
+    e = _emoji_row(params["eid"])
+    return 200, bytes(e["data"]), {"Content-Type": e["mime"], "Cache-Control": "private, max-age=604800, immutable",
+                                   "Content-Security-Policy": "default-src 'none'; sandbox", "X-Content-Type-Options": "nosniff"}
 
 
 # ══ Snaps (view once, friends only) and stories (24 h) ════════════════════
@@ -1716,6 +1840,12 @@ ROUTES = [
     ("DELETE", r"/api/cm/messages/(?P<mid>\d+)", cm_message_delete),
     ("POST", r"/api/cm/messages/(?P<mid>\d+)/react", cm_message_react),
     ("POST", r"/api/cm/files", cm_file_upload),
+    ("GET", r"/api/cm/emojis", cm_emojis),
+    ("GET", r"/api/cm/servers/(?P<sid>s[0-9a-f]+)/emojis", cm_server_emojis),
+    ("POST", r"/api/cm/servers/(?P<sid>s[0-9a-f]+)/emojis", cm_emoji_add),
+    ("GET", r"/api/cm/emojis/(?P<eid>e[0-9a-f]{16})", cm_emoji_get),
+    ("PATCH", r"/api/cm/emojis/(?P<eid>e[0-9a-f]{16})", cm_emoji_rename),
+    ("DELETE", r"/api/cm/emojis/(?P<eid>e[0-9a-f]{16})", cm_emoji_delete),
     ("GET", r"/api/cm/files/(?P<fid>[A-Za-z0-9_-]+)", cm_file_get),
     ("GET", r"/api/cm/snaps", cm_snaps),
     ("POST", r"/api/cm/snaps", cm_snap_send),

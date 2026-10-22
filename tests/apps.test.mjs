@@ -197,3 +197,23 @@ console.log('apps ok');
   const fq = C.fromFEN('4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1'); assert.equal(C.sqName(C.bestMove(fq, 'medium', () => 0.5).to), 'd5');
   console.log('chess ok');
 }
+{
+  const C = await import('../web/js/features/chess.js');
+  // the clock: starts after white's first move, the increment is added, running out loses
+  const s = C.setClock(C.newGame(), '3+2');
+  assert.equal(s.clock.w, 180000);
+  C.play(s, C.sqIndex('e2'), C.sqIndex('e4'), 'q', 1000);
+  assert.equal(s.clock.w, 182000, 'hvid får tillægget, men tiden før første træk tæller ikke');
+  assert.equal(C.clockLeft(s, 'b', 11000), 170000, 'sorts ur går');
+  C.play(s, C.sqIndex('e7'), C.sqIndex('e5'), 'q', 11000);
+  assert.equal(s.clock.b, 172000);
+  assert.equal(C.checkFlag(s, 11000 + 181000), false);
+  assert.equal(C.play(s, C.sqIndex('g1'), C.sqIndex('f3'), 'q', 11000 + 183000), null, 'for sent');
+  assert.deepEqual(s.result, { winner: 'b', why: 'time' });
+  // a lone king can't win on time
+  const k = C.setClock(C.fromFEN('4k3/4p3/8/8/8/8/8/4K3 b - - 0 1'), '5+0'); k.clock.since = 0;
+  assert.ok(C.checkFlag(k, 400000)); assert.equal(k.result.why, 'timeDraw');
+  assert.equal(C.fmtClock(65000), '1:05'); assert.equal(C.fmtClock(9950), '0:09.9');
+  const d = C.newGame(); C.agreeDraw(d); assert.equal(d.result.why, 'agreed');
+  console.log('chess clock ok');
+}

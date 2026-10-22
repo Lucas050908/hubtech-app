@@ -322,9 +322,65 @@ class SocialTest(unittest.TestCase):
         self.assertIn("sandbox", hdr["Content-Security-Policy"])
 
 
+    def emoji_upload(self, client, sid, raw, name):
+        h = {"Content-Type": "application/octet-stream", "X-Requested-With": "hubtech", "X-Emoji-Name": name}
+        r = urllib.request.Request(f"{self.base}/api/cm/servers/{sid}/emojis", data=raw, method="POST", headers=h)
+        try:
+            with client.opener.open(r, timeout=10) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def test_zz_custom_emojis(self):      # last: it adds a server and a friendship
+        a, b, d = self.a, self.b, self.d
+        self.join_cm(a, b, d)
+        sid = a.req("POST", "/api/cm/servers", {"name": "Emojiland"})[1]["server"]["id"]
+        general = a.req("GET", f"/api/cm/servers/{sid}")[1]["channels"][1]["id"]
+        code = a.req("POST", f"/api/cm/servers/{sid}/invites", {"hours": 1})[1]["code"]
+        b.req("POST", f"/api/cm/invites/{code}/join"); b.req("POST", f"/api/cm/servers/{sid}/rules")
+        # only moderators and up add emojis; names are checked; only pictures
+        self.assertEqual(self.emoji_upload(b, sid, PNG, "kat")[0], 403)
+        self.assertEqual(self.emoji_upload(a, sid, PNG, "x")[0], 400)
+        self.assertEqual(self.emoji_upload(a, sid, MP3, "lyd")[0], 400)
+        self.assertEqual(self.emoji_upload(a, sid, PNG + b"\0" * 300_000, "stor")[0], 413)
+        st, body = self.emoji_upload(a, sid, PNG, "Glad%20Kat")
+        self.assertEqual(st, 201, body)
+        e = body["emoji"]
+        self.assertEqual(e["name"], "glad_kat")
+        self.assertEqual(self.emoji_upload(a, sid, PNG, "glad_kat")[0], 409)
+        self.assertEqual([x["name"] for x in b.req("GET", "/api/cm/emojis")[1]["emojis"]], ["glad_kat"])
+        self.assertEqual(d.req("GET", "/api/cm/emojis")[1]["emojis"], [], "not a member")
+        # :navn: in a message becomes a token; code is left alone
+        st, body, _ = b.req("POST", f"/api/cm/channels/{general}/messages", {"body": "hej :glad_kat: og `:glad_kat:` og :ukendt:"})
+        self.assertEqual(body["message"]["body"], f"hej <:glad_kat:{e['id']}> og `:glad_kat:` og :ukendt:")
+        mid = body["message"]["id"]
+        # the picture
+        r = urllib.request.Request(f"{self.base}{e['url']}")
+        with b.opener.open(r, timeout=5) as resp:
+            self.assertEqual((resp.headers["Content-Type"], resp.read()), ("image/png", PNG))
+        # reactions with a custom emoji – only for members of its server
+        st, body, _ = b.req("POST", f"/api/cm/messages/{mid}/react", {"emoji": f"c:{e['id']}"})
+        self.assertEqual(st, 200, body)
+        self.assertEqual(body["message"]["reactions"][0]["custom"]["name"], "glad_kat")
+        # in a private chat, a member can use it; someone outside the server can't
+        b.req("POST", "/api/cm/friends", {"username": "dina"}); d.req("POST", f"/api/cm/friends/{self.ids['bent']}/accept")
+        dm = f"dm-{min(self.ids['bent'], self.ids['dina'])}-{max(self.ids['bent'], self.ids['dina'])}"
+        st, body, _ = b.req("POST", f"/api/cm/channels/{dm}/messages", {"body": ":glad_kat:"})
+        self.assertEqual(st, 201, body)
+        self.assertIn(e["id"], body["message"]["body"])
+        st, body, _ = d.req("POST", f"/api/cm/channels/{dm}/messages", {"body": ":glad_kat:"})
+        self.assertEqual(body["message"]["body"], ":glad_kat:")
+        self.assertEqual(d.req("POST", f"/api/cm/messages/{body['message']['id']}/react", {"emoji": f"c:{e['id']}"})[0], 400)
+        # rename and delete (the reactions go too)
+        self.assertEqual(b.req("PATCH", f"/api/cm/emojis/{e['id']}", {"name": "kat"})[0], 403)
+        self.assertEqual(a.req("PATCH", f"/api/cm/emojis/{e['id']}", {"name": "kat"})[1]["emoji"]["name"], "kat")
+        self.assertEqual(a.req("DELETE", f"/api/cm/emojis/{e['id']}")[0], 200)
+        self.assertEqual(a.req("GET", f"/api/cm/messages/{mid}")[0] in (404, 405), True)
+        msgs = a.req("GET", f"/api/cm/channels/{general}/messages")[1]["messages"]
+        self.assertEqual(next(m for m in msgs if m["id"] == mid)["reactions"], [])
+
 if __name__ == "__main__":
     unittest.main()
-
 
 class CallsTest(SocialTest):
     """Voice/video calls: ringing friends, relaying WebRTC signals, voice channels."""

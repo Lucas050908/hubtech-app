@@ -18,19 +18,37 @@ export function fmtTime(sec) {
   return `${d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' })} ${t}`;
 }
 
-/** text → DOM: ```code```, `code`, **fed**, links and @omtaler. Never HTML. */
-export function fmtBody(text, meName) {
+/** A server's own emoji: <:navn:id> in the text. If it has been deleted, :navn: is shown instead. */
+export const EMOJI_TOKEN = /<:([a-z0-9_]{2,32}):(e[0-9a-f]{16})>/g;
+export function customEmoji(name, id, big = false) {
+  const img = h('img', { class: ['cm-cemoji', big && 'is-big'], src: `/api/cm/emojis/${id}`, alt: `:${name}:`, title: `:${name}:`, decoding: 'async', draggable: 'false' });
+  img.addEventListener('error', () => img.replaceWith(document.createTextNode(`:${name}:`)), { once: true });
+  return img;
+}
+/** Only emojis (max 6) – shown bigger, like in other chat apps. */
+export function onlyEmoji(text) {
+  const t = String(text || '').replace(EMOJI_TOKEN, '\u2B50').replace(/\s+/g, '');
+  if (!t || t.length > 40) return false;
+  const seg = [...new Intl.Segmenter('da', { granularity: 'grapheme' }).segment(t)].map(x => x.segment);
+  return seg.length <= 6 && seg.every(g => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(g));
+}
+/** <:navn:id> → :navn: (for the edit box). */
+export const tokensToNames = (text) => String(text || '').replace(EMOJI_TOKEN, ':$1:');
+
+/** text → DOM: ```code```, `code`, **fed**, links, @omtaler and the servers' own emojis. Never HTML. */
+export function fmtBody(text, meName, big = false) {
   const out = [];
   const parts = String(text || '').split(/```(?:[a-z0-9+#-]*\n)?([\s\S]*?)```/i);
   parts.forEach((p, i) => {
     if (i % 2) { out.push(h('pre', { class: 'cm-code', tabindex: '0', role: 'region', 'aria-label': 'Kode' }, h('code', null, p.replace(/\n$/, '')))); return; }
-    const rx = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])|`([^`\n]+)`|\*\*([^*\n]+)\*\*|(^|\s)@([A-Za-z0-9._-]{3,32})/g;
+    const rx = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])|`([^`\n]+)`|\*\*([^*\n]+)\*\*|(^|\s)@([A-Za-z0-9._-]{3,32})|<:([a-z0-9_]{2,32}):(e[0-9a-f]{16})>/g;
     let last = 0, m;
     while ((m = rx.exec(p))) {
       if (m.index > last) out.push(p.slice(last, m.index));
       if (m[1]) out.push(h('a', { href: m[1], target: '_blank', rel: 'noopener noreferrer nofollow' }, m[1].length > 60 ? m[1].slice(0, 57) + '…' : m[1]));
       else if (m[2]) out.push(h('code', { class: 'cm-ic' }, m[2]));
       else if (m[3]) out.push(h('b', null, m[3]));
+      else if (m[6]) out.push(customEmoji(m[6], m[7], big));
       else { out.push(m[4]); out.push(h('span', { class: ['cm-mention', meName && m[5].toLowerCase() === meName.toLowerCase() && 'is-me'] }, '@' + m[5])); }
       last = rx.lastIndex;
     }
@@ -126,8 +144,41 @@ export function chatView(cm, opt) {
   const replyBar = h('div', { class: 'cm-replybar', hidden: true });
   const input = h('textarea', { class: 'cm-input', rows: 1, maxlength: 2000, placeholder: opt.placeholder || `Skriv i ${opt.title}`, 'aria-label': 'Besked', enterkeyhint: 'send' });
   const fileIn = h('input', { type: 'file', accept: 'image/*,audio/*', hidden: true });
-  const emojiPop = h('div', { class: 'cm-emoji-pop', hidden: true, role: 'dialog', 'aria-label': 'Vælg emoji' },
-    [...cm.me.emoji, ...EXTRA_EMOJI].map(e => h('button', { type: 'button', class: 'cm-emoji', onclick: () => { insert(e); emojiPop.hidden = true; input.focus(); } }, e)));
+  const emojiPop = h('div', { class: 'cm-emoji-pop', hidden: true, role: 'dialog', 'aria-label': 'Vælg emoji' });
+  const suggest = h('div', { class: 'cm-emoji-suggest', hidden: true, role: 'listbox', 'aria-label': 'Emojis' });
+  /** The custom emojis I can use here: this server's own first. */
+  const myCustom = () => {
+    const all = cm.emojis || [];
+    return [...all.filter(e => e.serverId === opt.serverId), ...all.filter(e => e.serverId !== opt.serverId)];
+  };
+  function drawEmojiPop() {
+    const custom = myCustom(), here = custom.filter(e => e.serverId === opt.serverId), other = custom.filter(e => e.serverId !== opt.serverId);
+    const pick = (t) => { insert(t); emojiPop.hidden = true; input.focus(); };
+    const cbtn = (e) => h('button', { type: 'button', class: 'cm-emoji', title: `:${e.name}:`, 'aria-label': `:${e.name}:`, onclick: () => pick(`:${e.name}: `) }, customEmoji(e.name, e.id));
+    h(clear(emojiPop), null,
+      here.length ? [h('div', { class: 'cm-emoji-h' }, 'Serverens emojis'), h('div', { class: 'cm-emoji-grid' }, here.map(cbtn))] : null,
+      other.length ? [h('div', { class: 'cm-emoji-h' }, here.length ? 'Fra dine andre servere' : 'Fra dine servere'), h('div', { class: 'cm-emoji-grid' }, other.slice(0, 60).map(cbtn))] : null,
+      custom.length ? h('div', { class: 'cm-emoji-h' }, 'Almindelige') : null,
+      h('div', { class: 'cm-emoji-grid' }, [...cm.me.emoji, ...EXTRA_EMOJI].map(e => h('button', { type: 'button', class: 'cm-emoji', onclick: () => pick(e) }, e))));
+  }
+  // typing :na shows the custom emojis whose name starts with "na"
+  let sugg = [];
+  function drawSuggest() {
+    const pos = input.selectionStart ?? input.value.length;
+    const m = /(^|\s):([a-z0-9_]{2,32})$/.exec(input.value.slice(0, pos));
+    sugg = m ? myCustom().filter(e => e.name.startsWith(m[2])).slice(0, 6) : [];
+    suggest.hidden = !sugg.length;
+    if (!sugg.length) return;
+    h(clear(suggest), null, sugg.map((e, i) => h('button', { type: 'button', role: 'option', class: ['cm-sugg', i === 0 && 'is-first'], 'aria-selected': String(i === 0), onmousedown: (ev) => ev.preventDefault(), onclick: () => useSuggest(e) },
+      customEmoji(e.name, e.id), h('span', null, `:${e.name}:`), i === 0 ? h('kbd', null, 'Tab') : null)));
+  }
+  function useSuggest(e) {
+    const pos = input.selectionStart ?? input.value.length, before = input.value.slice(0, pos);
+    const start = before.lastIndexOf(':');
+    input.value = before.slice(0, start) + `:${e.name}: ` + input.value.slice(pos);
+    input.selectionStart = input.selectionEnd = start + e.name.length + 3;
+    suggest.hidden = true; sugg = []; autosize(); input.focus();
+  }
   const sendBtn = h('button', { class: 'cm-send', 'aria-label': 'Send', title: 'Send (Enter)', onclick: () => send() }, icon('send'));
 
   const insert = (t) => { const s = input.selectionStart ?? input.value.length; input.value = input.value.slice(0, s) + t + input.value.slice(input.selectionEnd ?? s); input.selectionStart = input.selectionEnd = s + t.length; autosize(); };
@@ -136,7 +187,11 @@ export function chatView(cm, opt) {
     autosize();
     if (input.value.trim() && Date.now() - lastTyping > 3000) { lastTyping = Date.now(); api.post(`/api/cm/channels/${cid}/typing`).catch(() => {}); }
   });
+  input.addEventListener('input', drawSuggest);
+  input.addEventListener('blur', () => setTimeout(() => { suggest.hidden = true; }, 150));
   input.addEventListener('keydown', (e) => {
+    if (sugg.length && !suggest.hidden && (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey))) { e.preventDefault(); useSuggest(sugg[0]); return; }
+    if (e.key === 'Escape' && !suggest.hidden) { suggest.hidden = true; sugg = []; return; }
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); send(); }
     if (e.key === 'Escape') { setReply(null); stopEdit(); }
     if (e.key === 'ArrowUp' && !input.value) { const mine = [...messages].reverse().find(m => m.user.id === cm.me.user.id && !m.deleted && m.body); if (mine) { e.preventDefault(); startEdit(mine); } }
@@ -153,13 +208,13 @@ export function chatView(cm, opt) {
   function setReply(m) {
     replyTo = m;
     replyBar.hidden = !m;
-    if (m) h(clear(replyBar), null, icon('reply'), h('span', null, 'Svarer ', h('b', null, m.user.name), ': ', (m.body || 'fil').slice(0, 80)),
+    if (m) h(clear(replyBar), null, icon('reply'), h('span', null, 'Svarer ', h('b', null, m.user.name), ': ', tokensToNames(m.body || 'fil').slice(0, 80)),
       h('button', { class: 'icon-btn', 'aria-label': 'Annuller svar', onclick: () => setReply(null) }, icon('x')));
     if (m) input.focus();
   }
   function startEdit(m) {
     editing = m; setReply(null);
-    input.value = m.body; autosize(); input.focus();
+    input.value = tokensToNames(m.body); autosize(); input.focus();
     replyBar.hidden = false;
     h(clear(replyBar), null, icon('edit'), h('span', null, 'Retter din besked – Esc for at annullere'), h('button', { class: 'icon-btn', 'aria-label': 'Annuller', onclick: stopEdit }, icon('x')));
   }
@@ -191,7 +246,9 @@ export function chatView(cm, opt) {
     api.post(`/api/cm/messages/${m.id}/react`, { emoji }).then(r => replace(r.message)).catch(e => toast('Det mislykkedes', { type: 'bad', text: e.message }));
   }
   function reactMenu(m, anchor) {
-    const pop = h('div', { class: 'cm-react-pop', role: 'menu' }, cm.me.emoji.map(e => h('button', { type: 'button', role: 'menuitem', class: 'cm-emoji', 'aria-label': `Reagér med ${e}`, onclick: () => { pop.remove(); react(m, e); } }, e)));
+    const pop = h('div', { class: 'cm-react-pop', role: 'menu' },
+      cm.me.emoji.map(e => h('button', { type: 'button', role: 'menuitem', class: 'cm-emoji', 'aria-label': `Reagér med ${e}`, onclick: () => { pop.remove(); react(m, e); } }, e)),
+      myCustom().slice(0, 14).map(e => h('button', { type: 'button', role: 'menuitem', class: 'cm-emoji', title: `:${e.name}:`, 'aria-label': `Reagér med :${e.name}:`, onclick: () => { pop.remove(); react(m, `c:${e.id}`); } }, customEmoji(e.name, e.id))));
     anchor.closest('.cm-msg').appendChild(pop);
     const off = (ev) => { if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener('pointerdown', off, true); } };
     setTimeout(() => document.addEventListener('pointerdown', off, true));
@@ -215,12 +272,13 @@ export function chatView(cm, opt) {
         : h('button', { type: 'button', class: 'cm-ava cm-ava-lg', 'aria-label': `Profil: ${m.user.name}`, onclick: () => opt.onUser?.(m.user) }, ava(m.user.avatar, '👤')),
       h('div', { class: 'cm-msg-b' },
         grouped ? null : h('div', { class: 'cm-msg-h' }, h('button', { type: 'button', class: 'cm-name', onclick: () => opt.onUser?.(m.user) }, m.user.name), h('time', { class: 'faint', datetime: new Date(m.at * 1000).toISOString() }, fmtTime(m.at))),
-        m.reply ? h('button', { type: 'button', class: 'cm-reply', onclick: () => list.querySelector(`[data-id="${m.reply.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, icon('reply'), h('b', null, m.reply.user), ' ', m.reply.body) : null,
-        m.deleted ? h('p', { class: 'cm-text faint' }, h('i', null, 'Beskeden er slettet')) : m.body ? h('p', { class: 'cm-text' }, fmtBody(m.body, meName), m.edited ? h('span', { class: 'cm-edited faint', title: fmtTime(m.edited) }, ' (rettet)') : null) : null,
+        m.reply ? h('button', { type: 'button', class: 'cm-reply', onclick: () => list.querySelector(`[data-id="${m.reply.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, icon('reply'), h('b', null, m.reply.user), ' ', tokensToNames(m.reply.body)) : null,
+        m.deleted ? h('p', { class: 'cm-text faint' }, h('i', null, 'Beskeden er slettet')) : m.body ? h('p', { class: ['cm-text', onlyEmoji(m.body) && 'is-jumbo'] }, fmtBody(m.body, meName, onlyEmoji(m.body)), m.edited ? h('span', { class: 'cm-edited faint', title: fmtTime(m.edited) }, ' (rettet)') : null) : null,
         f && f.kind === 'image' ? h('a', { class: 'cm-img', href: f.url, target: '_blank', rel: 'noopener' }, h('img', { src: f.url, alt: f.name || 'Billede', loading: 'lazy' })) : null,
         f && f.kind === 'audio' ? h('div', { class: 'cm-audio' }, icon('music'), h('span', null, f.name || 'Lydfil'), h('audio', { src: f.url, controls: true, preload: 'none' })) : null,
         m.attach ? attachCard(m.attach) : null,
-        m.reactions?.length ? h('div', { class: 'cm-reacts' }, m.reactions.map(r => h('button', { type: 'button', class: ['cm-react', r.me && 'is-me'], 'aria-pressed': String(r.me), 'aria-label': `${r.emoji} ${r.count}`, onclick: () => opt.canWrite() && react(m, r.emoji) }, r.emoji, h('span', null, String(r.count))))) : null),
+        m.reactions?.length ? h('div', { class: 'cm-reacts' }, m.reactions.map(r => h('button', { type: 'button', class: ['cm-react', r.me && 'is-me'], 'aria-pressed': String(r.me), 'aria-label': `${r.custom ? `:${r.custom.name}:` : r.emoji} ${r.count}`, title: r.custom ? `:${r.custom.name}:` : null, onclick: () => opt.canWrite() && react(m, r.emoji) },
+          r.emoji.startsWith('c:') ? (r.custom ? customEmoji(r.custom.name, r.custom.id) : '❔') : r.emoji, h('span', null, String(r.count))))) : null),
       tools);
     // touch screens: tap a message to show its actions
     el.addEventListener('click', (e) => {
@@ -302,7 +360,7 @@ export function chatView(cm, opt) {
           try { await post({ body: input.value.trim(), attach }); input.value = ''; autosize(); } catch (e) { toast('Kunne ikke dele', { type: 'bad', text: e.message }); }
         } }, icon('share')),
         input,
-        h('div', { class: 'cm-emoji-wrap' }, h('button', { class: 'icon-btn', 'aria-label': 'Emoji', 'aria-expanded': 'false', onclick: (e) => { emojiPop.hidden = !emojiPop.hidden; e.currentTarget.setAttribute('aria-expanded', String(!emojiPop.hidden)); } }, icon('smile')), emojiPop),
+        h('div', { class: 'cm-emoji-wrap' }, suggest, h('button', { class: 'icon-btn', 'aria-label': 'Emoji', 'aria-expanded': 'false', onclick: (e) => { if (emojiPop.hidden) drawEmojiPop(); emojiPop.hidden = !emojiPop.hidden; e.currentTarget.setAttribute('aria-expanded', String(!emojiPop.hidden)); } }, icon('smile')), emojiPop),
         sendBtn, fileIn),
       typingEl);
   }
