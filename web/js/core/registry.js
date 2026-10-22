@@ -272,6 +272,13 @@ export const APPS = [
     keywords: ['træning', 'fitness', 'motion', 'styrketræning', 'løb', 'sæt', 'gentagelser', 'vægt', 'rekord', 'workout'],
   },
   {
+    id: 'library', name: 'Bøger og film', tagline: 'Læs, se, spil – og husk det.',
+    description: 'En liste over de bøger, film, serier og spil, du vil i gang med, er i gang med og er færdig med. Hold styr på sider og afsnit, giv stjerner, skriv noter, og sæt et læsemål for året.',
+    icon: 'book', hue: 'var(--hue-library)', route: '#/apps/library', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'night', focusX: 0.5, tint: '#c084fc' }, page: () => import('../pages/library.js'),
+    keywords: ['bøger', 'bog', 'læse', 'læseliste', 'film', 'serie', 'serier', 'spil', 'watchlist', 'anmeldelse', 'stjerner', 'læsemål'],
+  },
+  {
     id: 'mealplan', name: 'Madplan', tagline: 'Ugens aftensmad og indkøbslisten.',
     description: 'Planlæg ugens aftensmad, gem jeres egne opskrifter, og få indkøbslisten lavet automatisk – mængderne regnes om til antal personer og lægges sammen, sorteret efter butikken. Kan udskrives.',
     icon: 'calendar', hue: 'var(--hue-mealplan)', route: '#/apps/mealplan', category: 'workspace', status: 'available',
@@ -396,6 +403,13 @@ export const APPS = [
     icon: 'chip', hue: 'var(--hue-hwtest)', route: '#/apps/hwtest', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'dawn', focusX: 0.5, tint: '#38bdf8' }, page: () => import('../pages/hwtest.js'),
     keywords: ['hardware', 'test', 'tastatur', 'skærm', 'døde pixels', 'højttaler', 'mikrofon', 'kamera', 'mus', 'touch', 'brugt computer'],
+  },
+  {
+    id: 'calculator', name: 'Regnemaskine', tagline: 'Lommeregner, omregner, moms og lån.',
+    description: 'Lommeregner med historik og videnskabelige funktioner, omregning af længde, vægt, rumfang, temperatur og mere, moms og procent, og hvad et lån eller en opsparing koster og giver.',
+    icon: 'calculator', hue: 'var(--hue-calculator)', route: '#/apps/calculator', category: 'workspace', status: 'available',
+    art: { season: 'winter', time: 'day', focusX: 0.4, tint: '#38bdf8' }, page: () => import('../pages/calculator.js'),
+    keywords: ['lommeregner', 'regne', 'beregner', 'omregner', 'enheder', 'moms', 'procent', 'rabat', 'lån', 'rente', 'opsparing', 'temperatur'],
   },
   {
     id: 'netcalc', name: 'Netværksberegner', tagline: 'Subnet, downloadtid og bytes.',

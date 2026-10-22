@@ -1453,6 +1453,29 @@ async def main():
         check("træning: ny rekord fejres", True)
         await page.click(".wo-page .segmented button:has-text('Fremskridt')"); await page.wait_for_selector(".wo-chart")
         await page.screenshot(path=f"{OUT}/app-workout-progress.png")
+        # ── Regnemaskine ──
+        await go("apps/calculator", ".calc-input")
+        await page.fill(".calc-input", "(2+3)·4^2 − √9"); await page.wait_for_timeout(100)
+        check("regnemaskine: viser resultatet, mens man skriver", "77" in await page.inner_text(".calc-result"))
+        await page.press(".calc-input", "Enter")
+        check("regnemaskine: = og historik", await page.input_value(".calc-input") == "77" and "77" in await page.inner_text(".calc-hist"))
+        await page.click(".calc-key[aria-label='Divider']"); await page.click(".calc-key:text-is('0')"); await page.click(".calc-key.is-eq")
+        check("regnemaskine: forklarer fejl på dansk", "dividere med 0" in await page.inner_text(".calc-result"))
+        await page.screenshot(path=f"{OUT}/app-calculator.png")
+        await page.click(".calc-page .segmented button:has-text('Lån og opsparing')"); await page.wait_for_selector(".calc-out")
+        check("regnemaskine: lån pr. måned", "3.866,56 kr." in await page.inner_text(".calc-out"))
+        # ── Bøger og film ──
+        await go("apps/library", ".bk-tools")
+        await page.click(".bk-page button:has-text('Tilføj')"); await page.wait_for_selector(".modal input[aria-label='Titel']")
+        await page.fill(".modal input[aria-label='Titel']", "Den store rejse"); await page.fill(".modal input[aria-label='Af']", "Ida Holm")
+        await page.click(".modal .segmented button:has-text('I gang')"); await page.fill(".modal input[aria-label='I alt']", "20")
+        await page.click(".modal button:has-text('Gem')"); await page.wait_for_selector(".bk-item")
+        await page.click(".bk-item button[aria-label='Frem i Den store rejse']"); await page.click(".bk-item button[aria-label='Frem i Den store rejse']")
+        await page.wait_for_selector(".bk-item.is-done", timeout=3000)
+        await page.click(".bk-item button[aria-label='4 stjerner']"); await page.wait_for_timeout(1500)
+        lib = (await api(page, "GET", "/api/state/library"))["data"]["state"]["items"][0]
+        check("bøger og film: fremskridt, færdig og stjerner gemmes", lib["status"] == "done" and lib["rating"] == 4 and lib["progress"] == 20, str(lib))
+        await page.screenshot(path=f"{OUT}/app-library.png")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))

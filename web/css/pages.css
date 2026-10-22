@@ -2282,3 +2282,66 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .wo-best { display: flex; align-items: center; gap: 4px; margin: 10px 0 0; font-weight: 600; }
 .wo-best svg { width: 18px; height: 18px; color: #eab308; }
 @media (max-width: 640px) { .wo-summary b { font-size: 20px; } .wo-sets { grid-template-columns: 28px repeat(var(--cols), minmax(0, 1fr)) 40px; } }
+
+/* ── Regnemaskine ── */
+.calc-wrap { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.calc-pad { display: grid; gap: 10px; padding: 14px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--line); }
+.calc-screen { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--r-md); background: rgba(0, 0, 0, .25); }
+:root[data-theme="light"] .calc-screen { background: rgba(12, 26, 43, .06); }
+.calc-input { border: 0; background: transparent; text-align: right; font: 700 28px/1.3 var(--font-mono); padding: 4px 0; }
+.calc-input:focus { box-shadow: none; outline: none; }
+.calc-result { min-height: 22px; text-align: right; font: 600 17px/1.3 var(--font-mono); color: var(--app); }
+.calc-result.is-err { color: var(--bad); font-family: var(--font-body, inherit); font-size: 14px; }
+.calc-sci { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.calc-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.calc-key { height: 54px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass-strong, rgba(255, 255, 255, .1)); color: var(--text); font: 700 20px/1 var(--font-body, inherit); cursor: pointer; display: grid; place-items: center; }
+.calc-key:hover { filter: brightness(1.15); }
+.calc-key:active { transform: scale(.97); }
+.calc-key.is-fn { height: 38px; font-size: 14px; font-weight: 600; }
+.calc-key.is-op { color: var(--app); }
+.calc-key.is-eq { background: var(--app); color: #fff; border-color: transparent; }
+.calc-key.is-clear { color: var(--bad); }
+.calc-key svg { width: 20px; height: 20px; }
+.calc-hist { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
+.calc-h { width: 100%; display: flex; justify-content: space-between; gap: 10px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 14px/1.4 var(--font-mono); text-align: left; cursor: pointer; }
+.calc-h:hover { background: var(--glass-hover); }
+.calc-h .faint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calc-form { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.calc-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.calc-out > div { display: grid; padding: 10px 12px; border-radius: var(--r-md); background: var(--glass); border: 1px solid var(--line); }
+.calc-out b { font: 800 20px/1.3 var(--font-display, inherit); color: var(--app); }
+.calc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.calc-line { margin: 12px 0 0; font-weight: 700; color: var(--app); }
+@media (max-width: 860px) { .calc-wrap { grid-template-columns: 1fr; } }
+
+/* ── Bøger og film ── */
+.bk-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bk-tools .input { flex: 1; min-width: 200px; }
+.bk-tools .select { width: auto; }
+.bk-items { display: grid; gap: 8px; }
+.bk-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 14px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--line); }
+.bk-item.is-doing { border-color: color-mix(in srgb, var(--app) 55%, transparent); }
+.bk-item.is-dropped { opacity: .6; }
+.bk-kind { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--app) 18%, transparent); color: var(--app); }
+.bk-kind svg { width: 20px; height: 20px; }
+.bk-main { display: grid; gap: 4px; min-width: 0; }
+.bk-title { padding: 0; border: 0; background: none; color: var(--text); font: 700 16px/1.3 var(--font-body, inherit); text-align: left; cursor: pointer; }
+.bk-title:hover { color: var(--app); }
+.bk-side { display: grid; gap: 6px; justify-items: end; }
+.bk-prog { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bk-bar { flex: 1; min-width: 120px; max-width: 260px; height: 8px; border-radius: 99px; background: var(--line-2); overflow: hidden; }
+.bk-bar i { display: block; height: 100%; background: var(--app); border-radius: inherit; }
+.bk-bar.is-big { max-width: none; height: 14px; margin-top: 12px; }
+.bk-notes { margin: 2px 0 0; font-size: 14px; color: var(--text-2); white-space: pre-wrap; }
+.bk-stars { display: inline-flex; gap: 1px; }
+.bk-star { padding: 0 1px; border: 0; background: none; font-size: 18px; line-height: 1; color: var(--line-2); cursor: default; }
+button.bk-star { cursor: pointer; font-size: 22px; }
+.bk-star.is-on { color: #eab308; }
+.bk-empty { display: grid; justify-items: center; gap: 6px; padding: 40px 16px; text-align: center; border: 1px dashed var(--line-2); border-radius: var(--r-lg); }
+.bk-empty svg { width: 32px; height: 32px; color: var(--app); }
+.bk-kinds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.bk-kinds > div { display: grid; justify-items: center; gap: 2px; padding: 10px; border-radius: var(--r-md); background: var(--glass); border: 1px solid var(--line); }
+.bk-kinds svg { width: 20px; height: 20px; color: var(--app); }
+.bk-kinds b { font: 800 22px/1.1 var(--font-display, inherit); }
+.bk-best { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+@media (max-width: 600px) { .bk-item { grid-template-columns: 34px minmax(0, 1fr); } .bk-side { grid-column: 2; justify-items: start; grid-auto-flow: column; } }

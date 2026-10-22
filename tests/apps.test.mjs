@@ -352,3 +352,46 @@ console.log('apps ok');
   assert.equal(T.fmtValue(95, 'weight'), '95 kg'); assert.equal(T.fmtSecs(75), '1:15');
   console.log('workout ok');
 }
+{
+  const C = await import('../web/js/features/calc.js');
+  const ev = (s) => C.evaluate(s);
+  assert.equal(ev('2+3·4'), 14); assert.equal(ev('(1,5+2)^2'), 12.25); assert.equal(ev('2^3^2'), 512); assert.equal(ev('-2^2'), -4);
+  assert.equal(ev('√16 + 5!'), 124); assert.equal(ev('20% · 150'), 30); assert.equal(ev('2π'), Number((2 * Math.PI).toPrecision(12)));
+  assert.equal(ev('sin(30)'), 0.5); assert.equal(ev('3(4+1)'), 15); assert.equal(ev('10 ÷ 4'), 2.5); assert.equal(ev('0,1+0,2'), 0.3);
+  assert.equal(ev('log(1000)'), 3); assert.equal(ev('1e3/4'), 250);
+  for (const [s, m] of [['5/0', /dividere/], ['(2+3', /slutparentes/], ['2+', /for tidligt/], ['√-4', /negativt/], ['2#3', /Forstår ikke/], ['3.5!', /Fakultet/]]) assert.throws(() => ev(s), m, s);
+  assert.equal(C.fmt(1234.5), '1.234,5');
+  assert.equal(C.convertUnit(100, 'temp', '°C', '°F'), 212); assert.equal(C.convertUnit(1, 'length', 'mil', 'km'), 1.609344);
+  assert.equal(Math.round(C.convertUnit(1, 'energy', 'kWh', 'kcal')), 860); assert.equal(C.convertUnit(36, 'speed', 'km/t', 'm/s'), 10);
+  const v = C.vat(125); assert.equal(v.net, 100); assert.equal(v.vat, 25);
+  assert.equal(C.vat(100, 25, false).gross, 125); assert.equal(C.change(80, 100), 25); assert.equal(C.whatPercent(30, 120), 25);
+  assert.deepEqual(C.discount(200, 15), { save: 30, pay: 170 });
+  const l = C.loan(100000, 6, 5);
+  assert.equal(Math.round(l.pay), 1933); assert.equal(l.rows.length, 5); assert.ok(l.rows.at(-1).left < 0.01, 'betalt ud');
+  assert.equal(Math.round(C.loan(12000, 0, 1).pay), 1000);
+  assert.equal(Math.round(C.savings(0, 1000, 0, 2).end), 24000);
+  console.log('calc ok');
+}
+{
+  const L = await import('../web/js/features/library.js');
+  const items = [
+    { id: 1, kind: 'book', title: 'Den lange rejse', by: 'A. Forfatter', status: 'want', total: 300, progress: 0, added: 1 },
+    { id: 2, kind: 'film', title: 'Bølgen', status: 'done', rating: 4, finished: '2026-03-02', added: 2 },
+    { id: 3, kind: 'book', title: 'Aften', status: 'done', rating: 5, total: 200, finished: '2026-03-20', added: 3 },
+    { id: 4, kind: 'series', title: 'Byen', status: 'doing', total: 10, progress: 4, added: 4, tags: ['krimi'] },
+    { id: 5, kind: 'book', title: 'Gammel', status: 'done', rating: 2, finished: '2025-12-30', added: 5 },
+  ];
+  assert.deepEqual(L.sortItems(items).map(x => x.id), [4, 1, 3, 2, 5]);
+  assert.equal(items.filter(x => L.matches(x, { q: 'krimi' })).length, 1);
+  assert.equal(items.filter(x => L.matches(x, { kind: 'book', status: 'done' })).length, 2);
+  const y = L.yearStats(items, 2026);
+  assert.equal(y.done, 2); assert.equal(y.by.book, 1); assert.equal(y.pages, 200); assert.equal(y.avg, 4.5); assert.equal(y.months[2], 2); assert.equal(y.best[0].title, 'Aften');
+  const b = { ...items[0] };
+  L.addProgress(b, 50, '2026-10-22'); assert.equal(b.status, 'doing'); assert.equal(b.started, '2026-10-22');
+  L.addProgress(b, 400, '2026-10-25'); assert.equal(b.progress, 300); assert.equal(b.status, 'done'); assert.equal(b.finished, '2026-10-25');
+  assert.equal(L.progressPct({ total: 10, progress: 4 }), 40);
+  const g = L.goalStatus(10, 24, new Date(2026, 6, 2));
+  assert.equal(g.pct, 42); assert.ok(Math.abs(g.ahead + 2) < 0.2, String(g.ahead));
+  assert.equal(L.suggest(items, 'book', () => 0).id, 1); assert.equal(L.suggest(items, 'game'), null);
+  console.log('library ok');
+}
