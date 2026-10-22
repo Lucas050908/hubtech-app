@@ -1247,6 +1247,22 @@ async def main():
         net = [i for i in bd["items"] if i["text"] == "Løn (efter skat)"]
         # 30000 − 99 ATP = 29901; AM 2392,08 → 27508,92; A-skat 37 % af (27508,92 − 4500) = 8513,30 → 18996
         check("budget: udbetalt løn regnet rigtigt (18.996 kr.)", net and net[0]["amount"] == 18996, net)
+        # ── Kabale og Kasino ──
+        await go("apps/solitaire", ".sol-board .pc")
+        await page.click(".sol-stock"); await page.wait_for_timeout(200)
+        check("kabale: bunken vendes", await page.locator(".sol-waste .pc").count() >= 1)
+        await page.screenshot(path=f"{OUT}/app-solitaire.png")
+        await go("apps/casino", ".cs-table")
+        before = int((await page.inner_text(".cs-bar b")).replace(".", ""))
+        await page.click(".cs-actions button:has-text('Giv kort')"); await page.wait_for_timeout(300)
+        if await page.locator(".cs-actions button:has-text('Stå')").count(): await page.click(".cs-actions button:has-text('Stå')")
+        await page.wait_for_selector(".cs-msg", timeout=8000); await page.wait_for_timeout(2500)
+        after = int((await page.inner_text(".cs-bar b")).replace(".", ""))
+        check("kasino: blackjack-runde afregnes", after != before or "Uafgjort" in await page.inner_text(".cs-table"), (before, after))
+        await page.screenshot(path=f"{OUT}/app-casino.png")
+        await page.click(".cs-page .segmented button:has-text('Tyveknægt')"); await page.click("button:has-text('Træk i armen')")
+        await page.wait_for_timeout(2500)
+        check("kasino: tyveknægt giver et resultat", (await page.inner_text(".sl-machine + .cs-msg")).strip() != "")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))
@@ -1290,6 +1306,30 @@ async def main():
         await first.wait_for_selector(".ttt-online .c4-status:has-text('Du vandt')", timeout=8000)
         check("kryds og bolle online: tre på stribe vinder", await second.locator(".ttt-online .ttt-cell.is-win").count() == 3)
         await p1.screenshot(path=f"{OUT}/online-ttt.png")
+        # Tegn og gæt
+        await p1.goto(BASE + "/#/apps/drawguess"); await p1.reload(); await p1.wait_for_selector(".gr-player")
+        await p1.click(".gr-player:has-text('Maja')"); await p1.click(".dg-page button:has-text('Invitér')")
+        await p2.wait_for_selector(".toast:has-text('vil spille Tegn og gæt')", timeout=15000)
+        await p2.click(".toast:has-text('Tegn og gæt') button:has-text('Åbn')")
+        await p1.wait_for_selector("button:has-text('Start spillet'):not([disabled])", timeout=10000)
+        await p1.click("button:has-text('Start spillet')")
+        await p1.wait_for_selector(".dg-canvas", timeout=10000); await p2.wait_for_selector(".dg-canvas", timeout=10000)
+        drawer, guesser = (p1, p2) if await p1.locator(".dg-canvas.is-drawing").count() else (p2, p1)
+        await drawer.wait_for_timeout(500)
+        box = await drawer.locator(".dg-canvas").bounding_box()
+        await drawer.mouse.move(box["x"] + 60, box["y"] + 60); await drawer.mouse.down(); await drawer.mouse.move(box["x"] + 300, box["y"] + 220, steps=10); await drawer.mouse.up()
+        await guesser.wait_for_timeout(1500)
+        inked = await guesser.evaluate("(() => { const c = document.querySelector('.dg-canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 16) if (d[i] < 200) n++; return n; })()")
+        check("tegn og gæt: stregen ses hos den, der gætter", inked > 20, inked)
+        rid = drawer.url.split("/")[-1]
+        word = (await api(drawer, "GET", f"/api/games/rooms/{rid}/draw"))["data"]["word"]
+        await guesser.fill("input[aria-label='Dit gæt']", word); await guesser.keyboard.press("Enter")
+        await guesser.wait_for_selector(".toast:has-text('Rigtigt')", timeout=8000)
+        await drawer.wait_for_selector(".dg-msg.k-ok", timeout=8000)
+        check("tegn og gæt: rigtigt gæt giver point hos begge", True)
+        await p2.screenshot(path=f"{OUT}/online-drawguess-phone.png", full_page=True)
+        await p1.screenshot(path=f"{OUT}/online-drawguess.png")
+        await p1.click(".dg-page button:has-text('Forlad')"); await p2.wait_for_timeout(500)
         # race
         await p1.goto(BASE + "/#/apps/typerace/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
         await p1.click(".gr-player:has-text('Maja')"); await p1.click(".tr-page button:has-text('Invitér')")
@@ -1319,7 +1359,7 @@ async def main():
         await p2.wait_for_selector(".ty-result", timeout=15000)
         check("fart-tast alene: resultat og topliste", await p2.locator(".lb-row.is-me").count() == 1, await p2.inner_text(".ty-result"))
         await p2.goto(BASE + "/#/apps/typerace/top"); await p2.wait_for_selector(".lb-grid .panel")
-        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 11)
+        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 12)
         await p2.screenshot(path=f"{OUT}/toplister-phone.png", full_page=True)
         await c1.close(); await c2.close()
         await go("learn", ".settings-body, .learn-page, main")

@@ -73,6 +73,39 @@ class GamesTest(FreshServer):
         _, d = self.call("POST", f"/api/games/rooms/{rid}/move", {"cell": 2}, cookie=first)
         self.assertEqual((d["room"]["status"], d["room"]["state"]["winner"], d["room"]["state"]["cells"]), ("done", 1, [0, 1, 2]))
 
+    def test_draw_and_guess(self):
+        _, d = self.call("GET", "/api/games/players", cookie=self.a)
+        ids = [p["id"] for p in d["players"]]
+        _, d = self.call("POST", "/api/games/rooms", {"game": "draw", "invite": ids}, cookie=self.a)
+        rid = d["room"]["id"]
+        self.call("POST", f"/api/games/rooms/{rid}/join", {}, cookie=self.b)
+        self.call("POST", f"/api/games/rooms/{rid}/join", {}, cookie=self.c)
+        _, d = self.call("POST", f"/api/games/rooms/{rid}/start", {}, cookie=self.a)
+        room = d["room"]
+        self.assertNotIn("_word", room["state"], "the word is secret")
+        users = {"Anna": self.a, "Bo": self.b, "Carl": self.c}
+        names = {p["id"]: p["name"] for p in room["players"]}
+        drawer = users[names[room["state"]["drawer"]]]
+        guessers = [c for n, c in users.items() if c is not drawer]
+        _, full = self.call("GET", f"/api/games/rooms/{rid}/draw", cookie=drawer)
+        word = full["word"]
+        self.assertTrue(word)
+        self.assertIsNone(self.call("GET", f"/api/games/rooms/{rid}/draw", cookie=guessers[0])[1]["word"])
+        s, _ = self.call("POST", f"/api/games/rooms/{rid}/draw", {"strokes": [{"c": "#ff0000", "w": 5, "p": [0.1, 0.1, 0.5, 0.5]}]}, cookie=drawer)
+        self.assertEqual(s, 200)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/draw", {"strokes": []}, cookie=guessers[0])[0], 409, "only the drawer draws")
+        self.assertEqual(len(self.call("GET", f"/api/games/rooms/{rid}/draw", cookie=guessers[1])[1]["strokes"]), 1)
+        _, r = self.call("POST", f"/api/games/rooms/{rid}/guess", {"text": "forkert"}, cookie=guessers[0])
+        self.assertFalse(r["right"])
+        _, r = self.call("POST", f"/api/games/rooms/{rid}/guess", {"text": word.upper() + "!"}, cookie=guessers[0])
+        self.assertTrue(r["right"])
+        _, r = self.call("POST", f"/api/games/rooms/{rid}/guess", {"text": word}, cookie=guessers[1])
+        _, d = self.call("GET", f"/api/games/rooms/{rid}", cookie=self.a)
+        st = d["room"]["state"]
+        self.assertEqual(st["turn"], 1, "everyone guessed → the next one draws")
+        self.assertEqual(st["reveal"], word)
+        self.assertGreater(sum(st["scores"].values()), 100)
+
     def test_watch_a_game(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)
         bo = next(p["id"] for p in d["players"] if p["name"] == "Bo")
@@ -124,7 +157,7 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", "/api/games/boards/mines-easy", {"score": 25}, cookie=self.b)
         self.assertEqual(d["board"]["rows"][0]["user"]["name"], "Bo", "lowest time wins")
         s, d = self.call("GET", "/api/games/boards", cookie=self.c)
-        self.assertEqual(len(d["boards"]), 11)
+        self.assertEqual(len(d["boards"]), 12)
 
     def test_race(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)

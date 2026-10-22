@@ -43,14 +43,15 @@ _lock = threading.RLock()
 _rooms = {}            # id -> room
 _typing_runs = {}      # token -> {uid, text, start}
 ROOM_TTL = 3600
-GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle"}
-APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe"}
+GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt"}
+APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess"}
 DUEL = {"connect4", "ttt"}          # two players, taking turns
 # leaderboard games: id -> (label, higher is better, max sane value)
 BOARDS = {
     "typing": ("Fart-tast", True, 250),
     "aim": ("Aim-træner", True, 2000),
     "flags": ("Gæt flaget", True, 300),
+    "casino": ("Kasino – højeste bunke", True, 1_000_000_000),
     "snake": ("Snake", True, 400),
     "game2048": ("2048", True, 1_000_000),
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
@@ -96,7 +97,7 @@ def _public(r):
     pub = {k: r[k] for k in ("id", "game", "status", "host", "created", "version")}
     pub["players"] = [cards.get(p) for p in r["players"] if cards.get(p)]
     pub["invited"] = [cards.get(p) for p in r["invited"] if cards.get(p)]
-    pub["state"] = r["state"]
+    pub["state"] = {k: v for k, v in r["state"].items() if not k.startswith("_")}     # "_word" etc. stay on the server
     pub["watchers"] = len(r.get("watchers", ()))
     return pub
 
@@ -146,6 +147,9 @@ def _new_state(game):
         return _c4_new()
     if game == "ttt":
         return {"board": [0] * 9, "turn": 0, "winner": None, "cells": [], "last": None, "score": [0, 0]}
+    if game == "draw":
+        return {"turn": -1, "rounds": 2, "drawer": None, "hint": "", "ends": None, "scores": {}, "guessed": [], "chat": [], "reveal": None,
+                "_word": "", "_used": [], "_strokes": [], "_points": 0, "_hints": 0}
     return _typing_new()
 
 
@@ -159,7 +163,7 @@ def create(req, _):
     game = b.get("game")
     if game not in GAMES:
         raise ApiError(400, "Ukendt spil.", "invalid")
-    invite = [int(x) for x in (b.get("invite") or []) if str(x).isdigit()][:7 if game == "typing" else 1]
+    invite = [int(x) for x in (b.get("invite") or []) if str(x).isdigit()][:7 if game in ("typing", "draw") else 1]
     invite = [x for x in invite if x != u["id"] and db.one("SELECT 1 FROM users WHERE id = ?", (x,)) and not _blocked(u["id"], x)]
     if not invite:
         raise ApiError(400, "Vælg hvem du vil spille med.", "invalid")
@@ -198,7 +202,7 @@ def join(req, params):
         r = _get(params["id"], u["id"])
         if u["id"] in r["players"]:
             return 200, {"room": _public(r)}
-        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]):
+        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]) or (r["game"] == "draw" and len(r["players"]) >= 8):
             raise ApiError(409, "Spillet er allerede i gang.", "started")
         r["invited"].remove(u["id"])
         r["players"].append(u["id"])
@@ -228,6 +232,9 @@ def leave(req, params):
                 _push(r)
                 return 200, {"ok": True}
             r["players"].remove(u["id"])
+            if r["game"] == "draw" and r["status"] == "playing" and (r["state"]["drawer"] == u["id"] or len(r["players"]) < 2):
+                _say(r["state"], f"{u['display_name']} forlod spillet")
+                _draw_next(r)
         live.publish([u["id"]], {"type": "game", "room": {**_public(r), "left": True}})
         if not r["players"]:
             _rooms.pop(r["id"], None)
@@ -297,7 +304,7 @@ def rematch(req, params):
             r["state"] = {**_new_state(r["game"]), "score": score[::-1]}
             r["status"] = "playing"
         else:
-            r["state"] = _typing_new()
+            r["state"] = _new_state(r["game"])
             r["status"] = "lobby"
         _push(r)
         return 200, {"room": _public(r)}
@@ -307,10 +314,18 @@ def race_start(req, params):
     u = require_user(req)
     with _lock:
         r = _get(params["id"], u["id"])
-        if r["game"] != "typing" or r["host"] != u["id"]:
-            raise ApiError(403, "Kun den, der startede spillet, kan sætte løbet i gang.", "forbidden")
+        if r["game"] not in ("typing", "draw") or r["host"] != u["id"]:
+            raise ApiError(403, "Kun den, der startede spillet, kan sætte det i gang.", "forbidden")
         if len(r["players"]) < 2:
             raise ApiError(409, "Vent på, at mindst én er med.", "alone")
+        if r["game"] == "draw":
+            if r["status"] == "playing":
+                return 200, {"room": _public(r)}
+            r["invited"] = []
+            r["status"] = "playing"
+            _draw_next(r)
+            _push(r)
+            return 200, {"room": _public(r)}
         if r["state"]["start"]:
             return 200, {"room": _public(r)}
         r["state"]["start"] = int((time.time() + 4) * 1000)      # 3-2-1 countdown on every screen
@@ -455,6 +470,170 @@ def submit(req, params):
     return 200, {**rec, "board": _board(game, u["id"])}
 
 
+# ── Tegn og gæt ──
+DRAW_WORDS = """hund kat hest ko gris får høne and fisk haj hval slange edderkop sommerfugl bi myre snemand juletræ
+hus slot kirke fyrtårn bro tog bil cykel fly båd ubåd raket traktor bus ambulance helikopter
+sol måne stjerne regnbue sky lyn regn vulkan ø bjerg strand træ blomst kaktus svamp æble banan
+pizza burger is kage pølse gulerod jordbær ost æg brød kaffe telefon computer tastatur mus printer
+skærm robot høretelefoner kamera ur briller hat sko paraply nøgle lampe stol seng sofa bord vindue
+dør trappe guitar trommer klaver fodbold mål cykelhjelm drage ballon gave krone sværd skjold
+pirat spøgelse heks drage zombie astronaut cowboy konge prinsesse ridder klovn tandbørste saks
+blyant bog brev kuvert pengeseddel mobil batteri pære stikkontakt router wifi sky regnorm
+snegl krokodille elefant giraf løve pingvin isbjørn ugle papegøje kanin frø skildpadde blæksprutte""".split()
+DRAW_SECS = 80
+
+
+def _norm(t):
+    return re.sub(r"[^a-zæøå0-9]", "", str(t).lower())
+
+
+def _say(st, text, kind="sys", who=None):
+    st["chat"] = (st["chat"] + [{"t": text[:120], "k": kind, "u": who, "at": int(time.time() * 1000)}])[-40:]
+
+
+def _draw_next(r):
+    st = r["state"]
+    if st["_word"] and st["turn"] >= 0:
+        st["reveal"] = st["_word"]
+        _say(st, f"Ordet var: {st['_word']}")
+    st["turn"] += 1
+    n = len(r["players"])
+    if n < 2 or st["turn"] >= st["rounds"] * n:
+        r["status"] = "done"
+        st["drawer"], st["ends"], st["_word"] = None, None, ""
+        if st["scores"]:
+            best = max(st["scores"].items(), key=lambda kv: kv[1])
+            name = (_cards([int(best[0])]).get(int(best[0])) or {}).get("name", "?")
+            _say(st, f"Spillet er slut – {name} vandt med {best[1]} point!")
+        return
+    st["drawer"] = r["players"][st["turn"] % n]
+    choices = [w for w in DRAW_WORDS if w not in st["_used"]] or DRAW_WORDS
+    st["_word"] = random.choice(choices)
+    st["_used"].append(st["_word"])
+    st["hint"] = " ".join("_" for _ in st["_word"])
+    st["_hints"] = 0
+    st["ends"] = int((time.time() + DRAW_SECS) * 1000)
+    st["guessed"] = []
+    st["_strokes"], st["_points"] = [], 0
+    live.publish([st["drawer"]], {"type": "game-word", "id": r["id"], "word": st["_word"], "turn": st["turn"]})
+
+
+def _draw_check(r):
+    """Time is up? Next one draws. Halfway and at three quarters, a letter is shown."""
+    st = r["state"]
+    if r["game"] != "draw" or r["status"] != "playing" or not st["ends"]:
+        return False
+    now = time.time() * 1000
+    if now >= st["ends"]:
+        _draw_next(r)
+        return True
+    left = (st["ends"] - now) / (DRAW_SECS * 1000)
+    want = 2 if left < 0.25 else 1 if left < 0.5 else 0
+    if want > st["_hints"] and len(st["_word"]) > 3:
+        st["_hints"] = want
+        hint = st["hint"].split(" ")
+        hidden = [i for i, ch in enumerate(hint) if ch == "_"]
+        if hidden:
+            i = random.choice(hidden)
+            hint[i] = st["_word"][i]
+            st["hint"] = " ".join(hint)
+        return True
+    return False
+
+
+def draw_strokes(req, params):
+    u = require_user(req)
+    b = req.json()
+    with _lock:
+        r = _get(params["id"], u["id"])
+        st = r["state"]
+        if r["game"] != "draw" or r["status"] != "playing" or st["drawer"] != u["id"]:
+            raise ApiError(409, "Det er ikke dig, der tegner.", "not_drawer")
+        clean = []
+        for sk in (b.get("strokes") or [])[:40]:
+            try:
+                col = str(sk.get("c", "#111111"))
+                if not re.match(r"^#[0-9a-fA-F]{6}$", col):
+                    col = "#111111"
+                w = max(1, min(40, float(sk.get("w", 4))))
+                pts = [round(max(0.0, min(1.0, float(v))), 4) for v in (sk.get("p") or [])[:600]]
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if len(pts) >= 2 and len(pts) % 2 == 0 and st["_points"] + len(pts) < 60000:
+                st["_points"] += len(pts)
+                clean.append({"c": col, "w": w, "p": pts, "e": bool(sk.get("e"))})
+        if b.get("clear"):
+            st["_strokes"], st["_points"] = [], 0
+        st["_strokes"].extend(clean)
+        others = (set(r["players"]) | set(r.get("watchers", ()))) - {u["id"]}
+        live.publish(others, {"type": "game-draw", "id": r["id"], "turn": st["turn"], "strokes": clean, "clear": bool(b.get("clear"))})
+    return 200, {"ok": True}
+
+
+def _close(a, b):
+    if abs(len(a) - len(b)) > 1 or len(b) < 4:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    s, l_ = (a, b) if len(a) < len(b) else (b, a)
+    return any(l_[:i] + l_[i + 1:] == s for i in range(len(l_)))
+
+
+def draw_guess(req, params):
+    u = require_user(req)
+    text = str(req.json().get("text") or "").strip()[:60]
+    if not text:
+        return 200, {"ok": True}
+    with _lock:
+        r = _get(params["id"], u["id"])
+        st = r["state"]
+        _draw_check(r)
+        if r["game"] != "draw" or r["status"] != "playing" or u["id"] not in r["players"] or u["id"] == st["drawer"]:
+            raise ApiError(409, "Du kan ikke gætte lige nu.", "not_now")
+        me = str(u["id"])
+        if u["id"] in st["guessed"]:
+            return 200, {"ok": True, "right": True}
+        if _norm(text) == _norm(st["_word"]):
+            left = max(0, (st["ends"] - time.time() * 1000) / (DRAW_SECS * 1000))
+            pts = 50 + round(100 * left) - 10 * len(st["guessed"])
+            st["scores"][me] = st["scores"].get(me, 0) + max(20, pts)
+            d = str(st["drawer"])
+            st["scores"][d] = st["scores"].get(d, 0) + 25
+            st["guessed"].append(u["id"])
+            _say(st, f"{u['display_name']} gættede ordet! (+{max(20, pts)})", "ok", u["id"])
+            if all(p in st["guessed"] or p == st["drawer"] for p in r["players"]):
+                _draw_next(r)
+            _push(r)
+            return 200, {"ok": True, "right": True}
+        _say(st, text, "guess", u["id"])
+        close = _close(_norm(text), _norm(st["_word"]))
+        _push(r)
+    if close:
+        live.publish([u["id"]], {"type": "game-close", "id": params["id"], "text": text})
+    return 200, {"ok": True, "right": False, "close": close}
+
+
+def draw_tick(req, params):
+    """Clients call this when the clock runs out (the server has no timers of its own)."""
+    u = require_user(req)
+    with _lock:
+        r = _get(params["id"], u["id"])
+        if _draw_check(r):
+            _push(r)
+        return 200, {"room": _public(r)}
+
+
+def draw_room(req, params):
+    """The full picture for someone who opens the game mid-turn (and the word, if you are the one drawing)."""
+    u = require_user(req)
+    with _lock:
+        r = _get(params["id"], u["id"])
+        if _draw_check(r):
+            _push(r)
+        st = r["state"]
+        return 200, {"room": _public(r), "strokes": st.get("_strokes", []), "word": st.get("_word") if st.get("drawer") == u["id"] else None}
+
+
 # ── watching other people's games ──
 def live_rooms(req, _):
     """Games going on right now that you aren't in – you can watch them."""
@@ -500,6 +679,10 @@ ROUTES = [
     ("POST", r"/api/games/rooms", create),
     ("GET", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})", get_room),
     ("GET", r"/api/games/live", live_rooms),
+    ("GET", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/draw", draw_room),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/draw", draw_strokes),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/guess", draw_guess),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/tick", draw_tick),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/watch", watch),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/unwatch", unwatch),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/join", join),
