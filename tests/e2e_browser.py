@@ -1263,6 +1263,22 @@ async def main():
         await page.click(".cs-page .segmented button:has-text('Tyveknægt')"); await page.click("button:has-text('Træk i armen')")
         await page.wait_for_timeout(2500)
         check("kasino: tyveknægt giver et resultat", (await page.inner_text(".sl-machine + .cs-msg")).strip() != "")
+        # ── Ejendomskongen ──
+        await go("apps/property", ".pg-setup-list")
+        await page.click("button:has-text('Start spillet')"); await page.wait_for_selector(".pg-board")
+        await page.click(".pg-actions button:has-text('Slå')"); await page.wait_for_timeout(400)
+        log = await page.inner_text(".pg-log")
+        check("ejendomskongen: terningerne slås, og brikken rykker", " slår " in log, log[:120])
+        for _ in range(40):
+            st_ = (((await api(page, "GET", "/api/state/property")).get("data") or {}).get("state") or {}).get("game")
+            if st_ and st_["round"] >= 2 and st_["turn"] == 0 and st_["phase"] == "roll": break
+            for lab in ["Køb ", "Afslut tur", "Slå igen", "Slå"]:
+                bt = page.locator(f".pg-actions button:has-text('{lab}')")
+                if await bt.count() and await bt.first.is_enabled(): await bt.first.click(); break
+            await page.wait_for_timeout(1300)
+        pg = (await api(page, "GET", "/api/state/property"))["data"]["state"]["game"]
+        check("ejendomskongen: computerspillerne spiller selv, og spillet gemmes", pg["turn"] == 0 and pg["round"] >= 2 and any("Computer" in l for l in pg["log"]), pg["log"][:3])
+        await page.screenshot(path=f"{OUT}/app-property.png")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))

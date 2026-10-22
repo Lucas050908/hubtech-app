@@ -68,3 +68,32 @@ console.log('apps ok');
   }
   console.log('tictactoe ok');
 }
+// Ejendomskongen
+{
+  const P = await import('../web/js/features/property.js');
+  assert.equal(P.BOARD.length, 40);
+  assert.equal(P.BOARD.filter(f => f.type === 'prop').length, 22);
+  // rent: base, full group doubles, houses
+  let s = P.newGame([{ name: 'A' }, { name: 'B' }]);
+  s.owner[1] = 0; assert.equal(P.rentFor(s, 1), 50);
+  s.owner[3] = 0; assert.equal(P.rentFor(s, 1), 100, 'hele gruppen = dobbelt leje');
+  assert.ok(P.canBuild(s, 0, 1)); P.build(s, 0, 1); assert.equal(P.rentFor(s, 1), 250);
+  assert.ok(!P.canBuild(s, 0, 1), 'skal bygge jævnt'); assert.ok(P.canBuild(s, 0, 3));
+  s.owner[5] = 1; s.owner[15] = 1; assert.equal(P.rentFor(s, 5), 1000);
+  s.owner[12] = 1; assert.equal(P.rentFor(s, 12, 8), 800); s.owner[28] = 1; assert.equal(P.rentFor(s, 12, 8), 2000);
+  // paying more than you have: houses sold, streets pawned, then bankrupt to the creditor
+  s = P.newGame([{ name: 'A' }, { name: 'B' }]);
+  s.owner[1] = 0; s.owner[3] = 0; s.houses[1] = 1; s.players[0].money = 0;
+  assert.equal(P.pay(s, 0, 1000, 1), true);
+  assert.equal(s.houses[1], undefined); assert.ok(s.mort[1] || s.mort[3]);
+  assert.equal(P.pay(s, 0, 50000, 1), false); assert.ok(s.players[0].out); assert.equal(s.owner[1], 1); assert.equal(s.phase, 'over'); assert.equal(s.winner, 1);
+  // many computer-only games: no crashes, no negative money, always someone wins
+  let rs = 1; const rng = () => { rs = (rs * 16807) % 2147483647; return rs / 2147483647; };
+  for (let g = 0; g < 60; g++) {
+    s = P.newGame([{ name: 'A', ai: true }, { name: 'B', ai: true }, { name: 'C', ai: true }, { name: 'D', ai: true }], { rounds: g % 3 === 0 ? 0 : 40 }, rng);
+    let steps = 0;
+    while (s.phase !== 'over' && steps < 20000) { P.aiStep(s, rng); steps++; s.players.forEach(p => assert.ok(p.money >= 0, 'aldrig negative penge')); }
+    if (s.rounds) { assert.equal(s.phase, 'over', `spil ${g} sluttede (${steps} skridt, runde ${s.round})`); assert.ok(s.winner >= 0); }
+  }
+  console.log('property ok');
+}

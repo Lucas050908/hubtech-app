@@ -85,7 +85,8 @@ export async function renderLogin() {
       pass.input.select();
     }
   });
-  requestAnimationFrame(() => user.input.focus());
+  // focus the first field – but never steal focus from a field the person already went to
+  requestAnimationFrame(() => { if (!form.contains(document.activeElement)) user.input.focus(); });
   return authCard(form);
 }
 

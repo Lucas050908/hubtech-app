@@ -314,6 +314,13 @@ export const APPS = [
     keywords: ['spil', 'flag', 'lande', 'geografi', 'quiz', 'topliste'],
   },
   {
+    id: 'property', name: 'Ejendomskongen', tagline: 'Køb gader, byg hoteller.',
+    description: 'Det store ejendomsspil for 2–6 spillere på samme skærm – mennesker eller computeren. Terninger, gader, huse, hoteller, lykkekort og fængsel. Spillet gemmes.',
+    icon: 'home', hue: 'var(--hue-boards)', route: '#/apps/property', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.5, tint: '#60a5fa' }, page: () => import('../pages/property.js'),
+    keywords: ['spil', 'ejendom', 'brætspil', 'terninger', 'huse', 'hotel', 'gader', 'familie'],
+  },
+  {
     id: 'drawguess', name: 'Tegn og gæt', tagline: 'Én tegner, de andre gætter.',
     description: 'Spil med 2–8 af dem, der har HUBTECH. Alle tegner to gange, og I gætter i chatten – hurtige gæt giver flest point.',
     icon: 'paint', hue: 'var(--hue-boards)', route: '#/apps/drawguess', category: 'workspace', status: 'available',
@@ -426,7 +433,7 @@ export const SUITES = [
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
   { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
-  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
+  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;
