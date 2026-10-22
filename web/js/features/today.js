@@ -40,7 +40,7 @@ export function buildToday({ calendar, tasks, flashcards, inventory, timesheet, 
   if (overdue.length) tiles.push({ id: 'invoices', icon: 'file', value: kr(overdue.reduce((a, i) => a + totals(i.lines, i.vat).gross, 0)), label: `${overdue.length} forfalden${overdue.length === 1 ? '' : 'e'} faktura${overdue.length === 1 ? '' : 'er'}`, href: '#/apps/customers', warn: true });
   // games: invitations from the others, and Dagens sudoku if it isn't solved yet
   const inv = (invites || []).filter(r => (r.invited || []).some(p => p.id === me));
-  const APP = { connect4: 'connect4', ttt: 'tictactoe', typing: 'typerace', draw: 'drawguess', property: 'property', chess: 'chess', yatzy: 'yatzy' };
+  const APP = { connect4: 'connect4', ttt: 'tictactoe', typing: 'typerace', draw: 'drawguess', property: 'property', chess: 'chess', yatzy: 'yatzy', quizboard: 'quizboard' };
   if (inv.length) {
     const from = inv[0].players[0]?.name || 'Nogen';
     tiles.push({ id: 'invites', icon: 'gamepad', value: String(inv.length), label: inv.length === 1 ? `${from} vil spille med dig` : 'invitationer til spil', href: `#/apps/${APP[inv[0].game] || 'connect4'}/online/${inv[0].id}`, hot: true });

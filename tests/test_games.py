@@ -139,6 +139,11 @@ class GamesTest(FreshServer):
         self.assertEqual(self.call("GET", f"/api/games/rooms/{rid}", cookie=self.b)[1]["room"]["status"], "done")
         _, d = self.call("POST", f"/api/games/rooms/{rid}/rematch", {}, cookie=self.a)
         self.assertEqual((d["room"]["status"], d["room"]["state"]["blob"]), ("lobby", None))
+        # quizbrættet: up to 7 invited, run by the host's browser
+        _, q = self.call("POST", "/api/games/rooms", {"game": "quizboard", "invite": [ids["Bo"], ids["Carl"]]}, cookie=self.a)
+        self.assertEqual(len(q["room"]["invited"]), 2)
+        for c in (self.a, self.b, self.c):
+            self.call("POST", f"/api/games/rooms/{q['room']['id']}/leave", {}, cookie=c)
         # yatzy: several players, and its leaderboard
         _, d = self.call("POST", "/api/games/rooms", {"game": "yatzy", "invite": [ids["Bo"], ids["Carl"]]}, cookie=self.a)
         self.assertEqual(len(d["room"]["invited"]), 2)

@@ -1379,6 +1379,24 @@ async def main():
         black = await page.inner_text(".ch-clock.is-on")
         check("skak: skakuret går for den, der skal trække", black.startswith("2:5"), black)
         await page.screenshot(path=f"{OUT}/app-chess-clock.png")
+        # ── Quizbrættet ──
+        await go("apps/quizboard", ".qb-chips")
+        await page.click(".qb-page button:has-text('Start spillet')"); await page.wait_for_selector(".qb-board")
+        check("quizbrættet: 5 kategorier × 5 felter", await page.locator(".qb-tile").count() == 25)
+        await page.click(".qb-tile[data-c='0'][data-r='0']"); await page.wait_for_selector(".qb-opt")
+        await page.click(".qb-opt[data-i='0']"); await page.wait_for_selector(".qb-opt.is-right")
+        await page.screenshot(path=f"{OUT}/app-quizboard-question.png")
+        await page.click(".qb-question button:has-text('Tilbage til brættet')"); await page.wait_for_selector(".qb-board")
+        await page.wait_for_timeout(1500)
+        qb = (await api(page, "GET", "/api/state/quizboard"))["data"]["state"]["game"]
+        check("quizbrættet: feltet er brugt, turen går videre, og spillet gemmes", qb["tiles"][0][0]["done"] and qb["chooser"] == 1, str(qb["chooser"]))
+        await page.screenshot(path=f"{OUT}/app-quizboard.png")
+        # your own board
+        await page.click(".qb-page .segmented button:has-text('Dine brætter')")
+        await page.click(".qb-page button:has-text('Start ud fra indbyggede spørgsmål')"); await page.wait_for_selector(".qb-edit-sec")
+        await page.fill("input[aria-label='Brættets titel']", "Testbræt")
+        await page.click(".qb-page button:has-text('Gem brættet')"); await page.wait_for_selector(".qb-own")
+        check("quizbrættet: eget bræt gemmes og kan spilles online", "kan spilles online" in await page.inner_text(".qb-own"))
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))
@@ -1480,6 +1498,23 @@ async def main():
         await second.wait_for_selector(".pg-log li:has-text(' slår ')", state="attached", timeout=8000)
         check("ejendomskongen online: den andens slag ses live", True)
         await second.screenshot(path=f"{OUT}/online-property.png")
+        # Quizbrættet online: both answer at the same time
+        await p1.goto(BASE + "/#/apps/quizboard/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
+        await p1.click(".gr-player:has-text('Maja')"); await p1.click(".qb-page button:has-text('Invitér')")
+        await p2.wait_for_selector(".toast:has-text('vil spille Quizbrættet')", timeout=15000)
+        await p2.click(".toast:has-text('Quizbrættet') button:has-text('Åbn')")
+        await p1.wait_for_selector(".qb-page button:has-text('Start spillet'):not([disabled])", timeout=10000)
+        await p1.click(".qb-page button:has-text('Start spillet')")
+        await p1.wait_for_selector(".qb-board", timeout=10000); await p2.wait_for_selector(".qb-board", timeout=10000)
+        chooser = p1 if await p1.locator(".qb-tile:not([disabled])").count() else p2
+        await chooser.click(".qb-tile[data-c='1'][data-r='1']")
+        await p1.wait_for_selector(".qb-opt:not([disabled])", timeout=8000); await p2.wait_for_selector(".qb-opt:not([disabled])", timeout=8000)
+        await p2.click(".qb-opt[data-i='1']"); await p1.click(".qb-opt[data-i='1']")
+        await p2.wait_for_selector(".qb-opt.is-right", timeout=10000)
+        check("quizbrættet online: alle svarer, og svaret vises hos begge", await p1.locator(".qb-opt.is-right").count() == 1)
+        await p2.screenshot(path=f"{OUT}/online-quizboard-phone.png")
+        await p1.wait_for_selector(".qb-board", timeout=10000)
+        check("quizbrættet online: tilbage til brættet bagefter", True)
         # Skak online: oliver (white) against maja (black, on the phone)
         await p1.goto(BASE + "/#/apps/chess/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
         await p1.click(".gr-player:has-text('Maja')"); await p1.click(".ch-page button:has-text('Udfordr')")

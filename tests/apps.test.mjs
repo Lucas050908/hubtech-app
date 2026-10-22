@@ -217,3 +217,43 @@ console.log('apps ok');
   const d = C.newGame(); C.agreeDraw(d); assert.equal(d.result.why, 'agreed');
   console.log('chess clock ok');
 }
+{
+  const Q = await import('../web/js/features/quizboard.js');
+  const { QB_CATEGORIES } = await import('../web/js/data/quizboard.js');
+  // the question bank: five questions per category, the right answer isn't also among the wrong ones
+  for (const c of QB_CATEGORIES) {
+    assert.equal(c.qs.length, 5, c.name);
+    for (const q of c.qs) { assert.ok(Q.hasChoices(q), q.q); assert.ok(!q.w.includes(q.a), q.q); assert.equal(new Set(q.w).size, 3, q.q); }
+  }
+  const { seededRandom } = await import('../web/js/features/gamelogic.js');
+  const r = seededRandom('qb');
+  const { board, key } = Q.buildBoard(Q.pickCategories(QB_CATEGORIES, 5, r), r);
+  assert.equal(board.tiles.length, 5); assert.equal(board.tiles.flat().filter(t => t.joker).length, 1);
+  assert.equal(board.tiles[0][0].opts[key[0][0].i], key[0][0].a, 'nøglen peger på det rigtige svar');
+  assert.ok(!JSON.stringify(board).includes('"a"'), 'brættet indeholder ikke svarene');
+  // online: everyone answers, the fastest right one picks next
+  const s = Q.newGame(board, [{ name: 'A' }, { name: 'B' }, { name: 'C' }], 'all');
+  assert.equal(Q.pick(s, 1, 0, 0), false, 'ikke din tur');
+  assert.ok(Q.pick(s, 0, 0, 0, 1000)); assert.equal(Q.pick(s, 0, 0, 1), false);
+  const right = key[0][0].i, wrong = (right + 1) % 4;
+  assert.ok(Q.answer(s, 1, right, 3000)); assert.ok(Q.answer(s, 2, right, 2000)); assert.equal(Q.answer(s, 2, wrong, 2500), false, 'kun ét svar');
+  assert.equal(Q.allAnswered(s), false); assert.ok(Q.answer(s, 0, wrong, 4000)); assert.ok(Q.allAnswered(s));
+  assert.ok(Q.reveal(s, key));
+  assert.deepEqual(s.players.map(p => p.score), [0, 100, 100]); assert.equal(s.chooser, 2, 'den hurtigste vælger');
+  assert.ok(Q.next(s)); assert.equal(s.phase, 'pick');
+  // on one screen: a wrong guess costs half, and the turn goes round
+  const t = Q.newGame(board, [{ name: 'A' }, { name: 'B' }], 'turn');
+  Q.pick(t, 0, 1, 1); assert.equal(Q.answer(t, 1, 0), false, 'kun den, der valgte, svarer');
+  Q.answer(t, 0, (key[1][1].i + 1) % 4); Q.reveal(t, key);
+  assert.equal(t.players[0].score, -100); assert.equal(t.chooser, 1);
+  // quizmaster: points given by hand, and the game ends when the board is empty
+  const m = Q.newGame(board, [{ name: 'Hold 1' }, { name: 'Hold 2' }], 'master');
+  let n = 0;
+  while (m.phase !== 'over' && n++ < 40) {
+    const c = m.tiles.findIndex(col => col.some(x => !x.done)), rr = m.tiles[c].findIndex(x => !x.done);
+    Q.pick(m, 0, c, rr); Q.reveal(m, key); Q.judge(m, n % 2, true); assert.equal(Q.judge(m, n % 2, true), false, 'kun én gang'); Q.next(m);
+  }
+  assert.equal(m.phase, 'over'); assert.equal(m.players[0].score + m.players[1].score, 1500 * 5 / 5 * 5 + board.tiles.flat().find(x => x.joker).v);
+  assert.deepEqual(Q.checkBoard(Q.emptyBoard()).length > 0, true);
+  console.log('quizboard ok');
+}

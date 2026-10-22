@@ -328,6 +328,13 @@ export const APPS = [
     keywords: ['spil', 'terninger', 'yatzy', 'yahtzee', 'brætspil', 'familie', 'online'],
   },
   {
+    id: 'quizboard', name: 'Quizbrættet', tagline: 'Vælg en kategori og et beløb.',
+    description: 'Et quizbræt med kategorier og spørgsmål til 100–500 point – og en joker, der giver dobbelt. Spil på skift, med en quizmaster, der læser op for klassen, eller online, hvor alle svarer på samme tid. Lav jeres egne brætter.',
+    icon: 'grid', hue: 'var(--hue-quizboard)', route: '#/apps/quizboard', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'night', focusX: 0.5, tint: '#2563eb' }, page: () => import('../pages/quizboard.js'),
+    keywords: ['quiz', 'spil', 'spørgsmål', 'klasse', 'undervisning', 'quizmaster', 'online', 'hold', 'paratviden'],
+  },
+  {
     id: 'chess', name: 'Skak', tagline: 'Mod computeren eller en ven.',
     description: 'Skak med alle regler: rokade, en passant, bondeforvandling, pat og remis. Spil mod computeren på fire niveauer, to på samme skærm eller online – og se andres partier.',
     icon: 'crown', hue: 'var(--hue-chess)', route: '#/apps/chess', category: 'workspace', status: 'available',
@@ -454,7 +461,7 @@ export const SUITES = [
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
   { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
-  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
+  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;

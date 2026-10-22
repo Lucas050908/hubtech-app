@@ -44,11 +44,11 @@ _rooms = {}            # id -> room
 _typing_runs = {}      # token -> {uid, text, start}
 ROOM_TTL = 3600
 GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt", "property": "Ejendomskongen",
-         "yatzy": "Yatzy", "chess": "Skak"}
-APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property", "yatzy": "yatzy", "chess": "chess"}
-MULTI = {"typing": 7, "draw": 7, "property": 5, "yatzy": 5}     # how many can be invited
+         "yatzy": "Yatzy", "chess": "Skak", "quizboard": "Quizbrættet"}
+APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property", "yatzy": "yatzy", "chess": "chess", "quizboard": "quizboard"}
+MULTI = {"typing": 7, "draw": 7, "property": 5, "yatzy": 5, "quizboard": 7}     # how many can be invited
 # games run by the host's browser: the server keeps the latest state and passes the others' moves on
-HOSTED = {"property": 6, "yatzy": 6, "chess": 2}                # max players
+HOSTED = {"property": 6, "yatzy": 6, "chess": 2, "quizboard": 8}                # max players
 DUEL = {"connect4", "ttt"}          # two players, taking turns
 # leaderboard games: id -> (label, higher is better, max sane value)
 BOARDS = {
