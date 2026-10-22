@@ -988,7 +988,7 @@ async def main():
         # ── app groups: Planlæg / Service / Office share one menu entry with tabs; Kodestumper lives in Læring ──
         await page.goto(BASE + "/#/apps/tasks"); await page.wait_for_selector(".suite-tabs")
         tabs = await page.locator(".suite-tabs .learn-tab").all_text_contents()
-        check("app-grupper: Opgaver har faner for Planlæg", [t.strip() for t in tabs] == ["Kalender", "Opgaver", "Fokus", "Vaner"], tabs)
+        check("app-grupper: Opgaver har faner for Planlæg", [t.strip() for t in tabs] == ["Kalender", "Opgaver", "Madplan", "Fokus", "Vaner"], tabs)
         await page.goto(BASE + "/#/apps"); await page.wait_for_selector(".launcher-item")
         names = await page.locator(".launcher-item .app-card-title, .launcher-item h3").all_text_contents()
         joined = " | ".join(names)
@@ -1397,6 +1397,32 @@ async def main():
         await page.fill("input[aria-label='Brættets titel']", "Testbræt")
         await page.click(".qb-page button:has-text('Gem brættet')"); await page.wait_for_selector(".qb-own")
         check("quizbrættet: eget bræt gemmes og kan spilles online", "kan spilles online" in await page.inner_text(".qb-own"))
+        # ── Netværksberegner ──
+        await go("apps/netcalc", ".nc-input")
+        await page.fill(".nc-input", "10.0.5.77/22"); await page.wait_for_timeout(200)
+        out = await page.inner_text(".nc-out")
+        check("netværk: subnet regnes ud", "10.0.4.0/22" in out and "10.0.7.255" in out and "1.022" in out, out[:200])
+        await page.fill("input[aria-label='En anden adresse']", "10.0.6.1")
+        check("netværk: samme net?", "Ja" in await page.inner_text(".nc-same"))
+        await page.screenshot(path=f"{OUT}/app-netcalc.png")
+        await page.click(".nc-page .segmented button:has-text('Downloadtid')")
+        check("netværk: downloadtid", "5 min. 20 sek." in await page.inner_text(".nc-big"))
+        # ── Madplan ──
+        await go("apps/mealplan", ".mp-week")
+        await page.click(".mp-page button:has-text('Fyld de tomme dage')"); await page.wait_for_timeout(300)
+        check("madplan: ugen fyldes med retter", await page.locator(".mp-dish").count() == 7)
+        await page.screenshot(path=f"{OUT}/app-mealplan.png")
+        await page.click(".mp-page .segmented button:has-text('Indkøbsliste')"); await page.wait_for_selector(".mp-item")
+        n_items = await page.locator(".mp-shop .mp-item").count()
+        await page.locator(".mp-shop .mp-item").first.click(); await page.wait_for_timeout(1500)
+        mp = (await api(page, "GET", "/api/state/mealplan"))["data"]["state"]
+        check("madplan: indkøbslisten laves, og flueben gemmes", n_items >= 15 and any(mp["checked"].values()), str(n_items))
+        await page.screenshot(path=f"{OUT}/app-mealplan-shop.png")
+        await page.click(".mp-page .segmented button:has-text('Opskrifter')"); await page.click(".mp-page button:has-text('Ny opskrift')")
+        await page.fill("input[aria-label='Navn']", "Lasagne"); await page.fill("textarea[aria-label='Ingredienser']", "500 g hakket oksekød\n12 lasagneplader\n4 dl mælk")
+        await page.click(".mp-page button:has-text('Gem opskriften')"); await page.wait_for_selector(".mp-ings")
+        await page.click(".mp-page button[aria-label='Flere personer']")
+        check("madplan: ny opskrift, og mængderne regnes om", "625 g hakket oksekød" in await page.inner_text(".mp-ings"))
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))
@@ -1438,6 +1464,7 @@ async def main():
         for f, sc in [(first, 0), (second, 3), (first, 1), (second, 4), (first, 2)]:
             await f.wait_for_selector(".ttt-online .c4-status:has-text('Din tur')"); await f.locator(".ttt-online .ttt-cell").nth(sc).click()
         await first.wait_for_selector(".ttt-online .c4-status:has-text('Du vandt')", timeout=8000)
+        await second.wait_for_selector(".ttt-online .ttt-cell.is-win", timeout=8000)
         check("kryds og bolle online: tre på stribe vinder", await second.locator(".ttt-online .ttt-cell.is-win").count() == 3)
         await p1.screenshot(path=f"{OUT}/online-ttt.png")
         # Tegn og gæt

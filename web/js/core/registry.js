@@ -258,6 +258,13 @@ export const APPS = [
     keywords: ['vaner', 'habit', 'stime', 'streak', 'daglig', 'mål', 'rutine'],
   },
   {
+    id: 'mealplan', name: 'Madplan', tagline: 'Ugens aftensmad og indkøbslisten.',
+    description: 'Planlæg ugens aftensmad, gem jeres egne opskrifter, og få indkøbslisten lavet automatisk – mængderne regnes om til antal personer og lægges sammen, sorteret efter butikken. Kan udskrives.',
+    icon: 'calendar', hue: 'var(--hue-mealplan)', route: '#/apps/mealplan', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'day', focusX: 0.4, tint: '#f472b6' }, page: () => import('../pages/mealplan.js'),
+    keywords: ['mad', 'madplan', 'opskrift', 'opskrifter', 'indkøb', 'indkøbsliste', 'aftensmad', 'familie', 'uge'],
+  },
+  {
     id: 'budget', name: 'Budget', tagline: 'Styr på pengene.',
     description: 'Indtægter og udgifter pr. måned, hvad pengene går til, og hvad der er tilbage. Faste poster kopieres til næste måned med ét klik.',
     icon: 'chart', hue: 'var(--hue-budget)', route: '#/apps/budget', category: 'workspace', status: 'available',
@@ -377,6 +384,13 @@ export const APPS = [
     keywords: ['hardware', 'test', 'tastatur', 'skærm', 'døde pixels', 'højttaler', 'mikrofon', 'kamera', 'mus', 'touch', 'brugt computer'],
   },
   {
+    id: 'netcalc', name: 'Netværksberegner', tagline: 'Subnet, downloadtid og bytes.',
+    description: 'Regn subnet ud (netværk, maske, første og sidste adresse, broadcast), tjek om to enheder er på samme net, del et net op, og se hvor lang tid en download tager.',
+    icon: 'globe', hue: 'var(--hue-netcalc)', route: '#/apps/netcalc', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'night', focusX: 0.45, tint: '#34d399' }, page: () => import('../pages/netcalc.js'),
+    keywords: ['ip', 'subnet', 'netmaske', 'cidr', 'netværk', 'router', 'download', 'mbit', 'byte', 'gigabyte', 'beregner'],
+  },
+  {
     id: 'passwords', name: 'Kodeord', tagline: 'Stærke koder, du kan huske.',
     description: 'Lav kodesætninger og tilfældige koder, se hvor længe en kode holder, og få gode råd til kunderne. Intet gemmes eller sendes.',
     icon: 'key', hue: 'var(--hue-passwords)', route: '#/apps/passwords', category: 'workspace', status: 'available',
@@ -458,11 +472,11 @@ export const visible = (app, user) => access(app, user).kind !== 'hidden';
  */
 export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
-  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
+  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
   { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
   { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
-  { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
+  { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, netværk, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'netcalc', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;
 /** The app as it is shown in menus: a group's first member carries the group's name; the others are hidden there. */

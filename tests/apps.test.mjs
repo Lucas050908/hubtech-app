@@ -257,3 +257,56 @@ console.log('apps ok');
   assert.deepEqual(Q.checkBoard(Q.emptyBoard()).length > 0, true);
   console.log('quizboard ok');
 }
+{
+  const N = await import('../web/js/features/netcalc.js');
+  const s = N.parseCidr('192.168.1.130/26');
+  assert.equal(N.intToIp(s.network), '192.168.1.128'); assert.equal(N.intToIp(s.broadcast), '192.168.1.191');
+  assert.equal(N.intToIp(s.first), '192.168.1.129'); assert.equal(N.intToIp(s.last), '192.168.1.190');
+  assert.equal(s.hosts, 62); assert.equal(N.intToIp(s.mask), '255.255.255.192'); assert.equal(N.intToIp(s.wildcard), '0.0.0.63');
+  assert.match(s.kind, /^Privat/); assert.equal(s.cls, 'C');
+  assert.equal(N.parseCidr('10.1.2.3 255.255.0.0').prefix, 16);
+  assert.ok(N.parseCidr('10.1.2.3 255.0.255.0').error, 'ugyldig maske');
+  assert.ok(N.parseCidr('300.1.1.1/24').error); assert.ok(N.parseCidr('hej').error);
+  assert.equal(N.parseCidr('8.8.8.8/32').hosts, 1); assert.equal(N.parseCidr('10.0.0.0/31').hosts, 2);
+  assert.match(N.parseCidr('169.254.3.4/16').kind, /DHCP/); assert.match(N.parseCidr('100.101.102.103/32').kind, /Tailscale/);
+  const sp = N.split(N.parseCidr('192.168.0.0/24'), 3);
+  assert.equal(sp.prefix, 26); assert.equal(sp.total, 4); assert.equal(N.intToIp(sp.list[3].network), '192.168.0.192');
+  assert.equal(N.prefixFor(50), 26); assert.equal(N.prefixFor(254), 24); assert.equal(N.prefixFor(255), 23);
+  assert.ok(N.sameSubnet(N.ipToInt('192.168.1.5'), N.ipToInt('192.168.1.200'), 24)); assert.ok(!N.sameSubnet(N.ipToInt('192.168.1.5'), N.ipToInt('192.168.2.5'), 24));
+  assert.equal(N.convert(1, 'GiB', 'MiB'), 1024); assert.equal(N.convert(100, 'Mbit', 'MB'), 12.5);
+  assert.equal(N.downloadSecs(1, 'GB', 100), 80); assert.equal(N.fmtDuration(80), '1 min. 20 sek.');
+  assert.equal(N.toBinary(N.ipToInt('192.168.1.1')), '11000000.10101000.00000001.00000001');
+  console.log('netcalc ok');
+}
+{
+  const M = await import('../web/js/features/mealplan.js');
+  const { STARTER_RECIPES } = await import('../web/js/data/recipes.js');
+  assert.deepEqual(M.parseIngredient('500 g hakket oksekød'), { amount: 500, unit: 'g', name: 'hakket oksekød' });
+  assert.deepEqual(M.parseIngredient('1 ½ dl mælk'), { amount: 1.5, unit: 'dl', name: 'mælk' });
+  assert.deepEqual(M.parseIngredient('1,5 l bouillon'), { amount: 1.5, unit: 'l', name: 'bouillon' });
+  assert.deepEqual(M.parseIngredient('1/2 tsk salt'), { amount: 0.5, unit: 'tsk', name: 'salt' });
+  assert.deepEqual(M.parseIngredient('2 løg'), { amount: 2, unit: '', name: 'løg' });
+  assert.deepEqual(M.parseIngredient('salt og peber'), { amount: null, unit: '', name: 'salt og peber' });
+  assert.equal(M.formatIngredient(M.parseIngredient('3 dl mel'), 0.5), '1 ½ dl mel');
+  assert.equal(M.formatIngredient(M.parseIngredient('500 g kød'), 1.5), '750 g kød');
+  assert.equal(M.weekStart(new Date(2026, 9, 22)), '2026-10-19'); assert.equal(M.weekStart(new Date(2026, 9, 25)), '2026-10-19');
+  assert.equal(M.weekNo('2026-10-19'), 43); assert.equal(M.addDays('2026-12-28', 7), '2027-01-04');
+  // the shopping list adds up and scales
+  const recipes = [{ id: 'a', name: 'A', servings: 4, ingredients: ['500 g hakket oksekød', '1 løg', '2 dl mælk', 'salt'] },
+    { id: 'b', name: 'B', servings: 2, ingredients: ['250 g hakket oksekød', '1 løg', '8 dl mælk', 'salt'] }];
+  const list = M.shoppingList(recipes, { 0: { id: 'a', servings: 4 }, 1: { id: 'b', servings: 4 } });
+  const t = Object.fromEntries(list.map(x => [x.name.toLowerCase(), x]));
+  assert.equal(t['hakket oksekød'].text, '1 kg hakket oksekød'); assert.equal(t['løg'].text, '3 løg'); assert.equal(t['mælk'].text, '1,8 l mælk');
+  assert.ok(t['salt'].pantry); assert.deepEqual(t['løg'].from, ['A', 'B']);
+  assert.equal(t['hakket oksekød'].aisle, 'Kød og fisk'); assert.equal(t['løg'].aisle, 'Frugt og grønt');
+  const plan = M.fillWeek(STARTER_RECIPES, { 2: { id: 's-tacos', servings: 4 } }, () => 0.3);
+  assert.equal(Object.keys(plan).length, 7); assert.equal(new Set(Object.values(plan).map(d => d.id)).size, 7, 'ingen gentagelser');
+  for (const r of STARTER_RECIPES) for (const l of r.ingredients) assert.ok(M.parseIngredient(l).name, l);
+  console.log('mealplan ok');
+}
+{
+  const M = await import('../web/js/features/mealplan.js');
+  const l = M.shoppingList([{ id: 'a', name: 'A', servings: 4, ingredients: ['1 gulerod', '4 gulerødder'] }], { 0: { id: 'a', servings: 4 } });
+  assert.equal(l.length, 1); assert.equal(l[0].text, '5 gulerødder');
+  console.log('mealplan plural ok');
+}
