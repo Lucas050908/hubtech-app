@@ -1911,3 +1911,16 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .pg-table td { padding: 3px 0; border-bottom: 1px solid var(--line); } .pg-table td:last-child { text-align: right; font-weight: 700; }
 @media (max-width: 1100px) { .pg-wrap { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .pg-name, .pg-price { display: none; } .pg-cell.is-corner .pg-name { display: block; font-size: 6px; } .pg-log li:nth-child(n+3) { display: none; } .pg-logo { display: none; } }
+.pg-wait { color: rgba(255, 255, 255, .75); font-weight: 600; }
+.pg-player.is-me { background: color-mix(in srgb, var(--pc) 12%, var(--glass)); }
+.pg-offer { text-align: left; }
+.pg-offer b { color: #7c2d12; }
+.pg-trade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pg-trade-col { display: grid; align-content: start; gap: 4px; min-width: 0; }
+.pg-trade-col > b { margin-bottom: 4px; }
+.pg-trade-prop { display: flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; min-width: 0; }
+.pg-trade-prop input { accent-color: var(--app); }
+.pg-trade-prop i { width: 10px; height: 14px; border-radius: 2px; flex: none; }
+.pg-trade-prop small { color: var(--text-3); }
+.pg-trade-msg { color: var(--warn); font-weight: 700; margin: 8px 0 0; }
+@media (max-width: 420px) { .pg-trade-cols { grid-template-columns: 1fr; } }

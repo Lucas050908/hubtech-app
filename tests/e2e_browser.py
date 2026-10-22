@@ -1279,6 +1279,14 @@ async def main():
         pg = (await api(page, "GET", "/api/state/property"))["data"]["state"]["game"]
         check("ejendomskongen: computerspillerne spiller selv, og spillet gemmes", pg["turn"] == 0 and pg["round"] >= 2 and any("Computer" in l for l in pg["log"]), pg["log"][:3])
         await page.screenshot(path=f"{OUT}/app-property.png")
+        # trade with the computer: a silly offer is refused
+        pg = (await api(page, "GET", "/api/state/property"))["data"]["state"]["game"]
+        if await page.locator(".pg-side button:has-text('Handel')").count():
+            await page.click(".pg-side button:has-text('Handel')"); await page.wait_for_selector(".pg-trade")
+            await page.locator(".pg-trade-col").nth(0).locator("input[type=number]").fill("1")
+            await page.click(".pg-side button:has-text('Send tilbud')"); await page.wait_for_timeout(400)
+            check("ejendomskongen: handel – computeren svarer", "siger" in await page.inner_text(".pg-log"), await page.inner_text(".pg-log"))
+            await page.screenshot(path=f"{OUT}/app-property-trade.png")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))
@@ -1346,6 +1354,20 @@ async def main():
         await p2.screenshot(path=f"{OUT}/online-drawguess-phone.png", full_page=True)
         await p1.screenshot(path=f"{OUT}/online-drawguess.png")
         await p1.click(".dg-page button:has-text('Forlad')"); await p2.wait_for_timeout(500)
+        # Ejendomskongen online
+        await p1.goto(BASE + "/#/apps/property/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
+        await p1.click(".gr-player:has-text('Maja')"); await p1.click(".pg-page button:has-text('Invitér')")
+        await p2.wait_for_selector(".toast:has-text('vil spille Ejendomskongen')", timeout=15000)
+        await p2.click(".toast:has-text('Ejendomskongen') button:has-text('Åbn')")
+        await p1.wait_for_selector(".pg-page button:has-text('Start spillet'):not([disabled])", timeout=10000)
+        await p1.click(".pg-page button:has-text('Start spillet')")
+        await p1.wait_for_selector(".pg-board", timeout=10000); await p2.wait_for_selector(".pg-board", timeout=10000)
+        first, second = (p1, p2) if await p1.locator(".pg-actions button:has-text('Slå')").count() else (p2, p1)
+        await first.click(".pg-actions button:has-text('Slå')")
+        await second.wait_for_selector(".pg-log li:has-text(' slår ')", timeout=8000)
+        check("ejendomskongen online: den andens slag ses live", True)
+        await second.screenshot(path=f"{OUT}/online-property.png")
+        await p1.goto(BASE + "/#/"); await p2.goto(BASE + "/#/")
         # race
         await p1.goto(BASE + "/#/apps/typerace/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
         await p1.click(".gr-player:has-text('Maja')"); await p1.click(".tr-page button:has-text('Invitér')")

@@ -64,7 +64,7 @@ export default {
       select(n.id);
       persist();
       logActivity('notes', 'new', 'Ny note', 'Note oprettet');
-      setTimeout(() => editor.querySelector('.note-title')?.focus(), 30);
+      setTimeout(() => { if (!editor.contains(document.activeElement)) editor.querySelector('.note-title')?.focus(); }, 30);   // never steal focus from the body
     }
     function select(id) {
       sel = id;

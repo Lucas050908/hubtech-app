@@ -51,7 +51,7 @@ const fmt = (n) => `${n.toLocaleString('da-DK')} kr.`;
 
 export function newGame(players, { rounds = 0 } = {}, r = Math.random) {
   return {
-    players: players.map((p, i) => ({ name: p.name, ai: !!p.ai, token: p.token || TOKENS[i], money: START_MONEY, pos: 0, jail: 0, free: 0, out: false })),
+    players: players.map((p, i) => ({ name: p.name, ai: !!p.ai, uid: p.uid ?? null, token: p.token || TOKENS[i], money: START_MONEY, pos: 0, jail: 0, free: 0, out: false })),
     owner: {}, houses: {}, mort: {}, turn: 0, phase: 'roll', dice: [0, 0], doubles: 0, round: 1, rounds,
     cards: shuffle(CARDS.map((_, i) => i), r), log: ['Spillet er startet. Held og lykke!'], pending: null, winner: null, lastCard: null,
   };
@@ -254,6 +254,8 @@ export function aiStep(s, r = Math.random) {
     return true;
   }
   if (s.phase === 'end') {
+    if (s.offer) return false;                     // waiting for a person to answer a trade offer
+    if (aiTrade(s, pi)) return true;
     // unpawn when rich, then build evenly on the cheapest complete groups
     for (const k of Object.keys(s.mort).map(Number)) if (s.owner[k] === pi && p.money - unmortgageCost(k) > reserve + 4000) unmortgage(s, pi, k);
     let built = true;
@@ -265,4 +267,130 @@ export function aiStep(s, r = Math.random) {
     return s.turn === pi && s.phase === 'roll';     // rolled doubles: keep going
   }
   return false;
+}
+
+// ── Handel ──
+/** A trade: player a gives { props, money } and gets { props, money } from player b. */
+export function tradeProblem(s, a, b, t) {
+  if (a === b || s.players[a]?.out || s.players[b]?.out) return 'Vælg en anden spiller.';
+  const give = t.give || {}, get = t.get || {};
+  if (!(give.props?.length || get.props?.length || give.money || get.money)) return 'Handlen er tom.';
+  for (const [who, side] of [[a, give], [b, get]]) {
+    if ((side.money || 0) < 0 || (side.money || 0) > s.players[who].money) return `${s.players[who].name} har ikke ${(side.money || 0).toLocaleString('da-DK')} kr.`;
+    for (const i of side.props || []) {
+      if (s.owner[i] !== who) return `${BOARD[i].name} ejes ikke af ${s.players[who].name}.`;
+      if (BOARD[i].type === 'prop' && groupFields(BOARD[i].group).some(k => s.houses[k])) return `Sælg husene i ${BOARD[i].name}s farve først.`;
+    }
+  }
+  return null;
+}
+export function trade(s, a, b, t) {
+  if (tradeProblem(s, a, b, t)) return false;
+  const give = t.give || {}, get = t.get || {};
+  for (const i of give.props || []) s.owner[i] = b;
+  for (const i of get.props || []) s.owner[i] = a;
+  s.players[a].money += (get.money || 0) - (give.money || 0);
+  s.players[b].money += (give.money || 0) - (get.money || 0);
+  const what = (side) => [...(side.props || []).map(i => BOARD[i].name), side.money ? fmt(side.money) : null].filter(Boolean).join(' + ') || 'ingenting';
+  log(s, `Handel: ${s.players[a].name} giver ${what(give)} og får ${what(get)} fra ${s.players[b].name}.`);
+  return true;
+}
+/** What field i is worth to player pi – much more if it completes (or blocks) a colour group. */
+function fieldValue(s, pi, i, owning) {
+  const f = BOARD[i];
+  let v = s.mort[i] ? f.price * 0.5 : f.price;
+  if (f.type === 'station') v *= 1 + 0.25 * [5, 15, 25, 35].filter(k => s.owner[k] === pi).length;
+  if (f.type !== 'prop') return v;
+  const g = groupFields(f.group), others = g.filter(k => k !== i);
+  if (owning && others.every(k => s.owner[k] === pi)) v *= 3;                                     // completes my group
+  else if (owning && others.some(k => s.owner[k] === pi)) v *= 1.4;
+  return v;
+}
+/** How the computer (player ai) values a trade where it gives `give` and gets `get`. */
+export function aiValue(s, ai, other, give, get) {
+  let gain = (get.money || 0) - (give.money || 0);
+  for (const i of get.props || []) gain += fieldValue(s, ai, i, true);
+  for (const i of give.props || []) {
+    let v = fieldValue(s, ai, i, false) + (fieldValue(s, ai, i, true) - fieldValue(s, ai, i, false)) * 0.5;
+    const f = BOARD[i];
+    if (f.type === 'prop' && groupFields(f.group).filter(k => k !== i).every(k => s.owner[k] === other)) v *= 3;   // would complete theirs
+    gain -= v;
+  }
+  return gain;
+}
+/** Does the computer say yes? (b is the computer, the offer is seen from a: a gives `give`, gets `get`) */
+export function aiAccepts(s, a, b, t) {
+  if (tradeProblem(s, a, b, t)) return false;
+  const v = aiValue(s, b, a, t.get || {}, t.give || {});
+  const size = [...(t.get?.props || []), ...(t.give?.props || [])].reduce((x, i) => x + BOARD[i].price, 0) + (t.give?.money || 0) + (t.get?.money || 0);
+  return v >= Math.max(300, size * 0.12);
+}
+/** The computer tries to buy the last street of a colour group. Returns true if something happened. */
+function aiTrade(s, pi) {
+  s.tradeRound ||= {};
+  if ((s.tradeRound[pi] || 0) > s.round - 3) return false;
+  const p = s.players[pi];
+  for (let g = 0; g < GROUPS.length; g++) {
+    const fields = groupFields(g), missing = fields.filter(k => s.owner[k] !== pi);
+    if (missing.length !== 1 || fields.length - missing.length < 1) continue;
+    const i = missing[0], o = s.owner[i];
+    if (o == null || s.players[o].out || fields.some(k => s.houses[k])) continue;
+    s.tradeRound[pi] = s.round;
+    const price = Math.round(BOARD[i].price * 2.2 / 100) * 100;
+    if (p.money - price < 3000) continue;
+    const t = { give: { props: [], money: price }, get: { props: [i], money: 0 } };
+    if (s.players[o].ai) {
+      if (aiAccepts(s, pi, o, t)) { trade(s, pi, o, t); return true; }
+      log(s, `${s.players[o].name} vil ikke sælge ${BOARD[i].name} til ${p.name}.`);
+      return true;
+    }
+    s.offer = { from: pi, to: o, ...t };           // a person decides
+    log(s, `${p.name} tilbyder ${s.players[o].name} ${fmt(price)} for ${BOARD[i].name}.`);
+    return true;
+  }
+  return false;
+}
+/** Answer the open offer. */
+export function answerOffer(s, yes) {
+  const o = s.offer; if (!o) return s;
+  s.offer = null;
+  if (yes) trade(s, o.from, o.to, o); else log(s, `${s.players[o.to].name} siger nej tak.`);
+  return s;
+}
+
+/**
+ * Everything a player can do, by name – used both on one screen and online (where the host's browser applies the
+ * actions the others send). seat = the player doing it. Returns true if something changed.
+ */
+export function applyAction(s, seat, name, args = []) {
+  if (s.phase === 'over') return false;
+  if (name === 'answer') { if (!s.offer || s.offer.to !== seat) return false; answerOffer(s, !!args[0]); return true; }
+  if (name === 'cancelOffer') { if (!s.offer || s.offer.from !== seat) return false; s.offer = null; log(s, `${s.players[seat].name} trækker tilbuddet tilbage.`); return true; }
+  if (seat !== s.turn || s.offer) return false;
+  const before = JSON.stringify([s.phase, s.turn, s.players.map(p => p.money), s.owner, s.houses, s.mort, s.offer]);
+  switch (name) {
+    case 'roll': roll(s); break;
+    case 'payJail': payJail(s); break;
+    case 'buy': buy(s); break;
+    case 'skipBuy': skipBuy(s); break;
+    case 'endTurn': endTurn(s); break;
+    case 'build': build(s, seat, Number(args[0])); break;
+    case 'sell': sell(s, seat, Number(args[0])); break;
+    case 'mortgage': mortgage(s, seat, Number(args[0])); break;
+    case 'unmortgage': unmortgage(s, seat, Number(args[0])); break;
+    case 'offer': {
+      const b = Number(args[0]), t = args[1] || {};
+      const clean = { give: { props: (t.give?.props || []).map(Number), money: Math.max(0, Math.round(Number(t.give?.money) || 0)) }, get: { props: (t.get?.props || []).map(Number), money: Math.max(0, Math.round(Number(t.get?.money) || 0)) } };
+      const why = tradeProblem(s, seat, b, clean);
+      if (why) { s.tradeMsg = why; return true; }
+      s.tradeMsg = null;
+      if (s.players[b].ai) {
+        if (aiAccepts(s, seat, b, clean)) { log(s, `${s.players[b].name} siger ja.`); trade(s, seat, b, clean); }
+        else { log(s, `${s.players[b].name} siger nej til handlen.`); s.tradeMsg = `${s.players[b].name} siger nej – byd lidt mere.`; }
+      } else { s.offer = { from: seat, to: b, ...clean }; log(s, `${s.players[seat].name} sender et tilbud til ${s.players[b].name}.`); }
+      return true;
+    }
+    default: return false;
+  }
+  return before !== JSON.stringify([s.phase, s.turn, s.players.map(p => p.money), s.owner, s.houses, s.mort, s.offer]);
 }

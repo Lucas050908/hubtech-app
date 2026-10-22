@@ -106,6 +106,23 @@ class GamesTest(FreshServer):
         self.assertEqual(st["reveal"], word)
         self.assertGreater(sum(st["scores"].values()), 100)
 
+    def test_property_online(self):
+        _, d = self.call("GET", "/api/games/players", cookie=self.a)
+        bo = next(p["id"] for p in d["players"] if p["name"] == "Bo")
+        _, d = self.call("POST", "/api/games/rooms", {"game": "property", "invite": [bo]}, cookie=self.a)
+        rid = d["room"]["id"]
+        self.call("POST", f"/api/games/rooms/{rid}/join", {}, cookie=self.b)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/start", {}, cookie=self.b)[0], 403, "only the host starts")
+        _, d = self.call("POST", f"/api/games/rooms/{rid}/start", {}, cookie=self.a)
+        self.assertEqual(d["room"]["status"], "playing")
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/sync", {"blob": {"phase": "roll"}}, cookie=self.b)[0], 403, "only the host sends the state")
+        s, d = self.call("POST", f"/api/games/rooms/{rid}/sync", {"blob": {"phase": "roll", "turn": 0}}, cookie=self.a)
+        self.assertEqual((s, d["ver"]), (200, 1))
+        self.assertEqual(self.call("GET", f"/api/games/rooms/{rid}", cookie=self.b)[1]["room"]["state"]["blob"]["turn"], 0)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/act", {"name": "roll"}, cookie=self.b)[0], 200)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/act", {"name": "roll"}, cookie=self.c)[0], 404, "not in the game")
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/sync", {"blob": {"x": "y" * 400000}}, cookie=self.a)[0], 400, "size limit")
+
     def test_watch_a_game(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)
         bo = next(p["id"] for p in d["players"] if p["name"] == "Bo")

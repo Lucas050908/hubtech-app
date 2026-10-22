@@ -97,3 +97,35 @@ console.log('apps ok');
   }
   console.log('property ok');
 }
+// Ejendomskongen: handel
+{
+  const P = await import('../web/js/features/property.js');
+  let s = P.newGame([{ name: 'A' }, { name: 'B', ai: true }]);
+  s.owner[1] = 0; s.owner[3] = 1;
+  const t = { give: { props: [], money: 1000 }, get: { props: [3], money: 0 } };
+  assert.equal(P.aiAccepts(s, 0, 1, t), false, 'computeren sælger ikke den sidste i en gruppe billigt');
+  t.give.money = 9000;
+  assert.equal(P.aiAccepts(s, 0, 1, t), true, 'men for nok penge');
+  assert.ok(P.trade(s, 0, 1, t)); assert.equal(s.owner[3], 0); assert.equal(s.players[0].money, 21000); assert.equal(s.players[1].money, 39000);
+  assert.ok(P.ownsGroup(s, 0, 0));
+  s.houses[1] = 1; assert.match(P.tradeProblem(s, 0, 1, { give: { props: [3] }, get: {} }), /huse/);
+  assert.match(P.tradeProblem(s, 0, 1, { give: { money: 999999 }, get: {} }), /har ikke/);
+  // the computer buys the last street from another computer, and makes an offer to a person
+  s = P.newGame([{ name: 'A' }, { name: 'B', ai: true }, { name: 'C', ai: true }]);
+  s.owner[6] = 1; s.owner[8] = 1; s.owner[9] = 0; s.turn = 1; s.phase = 'end'; s.round = 5; s.dice = [1, 2];
+  P.aiStep(s); assert.ok(s.offer && s.offer.to === 0 && s.offer.get.props[0] === 9, 'tilbud til et menneske');
+  P.answerOffer(s, true); assert.equal(s.owner[9], 1); assert.equal(s.offer, null);
+  console.log('property trade ok');
+}
+{
+  const P = await import('../web/js/features/property.js');
+  const s = P.newGame([{ name: 'A' }, { name: 'B' }]);
+  assert.equal(P.applyAction(s, 1, 'roll'), false, 'ikke din tur');
+  assert.equal(P.applyAction(s, 0, 'roll'), true);
+  s.owner[1] = 0; s.owner[3] = 1; s.phase = 'end';
+  assert.equal(P.applyAction(s, 0, 'offer', [1, { give: { money: 3000 }, get: { props: [3] } }]), true);
+  assert.ok(s.offer); assert.equal(P.applyAction(s, 0, 'endTurn'), false, 'venter på svar');
+  assert.equal(P.applyAction(s, 0, 'answer', [true]), false, 'kun modtageren svarer');
+  assert.equal(P.applyAction(s, 1, 'answer', [true]), true); assert.equal(s.owner[3], 0);
+  console.log('property actions ok');
+}

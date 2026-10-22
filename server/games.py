@@ -43,8 +43,9 @@ _lock = threading.RLock()
 _rooms = {}            # id -> room
 _typing_runs = {}      # token -> {uid, text, start}
 ROOM_TTL = 3600
-GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt"}
-APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess"}
+GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt", "property": "Ejendomskongen"}
+APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property"}
+MULTI = {"typing": 7, "draw": 7, "property": 5}     # how many can be invited
 DUEL = {"connect4", "ttt"}          # two players, taking turns
 # leaderboard games: id -> (label, higher is better, max sane value)
 BOARDS = {
@@ -147,6 +148,8 @@ def _new_state(game):
         return _c4_new()
     if game == "ttt":
         return {"board": [0] * 9, "turn": 0, "winner": None, "cells": [], "last": None, "score": [0, 0]}
+    if game == "property":
+        return {"blob": None, "ver": 0}
     if game == "draw":
         return {"turn": -1, "rounds": 2, "drawer": None, "hint": "", "ends": None, "scores": {}, "guessed": [], "chat": [], "reveal": None,
                 "_word": "", "_used": [], "_strokes": [], "_points": 0, "_hints": 0}
@@ -163,7 +166,7 @@ def create(req, _):
     game = b.get("game")
     if game not in GAMES:
         raise ApiError(400, "Ukendt spil.", "invalid")
-    invite = [int(x) for x in (b.get("invite") or []) if str(x).isdigit()][:7 if game in ("typing", "draw") else 1]
+    invite = [int(x) for x in (b.get("invite") or []) if str(x).isdigit()][:MULTI.get(game, 1)]
     invite = [x for x in invite if x != u["id"] and db.one("SELECT 1 FROM users WHERE id = ?", (x,)) and not _blocked(u["id"], x)]
     if not invite:
         raise ApiError(400, "Vælg hvem du vil spille med.", "invalid")
@@ -202,7 +205,7 @@ def join(req, params):
         r = _get(params["id"], u["id"])
         if u["id"] in r["players"]:
             return 200, {"room": _public(r)}
-        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]) or (r["game"] == "draw" and len(r["players"]) >= 8):
+        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]) or (r["game"] == "draw" and len(r["players"]) >= 8) or (r["game"] == "property" and (len(r["players"]) >= 6 or r["status"] == "playing")):
             raise ApiError(409, "Spillet er allerede i gang.", "started")
         r["invited"].remove(u["id"])
         r["players"].append(u["id"])
@@ -232,6 +235,8 @@ def leave(req, params):
                 _push(r)
                 return 200, {"ok": True}
             r["players"].remove(u["id"])
+            if r["game"] == "property" and r["status"] == "playing" and r["host"] == u["id"]:
+                r["status"] = "done"
             if r["game"] == "draw" and r["status"] == "playing" and (r["state"]["drawer"] == u["id"] or len(r["players"]) < 2):
                 _say(r["state"], f"{u['display_name']} forlod spillet")
                 _draw_next(r)
@@ -314,10 +319,16 @@ def race_start(req, params):
     u = require_user(req)
     with _lock:
         r = _get(params["id"], u["id"])
-        if r["game"] not in ("typing", "draw") or r["host"] != u["id"]:
+        if r["game"] not in ("typing", "draw", "property") or r["host"] != u["id"]:
             raise ApiError(403, "Kun den, der startede spillet, kan sætte det i gang.", "forbidden")
         if len(r["players"]) < 2:
             raise ApiError(409, "Vent på, at mindst én er med.", "alone")
+        if r["game"] == "property":
+            if r["status"] != "playing":
+                r["invited"] = []
+                r["status"] = "playing"
+                _push(r)
+            return 200, {"room": _public(r)}
         if r["game"] == "draw":
             if r["status"] == "playing":
                 return 200, {"room": _public(r)}
@@ -634,6 +645,40 @@ def draw_room(req, params):
         return 200, {"room": _public(r), "strokes": st.get("_strokes", []), "word": st.get("_word") if st.get("drawer") == u["id"] else None}
 
 
+# ── Ejendomskongen online: the host's browser runs the game; the server keeps the latest state and passes moves on ──
+def property_sync(req, params):
+    u = require_user(req)
+    b = req.json()
+    import json as _json
+    blob = b.get("blob")
+    if not isinstance(blob, dict) or len(_json.dumps(blob)) > 300_000:
+        raise ApiError(400, "Ugyldig spiltilstand.", "invalid")
+    with _lock:
+        r = _get(params["id"], u["id"])
+        if r["game"] != "property" or r["host"] != u["id"]:
+            raise ApiError(403, "Kun værten styrer spillet.", "forbidden")
+        r["state"]["blob"] = blob
+        r["state"]["ver"] += 1
+        if blob.get("phase") == "over":
+            r["status"] = "done"
+        _push(r)
+    return 200, {"ok": True, "ver": r["state"]["ver"]}
+
+
+def property_act(req, params):
+    u = require_user(req)
+    b = req.json()
+    name = str(b.get("name") or "")[:20]
+    args = b.get("args") if isinstance(b.get("args"), list) else []
+    with _lock:
+        r = _get(params["id"], u["id"])
+        if r["game"] != "property" or r["status"] != "playing" or u["id"] not in r["players"]:
+            raise ApiError(409, "Spillet er ikke i gang.", "not_playing")
+        host = r["host"]
+    live.publish([host], {"type": "game-act", "id": params["id"], "from": u["id"], "name": name, "args": args[:3]})
+    return 200, {"ok": True}
+
+
 # ── watching other people's games ──
 def live_rooms(req, _):
     """Games going on right now that you aren't in – you can watch them."""
@@ -683,6 +728,8 @@ ROUTES = [
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/draw", draw_strokes),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/guess", draw_guess),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/tick", draw_tick),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/sync", property_sync),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/act", property_act),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/watch", watch),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/unwatch", unwatch),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/join", join),
