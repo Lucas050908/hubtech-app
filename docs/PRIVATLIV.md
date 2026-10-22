@@ -19,6 +19,8 @@ Den person, der har installeret HUBTECH på sin computer ("ejeren"), kan se list
 - **Chat og deling** foregår via den HUBTECH-server, I er forbundet til (typisk ejerens computer). Beskeder sendes ikke til os.
 - **Opkald** går direkte mellem jeres enheder (WebRTC). For at finde vej mellem to netværk spørger appen offentlige STUN-servere (fra Google og Cloudflare) om din offentlige IP-adresse. Lyd og billede går ikke gennem dem. Har ejeren sat en TURN-server op, kan opkaldet blive sendt krypteret gennem den.
 - **Mikrofon og kamera** bruges kun, mens du er i et opkald, tager et billede eller selv starter en test. Intet optages eller gemmes.
+- **Spil sammen og toplister:** Spiller du online (fx Fire på stribe, Tegn og gæt eller Fart-tast), ser de andre i spillet dit navn, dit profilbillede, dine træk, dine tegninger og dine gæt. Andre på samme HUBTECH kan se med i spil, der er i gang. Spil gemmes kun, mens de står på; de slettes, når de er slut. På toplisterne kan alle på samme HUBTECH se dit navn og dit bedste resultat.
+- **Kasino** spilles kun om point. Der kan aldrig bruges, vindes eller købes rigtige penge.
 - **"Venner på andre netværk"** bruger tjenesten Tailscale, hvis ejeren selv slår det til. Så går trafikken til ejerens HUBTECH krypteret gennem Tailscale. Se Tailscales privatlivspolitik: https://tailscale.com/privacy-policy
 
 ## Tjenester, appen kan kontakte
