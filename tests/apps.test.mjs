@@ -430,3 +430,34 @@ console.log('apps ok');
   assert.equal(P.unpack({ w: 7, frames: [] }), null);
   console.log('pixels ok');
 }
+{
+  const R = await import('../web/js/features/calm.js');
+  const b = R.BREATHS.boks;
+  assert.equal(R.cycleSecs(b), 16);
+  assert.deepEqual([R.phaseAt(b, 0).phase, R.phaseAt(b, 4.5).phase, R.phaseAt(b, 9).phase, R.phaseAt(b, 13).phase, R.phaseAt(b, 16).phase], ['in', 'hold', 'out', 'rest', 'in']);
+  assert.equal(R.phaseAt(b, 2).scale, 0.4); assert.equal(R.phaseAt(b, 5).scale, 0.8, 'hold = stor'); assert.equal(R.phaseAt(b, 14).scale, 0, 'hvil = lille');
+  assert.equal(R.phaseAt(b, 10).scale, 0.4, 'ud halvvejs'); assert.equal(R.phaseAt(b, 17).cycle, 1); assert.equal(R.phaseAt(b, 1.2).left, 3);
+  const s = R.BREATHS.sukket; assert.equal(R.phaseAt(s, 2.5).scale, 0.9);
+  assert.equal(R.fadeAt(0, 600), 1); assert.equal(R.fadeAt(570, 600), 0.25); assert.equal(R.fadeAt(600, 600), 0); assert.equal(R.fadeAt(10, 0), 1);
+  const sum = R.summary({ '2026-10-20': 5, '2026-10-21': 10, '2026-10-22': 3.4, '2026-10-10': 20 }, '2026-10-22');
+  assert.equal(sum.today, 3); assert.equal(sum.streak, 3); assert.equal(sum.total, 38); assert.equal(sum.week.length, 7); assert.equal(sum.week[6].min, 3);
+  assert.equal(R.summary({ '2026-10-21': 4 }, '2026-10-22').streak, 1, 'i går tæller, til dagen er gået');
+  for (const g of Object.values(R.GUIDES)) assert.ok(g.steps.length >= 5);
+  console.log('calm ok');
+}
+{
+  const Hg = await import('../web/js/features/huegame.js');
+  assert.equal(Hg.hex([255, 0, 128]), '#ff0080'); assert.deepEqual(Hg.hsl(0, 1, 0.5).map(Math.round), [255, 0, 0]);
+  const g = Hg.gradient(3, 3, [[0, 0, 0], [255, 0, 0], [0, 0, 255], [255, 255, 255]]);
+  assert.equal(g[0], '#000000'); assert.equal(g[2], '#ff0000'); assert.equal(g[6], '#0000ff'); assert.equal(g[8], '#ffffff'); assert.equal(g[4], '#804080');
+  const p = Hg.makePuzzle(1, 'test');
+  assert.equal(p.w * p.h, 16); assert.equal(p.fixed.length, 12, 'ramme fast på de første baner');
+  assert.ok(!Hg.solved(p)); assert.ok(p.fixed.every(i => p.order[i] === i), 'faste brikker ligger rigtigt');
+  assert.equal(Hg.swap(p, p.fixed[0], 5), false, 'faste brikker kan ikke flyttes');
+  let n = 0; while (!Hg.solved(p) && n++ < 50) { const x = Hg.hint(p); assert.ok(Hg.swap(p, x.from, x.to)); }
+  assert.ok(Hg.solved(p)); assert.equal(Hg.placed(p), 16); assert.equal(Hg.hint(p), null);
+  assert.deepEqual(Hg.makePuzzle(5, 'x').order, Hg.makePuzzle(5, 'x').order, 'samme frø = samme bane');
+  const big = Hg.makePuzzle(12, 'y'); assert.equal(big.w * big.h, 90); assert.equal(big.fixed.length, 4);
+  assert.equal(new Set(Hg.makePuzzle(3, 'z').colors).size, 25, 'alle felter har forskellig farve');
+  console.log('huegame ok');
+}

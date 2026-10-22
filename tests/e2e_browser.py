@@ -1503,6 +1503,33 @@ async def main():
         await page.wait_for_selector(".px-gopen:has-text('Robot')")
         check("pixelværksted: animation med to billeder i galleriet", "2 billeder" in await page.inner_text(".px-gallery"))
         await page.screenshot(path=f"{OUT}/app-pixels.png")
+        # ── Ro ──
+        await go("apps/calm", ".ro-sounds")
+        await page.click(".ro-sound-btn:has-text('Regn')"); await page.wait_for_timeout(400)
+        check("ro: en lyd tændes og afspilning starter", await page.locator(".ro-play:has-text('Stop')").count() == 1)
+        await page.fill("input[aria-label='Havet: lydstyrke']", "40"); await page.dispatch_event("input[aria-label='Havet: lydstyrke']", "input")
+        await page.select_option("select[aria-label='Sovetimer']", "20"); await page.wait_for_timeout(2600)
+        check("ro: sovetimeren tæller ned", "Slukker om 19:" in await page.inner_text(".ro-player"))
+        await page.screenshot(path=f"{OUT}/app-calm.png")
+        await page.click(".ro-play")
+        await page.click(".ro-page .segmented button:has-text('Vejrtrækning')"); await page.click(".ro-breathe button:has-text('Start')"); await page.wait_for_timeout(2500)
+        check("ro: vejrtrækningscirklen guider", "Træk vejret ind" in await page.inner_text(".ro-circle"))
+        await page.screenshot(path=f"{OUT}/app-calm-breathe.png")
+        await page.click(".ro-page .segmented button:has-text('Afspænding')"); await page.click(".ro-guide-btn:has-text('5-4-3-2-1')")
+        await page.click(".ro-guide button:has-text('Næste')")
+        check("ro: afspænding en sætning ad gangen", "fem ting" in await page.inner_text(".ro-guide-text"))
+        # ── Farvebølge ──
+        await go("apps/huegame", ".hg-board")
+        check("farvebølge: bane 1 med faste brikker", await page.locator(".hg-tile").count() == 16 and await page.locator(".hg-tile.is-fixed").count() == 12)
+        for _ in range(12):
+            if await page.locator(".hg-board.is-done").count():
+                break
+            await page.click(".hg-info button:has-text('Hint')")
+            pos = await page.eval_on_selector_all(".hg-tile.is-hint", "els => els.map(e => e.dataset.pos)")
+            await page.click(f".hg-tile[data-pos='{pos[0]}']"); await page.click(f".hg-tile[data-pos='{pos[1]}']"); await page.wait_for_timeout(150)
+        await page.wait_for_selector(".hg-board.is-done", timeout=5000)
+        check("farvebølge: banen løses, og næste låses op", await page.locator(".hg-lv:not([disabled])").count() == 2)
+        await page.screenshot(path=f"{OUT}/app-huegame.png")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))

@@ -223,6 +223,13 @@ export const APPS = [
     keywords: ['spil', 'spilhal', 'oversigt', 'topliste', 'invitation', 'online'],
   },
   {
+    id: 'huegame', name: 'Farvebølge', tagline: 'Et roligt farvepuslespil.',
+    description: 'Byt brikkerne, til farverne flyder blødt fra hjørne til hjørne. Ingen tid, ingen point at tabe – bare farver og et blidt klokkespil, når en brik finder sin plads. 12 baner, nye farver hver gang.',
+    icon: 'palette', hue: 'var(--hue-huegame)', route: '#/apps/huegame', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'day', focusX: 0.5, tint: '#f0abfc' }, page: () => import('../pages/huegame.js'),
+    keywords: ['farver', 'puslespil', 'afslappende', 'roligt', 'zen', 'spil', 'gradient', 'hygge'],
+  },
+  {
     id: 'ordjagt', name: 'Ordjagt', tagline: 'Dagens ord på fem bogstaver.',
     description: 'Find ordet på fem bogstaver i seks gæt – grøn er rigtig plads, gul er forkert plads. Dagens ord er det samme for alle og har sin egen topliste. Du kan også øve dig med tilfældige ord.',
     icon: 'book', hue: 'var(--hue-ordjagt)', route: '#/apps/ordjagt', category: 'workspace', status: 'available',
@@ -291,6 +298,13 @@ export const APPS = [
     icon: 'chart', hue: 'var(--hue-budget)', route: '#/apps/budget', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'day', focusX: 0.45, tint: '#10b981' }, page: () => import('../pages/budget.js'),
     keywords: ['budget', 'penge', 'økonomi', 'udgifter', 'indtægter', 'løn', 'opsparing'],
+  },
+  {
+    id: 'calm', name: 'Ro', tagline: 'Naturlyde, vejrtrækning og afspænding.',
+    description: 'Et sted at slappe af: bland dine egne lyde (regn, hav, skov, pejs, vind, brun støj og rolig klaver) med sovetimer, træk vejret i takt med en rolig cirkel, eller følg en kort afspænding. Al lyd laves i browseren.',
+    icon: 'leaf', hue: 'var(--hue-calm)', route: '#/apps/calm', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'night', focusX: 0.5, tint: '#5eead4' }, page: () => import('../pages/calm.js'),
+    keywords: ['ro', 'afslapning', 'slappe af', 'meditation', 'mindfulness', 'vejrtrækning', 'søvn', 'sove', 'regn', 'naturlyde', 'stress', 'hvid støj', 'afspænding'],
   },
   {
     id: 'pixels', name: 'Pixelværksted', tagline: 'Pixelkunst og små animationer.',
@@ -517,7 +531,7 @@ export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer, vaner og træning.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits', 'workout'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
-  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'ordjagt', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'ordjagt', 'huegame', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
   { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, netværk, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'netcalc', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
