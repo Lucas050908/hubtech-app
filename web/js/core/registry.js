@@ -293,6 +293,20 @@ export const APPS = [
     keywords: ['budget', 'penge', 'økonomi', 'udgifter', 'indtægter', 'løn', 'opsparing'],
   },
   {
+    id: 'pixels', name: 'Pixelværksted', tagline: 'Pixelkunst og små animationer.',
+    description: 'Tegn pixelkunst i 16, 24 eller 32 felter: blyant, fyld, pipette og spejltegning. Lav små animationer billede for billede, gem som PNG – eller brug tegningen som dit profilbillede.',
+    icon: 'grid', hue: 'var(--hue-pixels)', route: '#/apps/pixels', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'night', focusX: 0.5, tint: '#ff77a8' }, page: () => import('../pages/pixels.js'),
+    keywords: ['pixel', 'pixelkunst', 'tegne', 'sprite', 'animation', 'retro', 'kunst', 'profilbillede', '8-bit'],
+  },
+  {
+    id: 'beats', name: 'Beatboks', tagline: 'Byg dit eget beat.',
+    description: 'En trommemaskine med melodi og bas: klik i gitteret, skru på tempo og swing, og vælg lyd. Al lyd laves i browseren. Del beatet som et link, eller gem det som lydfil.',
+    icon: 'music', hue: 'var(--hue-beats)', route: '#/apps/beats', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'night', focusX: 0.45, tint: '#a855f7' }, page: () => import('../pages/beats.js'),
+    keywords: ['musik', 'beat', 'trommer', 'trommemaskine', 'rytme', 'melodi', 'bas', 'lyd', 'producer', 'sequencer'],
+  },
+  {
     id: 'draw', name: 'Tegnebræt', tagline: 'Tegn og skitsér.',
     description: 'Tegn et netværk, forklar noget for en kunde, eller lav en hurtig skitse – med mus, finger eller pen. Gem tegningerne på din konto, eller hent dem som billede.',
     icon: 'paint', hue: 'var(--hue-draw)', route: '#/apps/draw', category: 'workspace', status: 'available',
@@ -499,6 +513,7 @@ export const visible = (app, user) => access(app, user).kind !== 'hidden';
  * (like Guides & Læring). The first member is where the group opens. Old links to every app still work.
  */
 export const SUITES = [
+  { id: 'creative', name: 'Kreativt', tagline: 'Tegnebræt, pixelkunst og beats.', icon: 'paint', hue: 'var(--hue-draw)', members: ['draw', 'pixels', 'beats'] },
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer, vaner og træning.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits', 'workout'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },

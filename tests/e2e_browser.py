@@ -1476,6 +1476,33 @@ async def main():
         lib = (await api(page, "GET", "/api/state/library"))["data"]["state"]["items"][0]
         check("bøger og film: fremskridt, færdig og stjerner gemmes", lib["status"] == "done" and lib["rating"] == 4 and lib["progress"] == 20, str(lib))
         await page.screenshot(path=f"{OUT}/app-library.png")
+        # ── Beatboks ──
+        await go("apps/beats", ".bt-grid")
+        check("beatboks: gitter med trommer, melodi og bas", await page.locator(".bt-row").count() == 26 and await page.locator(".bt-row.k-drum .bt-cell.is-on").count() > 0)
+        cell = page.locator(".bt-row.k-mel").nth(0).locator(".bt-cell").nth(15)
+        await cell.click()
+        check("beatboks: klik tænder en tone", await cell.get_attribute("aria-pressed") == "true")
+        await page.click(".bt-play"); await page.wait_for_timeout(900)
+        check("beatboks: afspilning kører", await page.locator(".bt-cell.is-now").count() > 0)
+        await page.screenshot(path=f"{OUT}/app-beats.png")
+        await page.click(".bt-play")
+        await page.fill("input[aria-label='Navn på dit beat']", "Mit første beat"); await page.click(".bt-page button:has-text('Gem'):not(:has-text('lydfil'))")
+        await page.wait_for_selector(".bt-saved-name:has-text('Mit første beat')")
+        code = await page.evaluate("import('/js/features/beats.js').then(B => B.encode(B.PRESETS.house.make()))")
+        await page.goto(BASE + f"/#/apps/beats/b/{code}"); await page.reload(); await page.wait_for_selector(".bt-grid")
+        check("beatboks: et delt link åbner beatet", await page.input_value("input[aria-label='Tempo (BPM)']") == "124")
+        # ── Pixelværksted ──
+        await go("apps/pixels", ".px-canvas")
+        box = await page.locator(".px-canvas").bounding_box()
+        await page.mouse.move(box["x"] + 5, box["y"] + 5); await page.mouse.down(); await page.mouse.move(box["x"] + box["width"] / 2, box["y"] + 5, steps=8); await page.mouse.up()
+        await page.click(".px-page .segmented button:has-text('Fyld')"); await page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        await page.wait_for_timeout(1500)
+        pxs = (await api(page, "GET", "/api/state/pixels"))["data"]["state"]["current"]["art"]
+        check("pixelværksted: tegning og fyld gemmes", pxs["frames"][0].count("B") >= 7 and len(pxs["pal"]) == 1 and pxs["frames"][0].count("A") < 20, str(pxs["frames"][0][:40]))
+        await page.click(".px-frame.is-add"); await page.fill("input[aria-label='Navn på tegningen']", "Robot"); await page.click(".px-side button:has-text('Gem')")
+        await page.wait_for_selector(".px-gopen:has-text('Robot')")
+        check("pixelværksted: animation med to billeder i galleriet", "2 billeder" in await page.inner_text(".px-gallery"))
+        await page.screenshot(path=f"{OUT}/app-pixels.png")
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))

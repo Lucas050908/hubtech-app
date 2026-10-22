@@ -395,3 +395,38 @@ console.log('apps ok');
   assert.equal(L.suggest(items, 'book', () => 0).id, 1); assert.equal(L.suggest(items, 'game'), null);
   console.log('library ok');
 }
+{
+  const B = await import('../web/js/features/beats.js');
+  const p = B.PRESETS.boom.make();
+  assert.deepEqual(B.hits(p, 0).drums, ['kick', 'hat']); assert.deepEqual(B.hits(p, 4).drums, ['snare', 'hat']);
+  assert.equal(B.hits(p, 0).bass[0], 33); assert.ok(B.countNotes(p) > 15);
+  assert.equal(B.stepTime(4, 120), 0.5); assert.equal(B.stepTime(1, 120, 0), 0.125); assert.ok(B.stepTime(1, 120, 0.5) > 0.125, 'swing skubber');
+  assert.equal(B.barSecs(120), 2);
+  for (const [id, pr] of Object.entries(B.PRESETS)) {
+    const x = pr.make(), code = B.encode(x), y = B.decode(code);
+    assert.deepEqual(y, { ...x, swing: Math.round(x.swing * 100) / 100 }, id);
+    assert.ok(code.length < 100, `${id}: koden er kort (${code.length})`);
+  }
+  assert.equal(B.decode('noget vrøvl'), null); assert.equal(B.decode('1.100.0.00.!!'), null);
+  assert.equal(B.noteName(69), 'A4'); assert.equal(Math.round(B.midiToHz(69)), 440);
+  const w = B.wav(new Float32Array([0, 1, -1]), 8000);
+  assert.equal(String.fromCharCode(...w.slice(0, 4)), 'RIFF'); assert.equal(w.length, 50);
+  console.log('beats ok');
+}
+{
+  const P = await import('../web/js/features/pixels.js');
+  let px = P.blank(4);
+  px = P.paint(px, 4, 0, '#ff004d', true);
+  assert.equal(px[0], '#ff004d'); assert.equal(px[3], '#ff004d', 'spejling');
+  const box = ['#000000', '#000000', '#000000', '#000000', '#000000', '', '', '#000000', '#000000', '', '', '#000000', '#000000', '#000000', '#000000', '#000000'];
+  const f = P.fill(box, 4, 4, 5, '#ffec27');
+  assert.deepEqual([f[5], f[6], f[9], f[10], f[0]], ['#ffec27', '#ffec27', '#ffec27', '#ffec27', '#000000'], 'fyld stopper ved kanten');
+  assert.deepEqual(P.line(0, 15, 4), [0, 5, 10, 15]);
+  assert.deepEqual(P.shift(['a', '', '', ''], 2, 2, 1, 1), ['', '', '', 'a']);
+  assert.deepEqual(P.flipH(['a', 'b', 'c', 'd'], 2), ['b', 'a', 'd', 'c']); assert.deepEqual(P.flipV(['a', 'b', 'c', 'd'], 2, 2), ['c', 'd', 'a', 'b']);
+  const art = { w: 16, h: 16, fps: 8, frames: [P.paint(P.blank(16), 16, 17, '#29adff'), P.fill(P.blank(16), 16, 16, 0, '#00e436')] };
+  const packed = P.pack(art);
+  assert.equal(packed.frames[0].length, 256); assert.deepEqual(P.unpack(JSON.parse(JSON.stringify(packed))), art);
+  assert.equal(P.unpack({ w: 7, frames: [] }), null);
+  console.log('pixels ok');
+}
