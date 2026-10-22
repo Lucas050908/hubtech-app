@@ -108,6 +108,9 @@ def players(req, _):
 # ── rooms ──
 def _sweep():
     t = time.time()
+    for r in _rooms.values():      # a typing race is over after 3 minutes, even if someone never finished
+        if r["game"] == "typing" and r["status"] == "playing" and r["state"].get("start") and t * 1000 - r["state"]["start"] > 180_000:
+            r["status"] = "done"
     for rid in [k for k, r in _rooms.items() if t - r["touched"] > ROOM_TTL or (r["status"] in ("invite", "done") and t - r["touched"] > 600)]:
         _rooms.pop(rid, None)
 

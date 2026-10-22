@@ -1175,6 +1175,10 @@ async def main():
         await page.wait_for_timeout(1500)                                  # saved on the account
         await page.reload(); await page.wait_for_selector(".sd-cell")
         check("dagens sudoku: samme opgave efter genindlæsning og med dagens liste", p1_ == await page.evaluate("[...document.querySelectorAll('.sd-cell')].map(c => c.textContent.trim()).join(',')") and await page.locator(".panel:has-text('Dagens liste')").is_visible())
+        await go("apps/arcade", ".ac-grid .app-card")
+        await page.wait_for_selector(".ac-daily", timeout=8000)
+        check("spilhal: oversigt med alle spil og dagens sudoku", await page.locator(".ac-grid .app-card").count() >= 14 and "Dagens sudoku" in await page.inner_text(".ac-daily"))
+        await page.screenshot(path=f"{OUT}/app-arcade.png", full_page=True)
         await go("apps/connect4", ".c4-col")
         await page.locator(".c4-local .c4-col").nth(3).click(); await page.wait_for_timeout(900)
         check("fire på stribe: din brik og computerens svar", await page.locator(".c4-cell.p1").count() == 1 and await page.locator(".c4-cell.p2").count() == 1)

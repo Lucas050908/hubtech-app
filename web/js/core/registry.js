@@ -216,6 +216,13 @@ export const APPS = [
     keywords: ['tjekliste', 'checkliste', 'kundebesøg', 'ny computer', 'opsætning', 'backup', 'skabelon'],
   },
   {
+    id: 'arcade', name: 'Oversigt', tagline: 'Alle spil, invitationer og toplister.',
+    description: 'Spilhallens forside: invitationer og spil i gang, Dagens sudoku, toppen af toplisterne og alle spillene.',
+    icon: 'gamepad', hue: 'var(--hue-games)', route: '#/apps/arcade', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'dusk', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/arcade.js'),
+    keywords: ['spil', 'spilhal', 'oversigt', 'topliste', 'invitation', 'online'],
+  },
+  {
     id: 'snake', name: 'Snake', tagline: 'Klassisk slangespil.',
     description: 'Styr slangen med piletasterne eller ved at swipe. Den bliver hurtigere, jo længere den er. Rekorden gemmes på din konto.',
     icon: 'gamepad', hue: 'var(--hue-games)', route: '#/apps/snake', category: 'workspace', status: 'available',
@@ -432,7 +439,7 @@ export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
-  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
   { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
