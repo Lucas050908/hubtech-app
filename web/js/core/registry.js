@@ -321,6 +321,20 @@ export const APPS = [
     keywords: ['spil', 'flag', 'lande', 'geografi', 'quiz', 'topliste'],
   },
   {
+    id: 'yatzy', name: 'Yatzy', tagline: 'Fem terninger og tre slag.',
+    description: 'Klassisk Yatzy med danske regler: 15 rubrikker og bonus ved 63. Spil alene mod rekorden, mod computeren, flere på samme skærm eller online. Toplisten viser den bedste slutsum.',
+    icon: 'cube', hue: 'var(--hue-yatzy)', route: '#/apps/yatzy', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.4, tint: '#f97316' }, page: () => import('../pages/yatzy.js'),
+    keywords: ['spil', 'terninger', 'yatzy', 'yahtzee', 'brætspil', 'familie', 'online'],
+  },
+  {
+    id: 'chess', name: 'Skak', tagline: 'Mod computeren eller en ven.',
+    description: 'Skak med alle regler: rokade, en passant, bondeforvandling, pat og remis. Spil mod computeren på fire niveauer, to på samme skærm eller online – og se andres partier.',
+    icon: 'crown', hue: 'var(--hue-chess)', route: '#/apps/chess', category: 'workspace', status: 'available',
+    art: { season: 'winter', time: 'day', focusX: 0.55, tint: '#a3a3a3' }, page: () => import('../pages/chess.js'),
+    keywords: ['spil', 'skak', 'chess', 'brætspil', 'konge', 'dronning', 'online', 'computer'],
+  },
+  {
     id: 'property', name: 'Ejendomskongen', tagline: 'Køb gader, byg hoteller.',
     description: 'Det store ejendomsspil for 2–6 spillere på samme skærm – mennesker eller computeren. Terninger, gader, huse, hoteller, lykkekort og fængsel. Spillet gemmes.',
     icon: 'home', hue: 'var(--hue-boards)', route: '#/apps/property', category: 'workspace', status: 'available',
@@ -440,7 +454,7 @@ export const SUITES = [
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
   { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
-  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
+  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;

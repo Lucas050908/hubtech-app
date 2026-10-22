@@ -12,8 +12,8 @@ import { appCard } from '../features/widgets.js';
 import { roomApi, person, me, boardTable } from '../features/gameroom.js';
 import { todayISO } from '../features/gamelogic.js';
 
-const APP = { connect4: 'connect4', ttt: 'tictactoe', typing: 'typerace', draw: 'drawguess', property: 'property' };
-const NAME = { connect4: 'Fire på stribe', ttt: 'Kryds og bolle', typing: 'Fart-tast', draw: 'Tegn og gæt', property: 'Ejendomskongen' };
+const APP = { connect4: 'connect4', ttt: 'tictactoe', typing: 'typerace', draw: 'drawguess', property: 'property', chess: 'chess', yatzy: 'yatzy' };
+const NAME = { connect4: 'Fire på stribe', ttt: 'Kryds og bolle', typing: 'Fart-tast', draw: 'Tegn og gæt', property: 'Ejendomskongen', chess: 'Skak', yatzy: 'Yatzy' };
 const fmtSecs = (v) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`;
 
 export default {
@@ -39,7 +39,7 @@ export default {
       if (invites.length) online.append(h('h3', { class: 'gr-h' }, 'Invitationer til dig'), ...invites.map(r => row(r, null, 'Spil med')));
       if (going.length) online.append(h('h3', { class: 'gr-h' }, 'Dine spil'), ...going.map(r => row(r, r.status === 'playing' ? 'I gang' : 'Venter', 'Åbn')));
       if (live.length) online.append(h('h3', { class: 'gr-h' }, 'Andre spiller lige nu'), ...live.slice(0, 5).map(r => row(r, r.watchers ? `${r.watchers} ser med` : null, 'Se med')));
-      online.append(h('div', { class: 'ac-start' }, Object.entries(NAME).map(([g, n]) => h('a', { class: 'btn', href: `#/apps/${APP[g]}/online` }, icon({ connect4: 'apps', ttt: 'x', typing: 'timer', draw: 'paint', property: 'home' }[g]), n))));
+      online.append(h('div', { class: 'ac-start' }, Object.entries(NAME).map(([g, n]) => h('a', { class: 'btn', href: `#/apps/${APP[g]}/online` }, icon({ connect4: 'apps', ttt: 'x', typing: 'timer', draw: 'paint', property: 'home', chess: 'crown', yatzy: 'cube' }[g]), n))));
       if (!invites.length && !going.length && !live.length) online.prepend(h('p', { class: 'faint', style: { margin: 0 } }, 'Ingen spil i gang lige nu. Start et og invitér en ven:'));
     }
     async function drawTops() {

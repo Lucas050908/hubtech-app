@@ -123,6 +123,31 @@ class GamesTest(FreshServer):
         self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/act", {"name": "roll"}, cookie=self.c)[0], 404, "not in the game")
         self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/sync", {"blob": {"x": "y" * 400000}}, cookie=self.a)[0], 400, "size limit")
 
+    def test_chess_and_yatzy_online(self):
+        _, d = self.call("GET", "/api/games/players", cookie=self.a)
+        ids = {p["name"]: p["id"] for p in d["players"]}
+        # chess: one opponent, the second invite is dropped, the host's browser runs the game
+        _, d = self.call("POST", "/api/games/rooms", {"game": "chess", "invite": [ids["Bo"], ids["Carl"]]}, cookie=self.a)
+        rid = d["room"]["id"]
+        self.assertEqual(len(d["room"]["invited"]), 1)
+        self.call("POST", f"/api/games/rooms/{rid}/join", {}, cookie=self.b)
+        self.call("POST", f"/api/games/rooms/{rid}/start", {}, cookie=self.a)
+        s, _ = self.call("POST", f"/api/games/rooms/{rid}/sync", {"blob": {"phase": "play", "s": {"turn": "w"}}}, cookie=self.a)
+        self.assertEqual(s, 200)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/act", {"name": "move", "args": [52, 36, "q"]}, cookie=self.b)[0], 200)
+        self.call("POST", f"/api/games/rooms/{rid}/sync", {"blob": {"phase": "over"}}, cookie=self.a)
+        self.assertEqual(self.call("GET", f"/api/games/rooms/{rid}", cookie=self.b)[1]["room"]["status"], "done")
+        _, d = self.call("POST", f"/api/games/rooms/{rid}/rematch", {}, cookie=self.a)
+        self.assertEqual((d["room"]["status"], d["room"]["state"]["blob"]), ("lobby", None))
+        # yatzy: several players, and its leaderboard
+        _, d = self.call("POST", "/api/games/rooms", {"game": "yatzy", "invite": [ids["Bo"], ids["Carl"]]}, cookie=self.a)
+        self.assertEqual(len(d["room"]["invited"]), 2)
+        self.assertEqual(self.call("POST", "/api/games/boards/yatzy", {"score": 250}, cookie=self.a)[0], 200)
+        self.assertEqual(self.call("POST", "/api/games/boards/yatzy", {"score": 999}, cookie=self.a)[0], 400, "more than the maximum")
+        for room in (rid, d["room"]["id"]):       # tidy up for the other tests
+            for c in (self.a, self.b, self.c):
+                self.call("POST", f"/api/games/rooms/{room}/leave", {}, cookie=c)
+
     def test_watch_a_game(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)
         bo = next(p["id"] for p in d["players"] if p["name"] == "Bo")
@@ -191,7 +216,7 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", "/api/games/boards/mines-easy", {"score": 25}, cookie=self.b)
         self.assertEqual(d["board"]["rows"][0]["user"]["name"], "Bo", "lowest time wins")
         s, d = self.call("GET", "/api/games/boards", cookie=self.c)
-        self.assertEqual(len(d["boards"]), 13)
+        self.assertEqual(len(d["boards"]), 14)
 
     def test_race(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)

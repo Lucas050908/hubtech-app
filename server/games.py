@@ -43,9 +43,12 @@ _lock = threading.RLock()
 _rooms = {}            # id -> room
 _typing_runs = {}      # token -> {uid, text, start}
 ROOM_TTL = 3600
-GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt", "property": "Ejendomskongen"}
-APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property"}
-MULTI = {"typing": 7, "draw": 7, "property": 5}     # how many can be invited
+GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt", "property": "Ejendomskongen",
+         "yatzy": "Yatzy", "chess": "Skak"}
+APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property", "yatzy": "yatzy", "chess": "chess"}
+MULTI = {"typing": 7, "draw": 7, "property": 5, "yatzy": 5}     # how many can be invited
+# games run by the host's browser: the server keeps the latest state and passes the others' moves on
+HOSTED = {"property": 6, "yatzy": 6, "chess": 2}                # max players
 DUEL = {"connect4", "ttt"}          # two players, taking turns
 # leaderboard games: id -> (label, higher is better, max sane value)
 BOARDS = {
@@ -53,6 +56,7 @@ BOARDS = {
     "aim": ("Aim-træner", True, 2000),
     "flags": ("Gæt flaget", True, 300),
     "casino": ("Kasino – højeste bunke", True, 1_000_000_000),
+    "yatzy": ("Yatzy", True, 374),
     "snake": ("Snake", True, 400),
     "game2048": ("2048", True, 1_000_000),
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
@@ -170,7 +174,7 @@ def _new_state(game):
         return _c4_new()
     if game == "ttt":
         return {"board": [0] * 9, "turn": 0, "winner": None, "cells": [], "last": None, "score": [0, 0]}
-    if game == "property":
+    if game in HOSTED:
         return {"blob": None, "ver": 0}
     if game == "draw":
         return {"turn": -1, "rounds": 2, "drawer": None, "hint": "", "ends": None, "scores": {}, "guessed": [], "chat": [], "reveal": None,
@@ -227,7 +231,7 @@ def join(req, params):
         r = _get(params["id"], u["id"])
         if u["id"] in r["players"]:
             return 200, {"room": _public(r)}
-        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]) or (r["game"] == "draw" and len(r["players"]) >= 8) or (r["game"] == "property" and (len(r["players"]) >= 6 or r["status"] == "playing")):
+        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]) or (r["game"] == "draw" and len(r["players"]) >= 8) or (r["game"] in HOSTED and (len(r["players"]) >= HOSTED[r["game"]] or r["status"] == "playing")):
             raise ApiError(409, "Spillet er allerede i gang.", "started")
         r["invited"].remove(u["id"])
         r["players"].append(u["id"])
@@ -257,7 +261,7 @@ def leave(req, params):
                 _push(r)
                 return 200, {"ok": True}
             r["players"].remove(u["id"])
-            if r["game"] == "property" and r["status"] == "playing" and r["host"] == u["id"]:
+            if r["game"] in HOSTED and r["status"] == "playing" and r["host"] == u["id"]:
                 r["status"] = "done"
             if r["game"] == "draw" and r["status"] == "playing" and (r["state"]["drawer"] == u["id"] or len(r["players"]) < 2):
                 _say(r["state"], f"{u['display_name']} forlod spillet")
@@ -341,11 +345,11 @@ def race_start(req, params):
     u = require_user(req)
     with _lock:
         r = _get(params["id"], u["id"])
-        if r["game"] not in ("typing", "draw", "property") or r["host"] != u["id"]:
+        if r["game"] not in ("typing", "draw") and r["game"] not in HOSTED or r["host"] != u["id"]:
             raise ApiError(403, "Kun den, der startede spillet, kan sætte det i gang.", "forbidden")
         if len(r["players"]) < 2:
             raise ApiError(409, "Vent på, at mindst én er med.", "alone")
-        if r["game"] == "property":
+        if r["game"] in HOSTED:
             if r["status"] != "playing":
                 r["invited"] = []
                 r["status"] = "playing"
@@ -691,7 +695,7 @@ def property_sync(req, params):
         raise ApiError(400, "Ugyldig spiltilstand.", "invalid")
     with _lock:
         r = _get(params["id"], u["id"])
-        if r["game"] != "property" or r["host"] != u["id"]:
+        if r["game"] not in HOSTED or r["host"] != u["id"]:
             raise ApiError(403, "Kun værten styrer spillet.", "forbidden")
         r["state"]["blob"] = blob
         r["state"]["ver"] += 1
@@ -708,7 +712,7 @@ def property_act(req, params):
     args = b.get("args") if isinstance(b.get("args"), list) else []
     with _lock:
         r = _get(params["id"], u["id"])
-        if r["game"] != "property" or r["status"] != "playing" or u["id"] not in r["players"]:
+        if r["game"] not in HOSTED or r["status"] != "playing" or u["id"] not in r["players"]:
             raise ApiError(409, "Spillet er ikke i gang.", "not_playing")
         host = r["host"]
     live.publish([host], {"type": "game-act", "id": params["id"], "from": u["id"], "name": name, "args": args[:3]})

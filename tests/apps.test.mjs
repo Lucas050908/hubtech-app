@@ -137,3 +137,63 @@ console.log('apps ok');
   assert.equal(countSolutions(a.puzzle), 1);
   console.log('daily ok');
 }
+{
+  const Y = await import('../web/js/features/yatzy.js');
+  assert.equal(Y.scoreFor('ones', [1, 1, 3, 1, 5]), 3);
+  assert.equal(Y.scoreFor('pair', [1, 1, 6, 6, 2]), 12, 'højeste par');
+  assert.equal(Y.scoreFor('twopairs', [5, 5, 3, 3, 1]), 16);
+  assert.equal(Y.scoreFor('twopairs', [6, 6, 6, 6, 1]), 0, 'to par skal være forskellige');
+  assert.equal(Y.scoreFor('three', [4, 4, 4, 2, 2]), 12); assert.equal(Y.scoreFor('four', [3, 3, 3, 3, 3]), 12);
+  assert.equal(Y.scoreFor('small', [5, 4, 3, 2, 1]), 15); assert.equal(Y.scoreFor('small', [2, 3, 4, 5, 6]), 0); assert.equal(Y.scoreFor('large', [6, 2, 4, 3, 5]), 20);
+  assert.equal(Y.scoreFor('house', [2, 2, 3, 3, 3]), 13); assert.equal(Y.scoreFor('house', [3, 3, 3, 3, 3]), 0, 'fuldt hus kræver to forskellige');
+  assert.equal(Y.scoreFor('chance', [6, 5, 4, 3, 1]), 19); assert.equal(Y.scoreFor('yatzy', [2, 2, 2, 2, 2]), 50);
+  const card = { ones: 3, twos: 6, threes: 9, fours: 12, fives: 15, sixes: 18 };
+  assert.equal(Y.upperSum(card), 63); assert.equal(Y.bonusOf(card), 50); assert.equal(Y.totalOf(card), 113);
+  // a game: only the player whose turn it is can act, three rolls at most, a box only once
+  const s = Y.newGame([{ name: 'A' }, { name: 'B', ai: true }]);
+  assert.equal(Y.applyAction(s, 1, 'roll'), false, 'ikke din tur');
+  assert.equal(Y.applyAction(s, 0, 'score', ['chance']), false, 'slå først');
+  assert.ok(Y.applyAction(s, 0, 'roll')); assert.ok(Y.applyAction(s, 0, 'hold', [0])); assert.ok(s.held[0]);
+  const kept = s.dice[0];
+  assert.ok(Y.applyAction(s, 0, 'roll')); assert.equal(s.dice[0], kept, 'gemt terning bliver liggende');
+  assert.ok(Y.applyAction(s, 0, 'roll')); assert.equal(Y.applyAction(s, 0, 'roll'), false, 'højst tre slag');
+  assert.ok(Y.applyAction(s, 0, 'score', ['chance'])); assert.equal(s.turn, 1);
+  let n = 0; while (s.phase === 'play' && n++ < 500) { if (s.turn === 1) Y.aiStep(s); else { if (!s.rolls) Y.applyAction(s, 0, 'roll'); else Y.applyAction(s, 0, 'score', [Y.CAT_IDS.find(id => s.players[0].card[id] == null)]); } }
+  assert.equal(s.phase, 'over'); assert.ok(s.players.every(p => Y.cardDone(p.card)));
+  assert.equal(Y.applyAction(s, 0, 'score', ['ones']), false);
+  // the computer plays a sensible game on its own
+  let sum = 0; for (let g = 0; g < 12; g++) { const t = Y.newGame([{ name: 'C', ai: true }]); while (t.phase === 'play') Y.aiStep(t); sum += Y.totalOf(t.players[0].card); }
+  assert.ok(sum / 12 > 150, `computeren får i snit ${sum / 12}`);
+  console.log('yatzy ok');
+}
+{
+  const C = await import('../web/js/features/chess.js');
+  // perft: the number of positions after n moves – checks castling, en passant, promotion and pins
+  assert.equal(C.perft(C.newGame(), 3), 8902);
+  assert.equal(C.perft(C.fromFEN('r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1'), 2), 2039);
+  assert.equal(C.perft(C.fromFEN('8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1'), 3), 2812);
+  assert.equal(C.perft(C.fromFEN('r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1'), 2), 264);
+  // fool's mate
+  const s = C.newGame();
+  for (const [f, t] of [['f2', 'f3'], ['e7', 'e5'], ['g2', 'g4']]) assert.ok(C.play(s, C.sqIndex(f), C.sqIndex(t)));
+  assert.equal(C.play(s, C.sqIndex('a2'), C.sqIndex('a3')), null, 'sort er i trækket');
+  assert.ok(C.play(s, C.sqIndex('d8'), C.sqIndex('h4')));
+  assert.deepEqual(s.result, { winner: 'b', why: 'mate' }); assert.equal(s.moves.at(-1), 'Dh4#');
+  // castling notation and rights
+  const k = C.fromFEN('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1');
+  assert.ok(C.play(k, C.sqIndex('e1'), C.sqIndex('g1'))); assert.equal(k.board[C.sqIndex('f1')], 'R'); assert.equal(k.moves[0], 'O-O'); assert.equal(k.castle, 'kq');
+  // en passant
+  const e = C.fromFEN('4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1');
+  assert.ok(C.play(e, C.sqIndex('e5'), C.sqIndex('d6'))); assert.equal(e.board[C.sqIndex('d5')], '', 'bonden er slået en passant');
+  // promotion to a knight
+  const p = C.fromFEN('8/4P3/8/8/8/8/8/k6K w - - 0 1');
+  assert.ok(C.play(p, C.sqIndex('e7'), C.sqIndex('e8'), 'n')); assert.equal(p.board[C.sqIndex('e8')], 'N'); assert.equal(p.moves[0], 'e8=S');
+  // stalemate and too little material
+  const st = C.fromFEN('7k/8/6Q1/8/8/8/8/K7 w - - 0 1'); C.play(st, C.sqIndex('g6'), C.sqIndex('f7')); assert.equal(st.result?.why, 'stalemate');
+  const im = C.fromFEN('7k/8/8/8/8/8/8/Kr4B1 w - - 0 1'); C.play(im, C.sqIndex('a1'), C.sqIndex('b1')); assert.equal(im.result?.why, 'material');
+  // the computer finds mate in one and takes a free queen
+  const m1 = C.fromFEN('6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1'); const mv = C.bestMove(m1, 'easy', () => 0.5);
+  assert.equal(C.sqName(mv.to), 'a8');
+  const fq = C.fromFEN('4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1'); assert.equal(C.sqName(C.bestMove(fq, 'medium', () => 0.5).to), 'd5');
+  console.log('chess ok');
+}

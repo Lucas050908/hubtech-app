@@ -137,6 +137,7 @@ export async function submitScore(game, score) {
 const CHALLENGES = [
   ['connect4', 'Fire på stribe', 'apps', 'connect4'], ['ttt', 'Kryds og bolle', 'x', 'tictactoe'], ['draw', 'Tegn og gæt', 'paint', 'drawguess'],
   ['typing', 'Fart-tast (løb)', 'timer', 'typerace'], ['property', 'Ejendomskongen', 'home', 'property'],
+  ['chess', 'Skak', 'crown', 'chess'], ['yatzy', 'Yatzy', 'cube', 'yatzy'],
 ];
 export function challengeDialog(user) {
   let close;
