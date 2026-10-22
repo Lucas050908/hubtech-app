@@ -3,6 +3,7 @@ import { h, clear } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { toast, segmented } from '../core/ui.js';
 import { appById } from '../core/registry.js';
+import { submitScore } from '../features/gameroom.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 
@@ -65,6 +66,7 @@ export default {
       if (!st.best[level] || s < st.best[level]) { st.best[level] = s; toast('Ny rekord!', { type: 'xp', text: `${L().label} på ${s} sekunder` }); }
       else toast('Du vandt!', { type: 'ok', text: `${s} sekunder` });
       cells.forEach(c => { if (c.mine) c.flag = true; });
+      submitScore(`mines-${level === 'mid' ? 'medium' : level}`, s);
       store.save(); bestEl.textContent = `${st.best[level]} s`;
     }
     function draw() {

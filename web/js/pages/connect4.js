@@ -5,12 +5,13 @@ import { toast, segmented } from '../core/ui.js';
 import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
+import { lobbyPanel, roomApi, watchRoom, person, me } from '../features/gameroom.js';
 import { c4Empty, c4Drop, c4Winner, c4Valid, c4Best, C4_LEVELS, C4_ROWS, C4_COLS } from '../features/gamelogic.js';
 
 export default {
   title: 'Fire på stribe',
-  destroy() { clearTimeout(this._t); removeEventListener('keydown', this._k); },
-  async render() {
+  destroy() { clearTimeout(this._t); removeEventListener('keydown', this._k); this._off?.(); },
+  async render(ctx) {
     const app = appById('connect4');
     let store;
     try { store = await appState('connect4', { mode: 'cpu', level: 'medium', stats: {} }); } catch (e) { return loadError('Fire på stribe', e); }
@@ -20,6 +21,10 @@ export default {
     const status = h('div', { class: 'c4-status', 'aria-live': 'polite' });
     const statsEl = h('div', { class: 'c4-stats' });
     const statKey = () => (st.mode === 'cpu' ? st.level : 'two');
+    if (ctx?.params?.sub === 'online') st.mode = 'online';
+    let room = null;                                    // the online game being shown
+    const onlineBox = h('div', { class: 'stack c4-online' });
+    const localBox = h('div', { class: 'c4-local' });
 
     function reset() { board = c4Empty(); turn = 1; over = false; win = null; thinking = false; clearTimeout(self._t); draw(); }
     function play(col) {
@@ -61,20 +66,71 @@ export default {
         : [h('span', null, 'Spil ', h('b', null, String(s.w + s.d))), h('span', null, 'Uafgjort ', h('b', null, String(s.d)))]);
     }
     this._k = (e) => {
-      if (!document.body.contains(boardEl) || e.target.closest?.('input, textarea, select')) return;
+      if (st.mode === 'online' || !document.body.contains(boardEl) || e.target.closest?.('input, textarea, select')) return;
       if (/^[1-7]$/.test(e.key)) { e.preventDefault(); hover = Number(e.key) - 1; play(hover); }
       else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); hover = (hover + (e.key === 'ArrowLeft' ? 6 : 1)) % 7; draw(); }
       else if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest?.('button')) { e.preventDefault(); play(hover); }
     };
     addEventListener('keydown', this._k);
     const levelSeg = segmented(Object.entries(C4_LEVELS).map(([value, l]) => ({ value, label: l.label })), st.level, (v) => { st.level = v; store.save(); reset(); }, { label: 'Sværhedsgrad' });
-    const modeSeg = segmented([{ value: 'cpu', label: 'Mod computeren', icon: 'bot' }, { value: 'two', label: 'To spillere', icon: 'users' }], st.mode, (v) => { st.mode = v; levelSeg.hidden = v !== 'cpu'; store.save(); reset(); }, { label: 'Spillere' });
-    levelSeg.hidden = st.mode !== 'cpu';
-    reset();
+    const modeSeg = segmented([{ value: 'cpu', label: 'Mod computeren', icon: 'bot' }, { value: 'two', label: 'To på én skærm', icon: 'users' }, { value: 'online', label: 'Online', icon: 'globe' }], st.mode,
+      (v) => { st.mode = v; if (v !== 'online') { store.save(); location.hash !== '#/apps/connect4' && history.replaceState(null, '', '#/apps/connect4'); } showMode(); }, { label: 'Spillere' });
+
+    // ── online: against someone else on this HUBTECH ──
+    const myIdx = () => room ? room.players.findIndex(p => p.id === me()) : -1;
+    function openRoom(r) {
+      self._off?.();
+      room = r;
+      if (!r) { history.replaceState(null, '', '#/apps/connect4/online'); return drawOnline(); }
+      history.replaceState(null, '', `#/apps/connect4/online/${r.id}`);
+      self._off = watchRoom(r.id, (nr) => { if (!nr) { toast('Spillet er lukket', { type: 'info' }); room = null; self._off?.(); drawOnline(); return; }
+        const was = room?.state?.winner; room = nr; drawOnline();
+        if (nr.status === 'done' && was == null && nr.state.winner != null && nr.state.winner === myIdx() + 1) toast('Du vandt!', { type: 'xp', text: 'Fire på stribe online' }); });
+      drawOnline();
+    }
+    function drawOnline() {
+      clear(onlineBox);
+      if (!room) { onlineBox.append(lobbyPanel({ game: 'connect4', text: 'Vælg en, der har HUBTECH, og send en udfordring. De får en besked og kan spille med med det samme – også på telefonen.', onOpen: openRoom })); return; }
+      const S = room.state, mi = myIdx();
+      const red = room.players[0], yellow = room.players[1];
+      let msg;
+      if (room.status === 'invite') msg = `Venter på, at ${room.invited.map(p => p.name).join(', ') || 'modstanderen'} siger ja …`;
+      else if (room.status === 'done') msg = S.winner === 0 ? 'Uafgjort!' : S.gaveUp ? (S.gaveUp === me() ? 'Du gav op' : 'Modstanderen gav op – du vandt') : S.winner === mi + 1 ? 'Du vandt! 🎉' : `${room.players[S.winner - 1]?.name || 'Modstanderen'} vandt`;
+      else msg = S.turn === mi ? 'Din tur – vælg en kolonne' : `${room.players[S.turn]?.name || 'Modstanderen'}s tur …`;
+      const winSet = new Set((S.cells || []).map(([r, c]) => `${r},${c}`));
+      const b = h('div', { class: 'c4-board', role: 'grid', 'aria-label': 'Spillebræt' });
+      const canMove = room.status === 'playing' && S.turn === mi;
+      for (let c = 0; c < C4_COLS; c++) {
+        const col = h('button', { class: 'c4-col', 'aria-label': `Kolonne ${c + 1}`, disabled: !canMove || S.board[0][c] !== 0,
+          onclick: async () => { try { room = await roomApi.move(room.id, c); drawOnline(); } catch (e) { toast(e.message, { type: 'warn' }); } } });
+        for (let r = 0; r < C4_ROWS; r++) col.append(h('i', { class: ['c4-cell', S.board[r][c] && `p${S.board[r][c]}`, winSet.has(`${r},${c}`) && 'is-win', S.last && S.last[0] === r && S.last[1] === c && 'is-last'] }));
+        b.append(col);
+      }
+      onlineBox.append(panel(null, null,
+        h('div', { class: 'c4-vs' }, h('span', { class: 'c4-side p1' }, h('i'), person(red || room.invited[0]), h('b', null, String(S.score?.[0] || 0))), h('span', { class: 'faint' }, 'mod'),
+          h('span', { class: 'c4-side p2' }, h('i'), person(yellow || room.invited[0]), h('b', null, String(S.score?.[1] || 0)))),
+        h('div', { class: ['c4-status', room.status === 'playing' && `p${S.turn + 1}`] }, msg),
+        h('div', { class: 'c4-wrap' }, b),
+        h('div', { class: 'row-actions', style: { justifyContent: 'center' } },
+          room.status === 'done' && room.players.length === 2 ? h('button', { class: 'btn btn-primary', onclick: async () => { try { room = await roomApi.rematch(room.id); drawOnline(); } catch (e) { toast(e.message, { type: 'warn' }); } } }, icon('refresh'), 'Spil igen') : null,
+          h('button', { class: 'btn', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle spil'),
+          room.status !== 'done' ? h('button', { class: 'btn btn-ghost', onclick: async () => { await roomApi.leave(room.id).catch(() => {}); self._off?.(); room = null; openRoom(null); } }, icon('x'), room.status === 'playing' ? 'Giv op' : 'Annullér') : null)));
+    }
+    function showMode() {
+      levelSeg.hidden = st.mode !== 'cpu';
+      localBox.hidden = st.mode === 'online'; onlineBox.hidden = st.mode !== 'online';
+      if (st.mode === 'online') {
+        if (ctx?.params?.id && !room) roomApi.get(ctx.params.id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r))).catch(() => openRoom(null));
+        else drawOnline();
+      } else reset();
+    }
+    reset(); showMode();
     return h('div', { class: 'page gm-page c4-page', style: { '--app': app.hue } },
       appHero(app, { eyebrow: 'Spilhal', title: 'Fire på stribe', lead: 'Få fire i træk – vandret, lodret eller på skrå. Klik på en kolonne, eller tryk 1–7.', compact: true }),
-      panel(null, null, h('div', { class: 'cmd-filters c4-filters' }, modeSeg, levelSeg), status,
+      h('div', { class: 'cmd-filters c4-filters', style: { margin: '16px 0' } }, modeSeg, levelSeg),
+      h(localBox, null, panel(null, null, status,
         h('div', { class: 'c4-wrap' }, boardEl),
-        h('div', { class: 'gm-top', style: { marginTop: '14px' } }, statsEl, h('button', { class: 'btn btn-sm', onclick: reset }, icon('refresh'), 'Nyt spil'))));
+        h('div', { class: 'gm-top', style: { marginTop: '14px' } }, statsEl, h('button', { class: 'btn btn-sm', onclick: reset }, icon('refresh'), 'Nyt spil')))),
+      onlineBox);
   },
 };

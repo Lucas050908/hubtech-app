@@ -126,7 +126,7 @@ export default {
     return h('div', { class: 'page bf-page', style: { '--app': 'var(--hue-byteforge)' } },
       appHero(appById('byteforge'), {
         eyebrow: 'Selvhostet homelab', title: 'ByteForge',
-        lead: 'Din server, dit data, din kontrol. ByteForge følger med HUBTECH og startes automatisk – panelet kører direkte her.',
+        lead: 'Selvhostet: serveren, data og kontrol bliver hos jer. ByteForge følger med HUBTECH og startes automatisk – panelet kører direkte her.',
         actions: [
           heroBtn('Original guide', 'book', { href: 'sites/byteforge-guide/index.html', target: '_blank', rel: 'noopener' }),
           heroGhost('GitHub', 'code', { href: 'https://github.com/Lucas050908/ByteForge', target: '_blank', rel: 'noopener' }),

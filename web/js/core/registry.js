@@ -26,7 +26,7 @@ export const APPS = [
   },
   {
     id: 'byteforge', name: 'ByteForge', tagline: 'Guides, værktøjer og læring.',
-    description: 'Dit selvhostede homelab: ByteForge-serveren følger med og startes sammen med HUBTECH, og panelet kører direkte her. Inkluderer hele ByteForge-guiden.',
+    description: 'Et selvhostet homelab, der følger med HUBTECH og kører på samme server. Panelet åbnes direkte her, og hele ByteForge-guiden er med.',
     icon: 'anvil', hue: 'var(--hue-byteforge)', route: '#/apps/byteforge', category: 'workspace', status: 'available',
     requires: { integration: 'byteforge' },
     art: { season: 'spring', time: 'night', focusX: 0.35, tint: '#9b3dff' }, page: () => import('../pages/byteforge.js'),
@@ -61,8 +61,8 @@ export const APPS = [
     keywords: ['huskekort', 'flashcards', 'gloser', 'lær udenad', 'spaced repetition', 'anki', 'quiz'],
   },
   {
-    id: 'cursor', name: 'Cursor Projekter', tagline: 'Dine Cursor-projekter og udvikling.',
-    description: 'Læser dine seneste Cursor-projekter og projektmapper direkte fra din maskine, viser git-status og åbner projekter i Cursor med ét klik.',
+    id: 'cursor', name: 'Cursor Projekter', tagline: 'Cursor-projekter og udvikling (kun ejeren).',
+    description: 'Viser de seneste Cursor-projekter og projektmapper på den computer, HUBTECH kører på, med git-status, og åbner dem i Cursor med ét klik. Kun platformens ejer kan bruge appen.',
     icon: 'cube', hue: 'var(--hue-cursor)', route: '#/projects', category: 'workspace', status: 'available',
     requires: { role: 'owner', integration: 'cursor' },
     art: { season: 'winter', time: 'dusk', focusX: 0.6, mono: true }, page: () => import('../pages/projects.js'),
@@ -160,7 +160,7 @@ export const APPS = [
     keywords: ['minecraft', 'server', 'ip', 'adresse', 'spil', 'java', 'bedrock', 'mc'],
   },
   {
-    id: 'admin', name: 'Admin', tagline: 'Styr platformen – kun for dem, du giver adgang.',
+    id: 'admin', name: 'Admin', tagline: 'Styring af platformen – for ejeren og administratorerne.',
     description: 'Overblik over brugere og aktivitet, anmeldelser fra Fællesskab, beskeder til alle og en log over, hvad administratorerne gør. Kun ejeren og dem, ejeren giver adgang, kan se og åbne appen.',
     icon: 'shield', hue: 'var(--hue-admin)', route: '#/apps/admin', category: 'system', status: 'available', requires: { admin: true },
     art: { season: 'winter', time: 'night', focusX: 0.5, tint: '#ef4444' }, page: () => import('../pages/admin.js'),
@@ -273,7 +273,7 @@ export const APPS = [
   },
   {
     id: 'connect4', name: 'Fire på stribe', tagline: 'Få fire i træk.',
-    description: 'Spil mod computeren i tre sværhedsgrader, eller mod en ven på samme skærm.',
+    description: 'Spil mod computeren i tre sværhedsgrader, mod en ven på samme skærm – eller online mod de andre, der har HUBTECH.',
     icon: 'target', hue: 'var(--hue-games)', route: '#/apps/connect4', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'night', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/connect4.js'),
     keywords: ['spil', 'fire på stribe', 'connect four', 'to spillere', 'sjov'],
@@ -284,6 +284,13 @@ export const APPS = [
     icon: 'edit', hue: 'var(--hue-games)', route: '#/apps/hangman', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'night', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/hangman.js'),
     keywords: ['spil', 'galgeleg', 'hangman', 'ord', 'it-ord', 'sjov'],
+  },
+  {
+    id: 'typerace', name: 'Fart-tast', tagline: 'Skriv hurtigst – og kom på toplisten.',
+    description: 'Hurtigskrivning mod uret med en topliste for alle på HUBTECH, eller løb mod de andre live. Her er også toplisterne for Snake, 2048, Minestryger og Sudoku.',
+    icon: 'timer', hue: 'var(--hue-games)', route: '#/apps/typerace', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/typerace.js'),
+    keywords: ['spil', 'fart', 'tastatur', 'skrive', 'hurtigskrivning', 'topliste', 'leaderboard', 'løb', 'online', 'sammen'],
   },
   {
     id: 'hwtest', name: 'Hardwaretest', tagline: 'Test tastatur, skærm, lyd og kamera.',
@@ -321,7 +328,7 @@ export const APPS = [
     keywords: ['phishing', 'svindel', 'sikkerhed', 'mail', 'sms', 'falsk', 'træning'],
   },
   {
-    id: 'owner', name: 'Ejer', tagline: 'Alt, kun du som ejer bestemmer over.',
+    id: 'owner', name: 'Ejer', tagline: 'Det, kun ejeren bestemmer over.',
     description: 'Brugere og adgangskoder, hvem der kan oprette en konto, venner på andre netværk, server og sikkerhedskopier – og siden, dine venner henter HUBTECH fra. Kun platformens ejer kan se appen.',
     icon: 'crown', hue: 'var(--hue-owner)', route: '#/apps/owner', category: 'system', status: 'available', requires: { owner: true },
     art: { season: 'autumn', time: 'dusk', focusX: 0.5, tint: '#f5b14c' }, page: () => import('../pages/owner.js'),
@@ -335,8 +342,8 @@ export const APPS = [
     keywords: ['kursus', 'guide', 'hjælp', 'servicetekniker', 'lektion'],
   },
   {
-    id: 'settings', name: 'Indstillinger', tagline: 'Profil, verden og integrationer',
-    description: 'Din profil, sikkerhed, udseende, årstider og vejr, integrationer og brugere.',
+    id: 'settings', name: 'Indstillinger', tagline: 'Profil, udseende og notifikationer',
+    description: 'Din profil, sikkerhed, udseende, årstider og vejr samt notifikationer. Ejeren finder også integrationer og brugere her.',
     icon: 'settings', hue: 'var(--hue-settings)', route: '#/settings', category: 'system', status: 'available',
     art: { season: 'winter', time: 'dawn', focusX: 0.5 }, page: () => import('../pages/settings.js'),
     keywords: ['profil', 'adgangskode', 'tema', 'årstid', 'baggrund'],
@@ -344,7 +351,7 @@ export const APPS = [
   {
     id: 'next', name: 'Næste modul', tagline: 'Plads til din næste idé',
     description: 'Nye apps tilføjes med én registrering i app-registret. Se guiden “Tilføj en ny app”.',
-    icon: 'rocket', hue: 'var(--accent)', route: '#/learn/guide/add-app', category: 'system', status: 'coming',
+    icon: 'rocket', hue: 'var(--accent)', route: '#/learn/guide/add-app', category: 'system', status: 'coming', requires: { owner: true },
     art: { season: 'spring', time: 'dawn', focusX: 0.3 },
     keywords: ['ny app', 'udvid', 'modul'],
   },
@@ -376,7 +383,7 @@ export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
-  { id: 'games', name: 'Spilhal', tagline: 'Snake, 2048, sudoku, minestryger, fire på stribe og flere.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'game2048', 'sudoku', 'mines', 'connect4', 'memory', 'hangman'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Spil alene eller sammen – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'typerace', 'connect4', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;

@@ -3,6 +3,7 @@ import { h, clear } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { toast, confirmDialog } from '../core/ui.js';
 import { appById } from '../core/registry.js';
+import { submitScore } from '../features/gameroom.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 
@@ -72,12 +73,14 @@ export default {
         toast('2048!', { type: 'xp', text: 'Du klarede det – fortsæt, hvis du kan.' });
       }
       if (!canMove(st.grid)) {
+        if (st.score > 0) submitScore('game2048', st.score);
         msg.replaceChildren(h('b', null, 'Ingen flere træk'), h('span', null, `${st.score} point`), h('button', { class: 'btn btn-primary', onclick: newGame }, icon('refresh'), 'Nyt spil'));
         msg.hidden = false;
       }
     }
     async function newGame() {
       if (msg.hidden && st.score > 0 && !await confirmDialog({ title: 'Start forfra?', text: 'Det igangværende spil forsvinder.', confirmLabel: 'Nyt spil' })) return;
+      if (msg.hidden && st.score > 0) submitScore('game2048', st.score);
       st.grid = fresh(); st.score = 0; st.won = false; msg.hidden = true; store.save(); draw();
     }
     this._k = (e) => {

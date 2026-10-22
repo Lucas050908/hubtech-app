@@ -3,6 +3,7 @@ import { h, clear } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { toast, segmented, confirmDialog } from '../core/ui.js';
 import { appById } from '../core/registry.js';
+import { submitScore } from '../features/gameroom.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 import { makeSudoku, canPlace, SUDOKU_LEVELS } from '../features/gamelogic.js';
@@ -48,6 +49,7 @@ export default {
       const best = st.best[G.level];
       const rec = !G.hints && (!best || G.secs < best);
       if (rec) st.best[G.level] = G.secs;
+      if (!G.hints) submitScore(`sudoku-${G.level}`, G.secs);
       toast(rec ? 'Ny rekord!' : 'Sudoku løst!', { type: rec ? 'xp' : 'ok', text: `${SUDOKU_LEVELS[G.level].label} på ${fmt(G.secs)}${G.hints ? ` med ${G.hints} hint` : ''}` });
     }
     function hint() {

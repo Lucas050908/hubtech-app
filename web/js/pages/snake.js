@@ -3,6 +3,7 @@ import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { toast } from '../core/ui.js';
 import { appById } from '../core/registry.js';
+import { submitScore } from '../features/gameroom.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 
@@ -44,6 +45,7 @@ export default {
       running = false; over = true;
       st.games = (st.games || 0) + 1;
       if (score > st.best) { st.best = score; bestEl.textContent = String(score); toast('Ny rekord!', { type: 'xp', text: `${score} point i Snake` }); }
+      if (score > 0) submitScore('snake', score);
       store.save(); draw(); showOverlay('Game over', `${score} point`, 'Spil igen');
     }
     function draw() {

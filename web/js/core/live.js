@@ -12,7 +12,7 @@ import { api } from './api.js';
 import { isAndroidApp, showNotification } from './android.js';
 
 const subs = new Map();
-let running = false, seq = 0, ctrl = null, clockOffset = 0, failures = 0;
+let running = false, seq = 0, primed = false, ctrl = null, clockOffset = 0, failures = 0;
 
 export function onLive(type, fn) {
   if (!subs.has(type)) subs.set(type, new Set());
@@ -48,9 +48,9 @@ export function startLive() {
         const t0 = Date.now();
         const d = await get(`/api/live?since=${seq}&wait=${document.hidden ? 25 : 20}`, ctrl.signal);
         if (d.now) clockOffset = d.now - (t0 + Date.now()) / 2;
-        const first = seq === 0;
+        const first = !primed;   // the first answer only tells where we are (seq can be 0 right after the server started)
         if (d.reset && !first) emit({ type: 'reset' });
-        seq = d.seq || seq;
+        seq = d.seq || seq; primed = true;
         failures = 0;
         if (!first) for (const ev of d.events || []) emit(ev);
       } catch (e) {
@@ -58,7 +58,7 @@ export function startLive() {
         if (e.status === 401) break;
         failures++;
         await sleep(Math.min(30000, 1500 * failures));
-        if (failures > 1) seq = 0;   // the server may have restarted: start over (pages reload on 'reset')
+        if (failures > 1) { seq = 0; primed = false; }   // the server may have restarted: start over (pages reload on 'reset')
         if (failures === 2) emit({ type: 'reset' });
       }
     }
@@ -66,7 +66,7 @@ export function startLive() {
   })();
 }
 
-export function stopLive() { running = false; seq = 0; try { ctrl?.abort(); } catch { /* */ } }
+export function stopLive() { running = false; seq = 0; primed = false; try { ctrl?.abort(); } catch { /* */ } }
 
 // ── notifications (friend requests, snaps, invitations, mentions …) ──
 let lastPing = 0;

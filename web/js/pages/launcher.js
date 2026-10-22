@@ -28,7 +28,7 @@ export default {
         return c.cursorInstalled ? h('span', { class: 'chip chip-ok' }, h('span', { class: 'status-dot ok' }), 'Cursor fundet') : h('span', { class: 'chip chip-warn' }, h('span', { class: 'status-dot warn' }), 'Kræver opsætning');
       }
       if (app.requires?.integration === 'byteforge') {
-        return h('span', { class: 'chip' }, icon('plug'), 'Forbindes til din server');
+        return h('span', { class: 'chip' }, icon('plug'), 'Kører på HUBTECH-serveren');
       }
       return null;
     }
