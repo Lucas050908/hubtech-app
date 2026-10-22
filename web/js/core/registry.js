@@ -223,6 +223,13 @@ export const APPS = [
     keywords: ['spil', 'spilhal', 'oversigt', 'topliste', 'invitation', 'online'],
   },
   {
+    id: 'ordjagt', name: 'Ordjagt', tagline: 'Dagens ord på fem bogstaver.',
+    description: 'Find ordet på fem bogstaver i seks gæt – grøn er rigtig plads, gul er forkert plads. Dagens ord er det samme for alle og har sin egen topliste. Du kan også øve dig med tilfældige ord.',
+    icon: 'book', hue: 'var(--hue-ordjagt)', route: '#/apps/ordjagt', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'day', focusX: 0.55, tint: '#22c55e' }, page: () => import('../pages/ordjagt.js'),
+    keywords: ['ord', 'ordspil', 'gæt', 'dagens ord', 'bogstaver', 'dansk', 'spil', 'wordle'],
+  },
+  {
     id: 'snake', name: 'Snake', tagline: 'Klassisk slangespil.',
     description: 'Styr slangen med piletasterne eller ved at swipe. Den bliver hurtigere, jo længere den er. Rekorden gemmes på din konto.',
     icon: 'gamepad', hue: 'var(--hue-games)', route: '#/apps/snake', category: 'workspace', status: 'available',
@@ -256,6 +263,13 @@ export const APPS = [
     icon: 'flame', hue: 'var(--hue-habits)', route: '#/apps/habits', category: 'workspace', status: 'available',
     art: { season: 'spring', time: 'day', focusX: 0.55, tint: '#a78bfa' }, page: () => import('../pages/habits.js'),
     keywords: ['vaner', 'habit', 'stime', 'streak', 'daglig', 'mål', 'rutine'],
+  },
+  {
+    id: 'workout', name: 'Træning', tagline: 'Sæt, rekorder og fremskridt.',
+    description: 'Skriv dine sæt ned, mens du træner – kg og gentagelser, tid eller km. Pausetimer mellem sættene, rekorder, udvikling pr. øvelse og rutiner, du starter med ét klik. Vægtene fra sidst bliver foreslået.',
+    icon: 'flame', hue: 'var(--hue-workout)', route: '#/apps/workout', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.6, tint: '#f97316' }, page: () => import('../pages/workout.js'),
+    keywords: ['træning', 'fitness', 'motion', 'styrketræning', 'løb', 'sæt', 'gentagelser', 'vægt', 'rekord', 'workout'],
   },
   {
     id: 'mealplan', name: 'Madplan', tagline: 'Ugens aftensmad og indkøbslisten.',
@@ -472,9 +486,9 @@ export const visible = (app, user) => access(app, user).kind !== 'hidden';
  */
 export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
-  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits'] },
+  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer, vaner og træning.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits', 'workout'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
-  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'ordjagt', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
   { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, netværk, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'netcalc', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];

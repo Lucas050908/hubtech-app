@@ -208,6 +208,13 @@ class GamesTest(FreshServer):
         self.assertEqual(self.call("POST", f"/api/games/boards/{old}", {"score": 300}, cookie=self.a)[0], 400, "old days are closed")
         self.assertEqual(self.call("POST", f"/api/games/boards/{today}", {"score": 10}, cookie=self.a)[0], 400, "too fast")
         self.assertEqual(self.call("POST", "/api/games/boards/daily-sudoku-2026-13-45", {"score": 300}, cookie=self.a)[0], 400)
+        # Dagens ord: guesses × 1000 + seconds, fewer is better
+        word = f"daily-ord-{datetime.date.today().isoformat()}"
+        self.call("POST", f"/api/games/boards/{word}", {"score": 4090}, cookie=self.a)
+        s, d = self.call("POST", f"/api/games/boards/{word}", {"score": 3200}, cookie=self.b)
+        self.assertEqual((s, d["board"]["label"].startswith("Dagens ord")), (200, True))
+        self.assertEqual([r["user"]["name"] for r in d["board"]["rows"]], ["Bo", "Anna"])
+        self.assertEqual(self.call("POST", f"/api/games/boards/{word}", {"score": 7000}, cookie=self.a)[0], 400, "only six guesses")
 
     def test_scores(self):
         self.assertEqual(self.call("POST", "/api/games/boards/snake", {"score": 12}, cookie=self.a)[0], 200)
@@ -221,7 +228,7 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", "/api/games/boards/mines-easy", {"score": 25}, cookie=self.b)
         self.assertEqual(d["board"]["rows"][0]["user"]["name"], "Bo", "lowest time wins")
         s, d = self.call("GET", "/api/games/boards", cookie=self.c)
-        self.assertEqual(len(d["boards"]), 14)
+        self.assertEqual(len(d["boards"]), 15)
 
     def test_race(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)

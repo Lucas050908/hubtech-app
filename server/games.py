@@ -62,7 +62,7 @@ BOARDS = {
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
     "sudoku-easy": ("Sudoku · let", False, 99_999), "sudoku-medium": ("Sudoku · middel", False, 99_999), "sudoku-hard": ("Sudoku · svær", False, 99_999),
 }
-DAILY_RE = re.compile(r"^daily-sudoku-(\d{4}-\d{2}-\d{2})$")
+DAILY_RE = re.compile(r"^daily-(sudoku|ord)-(\d{4}-\d{2}-\d{2})$")
 
 
 def _board_def(game):
@@ -74,9 +74,11 @@ def _board_def(game):
     if m:
         import datetime
         try:
-            d = datetime.date.fromisoformat(m.group(1))
+            d = datetime.date.fromisoformat(m.group(2))
         except ValueError:
             return None
+        if m.group(1) == "ord":       # Ordjagt: guesses × 1000 + seconds, fewer is better
+            return f"Dagens ord {d.day}/{d.month}", False, 6999, 1000
         return f"Dagens sudoku {d.day}/{d.month}", False, 99_999, 45
     return None
 
@@ -494,8 +496,8 @@ def board(req, params):
 def boards(req, _):
     u = require_user(req)
     import datetime
-    today = f"daily-sudoku-{datetime.date.today().isoformat()}"
-    return 200, {"boards": [_board(today, u["id"])] + [_board(g, u["id"]) for g in BOARDS]}
+    today = datetime.date.today().isoformat()
+    return 200, {"boards": [_board(f"daily-sudoku-{today}", u["id"]), _board(f"daily-ord-{today}", u["id"])] + [_board(g, u["id"]) for g in BOARDS]}
 
 
 def submit(req, params):

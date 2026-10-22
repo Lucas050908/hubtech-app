@@ -51,6 +51,9 @@ function typingBox(text, { onFirst, onChange, onDone, startAt = null }) {
     input, focus: () => input.focus(), lock: (on) => { input.disabled = on; }, setStart: (t) => { t0 = t; } };
 }
 
+/** Dagens ord: guesses × 1000 + seconds */
+const ordFmt = (v) => { const s = v % 1000; return `${Math.floor(v / 1000)} gæt · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
 export default {
   title: 'Fart-tast',
   destroy() { this._off?.(); clearInterval(this._cd); this._unwatch?.(); },
@@ -174,9 +177,9 @@ export default {
       const out = h('div', { class: 'lb-grid' });
       try {
         const { boards } = await api.get('/api/games/boards');
-        const fmt = (b) => (b.higher ? (v) => v.toLocaleString('da-DK') : (v) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`);
+        const fmt = (b) => (b.game.startsWith('daily-ord-') ? ordFmt : b.higher ? (v) => v.toLocaleString('da-DK') : (v) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`);
         const unit = (b) => (b.game === 'typing' ? 'ord/min' : b.game === 'snake' || b.game === 'game2048' ? 'point' : '');
-        for (const b of boards) out.append(panel(b.label, b.game === 'typing' ? 'timer' : 'trophy', h('p', { class: 'faint', style: { marginTop: 0 } }, `${b.players} ${b.players === 1 ? 'spiller' : 'spillere'} · ${b.higher ? 'højest' : 'hurtigst'} vinder`), boardTable(b, { unit: unit(b), fmt: fmt(b) })));
+        for (const b of boards) out.append(panel(b.label, b.game === 'typing' ? 'timer' : 'trophy', h('p', { class: 'faint', style: { marginTop: 0 } }, `${b.players} ${b.players === 1 ? 'spiller' : 'spillere'} · ${b.game.startsWith('daily-ord-') ? 'færrest gæt' : b.higher ? 'højest' : 'hurtigst'} vinder`), boardTable(b, { unit: unit(b), fmt: fmt(b) })));
       } catch (e) { out.append(h('p', { class: 'faint' }, e.message)); }
       return [h('p', { class: 'muted', style: { margin: 0 } }, 'Alle på denne HUBTECH er med. Dit bedste resultat i hvert spil tæller.'), out];
     }

@@ -57,6 +57,11 @@ export default {
         h(clear(daily), null, h('div', { class: 'ac-daily' }, h('span', { class: 'ac-daily-ic' }, icon('calendar')),
           h('div', null, h('b', null, 'Dagens sudoku'), h('span', { class: 'faint' }, mineRow ? `Du er nr. ${mineRow.place} af ${today.players} i dag (${fmtSecs(mineRow.score)})` : today?.players ? `${today.players} har løst den i dag – kan du slå dem?` : 'Samme opgave for alle i dag. Bliv den første på listen!')),
           h('a', { class: 'btn btn-primary', href: '#/apps/sudoku' }, mineRow ? 'Se listen' : 'Spil nu', icon('arrowRight'))));
+        const ord = boards.find(b => b.game === `daily-ord-${todayISO()}`);
+        const ordMine = ord?.rows.find(r => r.me);
+        daily.append(h('div', { class: 'ac-daily', style: { marginTop: '10px' } }, h('span', { class: 'ac-daily-ic' }, icon('book')),
+          h('div', null, h('b', null, 'Dagens ord'), h('span', { class: 'faint' }, ordMine ? `Du er nr. ${ordMine.place} af ${ord.players} i dag (${Math.floor(ordMine.score / 1000)} gæt)` : ord?.players ? `${ord.players} har fundet ordet i dag` : 'Find ordet på fem bogstaver i seks gæt.')),
+          h('a', { class: 'btn btn-primary', href: '#/apps/ordjagt' }, ordMine ? 'Se listen' : 'Spil nu', icon('arrowRight'))));
       } catch { /* */ }
     }
     this._off = onLive('game', () => { if (document.body.contains(online)) drawOnline(); else this._off?.(); });

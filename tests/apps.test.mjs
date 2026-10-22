@@ -310,3 +310,45 @@ console.log('apps ok');
   assert.equal(l.length, 1); assert.equal(l[0].text, '5 gulerødder');
   console.log('mealplan plural ok');
 }
+{
+  const W = await import('../web/js/features/wordgame.js');
+  const { WORDS } = await import('../web/js/data/words5.js');
+  assert.ok(WORDS.every(w => W.validGuess(w)), 'alle ord har fem bogstaver');
+  assert.equal(new Set(WORDS).size, WORDS.length);
+  assert.deepEqual(W.score('KANAL', 'KANAL'), ['ok', 'ok', 'ok', 'ok', 'ok']);
+  assert.deepEqual(W.score('LAKAN', 'KANAL'), ['near', 'ok', 'near', 'ok', 'near']);
+  assert.deepEqual(W.score('AAAAA', 'BANAN'), ['no', 'ok', 'no', 'ok', 'no'], 'gentagne bogstaver tælles rigtigt');
+  assert.deepEqual(W.score('ØSTER', 'SØSTER'.slice(1)), ['ok', 'ok', 'ok', 'ok', 'ok']);
+  assert.equal(W.keyStates(['LAKAN'], 'KANAL').A, 'ok');
+  assert.equal(W.dailyWord(WORDS, '2026-10-22'), W.dailyWord(WORDS, '2026-10-22'));
+  assert.notEqual(W.dailyWord(WORDS, '2026-10-22'), W.dailyWord(WORDS, '2026-10-23'));
+  const seen = new Set(); for (let i = 0; i < WORDS.length; i++) { const d = new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10); seen.add(W.dailyWord(WORDS, d)); }
+  assert.equal(seen.size, WORDS.length, 'ingen gentagelser, før listen er brugt');
+  assert.equal(W.hardModeError('BANAN', ['LAKAN'], 'KANAL'), 'Gættet skal indeholde L');
+  assert.equal(W.validGuess('ÆBLER'), true); assert.equal(W.validGuess('ab1cd'), false);
+  assert.equal(W.shareText(['LAKAN', 'KANAL'], 'KANAL', '22/10'), 'Ordjagt 22/10 2/6\n🟨🟩🟨🟩🟨\n🟩🟩🟩🟩🟩');
+  const st = W.stats({ '2026-10-20': { won: true, tries: 3 }, '2026-10-21': { won: true, tries: 4 }, '2026-10-22': { won: true, tries: 2 } }, '2026-10-22');
+  assert.equal(st.streak, 3); assert.equal(st.best, 3); assert.deepEqual(st.dist, [0, 1, 1, 1, 0, 0]);
+  console.log('wordgame ok');
+}
+{
+  const T = await import('../web/js/features/workout.js');
+  assert.equal(T.oneRm(100, 1), 100); assert.equal(T.oneRm(100, 5), 116.7); assert.equal(T.oneRm(0, 5), 0);
+  const s = (id, date, sets, name = 'Bænkpres') => ({ id, date, exercises: [{ name, sets: sets.map(([kg, reps]) => ({ kg, reps, done: true })) }] });
+  const h = [s('a', '2026-10-01', [[60, 10], [70, 5]]), s('b', '2026-10-08', [[80, 3]]), s('c', '2026-10-15', [[75, 8]])];
+  assert.equal(T.sessionVolume(h[0]), 950);
+  assert.deepEqual(T.series(h, 'Bænkpres').map(p => p.value), [81.7, 88, 95]);
+  assert.deepEqual(T.records(h, h[2]).map(r => r.name), ['Bænkpres'], 'ny rekord');
+  assert.equal(T.records(h, h[1]).length, 1, '88 slår 81,7');
+  assert.equal(T.records([h[0]], h[0]).length, 0, 'første gang er ikke en rekord');
+  assert.deepEqual(T.lastSets(h, 'Bænkpres').map(x => x.kg), [75]);
+  const notDone = { id: 'd', date: '2026-10-20', exercises: [{ name: 'Bænkpres', sets: [{ kg: 200, reps: 1, done: false }] }] };
+  assert.equal(T.series([...h, notDone], 'Bænkpres').length, 3, 'kun sæt, der er lavet, tæller');
+  const run = { id: 'e', date: '2026-10-21', exercises: [{ name: 'Løb', sets: [{ min: 30, km: 5.2, done: true }] }] };
+  assert.equal(T.series([run], 'Løb')[0].value, 5.2); assert.equal(T.kindOf('Planke'), 'time');
+  const w = T.weekly(h, 4, new Date(2026, 9, 22));
+  assert.deepEqual(w.map(x => x.count), [1, 1, 1, 0]);
+  assert.equal(T.streakWeeks(h, new Date(2026, 9, 22)), 3, 'denne uge tæller ikke imod, før den er slut');
+  assert.equal(T.fmtValue(95, 'weight'), '95 kg'); assert.equal(T.fmtSecs(75), '1:15');
+  console.log('workout ok');
+}
