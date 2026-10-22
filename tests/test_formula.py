@@ -33,6 +33,11 @@ class FormulaEngineTest(unittest.TestCase):
         r = subprocess.run(["node", str(ROOT / "tests" / "ai.test.mjs")], capture_output=True, text=True, timeout=60)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    @unittest.skipUnless(shutil.which("node"), "Node.js er ikke installeret")
+    def test_apps_logic(self):
+        r = subprocess.run(["node", str(ROOT / "tests" / "apps.test.mjs")], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

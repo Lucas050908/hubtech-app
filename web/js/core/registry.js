@@ -265,6 +265,62 @@ export const APPS = [
     keywords: ['tegne', 'tegning', 'skitse', 'whiteboard', 'diagram', 'pen'],
   },
   {
+    id: 'sudoku', name: 'Sudoku', tagline: 'Tal fra 1 til 9.',
+    description: 'Klassisk sudoku i tre sværhedsgrader med noter, hint og tjek. Spillet gemmes, så du kan fortsætte på telefonen.',
+    icon: 'hash', hue: 'var(--hue-games)', route: '#/apps/sudoku', category: 'workspace', status: 'available',
+    art: { season: 'winter', time: 'dusk', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/sudoku.js'),
+    keywords: ['spil', 'sudoku', 'tal', 'logik', 'puslespil', 'sjov'],
+  },
+  {
+    id: 'connect4', name: 'Fire på stribe', tagline: 'Få fire i træk.',
+    description: 'Spil mod computeren i tre sværhedsgrader, eller mod en ven på samme skærm.',
+    icon: 'target', hue: 'var(--hue-games)', route: '#/apps/connect4', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'night', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/connect4.js'),
+    keywords: ['spil', 'fire på stribe', 'connect four', 'to spillere', 'sjov'],
+  },
+  {
+    id: 'hangman', name: 'Galgeleg', tagline: 'Gæt IT-ordet.',
+    description: 'Gæt ordet bogstav for bogstav. Ordene kommer fra IT-ordbogen, og du får forklaringen bagefter.',
+    icon: 'edit', hue: 'var(--hue-games)', route: '#/apps/hangman', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'night', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/hangman.js'),
+    keywords: ['spil', 'galgeleg', 'hangman', 'ord', 'it-ord', 'sjov'],
+  },
+  {
+    id: 'hwtest', name: 'Hardwaretest', tagline: 'Test tastatur, skærm, lyd og kamera.',
+    description: 'Tjek alle taster, døde pixels, højttalere venstre/højre, mikrofon, kamera, mus og touch – og få en rapport, du kan kopiere eller gemme som servicenote.',
+    icon: 'chip', hue: 'var(--hue-hwtest)', route: '#/apps/hwtest', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'dawn', focusX: 0.5, tint: '#38bdf8' }, page: () => import('../pages/hwtest.js'),
+    keywords: ['hardware', 'test', 'tastatur', 'skærm', 'døde pixels', 'højttaler', 'mikrofon', 'kamera', 'mus', 'touch', 'brugt computer'],
+  },
+  {
+    id: 'passwords', name: 'Kodeord', tagline: 'Stærke koder, du kan huske.',
+    description: 'Lav kodesætninger og tilfældige koder, se hvor længe en kode holder, og få gode råd til kunderne. Intet gemmes eller sendes.',
+    icon: 'key', hue: 'var(--hue-passwords)', route: '#/apps/passwords', category: 'workspace', status: 'available',
+    art: { season: 'winter', time: 'night', focusX: 0.5, tint: '#facc15' }, page: () => import('../pages/passwords.js'),
+    keywords: ['kodeord', 'adgangskode', 'password', 'generator', 'sikkerhed', 'kodesætning', 'styrke'],
+  },
+  {
+    id: 'qrtool', name: 'QR-koder', tagline: 'Wi-Fi, links og visitkort som QR.',
+    description: 'Lav en QR-kode til Wi-Fi, et link, en kontakt, en e-mail, SMS eller et telefonnummer. Hent som billede, eller print et skilt.',
+    icon: 'grid', hue: 'var(--hue-qrtool)', route: '#/apps/qrtool', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'dusk', focusX: 0.5, tint: '#0ea5e9' }, page: () => import('../pages/qrtool.js'),
+    keywords: ['qr', 'qr-kode', 'wifi', 'wi-fi', 'gæstenet', 'visitkort', 'link', 'skilt', 'print'],
+  },
+  {
+    id: 'replies', name: 'Svarskabeloner', tagline: 'Færdige svar til kunder.',
+    description: 'Skabeloner til modtaget sag, tilbud, løst sag, besøg, phishing-advarsel og meget mere. Udfyld felterne, og kopiér – eller lav dine egne.',
+    icon: 'reply', hue: 'var(--hue-replies)', route: '#/apps/replies', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#f472b6' }, page: () => import('../pages/replies.js'),
+    keywords: ['skabelon', 'svar', 'mail', 'kunde', 'tilbud', 'kundeservice', 'tekst'],
+  },
+  {
+    id: 'phishing', name: 'Phishing-træner', tagline: 'Spot svindel i mails og SMS.',
+    description: 'Se på e-mails og SMS’er, og afgør om de er falske eller ægte. Lær advarselstegnene – og lær kunderne dem.',
+    icon: 'shield', hue: 'var(--hue-phishing)', route: '#/learn/phishing', category: 'learning', status: 'available',
+    art: { season: 'autumn', time: 'night', focusX: 0.5, tint: '#f87171' }, page: () => import('../pages/phishing.js'),
+    keywords: ['phishing', 'svindel', 'sikkerhed', 'mail', 'sms', 'falsk', 'træning'],
+  },
+  {
     id: 'owner', name: 'Ejer', tagline: 'Alt, kun du som ejer bestemmer over.',
     description: 'Brugere og adgangskoder, hvem der kan oprette en konto, venner på andre netværk, server og sikkerhedskopier – og siden, dine venner henter HUBTECH fra. Kun platformens ejer kan se appen.',
     icon: 'crown', hue: 'var(--hue-owner)', route: '#/apps/owner', category: 'system', status: 'available', requires: { owner: true },
@@ -297,7 +353,7 @@ export const APPS = [
 export const appById = (id) => APPS.find(a => a.id === id);
 /** Learning apps live inside Guides & Læring (#/learn/<id>) instead of the app launcher and sidebar. */
 export const isLearnApp = (a) => !!a && a.category === 'learning' && a.id !== 'learning';
-const LEARN_ORDER = ['codeschool', 'snippets', 'flashcards', 'quiz', 'glossary', 'typing', 'bits', 'circuitpilot', 'toolkit'];
+const LEARN_ORDER = ['codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'circuitpilot', 'toolkit'];
 export const LEARN_APPS = APPS.filter(isLearnApp).sort((a, b) => (LEARN_ORDER.indexOf(a.id) + 1 || 99) - (LEARN_ORDER.indexOf(b.id) + 1 || 99));
 
 /** Is the app usable by this user? Returns { ok, reason } */
@@ -320,8 +376,8 @@ export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
-  { id: 'games', name: 'Spilhal', tagline: 'Snake, 2048, minestryger og huskespil.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'game2048', 'mines', 'memory'] },
-  { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, kommandoer og tjeklister.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'commands', 'checklists'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Snake, 2048, sudoku, minestryger, fire på stribe og flere.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'game2048', 'sudoku', 'mines', 'connect4', 'memory', 'hangman'] },
+  { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;
 /** The app as it is shown in menus: a group's first member carries the group's name; the others are hidden there. */

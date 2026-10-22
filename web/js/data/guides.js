@@ -10,6 +10,8 @@ export const GUIDE_CATEGORIES = [
   { id: 'learning', label: 'Læring', icon: 'graduation' },
   { id: 'byteforge', label: 'ByteForge', icon: 'anvil' },
   { id: 'printer', label: 'Printer-support', icon: 'printer' },
+  { id: 'security', label: 'Sikkerhed', icon: 'shield' },
+  { id: 'hardware', label: 'Computer og hardware', icon: 'chip' },
   { id: 'developer', label: 'Udvikling', icon: 'code' },
 ];
 
@@ -483,6 +485,122 @@ export const GUIDES = [
       ] },
     ],
     actions: [{ label: 'Åbn Servicehjælp', href: '#/apps/servicehelp' }, { label: 'Tjeklister', href: '#/apps/checklists' }],
+  },
+  {
+    id: 'sec-phishing', category: 'security', app: 'phishing', icon: 'flag', minutes: 3,
+    title: 'Sådan genkender du phishing',
+    summary: 'De fem tegn, der afslører de fleste falske mails og SMS’er.',
+    sections: [
+      { h: 'Tjek disse ting', steps: [
+        { t: 'Afsenderens rigtige adresse', d: 'Navnet kan være hvad som helst. Kig på domænet efter @. “nordbank-kundeservice.info” er ikke bankens eget.' },
+        { t: 'Hvor linket går hen', d: 'Hold musen over linket (eller tryk længe på telefonen). Det sidste ord før første “/” er det rigtige domæne: i “bank.dk.login-secure.ru/…” er det login-secure.ru.' },
+        { t: 'Tidspres og trusler', d: '“Inden 24 timer”, “kontoen lukkes”, “afgift på 750 kr.” – svindlere vil have dig til at handle uden at tænke.' },
+        { t: 'Beder den om kode, kort eller MitID?', d: 'Det gør banker, IT-afdelinger og myndigheder aldrig via en mail eller SMS.' },
+        { t: 'Er det for godt til at være sandt?', d: 'Penge tilbage, gevinster og gratis telefoner er klassisk lokkemad.' },
+      ] },
+      { callout: { kind: 'info', text: 'I tvivl? Kontakt afsenderen på et nummer eller en adresse, du selv finder – aldrig det, der står i beskeden.' } },
+    ],
+    actions: [{ label: 'Øv dig i Phishing-træneren', href: '#/learn/phishing' }],
+  },
+  {
+    id: 'sec-clicked', category: 'security', app: 'phishing', icon: 'alert', minutes: 3,
+    title: 'Jeg har klikket på et falsk link',
+    summary: 'Hvad du gør med det samme – rækkefølgen betyder noget.',
+    sections: [
+      { h: 'Gør det her nu', steps: [
+        { t: 'Skrev du en adgangskode?', d: 'Skift den med det samme – fra en anden enhed, hvis du er i tvivl. Skift den også alle andre steder, hvor du har brugt den samme kode.' },
+        { t: 'Skrev du kortoplysninger?', d: 'Ring til din bank, og få kortet spærret. De fleste banker har døgnåben spærring.' },
+        { t: 'Brugte du MitID eller godkendte noget?', d: 'Ring til MitID-support og din bank. Tjek din konto for overførsler, du ikke kender.' },
+        { t: 'Hentede du en fil?', d: 'Kør en fuld virusscanning, og afbryd computeren fra netværket, hvis den opfører sig mærkeligt.' },
+        { t: 'Slå totrinsbekræftelse til', d: 'Især på e-mail, så en stjålet kode ikke er nok.' },
+        { t: 'Sig det til nogen', d: 'På arbejdet: fortæl IT det med det samme. Det er ikke pinligt – det redder ofte resten af firmaet.' },
+      ] },
+      { callout: { kind: 'warn', text: 'Jo hurtigere du reagerer, jo mindre skade. Vent ikke til i morgen.' } },
+    ],
+    actions: [{ label: 'Lav en ny stærk kode', href: '#/apps/passwords' }],
+  },
+  {
+    id: 'sec-2fa', category: 'security', app: 'passwords', icon: 'lock', minutes: 3,
+    title: 'Totrinsbekræftelse (MFA)',
+    summary: 'Det vigtigste, du kan slå til – og hvordan.',
+    sections: [
+      { h: 'Hvad er det?', p: 'Når du logger ind, skal du både kende koden og have noget, kun du har – typisk din telefon. En stjålet kode er så ikke nok.' },
+      { h: 'Slå det til – i denne rækkefølge', steps: [
+        { t: 'E-mail', d: 'Den bruges til at nulstille alle andre koder, så den er vigtigst.' },
+        { t: 'Bank og betaling', d: 'Bruger typisk MitID eller bankens app allerede.' },
+        { t: 'Sociale medier og Apple-ID / Google / Microsoft', d: 'Find det under Sikkerhed eller Adgangskode i kontoindstillingerne.' },
+        { t: 'Gem gendannelseskoder', d: 'Skriv dem på papir, og læg dem et sikkert sted – så kommer du ind, hvis telefonen bliver væk.' },
+      ] },
+      { callout: { kind: 'info', text: 'En app (fx Microsoft Authenticator eller Google Authenticator) er sikrere end SMS-koder.' } },
+    ],
+    actions: [{ label: 'Kodeord og gode råd', href: '#/apps/passwords/tips' }],
+  },
+  {
+    id: 'sec-manager', category: 'security', app: 'passwords', icon: 'key', minutes: 3,
+    title: 'Kom i gang med en adgangskodemanager',
+    summary: 'Én stærk hovedkode – og en unik kode alle andre steder.',
+    sections: [
+      { h: 'Sådan kommer du i gang', steps: [
+        { t: 'Vælg en manager', d: 'Bitwarden (gratis), 1Password, Apple Keychain eller den, der er indbygget i browseren. Det vigtigste er, at du bruger én.' },
+        { t: 'Lav en stærk hovedkode', d: 'Brug en kodesætning på 5–6 tilfældige ord. Den er nem at huske og svær at gætte.' },
+        { t: 'Slå totrinsbekræftelse til på manageren', d: 'Den beskytter alle dine koder.' },
+        { t: 'Skift de vigtigste koder først', d: 'E-mail, bank, Apple/Google/Microsoft. Lad manageren lave nye, unikke koder.' },
+        { t: 'Installer den på telefonen', d: 'Så kan den udfylde koder i apps også.' },
+      ] },
+      { callout: { kind: 'warn', text: 'Hovedkoden kan ikke nulstilles hos de fleste managere. Skriv den ned, og læg den et sikkert sted derhjemme.' } },
+    ],
+    actions: [{ label: 'Lav en kodesætning', href: '#/apps/passwords' }],
+  },
+  {
+    id: 'sec-backup', category: 'security', app: 'checklists', icon: 'database', minutes: 3,
+    title: 'Backup efter 3-2-1-reglen',
+    summary: 'Den simple regel, der redder billeder og dokumenter.',
+    sections: [
+      { h: '3-2-1', list: [
+        '3 kopier af dine data (originalen + 2 backups).',
+        '2 forskellige slags lager – fx computeren og en ekstern disk.',
+        '1 kopi et andet sted – i skyen eller hos familien.',
+      ] },
+      { h: 'Gør det i praksis', steps: [
+        { t: 'Slå automatisk backup til', d: 'Windows: Filhistorik eller OneDrive-backup. Mac: Time Machine. Telefon: iCloud- eller Google-backup.' },
+        { t: 'Frakobl den eksterne disk', d: 'En disk, der altid sidder i, bliver krypteret sammen med resten ved ransomware.' },
+        { t: 'Test en gendannelse', d: 'En backup, du aldrig har prøvet at gendanne fra, er kun et håb. Prøv med én fil hvert halve år.' },
+      ] },
+    ],
+    actions: [{ label: 'Tjekliste: backup', href: '#/apps/checklists' }],
+  },
+  {
+    id: 'hw-used-pc', category: 'hardware', app: 'hwtest', icon: 'monitor', minutes: 4,
+    title: 'Køb af brugt computer – hvad tjekker du?',
+    summary: 'Tjek det her, før du betaler – eller før du udleverer en brugt computer til en kunde.',
+    sections: [
+      { h: 'Tjek på stedet', steps: [
+        { t: 'Kør Hardwaretest', d: 'Åbn HUBTECH → IT-support → Hardwaretest i browseren: alle taster, døde pixels, højttalere, mikrofon, kamera og touchpad.' },
+        { t: 'Batteriet', d: 'Windows: kør “powercfg /batteryreport” og sammenlign “Design capacity” med “Full charge capacity”. Under ca. 70 % er batteriet slidt.', code: 'powercfg /batteryreport' },
+        { t: 'Disken', d: 'Se diskens helbred med fx CrystalDiskInfo, eller kør kommandoen herunder (skal sige “Healthy”).', code: 'Get-PhysicalDisk | Select FriendlyName, HealthStatus' },
+        { t: 'Opladeren og portene', d: 'Sæt opladeren i, og se at den lader. Prøv USB-portene og skærmudgangen.' },
+        { t: 'Kontoen og låsen', d: 'Computeren skal være nulstillet og fri for den tidligere ejers konto (Microsoft-konto, Apple-ID / Aktiveringslås, BIOS-kode).' },
+      ] },
+      { callout: { kind: 'info', text: 'Bed om kvittering eller købsbevis – så ved du, at den ikke er stjålet, og der kan være garanti tilbage.' } },
+    ],
+    actions: [{ label: 'Åbn Hardwaretest', href: '#/apps/hwtest' }],
+  },
+  {
+    id: 'hw-slow-pc', category: 'hardware', app: 'commands', icon: 'clock', minutes: 4,
+    title: 'Computeren er langsom',
+    summary: 'Find årsagen i den rigtige rækkefølge, før du køber ny.',
+    sections: [
+      { h: 'Find årsagen', steps: [
+        { t: 'Åbn Jobliste', d: 'Ctrl+Shift+Esc. Se hvad der bruger CPU, hukommelse og disk. Står disken på 100 % hele tiden, er en gammel harddisk ofte synderen.' },
+        { t: 'Genstart rigtigt', d: 'Mange slukker aldrig helt. Vælg Genstart (ikke Luk computeren), så ryddes hukommelsen.' },
+        { t: 'Programmer ved start', d: 'Jobliste → Startprogrammer: deaktiver det, der ikke skal starte automatisk.' },
+        { t: 'Opdateringer og drivere', d: 'Kør Windows Update og producentens opdateringsværktøj.' },
+        { t: 'Plads på disken', d: 'Under 10 % ledig plads gør alt langsomt. Brug Diskoprydning eller Lagerplads-indstillingerne.', code: 'cleanmgr' },
+        { t: 'Malware', d: 'Kør en fuld scanning med Windows-sikkerhed.' },
+        { t: 'Hardware', d: 'Er der stadig en harddisk (HDD) i, er en SSD den bedste opgradering for pengene. Under 8 GB RAM er også en flaskehals.' },
+      ] },
+    ],
+    actions: [{ label: 'Kommandoer', href: '#/apps/commands' }],
   },
 ];
 
