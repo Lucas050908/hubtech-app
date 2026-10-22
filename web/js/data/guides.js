@@ -9,6 +9,7 @@ export const GUIDE_CATEGORIES = [
   { id: 'projects', label: 'Projekter & Cursor', icon: 'cube' },
   { id: 'learning', label: 'Læring', icon: 'graduation' },
   { id: 'byteforge', label: 'ByteForge', icon: 'anvil' },
+  { id: 'printer', label: 'Printer-support', icon: 'printer' },
   { id: 'developer', label: 'Udvikling', icon: 'code' },
 ];
 
@@ -297,6 +298,191 @@ export const GUIDES = [
     ],
     sections: [],
     actions: [{ label: 'Åbn et issue på GitHub', href: 'https://github.com/Lucas050908/ByteForge/issues', external: true }],
+  },
+  // ── Printer-support (kontor- og netværksprintere) ──
+  {
+    id: 'printer-basics', category: 'printer', app: 'printerdoctor', icon: 'printer', minutes: 4,
+    title: 'Sådan virker en printer',
+    summary: 'Laser og blæk, de dele der slides – og hvad det betyder for fejlfinding.',
+    sections: [
+      { h: 'To slags printere', steps: [
+        { t: 'Laserprinter', d: 'En lysstråle tegner siden på en tromle, der tiltrækker tonerpulver. Pulveret overføres til papiret og smeltes fast i fikseringsenheden (fuseren), som er varm. Hurtig og billig pr. side – god til kontorer.' },
+        { t: 'Blækprinter', d: 'Et printhoved sprøjter små dråber blæk på papiret gennem hundredvis af dyser. God til fotos og farver, men dyserne kan tørre ud, hvis printeren ikke bruges.' },
+      ] },
+      { h: 'Dele der slides', list: [
+        'Toner (laser) og blækpatroner – forbrugsvarer, der skiftes jævnligt.',
+        'Tromle (laser) – sidder nogle gange i tonerpatronen, ellers som en separat del. Slidt tromle giver gentagne prikker eller striber.',
+        'Fikseringsenhed (laser) – smelter toneren fast. Slidt fuser: toner kan tørres af med en finger, eller der kommer krøller i papiret.',
+        'Indføringsvalser – trækker papiret ind. Glatte valser giver papirstop og flere ark ad gangen.',
+        'Printhoved (blæk) – kan tilstoppe. Rens med printerens egen rensefunktion før alt andet.',
+      ] },
+      { callout: { kind: 'info', text: 'Skriv altid model og serienummer ned (står bag på printeren eller på konfigurationssiden). Det skal bruges til drivere, reservedele og support hos producenten.' } },
+    ],
+    actions: [{ label: 'Åbn Printer-doktor', href: '#/apps/printerdoctor' }],
+  },
+  {
+    id: 'printer-install', category: 'printer', app: 'printerdoctor', icon: 'plug', minutes: 5,
+    title: 'Installér en netværksprinter',
+    summary: 'Find printerens IP-adresse og tilføj den i Windows og på Mac.',
+    sections: [
+      { h: 'Find printerens IP-adresse', steps: [
+        { t: 'På printerens skærm', d: 'Kig under Netværk, Wi-Fi eller Indstillinger → Netværksstatus. Mange printere viser IP-adressen direkte.' },
+        { t: 'Udskriv en konfigurationsside', d: 'Hedder ofte “Netværkskonfiguration” eller “Printerrapport”. Den viser IP-adresse, firmware og sidetæller.' },
+        { t: 'Tjek at den svarer', d: 'Skriv ping og adressen i en kommandoprompt. Svarer den, er printeren på netværket.', code: 'ping 192.168.1.50' },
+      ] },
+      { h: 'Windows 10 og 11', steps: [
+        { t: 'Åbn Printere og scannere', d: 'Start → Indstillinger → Bluetooth og enheder → Printere og scannere → Tilføj enhed.' },
+        { t: 'Hvis den ikke dukker op', d: 'Klik “Tilføj manuelt” / “Den printer, jeg vil have, er ikke på listen” → “Tilføj en printer ved hjælp af en IP-adresse eller et værtsnavn”. Skriv IP-adressen.' },
+        { t: 'Vælg driver', d: 'Brug den driver Windows foreslår, eller hent producentens driver til netop den model.' },
+      ] },
+      { h: 'macOS', steps: [
+        { t: 'Tilføj printer', d: 'Systemindstillinger → Printere og scannere → Tilføj printer (+).' },
+        { t: 'Via IP', d: 'Vælg fanen IP, skriv adressen, og vælg protokollen IPP eller AirPrint, hvis printeren understøtter det.' },
+      ] },
+      { callout: { kind: 'warn', text: 'Giv printeren en fast IP-adresse (DHCP-reservation i routeren). Ellers kan den få en ny adresse efter en genstart – og så “forsvinder” den for alle computerne.' } },
+    ],
+    actions: [{ label: 'Fejlfind med Printer-doktor', href: '#/apps/printerdoctor' }],
+  },
+  {
+    id: 'printer-offline', category: 'printer', app: 'printerdoctor', icon: 'alert', minutes: 4,
+    title: 'Printeren er “offline”',
+    summary: 'Den mest almindelige fejl – og den rækkefølge, du tjekker tingene i.',
+    sections: [
+      { h: 'Tjek i denne rækkefølge', steps: [
+        { t: 'Er printeren tændt og uden fejl?', d: 'Kig på skærmen: papirstop, låge åben, tom toner eller en fejlkode stopper udskrivning.' },
+        { t: 'Er den på samme netværk?', d: 'Wi-Fi-printere falder af, hvis routerens kode er ændret. Tjek netværksstatus på printeren.' },
+        { t: 'Svarer den på IP-adressen?', d: 'Ping printerens adresse. Svarer den ikke, har den måske fået en ny IP. Find den nye på printerens skærm.', code: 'ping 192.168.1.50' },
+        { t: 'Er “Brug printer offline” slået fra?', d: 'Windows: åbn printerkøen (dobbeltklik på printeren) → menuen Printer → fjern fluebenet ved “Brug printer offline”.' },
+        { t: 'Genstart udskriftskøen', d: 'Sidder et job fast, kan køen stoppe det hele. Se guiden “Udskriftskøen sidder fast”.' },
+        { t: 'Genstart i rigtig rækkefølge', d: 'Sluk printeren, genstart computeren, tænd printeren og vent til den er klar, og prøv igen.' },
+      ] },
+      { callout: { kind: 'info', text: 'Skifter IP-adressen igen og igen? Lav en DHCP-reservation i routeren, eller tilføj printeren via værtsnavn i stedet for IP.' } },
+    ],
+    actions: [{ label: 'Åbn Printer-doktor', href: '#/apps/printerdoctor' }],
+  },
+  {
+    id: 'printer-spooler', category: 'printer', app: 'printerdoctor', icon: 'refresh', minutes: 3,
+    title: 'Udskriftskøen sidder fast',
+    summary: 'Ryd køen i Windows og på Mac, når et job blokerer alt.',
+    sections: [
+      { h: 'Windows', steps: [
+        { t: 'Prøv det nemme først', d: 'Åbn printerkøen, højreklik på jobbet → Annuller. Hjælper det ikke, så fortsæt.' },
+        { t: 'Åbn kommandoprompt som administrator', d: 'Start → skriv “cmd” → højreklik → Kør som administrator.' },
+        { t: 'Stop køen, ryd den, og start den igen', d: 'Kør de tre linjer én ad gangen. Den midterste sletter de fastlåste job.', code: 'net stop spooler\ndel /Q /F /S "%systemroot%\\System32\\spool\\PRINTERS\\*"\nnet start spooler' },
+      ] },
+      { h: 'macOS', steps: [
+        { t: 'Annuller alle job', d: 'Åbn Terminal og skriv:', code: 'cancel -a' },
+        { t: 'Nulstil udskrivningssystemet', d: 'Hvis intet andet virker: Systemindstillinger → Printere og scannere → højreklik i listen → Nulstil printersystem. Alle printere skal så tilføjes igen.' },
+      ] },
+      { callout: { kind: 'warn', text: 'Kommandoerne sletter alle ventende udskrifter for alle brugere på computeren. Sig det til kunden først.' } },
+    ],
+    actions: [{ label: 'Se alle kommandoer', href: '#/apps/commands' }],
+  },
+  {
+    id: 'printer-quality', category: 'printer', app: 'printerdoctor', icon: 'eye', minutes: 4,
+    title: 'Dårlig printkvalitet',
+    summary: 'Striber, blege sider, udtværing og gentagne prikker – hvad de betyder.',
+    sections: [
+      { h: 'Laserprinter', list: [
+        'Blege sider eller hvide striber: toneren er ved at være tom. Ryst patronen forsigtigt fra side til side, eller skift den.',
+        'Mørke streger eller prikker med fast afstand: tromlen eller en valse er ridset eller beskidt. Afstanden mellem fejlene passer ofte til en valses omkreds.',
+        'Toner kan tørres af med en finger: fikseringsenheden smelter den ikke fast. Tjek papirtypen i driveren – ellers skal fuseren skiftes.',
+        'Grå baggrund: ofte en slidt tromle eller forkert papir.',
+      ] },
+      { h: 'Blækprinter', list: [
+        'Manglende linjer eller farver: kør en dysetest. Mangler der dele, kør printerens rensefunktion (højst 2–3 gange i træk), og test igen.',
+        'Skæve linjer: kør justering af printhoved.',
+        'Udtværing: forkert papirtype i driveren, eller papiret er fugtigt.',
+        'Printeren bruges sjældent: print en side om ugen, så dyserne ikke tørrer ud.',
+      ] },
+      { callout: { kind: 'info', text: 'Brug altid de rigtige papirindstillinger i driveren (almindeligt, tykt, fotopapir, etiketter). Det løser overraskende mange kvalitetsfejl.' } },
+    ],
+  },
+  {
+    id: 'printer-jam', category: 'printer', app: 'printerdoctor', icon: 'file', minutes: 3,
+    title: 'Papirstop',
+    summary: 'Fjern papiret uden at skade printeren – og undgå at det sker igen.',
+    sections: [
+      { h: 'Fjern papiret', steps: [
+        { t: 'Sluk og vent', d: 'Sluk printeren. I en laserprinter er fikseringsenheden meget varm – vent et par minutter.' },
+        { t: 'Følg skærmen', d: 'Printeren viser ofte, hvilken låge eller skuffe papiret sidder ved. Åbn den.' },
+        { t: 'Træk i papirets retning', d: 'Tag fat med begge hænder og træk langsomt i den retning, papiret kører. Revner det, så find alle små stykker – de giver nyt papirstop.' },
+        { t: 'Luk lågerne og tænd', d: 'Printeren tjekker selv, om papirvejen er fri.' },
+      ] },
+      { h: 'Undgå det', list: [
+        'Luft papirstakken, før du lægger den i, så arkene ikke hænger sammen.',
+        'Fyld ikke over max-mærket i skuffen, og juster papirstyrene til papiret.',
+        'Brug papir, der passer til printeren (gramvægt), og opbevar det tørt.',
+        'Bliver det ved, er indføringsvalserne slidte eller beskidte – de kan renses eller skiftes.',
+      ] },
+    ],
+  },
+  {
+    id: 'printer-scan', category: 'printer', app: 'printerdoctor', icon: 'mail', minutes: 5,
+    title: 'Scan til e-mail og mappe',
+    summary: 'De to typiske opsætninger på multifunktionsprintere – og hvorfor de holder op med at virke.',
+    sections: [
+      { h: 'Scan til e-mail', steps: [
+        { t: 'Find printerens webside', d: 'Skriv printerens IP-adresse i en browser. Log ind som administrator.' },
+        { t: 'Udfyld mailserveren (SMTP)', d: 'Server og port fra mailudbyderen – typisk port 587 med STARTTLS. Brug en app-adgangskode, hvis kontoen har totrinsbekræftelse.' },
+        { t: 'Send en test', d: 'Virker det ikke, er adgangskoden ofte ændret – eller udbyderen har slået gamle login-metoder fra.' },
+      ] },
+      { h: 'Scan til mappe (netværksmappe)', steps: [
+        { t: 'Del en mappe', d: 'Opret en mappe på en PC eller server, og del den med en bruger, der har skriveadgang.' },
+        { t: 'Indtast stien', d: 'På printeren: stien som \\\\PC-NAVN\\Scanninger, plus brugernavn og adgangskode.' },
+        { t: 'Typiske fejl', d: 'Brugerens adgangskode er skiftet, PC’en har fået nyt navn eller ny IP, eller printeren kan kun gammel SMB1 (Windows har slået det fra). Opdater printerens firmware, så den kan SMB2/3.' },
+      ] },
+    ],
+  },
+  {
+    id: 'printer-drivers', category: 'printer', app: 'printerdoctor', icon: 'download', minutes: 3,
+    title: 'Drivere',
+    summary: 'Hvilken driver du skal bruge, og hvordan du fjerner en gammel.',
+    sections: [
+      { h: 'Vælg driver', list: [
+        'Producentens driver til den præcise model giver flest funktioner (dupleks, skuffer, hæftning).',
+        'Mange producenter har en “universel” driver, der virker med de fleste af deres modeller.',
+        'Nyere printere kan bruges uden driver (IPP Everywhere, Mopria, AirPrint) – godt til mobiler og Mac.',
+      ] },
+      { h: 'Fjern en gammel driver i Windows', steps: [
+        { t: 'Fjern printeren', d: 'Indstillinger → Printere og scannere → vælg printeren → Fjern.' },
+        { t: 'Fjern selve driveren', d: 'Åbn Egenskaber for printerserver, fanen Drivere, vælg driveren → Fjern → “Fjern driver og driverpakke”.', code: 'printui /s /t2' },
+        { t: 'Installér igen', d: 'Genstart computeren, og tilføj printeren på ny med den rigtige driver.' },
+      ] },
+    ],
+    actions: [{ label: 'Se alle kommandoer', href: '#/apps/commands' }],
+  },
+  {
+    id: 'printer-mobile', category: 'printer', app: 'printerdoctor', icon: 'smartphone', minutes: 3,
+    title: 'Print fra mobilen',
+    summary: 'AirPrint, Mopria og Wi-Fi Direct – sådan virker det, og når det ikke gør.',
+    sections: [
+      { steps: [
+        { t: 'iPhone og iPad (AirPrint)', d: 'Del → Udskriv. Printeren skal understøtte AirPrint og være på samme Wi-Fi. Gæstenetværk blokerer det ofte.' },
+        { t: 'Android (Mopria / standardudskrivning)', d: 'Del → Udskriv, eller Indstillinger → Forbundne enheder → Udskrivning. Producentens app kan give flere funktioner.' },
+        { t: 'Wi-Fi Direct', d: 'Printeren laver sit eget lille netværk, som telefonen forbinder til direkte. Godt når der ikke er en router – men telefonen mister internet imens.' },
+      ] },
+      { callout: { kind: 'info', text: 'Finder telefonen ikke printeren? Tjek at begge er på samme netværk (ikke et gæstenetværk), og at routeren ikke isolerer trådløse enheder fra hinanden.' } },
+    ],
+  },
+  {
+    id: 'printer-visit', category: 'printer', app: 'servicehelp', icon: 'tool', minutes: 3,
+    title: 'Servicebesøg hos kunden',
+    summary: 'Hvad du skal notere, før du går i gang – og hvordan du afslutter.',
+    sections: [
+      { h: 'Før du går i gang', list: [
+        'Model og serienummer.',
+        'Sidetæller (står på konfigurationssiden) – vigtigt ved garanti og serviceaftaler.',
+        'Fejlbeskrivelse med kundens egne ord, og et billede af fejlkoden på skærmen.',
+        'Hvornår startede det, og er der ændret noget (ny router, ny PC, ny adgangskode)?',
+      ] },
+      { h: 'Når du er færdig', list: [
+        'Lav en testudskrift sammen med kunden.',
+        'Fortæl kort, hvad der var galt, og hvordan det undgås.',
+        'Skriv det i servicesagen: fejl, årsag, løsning, dele og tid.',
+      ] },
+    ],
+    actions: [{ label: 'Åbn Servicehjælp', href: '#/apps/servicehelp' }, { label: 'Tjeklister', href: '#/apps/checklists' }],
   },
 ];
 

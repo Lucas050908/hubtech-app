@@ -167,6 +167,104 @@ export const APPS = [
     keywords: ['admin', 'administrator', 'brugere', 'moderation', 'anmeldelser', 'besked', 'adgang', 'kontrol'],
   },
   {
+    id: 'glossary', name: 'IT-ordbog', tagline: 'IT-ord forklaret på almindeligt dansk.',
+    description: 'Over 100 ord om hardware, netværk, printere, sikkerhed og drift – med søgning, en lille quiz og ét klik til huskekort.',
+    icon: 'book', hue: 'var(--hue-glossary)', route: '#/learn/glossary', category: 'learning', status: 'available',
+    art: { season: 'spring', time: 'dusk', focusX: 0.45, tint: '#fda4af' }, page: () => import('../pages/glossary.js'),
+    keywords: ['ordbog', 'begreber', 'ord', 'forklaring', 'leksikon', 'glossary', 'dns', 'dhcp', 'toner'],
+  },
+  {
+    id: 'quiz', name: 'Quiz', tagline: 'Test din IT-viden.',
+    description: 'Quizzer om printere, netværk, hardware, sikkerhed og Windows med en forklaring efter hvert svar. Slå din egen rekord.',
+    icon: 'help', hue: 'var(--hue-quiz)', route: '#/learn/quiz', category: 'learning', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.5, tint: '#fb923c' }, page: () => import('../pages/quiz.js'),
+    keywords: ['quiz', 'test', 'spørgsmål', 'eksamen', 'viden', 'printer', 'netværk', 'sikkerhed'],
+  },
+  {
+    id: 'typing', name: 'Tastaturtræner', tagline: 'Skriv hurtigt med ti fingre.',
+    description: 'Lektioner fra hjemrækken til rigtige sætninger med æ, ø og å. Måler hastighed og præcision og husker dine rekorder.',
+    icon: 'edit', hue: 'var(--hue-typing)', route: '#/learn/typing', category: 'learning', status: 'available',
+    art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#facc15' }, page: () => import('../pages/typing.js'),
+    keywords: ['tastatur', 'skrive', 'touch', 'ti fingre', 'hastighed', 'wpm', 'typing'],
+  },
+  {
+    id: 'bits', name: 'Bit-spil', tagline: 'Lær det binære talsystem.',
+    description: 'Tænd de rigtige bits, til tallet passer – på tid. Tre niveauer: 4 bit, 8 bit og hex.',
+    icon: 'chip', hue: 'var(--hue-bits)', route: '#/learn/bits', category: 'learning', status: 'available',
+    art: { season: 'winter', time: 'night', focusX: 0.5, tint: '#67e8f9' }, page: () => import('../pages/bits.js'),
+    keywords: ['binær', 'bits', 'bytes', 'hex', 'talsystem', 'spil', 'nuller og ettaller'],
+  },
+  {
+    id: 'printerdoctor', name: 'Printer-doktor', tagline: 'Fejlfinding på printere, trin for trin.',
+    description: 'Vælg problemet – offline, papirstop, dårlig kvalitet, scanning – og svar på spørgsmålene. Printer-doktor fører dig til løsningen med kommandoer og guides og laver en servicenote til sidst.',
+    icon: 'printer', hue: 'var(--hue-printer)', route: '#/apps/printerdoctor', category: 'workspace', status: 'available',
+    art: { season: 'winter', time: 'day', focusX: 0.4, tint: '#60a5fa' }, page: () => import('../pages/printerdoctor.js'),
+    keywords: ['printer', 'print', 'udskrift', 'offline', 'papirstop', 'toner', 'blæk', 'scanner', 'spooler', 'fejlfinding', 'support'],
+  },
+  {
+    id: 'commands', name: 'Kommandoer', tagline: 'Kommandoer til Windows, Mac og Linux.',
+    description: 'Søg i de kommandoer en IT-supporter bruger mest – netværk, printer, reparation, systeminfo og diske – med en forklaring på dansk og en kopiér-knap.',
+    icon: 'terminal', hue: 'var(--hue-commands)', route: '#/apps/commands', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'night', focusX: 0.6, tint: '#a3e635' }, page: () => import('../pages/commands.js'),
+    keywords: ['kommando', 'cmd', 'powershell', 'terminal', 'ipconfig', 'ping', 'sfc', 'dism', 'netværk', 'support'],
+  },
+  {
+    id: 'checklists', name: 'Tjeklister', tagline: 'Glem ingenting ude hos kunden.',
+    description: 'Færdige tjeklister til ny computer, printerinstallation, kundebesøg, backup, Wi-Fi og nye medarbejdere. Kryds af, skriv noter, og gem dine egne skabeloner.',
+    icon: 'list', hue: 'var(--hue-checklists)', route: '#/apps/checklists', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'day', focusX: 0.5, tint: '#2dd4bf' }, page: () => import('../pages/checklists.js'),
+    keywords: ['tjekliste', 'checkliste', 'kundebesøg', 'ny computer', 'opsætning', 'backup', 'skabelon'],
+  },
+  {
+    id: 'snake', name: 'Snake', tagline: 'Klassisk slangespil.',
+    description: 'Styr slangen med piletasterne eller ved at swipe. Den bliver hurtigere, jo længere den er. Rekorden gemmes på din konto.',
+    icon: 'gamepad', hue: 'var(--hue-games)', route: '#/apps/snake', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'dusk', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/snake.js'),
+    keywords: ['spil', 'snake', 'slange', 'arkade', 'pause', 'sjov'],
+  },
+  {
+    id: 'game2048', name: '2048', tagline: 'Læg tallene sammen.',
+    description: 'Skub brikkerne, så to ens bliver til én. Kan du nå 2048? Spillet gemmes, så du kan fortsætte senere.',
+    icon: 'grid', hue: 'var(--hue-games)', route: '#/apps/game2048', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'dusk', focusX: 0.5, tint: '#edc22e' }, page: () => import('../pages/game2048.js'),
+    keywords: ['spil', '2048', 'tal', 'puslespil', 'sjov'],
+  },
+  {
+    id: 'mines', name: 'Minestryger', tagline: 'Find felterne uden miner.',
+    description: 'Klassisk minestryger i tre sværhedsgrader. Det første klik er altid sikkert, og din bedste tid gemmes.',
+    icon: 'flag', hue: 'var(--hue-games)', route: '#/apps/mines', category: 'workspace', status: 'available',
+    art: { season: 'winter', time: 'day', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/mines.js'),
+    keywords: ['spil', 'minestryger', 'minesweeper', 'logik', 'sjov'],
+  },
+  {
+    id: 'memory', name: 'Huskespil', tagline: 'Find parrene.',
+    description: 'Vend kortene, og find alle par med så få træk som muligt – med IT-ikoner.',
+    icon: 'layers', hue: 'var(--hue-games)', route: '#/apps/memory', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'dusk', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/memory.js'),
+    keywords: ['spil', 'huskespil', 'memory', 'par', 'kort', 'sjov'],
+  },
+  {
+    id: 'habits', name: 'Vaner', tagline: 'Små vaner hver dag.',
+    description: 'Sæt flueben ved dine daglige vaner, se de sidste fire uger og din stime. Gemmes på din konto, så du kan krydse af på telefonen.',
+    icon: 'flame', hue: 'var(--hue-habits)', route: '#/apps/habits', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'day', focusX: 0.55, tint: '#a78bfa' }, page: () => import('../pages/habits.js'),
+    keywords: ['vaner', 'habit', 'stime', 'streak', 'daglig', 'mål', 'rutine'],
+  },
+  {
+    id: 'budget', name: 'Budget', tagline: 'Styr på pengene.',
+    description: 'Indtægter og udgifter pr. måned, hvad pengene går til, og hvad der er tilbage. Faste poster kopieres til næste måned med ét klik.',
+    icon: 'chart', hue: 'var(--hue-budget)', route: '#/apps/budget', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.45, tint: '#10b981' }, page: () => import('../pages/budget.js'),
+    keywords: ['budget', 'penge', 'økonomi', 'udgifter', 'indtægter', 'løn', 'opsparing'],
+  },
+  {
+    id: 'draw', name: 'Tegnebræt', tagline: 'Tegn og skitsér.',
+    description: 'Tegn et netværk, forklar noget for en kunde, eller lav en hurtig skitse – med mus, finger eller pen. Gem tegningerne på din konto, eller hent dem som billede.',
+    icon: 'paint', hue: 'var(--hue-draw)', route: '#/apps/draw', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'dusk', focusX: 0.5, tint: '#ff7eb6' }, page: () => import('../pages/draw.js'),
+    keywords: ['tegne', 'tegning', 'skitse', 'whiteboard', 'diagram', 'pen'],
+  },
+  {
     id: 'owner', name: 'Ejer', tagline: 'Alt, kun du som ejer bestemmer over.',
     description: 'Brugere og adgangskoder, hvem der kan oprette en konto, venner på andre netværk, server og sikkerhedskopier – og siden, dine venner henter HUBTECH fra. Kun platformens ejer kan se appen.',
     icon: 'crown', hue: 'var(--hue-owner)', route: '#/apps/owner', category: 'system', status: 'available', requires: { owner: true },
@@ -199,7 +297,7 @@ export const APPS = [
 export const appById = (id) => APPS.find(a => a.id === id);
 /** Learning apps live inside Guides & Læring (#/learn/<id>) instead of the app launcher and sidebar. */
 export const isLearnApp = (a) => !!a && a.category === 'learning' && a.id !== 'learning';
-const LEARN_ORDER = ['codeschool', 'snippets', 'flashcards', 'circuitpilot', 'toolkit'];
+const LEARN_ORDER = ['codeschool', 'snippets', 'flashcards', 'quiz', 'glossary', 'typing', 'bits', 'circuitpilot', 'toolkit'];
 export const LEARN_APPS = APPS.filter(isLearnApp).sort((a, b) => (LEARN_ORDER.indexOf(a.id) + 1 || 99) - (LEARN_ORDER.indexOf(b.id) + 1 || 99));
 
 /** Is the app usable by this user? Returns { ok, reason } */
@@ -220,8 +318,10 @@ export const visible = (app, user) => access(app, user).kind !== 'hidden';
  */
 export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
-  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver og fokus-timer.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus'] },
+  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Snake, 2048, minestryger og huskespil.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'game2048', 'mines', 'memory'] },
+  { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, kommandoer og tjeklister.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'commands', 'checklists'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;
 /** The app as it is shown in menus: a group's first member carries the group's name; the others are hidden there. */
