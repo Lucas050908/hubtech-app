@@ -1936,3 +1936,4 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 :root[data-theme="light"] .sd-grid.is-done .sd-cell { color: #15803d; }
 :root[data-theme="light"] .ttt-cell.p1, :root[data-theme="light"] .ttt-mark.p1 { color: #e11d48; }
 :root[data-theme="light"] .ttt-cell.p2, :root[data-theme="light"] .ttt-mark.p2 { color: #0891b2; }
+.gr-challenge { display: grid; gap: 8px; }

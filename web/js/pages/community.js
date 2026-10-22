@@ -16,6 +16,7 @@ import { reportDialog, memberCard, inviteDialog, serverSettings, reportsView, RO
 const PRESENCE = { online: 'Online', busy: 'Optaget', invisible: 'Usynlig' };
 const PRESENCE_HINT = { online: 'Venner kan se, at du er her, og ringe til dig.', busy: 'Ingen opkald, og telefonen holder sig stille. Beskeder kommer stadig.', invisible: 'Du ser offline ud for andre, men kan bruge alt som normalt.' };
 import { callUser, callGroup, pickFriends, joinVoice, currentCall } from '../features/calls.js';
+import { challengeDialog } from '../features/gameroom.js';
 
 const BASE = '/apps/community';
 const SERVER_ICONS = ['🔧', '💻', '🎮', '🎵', '📚', '⚡', '🏠', '⚽', '🚀', '🧪', '🎨', '🍕'];
@@ -204,6 +205,7 @@ function buildApp(cm, params) {
         h('button', { class: 'icon-btn', title: 'Send besked', 'aria-label': `Skriv til ${u.name}`, onclick: () => go(`/dm/${dmId(u.id)}`) }, icon('chat')),
         h('button', { class: 'icon-btn', title: 'Ring op', 'aria-label': `Ring til ${u.name}`, onclick: () => callUser(u) }, icon('phone')),
         h('button', { class: 'icon-btn', title: 'Send snap', 'aria-label': `Send snap til ${u.name}`, onclick: () => sendSnap(cm, [u.id]) }, icon('camera')),
+        h('button', { class: 'icon-btn', title: 'Spil sammen', 'aria-label': `Spil med ${u.name}`, onclick: () => challengeDialog(u) }, icon('gamepad')),
         h('button', { class: 'icon-btn', title: 'Fjern ven', 'aria-label': `Fjern ${u.name} som ven`, onclick: async () => { if (await confirmDialog({ title: `Fjern ${u.name} som ven?`, confirmLabel: 'Fjern', danger: true })) { await api.del(`/api/cm/friends/${u.id}`).catch(() => {}); await loadFriends(); loadDms(); draw(); } } }, icon('x'))]))
         : [stateBlock({ icon: 'users', title: 'Ingen venner endnu', text: 'Skriv et brugernavn ovenfor for at sende en venneanmodning. Venner kan skrive privat og sende snaps til hinanden.' })];
       else if (tab === 'incoming') content = [...f.incoming.map(u => row(u, [
@@ -297,6 +299,7 @@ function buildApp(cm, params) {
       h('button', { class: 'icon-btn', title: 'Ring op', 'aria-label': `Ring til ${name}`, onclick: () => callUser(other) }, icon('phone')),
       h('button', { class: 'icon-btn', title: 'Videoopkald', 'aria-label': `Videoopkald med ${name}`, onclick: () => callUser(other, { video: true }) }, icon('video')),
       h('button', { class: 'icon-btn', title: 'Send snap', 'aria-label': 'Send snap', onclick: () => sendSnap(cm, [other.id]) }, icon('camera')),
+      h('button', { class: 'icon-btn', title: 'Spil sammen', 'aria-label': `Spil med ${name}`, onclick: () => challengeDialog(other) }, icon('gamepad')),
       h('button', { class: 'icon-btn', title: 'Søg i samtalen', 'aria-label': 'Søg i samtalen', onclick: () => searchDialog(cid, name) }, icon('search')),
       h('button', { class: 'icon-btn', title: 'Profil', 'aria-label': 'Profil', onclick: () => openUser(other) }, icon('user'))] : []), chat.el);
     setTimeout(() => chat.focus(), 50);

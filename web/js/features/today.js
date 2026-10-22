@@ -5,12 +5,14 @@ import { getState } from '../core/services.js';
 import { isDue, isNew } from './srs.js';
 import { invoiceState, isoDate, totals, kr } from './invoice.js';
 import { isAndroidApp, updateWidget } from '../core/android.js';
+import { api } from '../core/api.js';
+import { store } from '../core/store.js';
 
 const hm = (t) => new Date(t).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 const dur = (ms) => { const m = Math.max(0, Math.round(ms / 60e3)); return m >= 60 ? `${Math.floor(m / 60)} t ${m % 60} min` : `${m} min`; };
 
 /** Pure: build the agenda and the attention tiles from the apps' states (exported for tests). */
-export function buildToday({ calendar, tasks, flashcards, inventory, timesheet, customers }, now = Date.now()) {
+export function buildToday({ calendar, tasks, flashcards, inventory, timesheet, customers, sudoku, invites, me }, now = Date.now()) {
   const today = isoDate(now), tomorrow = isoDate(now + 86400e3);
   const agenda = [];
   for (const e of calendar?.events || []) {
@@ -36,6 +38,14 @@ export function buildToday({ calendar, tasks, flashcards, inventory, timesheet, 
   if (low) tiles.push({ id: 'stock', icon: 'box', value: String(low), label: 'Lav lagerbeholdning', href: '#/apps/inventory', warn: true });
   const overdue = (customers?.invoices || []).filter(i => invoiceState(i, today).key === 'overdue');
   if (overdue.length) tiles.push({ id: 'invoices', icon: 'file', value: kr(overdue.reduce((a, i) => a + totals(i.lines, i.vat).gross, 0)), label: `${overdue.length} forfalden${overdue.length === 1 ? '' : 'e'} faktura${overdue.length === 1 ? '' : 'er'}`, href: '#/apps/customers', warn: true });
+  // games: invitations from the others, and Dagens sudoku if it isn't solved yet
+  const inv = (invites || []).filter(r => (r.invited || []).some(p => p.id === me));
+  const APP = { connect4: 'connect4', ttt: 'tictactoe', typing: 'typerace', draw: 'drawguess', property: 'property' };
+  if (inv.length) {
+    const from = inv[0].players[0]?.name || 'Nogen';
+    tiles.push({ id: 'invites', icon: 'gamepad', value: String(inv.length), label: inv.length === 1 ? `${from} vil spille med dig` : 'invitationer til spil', href: `#/apps/${APP[inv[0].game] || 'connect4'}/online/${inv[0].id}`, hot: true });
+  }
+  if (sudoku && !(sudoku.daily?.date === today && sudoku.daily?.done)) tiles.push({ id: 'daily', icon: 'calendar', value: 'Dagens', label: 'sudoku venter på dig', href: '#/apps/sudoku' });
   const tomorrowCount = (calendar?.events || []).filter(e => e.date <= tomorrow && (e.endDate || e.date) >= tomorrow).length + open.filter(t => t.due === tomorrow).length;
   return { agenda, tiles, tomorrowCount };
 }
@@ -60,10 +70,11 @@ export function todayPanel() {
     body);
   let timer = 0, loaded = false;
   // first load fetches fresh data (other devices and Servicehjælp save on their own); the minute ticks reuse it
-  const load = () => Promise.all(['calendar', 'tasks', 'flashcards', 'inventory', 'timesheet', 'customers'].map(k => getState(k, { force: !loaded }).catch(() => null))).then(([calendar, tasks, flashcards, inventory, timesheet, customers]) => {
+  const load = () => Promise.all([...['calendar', 'tasks', 'flashcards', 'inventory', 'timesheet', 'customers', 'sudoku'].map(k => getState(k, { force: !loaded }).catch(() => null)),
+    api.get('/api/games/rooms').then(r => r.rooms).catch(() => [])]).then(([calendar, tasks, flashcards, inventory, timesheet, customers, sudoku, invites]) => {
     loaded = true;
     if (!el.isConnected && timer) { clearInterval(timer); return; }
-    const t = buildToday({ calendar, tasks, flashcards, inventory, timesheet, customers });
+    const t = buildToday({ calendar, tasks, flashcards, inventory, timesheet, customers, sudoku, invites, me: store.get('user')?.id });
     if (isAndroidApp()) updateWidget(widgetData(t));
     clear(body);
     if (t.tiles.length) body.append(h('div', { class: 'today-tiles' }, t.tiles.map(x => h('a', { class: ['today-tile', x.hot && 'is-hot', x.warn && 'is-warn'], href: x.href, dataset: { tile: x.id } },

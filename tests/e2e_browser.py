@@ -1361,6 +1361,27 @@ async def main():
         await p2.screenshot(path=f"{OUT}/online-drawguess-phone.png", full_page=True)
         await p1.screenshot(path=f"{OUT}/online-drawguess.png")
         await p1.click(".dg-page button:has-text('Forlad')"); await p2.wait_for_timeout(500)
+        # an invitation shows on the other's home screen ("I dag"), and the tile opens the game
+        maja_id = next(x["id"] for x in (await api(p1, "GET", "/api/games/players"))["data"]["players"] if x["name"] == "Maja")
+        inv = (await api(p1, "POST", "/api/games/rooms", {"game": "ttt", "invite": [maja_id]}))["data"]["room"]
+        await p2.goto(BASE + "/#/"); await p2.reload(); await p2.wait_for_selector(".today-tile[data-tile='invites']", timeout=10000)
+        check("i dag: invitation til spil vises på forsiden", "vil spille med dig" in await p2.inner_text(".today-tile[data-tile='invites']"))
+        await p2.click(".today-tile[data-tile='invites']"); await p2.wait_for_selector(".ttt-online .ttt-board", timeout=10000)
+        check("i dag: invitationen åbner spillet", inv["id"] in p2.url)
+        await api(p1, "POST", f"/api/games/rooms/{inv['id']}/leave", {}); await api(p2, "POST", f"/api/games/rooms/{inv['id']}/leave", {})
+        # "Spil sammen" from the friends list in Fællesskab (become friends first)
+        await api(p1, "POST", "/api/cm/friends", {"username": "maja"})
+        oliver_id = (await api(p1, "GET", "/api/me"))["data"]["user"]["id"]
+        await api(p2, "POST", f"/api/cm/friends/{oliver_id}/accept", {})
+        await p1.goto(BASE + "/#/apps/community/friends"); await p1.reload(); await p1.wait_for_timeout(1500)
+        btn = p1.locator("button[aria-label='Spil med Maja']")
+        if await btn.count():
+            await btn.first.click(); await p1.wait_for_selector(".modal:has-text('Spil med Maja')")
+            await p1.click(".modal button:has-text('Kryds og bolle')"); await p1.wait_for_selector(".ttt-online", timeout=10000)
+            check("fællesskab: udfordr en ven til et spil", "/apps/tictactoe/online/" in p1.url)
+            rid = p1.url.split("/")[-1]; await api(p1, "POST", f"/api/games/rooms/{rid}/leave", {})
+        else:
+            check("fællesskab: udfordr en ven til et spil", False, "ingen knap")
         # Ejendomskongen online
         await p1.goto(BASE + "/#/apps/property/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
         await p1.click(".gr-player:has-text('Maja')"); await p1.click(".pg-page button:has-text('Invitér')")

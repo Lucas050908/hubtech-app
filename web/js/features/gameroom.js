@@ -5,7 +5,7 @@
 import { h, clear, ava } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
-import { toast } from '../core/ui.js';
+import { toast, modal } from '../core/ui.js';
 import { onLive } from '../core/live.js';
 import { store } from '../core/store.js';
 import { panel } from './appkit.js';
@@ -131,4 +131,25 @@ export async function submitScore(game, score) {
     if (r.record && mine && mine.place <= 3 && r.board.players > 1) toast(`Du er nr. ${mine.place} på toplisten!`, { type: 'xp', action: { label: 'Se listen', onClick: () => { location.hash = '#/apps/typerace/top'; } } });
     return r;
   } catch { return null; }
+}
+
+/** "Spil med …" – challenge one person to an online game (from a chat or the friends list). */
+const CHALLENGES = [
+  ['connect4', 'Fire på stribe', 'apps', 'connect4'], ['ttt', 'Kryds og bolle', 'x', 'tictactoe'], ['draw', 'Tegn og gæt', 'paint', 'drawguess'],
+  ['typing', 'Fart-tast (løb)', 'timer', 'typerace'], ['property', 'Ejendomskongen', 'home', 'property'],
+];
+export function challengeDialog(user) {
+  let close;
+  const pick = async (game, app) => {
+    try {
+      const r = await roomApi.create(game, [user.id]);
+      close?.();
+      toast(`Invitation sendt til ${user.name}`, { type: 'ok' });
+      location.hash = `#/apps/${app}/online/${r.id}`;
+    } catch (e) { toast('Kunne ikke invitere', { type: 'bad', text: e.message }); }
+  };
+  const m = modal({ title: `Spil med ${user.name}`, label: 'Spil sammen', size: 420,
+    body: h('div', { class: 'gr-challenge' }, CHALLENGES.map(([game, name, ic, app]) => h('button', { class: 'pd-problem', onclick: () => pick(game, app) },
+      h('span', { class: 'row-icon' }, icon(ic)), h('span', null, h('b', null, name)), icon('chevronRight')))) });
+  close = m.close;
 }
