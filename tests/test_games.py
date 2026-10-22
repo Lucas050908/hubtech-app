@@ -162,6 +162,23 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", f"/api/games/typing/{tok}/finish", {"typed": text}, cookie=self.a)
         self.assertEqual(s, 404, "a run can only be used once")
 
+    def test_typing_runs_from_several_people(self):
+        """A run that was fetched but never started must not break the next person's run."""
+        self.assertEqual(self.call("POST", "/api/games/typing", {}, cookie=self.b)[0], 200)
+        self.assertEqual(self.call("POST", "/api/games/typing", {}, cookie=self.c)[0], 200)
+        self.assertEqual(self.call("POST", "/api/games/typing", {}, cookie=self.b)[0], 200)
+
+    def test_daily_sudoku(self):
+        import datetime
+        today = f"daily-sudoku-{datetime.date.today().isoformat()}"
+        old = f"daily-sudoku-{(datetime.date.today() - datetime.timedelta(days=5)).isoformat()}"
+        self.assertEqual(self.call("POST", f"/api/games/boards/{today}", {"score": 300}, cookie=self.a)[0], 200)
+        s, d = self.call("POST", f"/api/games/boards/{today}", {"score": 200}, cookie=self.b)
+        self.assertEqual([r["user"]["name"] for r in d["board"]["rows"]], ["Bo", "Anna"])
+        self.assertEqual(self.call("POST", f"/api/games/boards/{old}", {"score": 300}, cookie=self.a)[0], 400, "old days are closed")
+        self.assertEqual(self.call("POST", f"/api/games/boards/{today}", {"score": 10}, cookie=self.a)[0], 400, "too fast")
+        self.assertEqual(self.call("POST", "/api/games/boards/daily-sudoku-2026-13-45", {"score": 300}, cookie=self.a)[0], 400)
+
     def test_scores(self):
         self.assertEqual(self.call("POST", "/api/games/boards/snake", {"score": 12}, cookie=self.a)[0], 200)
         self.assertEqual(self.call("POST", "/api/games/boards/snake", {"score": 30}, cookie=self.b)[0], 200)
@@ -174,7 +191,7 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", "/api/games/boards/mines-easy", {"score": 25}, cookie=self.b)
         self.assertEqual(d["board"]["rows"][0]["user"]["name"], "Bo", "lowest time wins")
         s, d = self.call("GET", "/api/games/boards", cookie=self.c)
-        self.assertEqual(len(d["boards"]), 12)
+        self.assertEqual(len(d["boards"]), 13)
 
     def test_race(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)

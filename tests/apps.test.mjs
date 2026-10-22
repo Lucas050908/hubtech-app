@@ -129,3 +129,11 @@ console.log('apps ok');
   assert.equal(P.applyAction(s, 1, 'answer', [true]), true); assert.equal(s.owner[3], 0);
   console.log('property actions ok');
 }
+{
+  const { seededRandom, makeSudoku, countSolutions } = await import('../web/js/features/gamelogic.js');
+  const a = makeSudoku('medium', seededRandom('hubtech-2026-10-22')), b = makeSudoku('medium', seededRandom('hubtech-2026-10-22'));
+  assert.deepEqual(a.puzzle, b.puzzle, 'samme dag = samme sudoku');
+  assert.notDeepEqual(a.puzzle, makeSudoku('medium', seededRandom('hubtech-2026-10-23')).puzzle);
+  assert.equal(countSolutions(a.puzzle), 1);
+  console.log('daily ok');
+}

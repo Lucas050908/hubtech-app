@@ -172,3 +172,12 @@ export function tttBest(b0, me = 2, level = 'hard', r = Math.random) {
   for (const i of free) { b[i] = me; const v = tttScore(b, me, op, 1); b[i] = 0; if (v > best) { best = v; moves = [i]; } else if (v === best) moves.push(i); }
   return pick(moves);
 }
+
+/** A random number generator that gives the same numbers for the same text (Dagens sudoku is the same for everyone). */
+export function seededRandom(text) {
+  let h = 1779033703 ^ text.length;
+  for (let i = 0; i < text.length; i++) { h = Math.imul(h ^ text.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  let a = h >>> 0;
+  return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+export const todayISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

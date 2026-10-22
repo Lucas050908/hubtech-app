@@ -115,7 +115,7 @@ export default {
       const s = { id: uid(), title: '', lang: 'bash', tags: [], code: '', created: Date.now(), updated: Date.now(), uses: 0 };
       st.items.unshift(s); sel = s.id; persist(); drawList(); drawEditor();
       logActivity('snippets', 'new', 'Ny kodestump', 'Kodestump oprettet');
-      setTimeout(() => editor.querySelector('.sn-title')?.focus(), 30);
+      setTimeout(() => { if (!editor.contains(document.activeElement)) editor.querySelector('.sn-title')?.focus(); }, 30);   // never steal focus from the code
     }
 
     if (fresh) persist();

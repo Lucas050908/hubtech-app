@@ -17,8 +17,8 @@ function progressPanel(s) {
   const pct = Math.round(s.levelXp / s.levelSize * 100);
   const total = h('span', { class: 'big-num' }, '0');
   const b = s.breakdown;
-  const max = Math.max(1, b.circuitpilot, b.courses, b.onboarding, b.codeschool || 0, b.flashcards || 0);
-  const src = [['CircuitPilot', b.circuitpilot, 'var(--hue-circuitpilot)', 'circuit'], ['Kurser', b.courses, 'var(--hue-course)', 'graduation'], ['Kodeskolen', b.codeschool || 0, 'var(--hue-codeschool)', 'code'], ['Huskekort', b.flashcards || 0, 'var(--hue-flashcards)', 'layers'], ['Introduktion', b.onboarding, 'var(--accent)', 'sparkles']];
+  const max = Math.max(1, b.circuitpilot, b.courses, b.onboarding, b.codeschool || 0, b.flashcards || 0, b.learning || 0, b.games || 0);
+  const src = [['CircuitPilot', b.circuitpilot, 'var(--hue-circuitpilot)', 'circuit'], ['Kurser', b.courses, 'var(--hue-course)', 'graduation'], ['Kodeskolen', b.codeschool || 0, 'var(--hue-codeschool)', 'code'], ['Huskekort', b.flashcards || 0, 'var(--hue-flashcards)', 'layers'], ['Quiz og træning', b.learning || 0, 'var(--hue-quiz)', 'graduation'], ['Spil', b.games || 0, 'var(--hue-games)', 'gamepad'], ['Introduktion', b.onboarding, 'var(--accent)', 'sparkles']];
   const p = h('section', { class: 'glass panel progress-panel', dataset: { tour: 'progress' } },
     h('div', { class: 'pp-ring' },
       h('div', { class: 'ring-progress', style: { '--v': pct, '--size': '132px' } }, h('div', { style: { textAlign: 'center' } }, h('div', { class: 'faint', style: { fontSize: '.7rem', fontWeight: 800, letterSpacing: '.12em' } }, 'LEVEL'), h('div', { style: { font: '700 2.2rem/1 var(--font-display)' } }, String(s.level))))),

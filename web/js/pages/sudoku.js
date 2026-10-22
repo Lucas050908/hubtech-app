@@ -6,7 +6,9 @@ import { appById } from '../core/registry.js';
 import { submitScore } from '../features/gameroom.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
-import { makeSudoku, canPlace, SUDOKU_LEVELS } from '../features/gamelogic.js';
+import { makeSudoku, canPlace, SUDOKU_LEVELS, seededRandom, todayISO } from '../features/gamelogic.js';
+import { api } from '../core/api.js';
+import { boardTable } from '../features/gameroom.js';
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -24,8 +26,11 @@ export default {
 
     function newGame(lv = level) {
       level = lv;
-      const { puzzle, solution } = makeSudoku(level);
-      st.game = { level, puzzle, solution, cur: [...puzzle], notes: Array(81).fill(''), secs: 0, hints: 0, done: false };
+      const date = todayISO();
+      if (level === 'daily' && st.daily?.date === date) { st.game = st.daily; sel = st.game.cur.findIndex((v, k) => !v && !st.game.puzzle[k]); draw(); return; }
+      const { puzzle, solution } = level === 'daily' ? makeSudoku('medium', seededRandom(`hubtech-${date}`)) : makeSudoku(level);
+      st.game = { level, puzzle, solution, cur: [...puzzle], notes: Array(81).fill(''), secs: 0, hints: 0, done: false, date: level === 'daily' ? date : null };
+      if (level === 'daily') st.daily = st.game;
       sel = st.game.puzzle.findIndex(v => !v); store.save(); draw();
     }
     const g = () => st.game;
@@ -46,6 +51,11 @@ export default {
     }
     function win() {
       const G = g(); G.done = true; st.won = (st.won || 0) + 1;
+      if (G.level === 'daily') {
+        if (!G.hints) submitScore(`daily-sudoku-${G.date}`, G.secs).then(drawDaily);
+        toast('Dagens sudoku er løst!', { type: 'xp', text: `${fmt(G.secs)}${G.hints ? ` med ${G.hints} hint – tæller ikke på listen` : ' – se hvor du ligger på dagens liste'}` });
+        return;
+      }
       const best = st.best[G.level];
       const rec = !G.hints && (!best || G.secs < best);
       if (rec) st.best[G.level] = G.secs;
@@ -103,12 +113,24 @@ export default {
       G.secs++; timeEl.textContent = fmt(G.secs);
       if (G.secs % 15 === 0) store.save();
     }, 1000);
-    const seg = segmented(Object.entries(SUDOKU_LEVELS).map(([value, l]) => ({ value, label: l.label })), level, async (v) => {
+    // Dagens sudoku: the same puzzle for everyone today, with today's list
+    const dailyBox = h('div');
+    const dailyPanel = panel('Dagens liste', 'trophy', h('p', { class: 'faint', style: { marginTop: 0 } }, 'Alle på HUBTECH får den samme sudoku i dag. Løs den uden hint for at komme på listen – i morgen er der en ny.'), dailyBox);
+    function drawDaily() {
+      dailyPanel.hidden = level !== 'daily';
+      newBtn.hidden = level === 'daily';
+      if (level !== 'daily') return;
+      api.get(`/api/games/boards/daily-sudoku-${todayISO()}`).then(b => h(clear(dailyBox), null, boardTable(b, { fmt: (v) => fmt(v) }))).catch(() => {});
+    }
+    const newBtn = h('button', { class: 'btn btn-sm', onclick: () => newGame(level) }, icon('refresh'), 'Nyt spil');
+    const seg = segmented([...Object.entries(SUDOKU_LEVELS).map(([value, l]) => ({ value, label: l.label })), { value: 'daily', label: 'Dagens sudoku', icon: 'calendar' }], level, async (v) => {
       const G = g();
-      if (G && !G.done && G.cur.some((x, k) => x && !G.puzzle[k]) && !await confirmDialog({ title: 'Start et nyt spil?', text: 'Det spil, du er i gang med, forsvinder.', confirmLabel: 'Nyt spil' })) { seg.setValue(level); return; }
-      newGame(v);
+      if (G && G.level !== 'daily' && !G.done && G.cur.some((x, k) => x && !G.puzzle[k]) && !await confirmDialog({ title: 'Start et nyt spil?', text: 'Det spil, du er i gang med, forsvinder.', confirmLabel: 'Nyt spil' })) { seg.setValue(level); return; }
+      newGame(v); drawDaily();
     }, { label: 'Sværhedsgrad' });
-    if (!st.game) newGame(level); else { sel = st.game.cur.findIndex((v, k) => !v && !st.game.puzzle[k]); draw(); }
+    if (!st.game || (st.game.level === 'daily' && st.game.date !== todayISO())) newGame(st.game?.level === 'daily' ? 'daily' : level);
+    else { sel = st.game.cur.findIndex((v, k) => !v && !st.game.puzzle[k]); draw(); }
+    drawDaily();
     return h('div', { class: 'page gm-page sd-page', style: { '--app': app.hue } },
       appHero(app, { eyebrow: 'Spilhal', title: 'Sudoku', lead: 'Hvert tal fra 1 til 9 én gang i hver række, kolonne og boks. Brug tastaturet eller knapperne – N skifter til noter.', compact: true }),
       panel(null, null, h('div', { class: 'cmd-filters' }, seg),
@@ -118,6 +140,6 @@ export default {
             h('div', { class: 'sd-acts' }, notesBtn,
               h('button', { class: 'btn btn-sm', onclick: hint }, icon('sparkles'), 'Hint'),
               h('button', { class: 'btn btn-sm', onclick: check }, icon('checkCircle'), 'Tjek'),
-              h('button', { class: 'btn btn-sm', onclick: () => newGame(level) }, icon('refresh'), 'Nyt spil'))))));
+              newBtn)))), dailyPanel);
   },
 };

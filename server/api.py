@@ -390,6 +390,47 @@ def _state(uid, app):
         return None
 
 
+def _num(v):
+    try:
+        return max(0, int(v or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _learning_xp(uid):
+    """Quiz, IT-ordbog, Phishing-træner and Tastaturtræner."""
+    xp = 0
+    q = _state(uid, "quiz") or {}
+    if isinstance(q, dict) and isinstance(q.get("best"), dict):
+        xp += 5 * sum(_num(v) for v in q["best"].values())
+    g = _state(uid, "glossary") or {}
+    if isinstance(g, dict) and isinstance(g.get("known"), list):
+        xp += 3 * len(g["known"])
+    ph = _state(uid, "phishing") or {}
+    if isinstance(ph, dict) and isinstance(ph.get("seen"), dict):
+        xp += 10 * sum(1 for v in ph["seen"].values() if isinstance(v, dict) and v.get("ok"))
+    ty = _state(uid, "typing") or {}
+    if isinstance(ty, dict) and isinstance(ty.get("runs"), list):
+        xp += 5 * min(len(ty["runs"]), 100)
+    return xp
+
+
+def _games_xp(uid):
+    """A little XP for playing – capped, so games never outweigh learning."""
+    xp = 0
+    def get(app):
+        v = _state(uid, app)
+        return v if isinstance(v, dict) else {}
+    xp += 2 * _num(get("snake").get("games")) + 2 * _num(get("aim").get("games"))
+    xp += 25 * _num(get("sudoku").get("won")) + 30 * _num(get("solitaire").get("wins")) + 15 * _num(get("mines").get("wins"))
+    xp += _num(get("flags").get("right")) + 5 * _num(get("hangman").get("won"))
+    for app, per in (("connect4", 10), ("tictactoe", 5)):
+        stats = get(app).get("stats")
+        if isinstance(stats, dict):
+            xp += per * sum(_num(v.get("w")) for v in stats.values() if isinstance(v, dict))
+    return min(xp, 2000)
+
+
 def summary(req, _):
     u = require_user(req)
     uid = u["id"]
@@ -419,7 +460,9 @@ def summary(req, _):
             fc_xp = max(0, int(fc.get("reviews") or 0)) * 2
         except (TypeError, ValueError):
             fc_xp = 0
-    total = cp_xp + course_xp + onboarding_xp + code_xp + fc_xp
+    learn_xp = _learning_xp(uid)
+    games_xp = _games_xp(uid)
+    total = cp_xp + course_xp + onboarding_xp + code_xp + fc_xp + learn_xp + games_xp
     level = total // LEVEL_XP + 1
     badges = len(cp.get("achievements", [])) if isinstance(cp, dict) else 0
     streak = 0
@@ -430,7 +473,7 @@ def summary(req, _):
     favs = db.one("SELECT COUNT(*) AS n FROM favorites WHERE user_id = ?", (uid,))["n"]
     return 200, {
         "xp": total, "level": level, "levelXp": total % LEVEL_XP, "levelSize": LEVEL_XP,
-        "breakdown": {"circuitpilot": cp_xp, "courses": course_xp, "onboarding": onboarding_xp, "codeschool": code_xp, "flashcards": fc_xp},
+        "breakdown": {"circuitpilot": cp_xp, "courses": course_xp, "onboarding": onboarding_xp, "codeschool": code_xp, "flashcards": fc_xp, "learning": learn_xp, "games": games_xp},
         "badges": badges, "streak": streak, "organizedProjects": projects, "favorites": favs, "coursesActive": courses_active,
         "courseTasksDone": tasks_done, "courseDaysDone": days_done,
     }

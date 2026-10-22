@@ -1168,6 +1168,13 @@ async def main():
         check("sudoku: et tal skrevet i et tomt felt", (await page.locator(".sd-cell").nth(empty).inner_text()).strip() == str(sd["solution"][empty]))
         check("sudoku: kun én løsning, og tallet er rigtigt", sd["puzzle"].count(0) >= 40)
         await page.screenshot(path=f"{OUT}/app-sudoku.png")
+        await page.click(".sd-page .segmented button:has-text('Dagens sudoku')")
+        await page.click(".modal button:has-text('Nyt spil')")          # the game in progress is replaced
+        await page.wait_for_selector(".panel:has-text('Dagens liste')")
+        p1_ = await page.evaluate("[...document.querySelectorAll('.sd-cell')].map(c => c.textContent.trim()).join(',')")
+        await page.wait_for_timeout(1500)                                  # saved on the account
+        await page.reload(); await page.wait_for_selector(".sd-cell")
+        check("dagens sudoku: samme opgave efter genindlæsning og med dagens liste", p1_ == await page.evaluate("[...document.querySelectorAll('.sd-cell')].map(c => c.textContent.trim()).join(',')") and await page.locator(".panel:has-text('Dagens liste')").is_visible())
         await go("apps/connect4", ".c4-col")
         await page.locator(".c4-local .c4-col").nth(3).click(); await page.wait_for_timeout(900)
         check("fire på stribe: din brik og computerens svar", await page.locator(".c4-cell.p1").count() == 1 and await page.locator(".c4-cell.p2").count() == 1)
@@ -1397,7 +1404,7 @@ async def main():
         await p2.wait_for_selector(".ty-result", timeout=15000)
         check("fart-tast alene: resultat og topliste", await p2.locator(".lb-row.is-me").count() == 1, await p2.inner_text(".ty-result"))
         await p2.goto(BASE + "/#/apps/typerace/top"); await p2.wait_for_selector(".lb-grid .panel")
-        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 12)
+        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 13)
         await p2.screenshot(path=f"{OUT}/toplister-phone.png", full_page=True)
         await c1.close(); await c2.close()
         await go("learn", ".settings-body, .learn-page, main")

@@ -58,6 +58,25 @@ BOARDS = {
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
     "sudoku-easy": ("Sudoku · let", False, 99_999), "sudoku-medium": ("Sudoku · middel", False, 99_999), "sudoku-hard": ("Sudoku · svær", False, 99_999),
 }
+DAILY_RE = re.compile(r"^daily-sudoku-(\d{4}-\d{2}-\d{2})$")
+
+
+def _board_def(game):
+    """(label, higher is better, max sane value, min sane value) – fixed boards plus one board per day for Dagens sudoku."""
+    if game in BOARDS:
+        label, higher, cap = BOARDS[game]
+        return label, higher, cap, MIN_SECS.get(game, 0)
+    m = DAILY_RE.match(game or "")
+    if m:
+        import datetime
+        try:
+            d = datetime.date.fromisoformat(m.group(1))
+        except ValueError:
+            return None
+        return f"Dagens sudoku {d.day}/{d.month}", False, 99_999, 45
+    return None
+
+
 MIN_SECS = {"mines-easy": 1, "mines-medium": 5, "mines-hard": 15, "sudoku-easy": 30, "sudoku-medium": 45, "sudoku-hard": 60}
 
 
@@ -387,9 +406,10 @@ def typing_start(req, _):
     tok = secrets.token_hex(8)
     text = random.choice(TEXTS)
     with _lock:
-        for k in [k for k, v in _typing_runs.items() if time.time() - v["start"] > 900 or v["uid"] == u["id"]]:
+        # forget old runs (also ones that were fetched but never started) and this person's earlier run
+        for k in [k for k, v in _typing_runs.items() if time.time() - v["created"] > 900 or v["uid"] == u["id"]]:
             _typing_runs.pop(k, None)
-        _typing_runs[tok] = {"uid": u["id"], "text": text, "start": None}
+        _typing_runs[tok] = {"uid": u["id"], "text": text, "start": None, "created": time.time()}
     return 200, {"token": tok, "text": text}
 
 
@@ -426,11 +446,16 @@ def typing_finish(req, params):
 
 # ── leaderboards ──
 def _record(uid, game, score):
-    label, higher, cap = BOARDS[game]
+    label, higher, cap, _ = _board_def(game)
     if score > cap:          # faster than any human: pasted or scripted – not on the list
         return {"best": None, "record": False}
     with _lock:
         all_ = db.get_server_setting("game_scores", {}) or {}
+        if game.startswith("daily-"):        # keep a week of daily boards
+            import datetime
+            old = (datetime.date.today() - datetime.timedelta(days=8)).isoformat()
+            for k in [k for k in all_ if k.startswith("daily-") and k[-10:] < old]:
+                all_.pop(k, None)
         g = all_.setdefault(game, {})
         old = g.get(str(uid))
         better = old is None or (score > old["score"] if higher else score < old["score"])
@@ -441,7 +466,7 @@ def _record(uid, game, score):
 
 
 def _board(game, me):
-    label, higher, _ = BOARDS[game]
+    label, higher, _, _ = _board_def(game)
     g = (db.get_server_setting("game_scores", {}) or {}).get(game, {})
     cards = _cards([int(k) for k in g])
     rows = sorted(((v["score"], v["at"], int(k)) for k, v in g.items() if int(k) in cards), key=lambda x: (-x[0] if higher else x[0], x[1]))
@@ -454,28 +479,36 @@ def _board(game, me):
 
 def board(req, params):
     u = require_user(req)
-    if params["game"] not in BOARDS:
+    if not _board_def(params["game"]):
         raise ApiError(404, "Ukendt spil.", "not_found")
     return 200, _board(params["game"], u["id"])
 
 
 def boards(req, _):
     u = require_user(req)
-    return 200, {"boards": [_board(g, u["id"]) for g in BOARDS]}
+    import datetime
+    today = f"daily-sudoku-{datetime.date.today().isoformat()}"
+    return 200, {"boards": [_board(today, u["id"])] + [_board(g, u["id"]) for g in BOARDS]}
 
 
 def submit(req, params):
-    """Snake, 2048, Minestryger and Sudoku report their own result (time in seconds or points)."""
+    """Snake, 2048, Minestryger, Sudoku and Dagens sudoku report their own result (time in seconds or points)."""
     u = require_user(req)
     game = params["game"]
-    if game not in BOARDS or game == "typing":
+    spec = _board_def(game)
+    if not spec or game == "typing":
         raise ApiError(400, "Ukendt spil.", "invalid")
+    if game.startswith("daily-"):
+        import datetime
+        today = datetime.date.today()
+        if game[-10:] not in (today.isoformat(), (today - datetime.timedelta(days=1)).isoformat()):
+            raise ApiError(400, "Den udfordring er slut.", "expired")
     try:
         score = int(req.json().get("score"))
     except (TypeError, ValueError):
         raise ApiError(400, "Ugyldigt resultat.", "invalid")
-    _, _, cap = BOARDS[game]
-    if score < MIN_SECS.get(game, 0) or score > cap:
+    _, _, cap, low = spec
+    if score < low or score > cap:
         raise ApiError(400, "Ugyldigt resultat.", "invalid")
     rec = _record(u["id"], game, score)
     return 200, {**rec, "board": _board(game, u["id"])}
@@ -742,8 +775,8 @@ ROUTES = [
     ("POST", r"/api/games/typing/(?P<token>[0-9a-f]{16})/go", typing_go),
     ("POST", r"/api/games/typing/(?P<token>[0-9a-f]{16})/finish", typing_finish),
     ("GET", r"/api/games/boards", boards),
-    ("GET", r"/api/games/boards/(?P<game>[a-z0-9-]{2,20})", board),
-    ("POST", r"/api/games/boards/(?P<game>[a-z0-9-]{2,20})", submit),
+    ("GET", r"/api/games/boards/(?P<game>[a-z0-9-]{2,30})", board),
+    ("POST", r"/api/games/boards/(?P<game>[a-z0-9-]{2,30})", submit),
 ]
 
 

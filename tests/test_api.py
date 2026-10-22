@@ -180,6 +180,22 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(st, 200)
         self.assertEqual(body["breakdown"]["flashcards"], 0)
 
+    def test_summary_quiz_and_games_xp(self):
+        o = self.owner
+        o.req("PUT", "/api/state/quiz", {"state": {"best": {"printer": 8, "net": 6}, "played": 3}})
+        o.req("PUT", "/api/state/phishing", {"state": {"seen": {"a": {"ok": True}, "b": {"ok": False}}}})
+        o.req("PUT", "/api/state/sudoku", {"state": {"won": 2}})
+        o.req("PUT", "/api/state/connect4", {"state": {"stats": {"easy": {"w": 3, "l": 1}}}})
+        st, body, _ = o.req("GET", "/api/me/summary")
+        self.assertEqual(body["breakdown"]["learning"], 14 * 5 + 10)
+        self.assertEqual(body["breakdown"]["games"], 2 * 25 + 3 * 10)
+        o.req("PUT", "/api/state/snake", {"state": {"games": 999999}})
+        st, body, _ = o.req("GET", "/api/me/summary")
+        self.assertEqual(body["breakdown"]["games"], 2000, "games are capped")
+        o.req("PUT", "/api/state/quiz", {"state": {"best": "nonsense"}})
+        o.req("PUT", "/api/state/connect4", {"state": {"stats": {"x": "y"}}})
+        self.assertEqual(o.req("GET", "/api/me/summary")[0], 200)
+
     def test_state_validation(self):
         self.assertEqual(self.owner.req("PUT", "/api/state/../etc", {"state": {}})[0], 404)
         self.assertEqual(self.owner.req("PUT", "/api/state/BAD!", {"state": {}})[0], 400)
