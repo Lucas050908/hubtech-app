@@ -5,12 +5,12 @@ import { toast, segmented } from '../core/ui.js';
 import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
-import { lobbyPanel, roomApi, watchRoom, person, me } from '../features/gameroom.js';
+import { lobbyPanel, roomApi, watchRoom, person, me, isWatcher } from '../features/gameroom.js';
 import { c4Empty, c4Drop, c4Winner, c4Valid, c4Best, C4_LEVELS, C4_ROWS, C4_COLS } from '../features/gamelogic.js';
 
 export default {
   title: 'Fire på stribe',
-  destroy() { clearTimeout(this._t); removeEventListener('keydown', this._k); this._off?.(); },
+  destroy() { clearTimeout(this._t); removeEventListener('keydown', this._k); this._off?.(); this._unwatch?.(); },
   async render(ctx) {
     const app = appById('connect4');
     let store;
@@ -79,7 +79,8 @@ export default {
     // ── online: against someone else on this HUBTECH ──
     const myIdx = () => room ? room.players.findIndex(p => p.id === me()) : -1;
     function openRoom(r) {
-      self._off?.();
+      self._off?.(); self._unwatch?.(); self._unwatch = null;
+      if (r && isWatcher(r)) { const id = r.id; self._unwatch = () => roomApi.unwatch(id); }
       room = r;
       if (!r) { history.replaceState(null, '', '#/apps/connect4/online'); return drawOnline(); }
       history.replaceState(null, '', `#/apps/connect4/online/${r.id}`);
@@ -97,6 +98,7 @@ export default {
       if (room.status === 'invite') msg = `Venter på, at ${room.invited.map(p => p.name).join(', ') || 'modstanderen'} siger ja …`;
       else if (room.status === 'done') msg = S.winner === 0 ? 'Uafgjort!' : S.gaveUp ? (S.gaveUp === me() ? 'Du gav op' : 'Modstanderen gav op – du vandt') : S.winner === mi + 1 ? 'Du vandt! 🎉' : `${room.players[S.winner - 1]?.name || 'Modstanderen'} vandt`;
       else msg = S.turn === mi ? 'Din tur – vælg en kolonne' : `${room.players[S.turn]?.name || 'Modstanderen'}s tur …`;
+      if (mi < 0 && room.status === 'done') msg = S.winner === 0 ? 'Uafgjort!' : `${room.players[S.winner - 1]?.name || 'Ukendt'} vandt`;
       const winSet = new Set((S.cells || []).map(([r, c]) => `${r},${c}`));
       const b = h('div', { class: 'c4-board', role: 'grid', 'aria-label': 'Spillebræt' });
       const canMove = room.status === 'playing' && S.turn === mi;
@@ -112,21 +114,23 @@ export default {
         h('div', { class: ['c4-status', room.status === 'playing' && `p${S.turn + 1}`] }, msg),
         h('div', { class: 'c4-wrap' }, b),
         h('div', { class: 'row-actions', style: { justifyContent: 'center' } },
-          room.status === 'done' && room.players.length === 2 ? h('button', { class: 'btn btn-primary', onclick: async () => { try { room = await roomApi.rematch(room.id); drawOnline(); } catch (e) { toast(e.message, { type: 'warn' }); } } }, icon('refresh'), 'Spil igen') : null,
+          mi < 0 ? h('span', { class: 'chip' }, icon('eye'), `Du ser med${room.watchers > 1 ? ` sammen med ${room.watchers - 1} andre` : ''}`) : null,
+          mi >= 0 && room.status === 'done' && room.players.length === 2 ? h('button', { class: 'btn btn-primary', onclick: async () => { try { room = await roomApi.rematch(room.id); drawOnline(); } catch (e) { toast(e.message, { type: 'warn' }); } } }, icon('refresh'), 'Spil igen') : null,
           h('button', { class: 'btn', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle spil'),
-          room.status !== 'done' ? h('button', { class: 'btn btn-ghost', onclick: async () => { await roomApi.leave(room.id).catch(() => {}); self._off?.(); room = null; openRoom(null); } }, icon('x'), room.status === 'playing' ? 'Giv op' : 'Annullér') : null)));
+          mi >= 0 && room.status !== 'done' ? h('button', { class: 'btn btn-ghost', onclick: async () => { await roomApi.leave(room.id).catch(() => {}); self._off?.(); room = null; openRoom(null); } }, icon('x'), room.status === 'playing' ? 'Giv op' : 'Annullér') : null)));
     }
     function showMode() {
       levelSeg.hidden = st.mode !== 'cpu';
       localBox.hidden = st.mode === 'online'; onlineBox.hidden = st.mode !== 'online';
       if (st.mode === 'online') {
-        if (ctx?.params?.id && !room) roomApi.get(ctx.params.id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r))).catch(() => openRoom(null));
+        if (ctx?.params?.id && !room) roomApi.get(ctx.params.id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r)))
+          .catch(() => roomApi.watch(ctx.params.id).then(openRoom).catch(() => openRoom(null)));
         else drawOnline();
       } else reset();
     }
     reset(); showMode();
     return h('div', { class: 'page gm-page c4-page', style: { '--app': app.hue } },
-      appHero(app, { eyebrow: 'Spilhal', title: 'Fire på stribe', lead: 'Få fire i træk – vandret, lodret eller på skrå. Klik på en kolonne, eller tryk 1–7.', compact: true }),
+      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Fire på stribe', lead: 'Få fire i træk – vandret, lodret eller på skrå. Klik på en kolonne, eller tryk 1–7.', compact: true }),
       h('div', { class: 'cmd-filters c4-filters', style: { margin: '16px 0' } }, modeSeg, levelSeg),
       h(localBox, null, panel(null, null, status,
         h('div', { class: 'c4-wrap' }, boardEl),

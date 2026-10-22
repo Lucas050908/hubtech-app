@@ -12,7 +12,7 @@ import { serverNow } from '../core/live.js';
 import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { panel } from '../features/appkit.js';
-import { lobbyPanel, roomApi, watchRoom, person, me, boardTable } from '../features/gameroom.js';
+import { lobbyPanel, roomApi, watchRoom, person, me, boardTable, isWatcher } from '../features/gameroom.js';
 
 /** A typing box: the text with right/wrong letters, a hidden input, and live speed. */
 function typingBox(text, { onFirst, onChange, onDone, startAt = null }) {
@@ -53,7 +53,7 @@ function typingBox(text, { onFirst, onChange, onDone, startAt = null }) {
 
 export default {
   title: 'Fart-tast',
-  destroy() { this._off?.(); clearInterval(this._cd); },
+  destroy() { this._off?.(); clearInterval(this._cd); this._unwatch?.(); },
   async render(ctx) {
     const app = appById('typerace');
     const self = this;
@@ -100,6 +100,8 @@ export default {
       let room = null, tb = null, sendT = 0, lastSent = '', barsEl = null;
       const openRoom = (r) => {
         self._off?.(); clearInterval(self._cd); room = r; tb = null;
+        self._unwatch?.(); self._unwatch = null;
+        if (r && isWatcher(r)) { const id = r.id; self._unwatch = () => roomApi.unwatch(id); }
         if (!r) { history.replaceState(null, '', '#/apps/typerace/online'); return draw(); }
         history.replaceState(null, '', `#/apps/typerace/online/${r.id}`);
         self._off = watchRoom(r.id, (nr) => { if (!nr) { toast('Løbet er lukket', { type: 'info' }); room = null; self._off?.(); draw(); return; } const restart = room?.state?.text !== nr.state.text;
@@ -128,13 +130,15 @@ export default {
         clear(box);
         if (!room) { box.append(lobbyPanel({ game: 'typing', multi: true, title: 'Løb mod andre', text: 'Invitér en eller flere (op til 7). Når de er med, trykker du Start – så får alle den samme tekst med nedtælling, og I kan se hinandens fart live.', onOpen: openRoom })); return; }
         const S = room.state, host = room.host === me();
+        const watcher = isWatcher(room);
         const head = h('div', { class: 'row-actions', style: { marginTop: 0 } }, h('button', { class: 'btn btn-sm', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle løb'),
-          h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await roomApi.leave(room.id).catch(() => {}); openRoom(null); } }, icon('x'), 'Forlad'));
+          watcher ? h('span', { class: 'chip' }, icon('eye'), 'Du ser med')
+            : h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await roomApi.leave(room.id).catch(() => {}); openRoom(null); } }, icon('x'), 'Forlad'));
         if (!S.start) {
           const waiting = room.invited.length ? `Venter på: ${room.invited.map(p => p.name).join(', ')}` : '';
           box.append(panel('Klar til start', 'users', head, h('div', { class: 'tr-lobby' }, room.players.map(p => person(p, h('span', { class: 'chip chip-ok' }, 'Klar'))), room.invited.map(p => person(p, h('span', { class: 'chip' }, 'Inviteret')))),
             waiting ? h('p', { class: 'faint' }, waiting) : null,
-            host ? h('button', { class: 'btn btn-primary btn-lg', disabled: room.players.length < 2, onclick: async () => { try { room = await roomApi.start(room.id); draw(); } catch (e) { toast(e.message, { type: 'warn' }); } } }, icon('play'), room.players.length < 2 ? 'Venter på, at nogen er med' : 'Start løbet')
+            watcher ? h('p', { class: 'muted' }, 'Du ser med. Løbet starter, når værten trykker Start.') : host ? h('button', { class: 'btn btn-primary btn-lg', disabled: room.players.length < 2, onclick: async () => { try { room = await roomApi.start(room.id); draw(); } catch (e) { toast(e.message, { type: 'warn' }); } } }, icon('play'), room.players.length < 2 ? 'Venter på, at nogen er med' : 'Start løbet')
               : h('p', { class: 'muted' }, `${room.players.find(p => p.id === room.host)?.name || 'Værten'} starter løbet, når alle er klar.`)));
           return;
         }
@@ -159,7 +163,8 @@ export default {
         };
         step(); self._cd = setInterval(step, 200);
       }
-      if (ctx?.params?.id) roomApi.get(ctx.params.id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r))).catch(() => openRoom(null));
+      if (ctx?.params?.id) roomApi.get(ctx.params.id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r)))
+        .catch(() => roomApi.watch(ctx.params.id).then(openRoom).catch(() => openRoom(null)));
       else draw();
       return [box];
     }

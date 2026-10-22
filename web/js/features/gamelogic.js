@@ -141,3 +141,34 @@ export function hangState(word, guessed) {
   const wrong = [...g].filter(ch => !W.includes(ch));
   return { shown, wrong, won: !shown.includes('_'), lost: wrong.length >= 7 };
 }
+
+// ── Kryds og bolle: board of 9, 0 empty / 1 ✕ / 2 ◯ ──
+const TTT_LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+export function tttWinner(b) {
+  for (const [a, c, d] of TTT_LINES) if (b[a] && b[a] === b[c] && b[a] === b[d]) return { player: b[a], cells: [a, c, d] };
+  return null;
+}
+function tttScore(b, me, turn, depth) {
+  const w = tttWinner(b);
+  if (w) return w.player === me ? 10 - depth : depth - 10;
+  if (b.every(Boolean)) return 0;
+  const scores = [];
+  for (let i = 0; i < 9; i++) if (!b[i]) { b[i] = turn; scores.push(tttScore(b, me, turn === 1 ? 2 : 1, depth + 1)); b[i] = 0; }
+  return turn === me ? Math.max(...scores) : Math.min(...scores);
+}
+/** The computer's move. easy = random, medium = wins/blocks but otherwise random, hard = perfect. */
+export function tttBest(b0, me = 2, level = 'hard', r = Math.random) {
+  const b = [...b0], free = [...Array(9).keys()].filter(i => !b[i]), op = me === 1 ? 2 : 1;
+  if (!free.length) return -1;
+  const pick = (a) => a[Math.floor(r() * a.length)];
+  if (level === 'easy') return pick(free);
+  const finishing = (p) => free.filter(i => { b[i] = p; const w = tttWinner(b); b[i] = 0; return w; });
+  if (level === 'medium') {
+    const win = finishing(me); if (win.length) return win[0];
+    const block = finishing(op); if (block.length) return block[0];
+    return r() < 0.5 && !b[4] ? 4 : pick(free);
+  }
+  let best = -Infinity, moves = [];
+  for (const i of free) { b[i] = me; const v = tttScore(b, me, op, 1); b[i] = 0; if (v > best) { best = v; moves = [i]; } else if (v === best) moves.push(i); }
+  return pick(moves);
+}

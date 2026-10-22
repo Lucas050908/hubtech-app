@@ -43,10 +43,14 @@ _lock = threading.RLock()
 _rooms = {}            # id -> room
 _typing_runs = {}      # token -> {uid, text, start}
 ROOM_TTL = 3600
-GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast"}
+GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle"}
+APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe"}
+DUEL = {"connect4", "ttt"}          # two players, taking turns
 # leaderboard games: id -> (label, higher is better, max sane value)
 BOARDS = {
     "typing": ("Fart-tast", True, 250),
+    "aim": ("Aim-træner", True, 2000),
+    "flags": ("Gæt flaget", True, 300),
     "snake": ("Snake", True, 400),
     "game2048": ("2048", True, 1_000_000),
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
@@ -93,18 +97,19 @@ def _public(r):
     pub["players"] = [cards.get(p) for p in r["players"] if cards.get(p)]
     pub["invited"] = [cards.get(p) for p in r["invited"] if cards.get(p)]
     pub["state"] = r["state"]
+    pub["watchers"] = len(r.get("watchers", ()))
     return pub
 
 
 def _push(r):
     r["version"] += 1
     r["touched"] = time.time()
-    live.publish(set(r["players"]) | set(r["invited"]), {"type": "game", "room": _public(r)})
+    live.publish(set(r["players"]) | set(r["invited"]) | set(r.get("watchers", ())), {"type": "game", "room": _public(r)})
 
 
 def _get(rid, uid, member=True):
     r = _rooms.get(rid)
-    if not r or (member and uid not in r["players"] and uid not in r["invited"]):
+    if not r or (member and uid not in r["players"] and uid not in r["invited"] and uid not in r.get("watchers", ())):
         raise ApiError(404, "Spillet findes ikke længere.", "not_found")
     return r
 
@@ -124,6 +129,24 @@ def _c4_winner(b):
                 if all(0 <= rr < 6 and 0 <= cc < 7 and b[rr][cc] == p for rr, cc in cells):
                     return p, cells
     return None, []
+
+
+TTT_LINES = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
+
+
+def _ttt_winner(b):
+    for a, c, d in TTT_LINES:
+        if b[a] and b[a] == b[c] == b[d]:
+            return b[a], [a, c, d]
+    return None, []
+
+
+def _new_state(game):
+    if game == "connect4":
+        return _c4_new()
+    if game == "ttt":
+        return {"board": [0] * 9, "turn": 0, "winner": None, "cells": [], "last": None, "score": [0, 0]}
+    return _typing_new()
 
 
 def _typing_new():
@@ -146,12 +169,12 @@ def create(req, _):
             raise ApiError(429, "Du har for mange åbne spil. Afslut nogle først.", "too_many")
         rid = "g" + secrets.token_hex(6)
         r = {"id": rid, "game": game, "host": u["id"], "players": [u["id"]], "invited": invite, "status": "invite", "created": int(time.time() * 1000),
-             "touched": time.time(), "version": 0, "state": _c4_new() if game == "connect4" else _typing_new()}
+             "touched": time.time(), "version": 0, "state": _new_state(game)}
         _rooms[rid] = r
         _push(r)
         pub = _public(r)
     for x in invite:   # a notification for people who aren't looking at HUBTECH right now
-        live.publish([x], {"type": "notify", "kind": "game", "title": f"{u['display_name']} vil spille {GAMES[game]}", "text": "Tryk for at være med.", "path": f"/apps/{'connect4' if game == 'connect4' else 'typerace'}/online/{rid}"})
+        live.publish([x], {"type": "notify", "kind": "game", "title": f"{u['display_name']} vil spille {GAMES[game]}", "text": "Tryk for at være med.", "path": f"/apps/{APP_OF[game]}/online/{rid}"})
     return 201, {"room": pub}
 
 
@@ -175,11 +198,11 @@ def join(req, params):
         r = _get(params["id"], u["id"])
         if u["id"] in r["players"]:
             return 200, {"room": _public(r)}
-        if r["status"] == "done" or (r["game"] == "connect4" and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]):
+        if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]):
             raise ApiError(409, "Spillet er allerede i gang.", "started")
         r["invited"].remove(u["id"])
         r["players"].append(u["id"])
-        if r["game"] == "connect4":
+        if r["game"] in DUEL:
             r["status"] = "playing"
             random.shuffle(r["players"])     # who starts is random; players[0] is red and starts
         else:
@@ -195,7 +218,7 @@ def leave(req, params):
         if u["id"] in r["invited"]:
             r["invited"].remove(u["id"])
         if u["id"] in r["players"]:
-            if r["game"] == "connect4" and r["status"] == "playing" and len(r["players"]) == 2:
+            if r["game"] in DUEL and r["status"] == "playing" and len(r["players"]) == 2:
                 # giving up: the other one wins; both stay in the room so the result can be seen
                 st = r["state"]
                 other = 1 - r["players"].index(u["id"])
@@ -212,35 +235,46 @@ def leave(req, params):
             return 200, {"ok": True}
         if r["host"] == u["id"]:
             r["host"] = r["players"][0]
-        if r["game"] == "connect4" and len(r["players"]) < 2 and not r["invited"] and r["status"] == "invite":
+        if r["game"] in DUEL and len(r["players"]) < 2 and not r["invited"] and r["status"] == "invite":
             r["status"] = "done"
         _push(r)
     return 200, {"ok": True}
 
 
 def move(req, params):
-    """Fire på stribe: drop a piece in column `col`."""
+    """Fire på stribe: {col}. Kryds og bolle: {cell} 0–8."""
     u = require_user(req)
-    col = req.json().get("col")
+    b = req.json()
     with _lock:
         r = _get(params["id"], u["id"])
         st = r["state"]
-        if r["game"] != "connect4" or r["status"] != "playing":
+        if r["game"] not in DUEL or r["status"] != "playing":
             raise ApiError(409, "Spillet er ikke i gang.", "not_playing")
         if r["players"][st["turn"]] != u["id"]:
             raise ApiError(409, "Det er ikke din tur.", "not_your_turn")
-        if not isinstance(col, int) or not 0 <= col < 7 or st["board"][0][col]:
-            raise ApiError(400, "Den kolonne er fuld.", "invalid")
         piece = st["turn"] + 1
-        row = max(rr for rr in range(6) if not st["board"][rr][col])
-        st["board"][row][col] = piece
-        st["last"] = [row, col]
-        w, cells = _c4_winner(st["board"])
+        if r["game"] == "connect4":
+            col = b.get("col")
+            if not isinstance(col, int) or not 0 <= col < 7 or st["board"][0][col]:
+                raise ApiError(400, "Den kolonne er fuld.", "invalid")
+            row = max(rr for rr in range(6) if not st["board"][rr][col])
+            st["board"][row][col] = piece
+            st["last"] = [row, col]
+            w, cells = _c4_winner(st["board"])
+            full = all(st["board"][0][c] for c in range(7))
+        else:
+            cell = b.get("cell")
+            if not isinstance(cell, int) or not 0 <= cell < 9 or st["board"][cell]:
+                raise ApiError(400, "Feltet er optaget.", "invalid")
+            st["board"][cell] = piece
+            st["last"] = cell
+            w, cells = _ttt_winner(st["board"])
+            full = all(st["board"])
         if w:
             st["winner"], st["cells"] = w, cells
             st["score"][w - 1] += 1
             r["status"] = "done"
-        elif all(st["board"][0][c] for c in range(7)):
+        elif full:
             st["winner"] = 0
             r["status"] = "done"
         else:
@@ -255,12 +289,12 @@ def rematch(req, params):
         r = _get(params["id"], u["id"])
         if u["id"] not in r["players"]:
             raise ApiError(403, "Du er ikke med i spillet.", "forbidden")
-        if r["game"] == "connect4":
+        if r["game"] in DUEL:
             if len(r["players"]) < 2:
                 raise ApiError(409, "Din modstander har forladt spillet.", "alone")
             score = r["state"]["score"]
             r["players"].reverse()           # the other one starts this time
-            r["state"] = {**_c4_new(), "score": score[::-1]}
+            r["state"] = {**_new_state(r["game"]), "score": score[::-1]}
             r["status"] = "playing"
         else:
             r["state"] = _typing_new()
@@ -421,11 +455,53 @@ def submit(req, params):
     return 200, {**rec, "board": _board(game, u["id"])}
 
 
+# ── watching other people's games ──
+def live_rooms(req, _):
+    """Games going on right now that you aren't in – you can watch them."""
+    u = require_user(req)
+    with _lock:
+        _sweep()
+        rooms = [r for r in _rooms.values() if r["status"] in ("playing", "lobby") and u["id"] not in r["players"]
+                 and not any(_blocked(u["id"], p) for p in r["players"])]
+        out = [_public(r) for r in sorted(rooms, key=lambda r: -r["touched"])[:20]]
+    return 200, {"rooms": out}
+
+
+def watch(req, params):
+    u = require_user(req)
+    with _lock:
+        r = _get(params["id"], u["id"], member=False)
+        if u["id"] in r["players"]:
+            return 200, {"room": _public(r)}
+        if any(_blocked(u["id"], p) for p in r["players"]):
+            raise ApiError(404, "Spillet findes ikke længere.", "not_found")
+        w = r.setdefault("watchers", [])
+        if u["id"] not in w:
+            if len(w) >= 30:
+                raise ApiError(409, "Der er allerede mange, der ser med.", "full")
+            w.append(u["id"])
+            _push(r)
+        return 200, {"room": _public(r)}
+
+
+def unwatch(req, params):
+    u = require_user(req)
+    with _lock:
+        r = _rooms.get(params["id"])
+        if r and u["id"] in r.get("watchers", []):
+            r["watchers"].remove(u["id"])
+            _push(r)
+    return 200, {"ok": True}
+
+
 ROUTES = [
     ("GET", r"/api/games/players", players),
     ("GET", r"/api/games/rooms", mine),
     ("POST", r"/api/games/rooms", create),
     ("GET", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})", get_room),
+    ("GET", r"/api/games/live", live_rooms),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/watch", watch),
+    ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/unwatch", unwatch),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/join", join),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/leave", leave),
     ("POST", r"/api/games/rooms/(?P<id>g[0-9a-f]{12})/move", move),

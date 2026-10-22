@@ -1217,6 +1217,36 @@ async def main():
         await page.screenshot(path=f"{OUT}/app-phishing.png")
         await page.goto(BASE + "/#/learn/guide/sec-clicked"); await page.wait_for_timeout(1200)
         check("sikkerhedsguides: “Jeg har klikket på et falsk link” findes", "falsk link" in await page.inner_text("main"))
+        # ── Kryds og bolle, Aim-træner, Gæt flaget, Budget med skat ──
+        await go("apps/tictactoe", ".ttt-local .ttt-cell")
+        await page.click(".ttt-page .segmented button:has-text('Umulig')")
+        await page.locator(".ttt-local .ttt-cell").nth(4).click(); await page.wait_for_timeout(900)
+        check("kryds og bolle: computeren svarer", await page.locator(".ttt-local .ttt-cell.p2").count() == 1)
+        await page.screenshot(path=f"{OUT}/app-tictactoe.png")
+        await go("apps/aim", ".aim-arena")
+        await page.click(".aim-start button:has-text('Start')")
+        hits = 0
+        for _ in range(25):
+            t = page.locator(".aim-target.is-blue, .aim-target.is-gold")
+            if await t.count():
+                try: await t.first.click(timeout=500, force=True); hits += 1
+                except Exception: pass
+            await page.wait_for_timeout(120)
+        await page.screenshot(path=f"{OUT}/app-aim.png")
+        check("aim-træner: mål rammes og giver point", hits >= 3 and int(await page.locator(".aim-hud b").first.inner_text()) > 0, hits)
+        await go("apps/flags", ".fl-flag svg")
+        await page.click(".fl-opts .gl-opt >> nth=0"); await page.wait_for_selector(".fl-opts .is-right")
+        check("gæt flaget: svar markeres rigtigt/forkert", True)
+        await page.screenshot(path=f"{OUT}/app-flags.png")
+        await go("apps/budget", ".bd-tax")
+        await page.fill("input[aria-label='Løn før skat pr. måned']", "30000")
+        out = await page.inner_text(".bd-tax-out")
+        check("budget: løn før skat giver udbetalt løn", "Til udbetaling" in out and "AM-bidrag" in out, out)
+        await page.click("button:has-text('Brug som indtægt denne måned')"); await page.wait_for_timeout(1300)
+        bd = (await api(page, "GET", "/api/state/budget"))["data"]["state"]
+        net = [i for i in bd["items"] if i["text"] == "Løn (efter skat)"]
+        # 30000 − 99 ATP = 29901; AM 2392,08 → 27508,92; A-skat 37 % af (27508,92 − 4500) = 8513,30 → 18996
+        check("budget: udbetalt løn regnet rigtigt (18.996 kr.)", net and net[0]["amount"] == 18996, net)
         # ── Spil sammen: Fire på stribe online and the Fart-tast race between two people ──
         async def login_ctx(user, pw, **kw):
             c = await browser.new_context(**(kw or {"viewport": {"width": 1280, "height": 860}}))
@@ -1247,6 +1277,19 @@ async def main():
         await first.wait_for_selector(".c4-online .c4-status:has-text('Du vandt')", timeout=8000)
         check("spil sammen: fire på stribe online – vinderen ses hos begge", await first.locator(".c4-online .c4-cell.is-win").count() == 4 and await second.locator(".c4-online .c4-cell.is-win").count() == 4)
         await p1.screenshot(path=f"{OUT}/online-c4.png")
+        # Kryds og bolle online + someone watching
+        await p1.goto(BASE + "/#/apps/tictactoe/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
+        await p1.click(".gr-player:has-text('Maja')"); await p1.click(".ttt-page button:has-text('Udfordr')")
+        await p2.wait_for_selector(".toast:has-text('vil spille Kryds og bolle')", timeout=15000)
+        await p2.click(".toast:has-text('Kryds og bolle') button:has-text('Åbn')")
+        await p2.wait_for_selector(".ttt-online .ttt-board", timeout=10000)
+        await p1.wait_for_selector(".ttt-online .c4-status:has-text('tur')", timeout=10000)
+        first, second = (p1, p2) if "Din tur" in await p1.inner_text(".ttt-online .c4-status") else (p2, p1)
+        for f, sc in [(first, 0), (second, 3), (first, 1), (second, 4), (first, 2)]:
+            await f.wait_for_selector(".ttt-online .c4-status:has-text('Din tur')"); await f.locator(".ttt-online .ttt-cell").nth(sc).click()
+        await first.wait_for_selector(".ttt-online .c4-status:has-text('Du vandt')", timeout=8000)
+        check("kryds og bolle online: tre på stribe vinder", await second.locator(".ttt-online .ttt-cell.is-win").count() == 3)
+        await p1.screenshot(path=f"{OUT}/online-ttt.png")
         # race
         await p1.goto(BASE + "/#/apps/typerace/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
         await p1.click(".gr-player:has-text('Maja')"); await p1.click(".tr-page button:has-text('Invitér')")
@@ -1276,7 +1319,7 @@ async def main():
         await p2.wait_for_selector(".ty-result", timeout=15000)
         check("fart-tast alene: resultat og topliste", await p2.locator(".lb-row.is-me").count() == 1, await p2.inner_text(".ty-result"))
         await p2.goto(BASE + "/#/apps/typerace/top"); await p2.wait_for_selector(".lb-grid .panel")
-        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 9)
+        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 11)
         await p2.screenshot(path=f"{OUT}/toplister-phone.png", full_page=True)
         await c1.close(); await c2.close()
         await go("learn", ".settings-body, .learn-page, main")

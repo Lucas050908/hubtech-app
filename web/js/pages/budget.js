@@ -17,7 +17,7 @@ export default {
   async render() {
     const app = appById('budget');
     let store;
-    try { store = await appState('budget', { items: [] }); } catch (e) { return loadError('Budget', e); }
+    try { store = await appState('budget', { items: [], tax: { gross: '', rate: 37, deduction: 4500, atp: 99, pension: 0 } }); } catch (e) { return loadError('Budget', e); }
     const st = store.data;
     let month = monthKey(new Date()), kind = 'out';
     const head = h('h2', { class: 'panel-title bd-month' });
@@ -75,6 +75,48 @@ export default {
       add_.forEach(i => st.items.push({ ...i, id: uid(), month }));
       store.save(); draw(); toast(`${add_.length} faste poster kopieret`, { type: 'ok' });
     };
+    // ── løn før skat → udbetalt (Danish payslip: ATP and own pension first, then 8 % AM-bidrag, then A-skat after the monthly deduction) ──
+    st.tax ||= { gross: '', rate: 37, deduction: 4500, atp: 99, pension: 0 };
+    const T = st.tax;
+    const taxOut = h('div', { class: 'bd-tax-out' });
+    const num = (key, label, hint, attrs = {}) => {
+      const inp = h('input', { class: 'input', type: 'number', inputmode: 'decimal', min: 0, step: 'any', value: T[key], 'aria-label': label, ...attrs });
+      inp.addEventListener('input', () => { T[key] = inp.value === '' ? '' : Number(inp.value); calc(); clearTimeout(num.t); num.t = setTimeout(() => store.save(), 800); });
+      return h('label', { class: 'field' }, h('span', { class: 'field-label' }, label, hint ? h('span', { class: 'field-hint' }, hint) : null), inp);
+    };
+    let net = 0;
+    function calc() {
+      const gross = Number(T.gross) || 0;
+      const pension = gross * (Number(T.pension) || 0) / 100;
+      const amBase = Math.max(0, gross - (Number(T.atp) || 0) - pension);
+      const am = amBase * 0.08;
+      const taxable = amBase - am;
+      const aTax = Math.max(0, taxable - (Number(T.deduction) || 0)) * (Number(T.rate) || 0) / 100;
+      net = Math.round(taxable - aTax);
+      const row = (l, v, cls) => h('div', { class: ['bd-tax-row', cls] }, h('span', null, l), h('b', null, v));
+      h(clear(taxOut), null, gross ? [
+        row('Løn før skat', kr(gross)),
+        T.atp ? row('ATP', `− ${kr(Number(T.atp))}`) : null,
+        pension ? row(`Egen pension (${T.pension} %)`, `− ${kr(pension)}`) : null,
+        row('AM-bidrag (8 %)', `− ${kr(am)}`),
+        row(`A-skat (${T.rate} % af ${kr(Math.max(0, taxable - (Number(T.deduction) || 0)))})`, `− ${kr(aTax)}`),
+        row('Til udbetaling', kr(net), 'is-total'),
+        h('p', { class: 'faint', style: { margin: '6px 0 0', fontSize: '13px' } }, `Du betaler ca. ${gross ? Math.round((gross - net) / gross * 100) : 0} % af lønnen i skat og bidrag. Tallene er et skøn – din lønseddel er facit.`),
+      ] : h('p', { class: 'faint', style: { margin: 0 } }, 'Skriv din løn før skat, så regner appen ud, hvad du får udbetalt.'));
+    }
+    const addNet = () => {
+      if (!net) return toast('Skriv din løn først', { type: 'warn' });
+      const have = st.items.find(i => i.month === month && i.kind === 'in' && i.text === 'Løn (efter skat)');
+      if (have) have.amount = net; else st.items.push({ id: uid(), month, kind: 'in', amount: net, cat: 'Løn', text: 'Løn (efter skat)', fixed: true });
+      store.save(); draw(); toast(have ? 'Lønnen er opdateret' : 'Lønnen er lagt ind', { type: 'ok', text: `${kr(net)} i ${monthName(month)}` });
+    };
+    calc();
+    const taxPanel = panel('Løn før skat → udbetalt', 'calculator',
+      h('div', { class: 'bd-tax' },
+        h('div', { class: 'bd-tax-in' }, num('gross', 'Løn før skat pr. måned'), num('rate', 'Trækprocent', 'fra skattekortet'), num('deduction', 'Fradrag pr. måned', 'fra skattekortet'),
+          num('atp', 'ATP pr. måned', 'typisk 99 kr.'), num('pension', 'Egen pension', '% af lønnen')),
+        h('div', null, taxOut, h('button', { class: 'btn btn-primary', style: { marginTop: '12px' }, onclick: addNet }, icon('plus'), 'Brug som indtægt denne måned'))),
+      h('p', { class: 'faint', style: { marginBottom: 0 } }, 'Trækprocent og fradrag står på din forskudsopgørelse / dit skattekort hos Skattestyrelsen. Har du frikort, så sæt trækprocenten til 0.'));
     draw();
     return h('div', { class: 'page bd-page', style: { '--app': app.hue } },
       appHero(app, { eyebrow: 'Arbejdsrum', title: 'Budget', lead: 'Hold styr på pengene: indtægter og udgifter pr. måned, hvad du bruger mest på, og hvad der er tilbage.' }),
@@ -87,6 +129,7 @@ export default {
         panel('Tilføj', 'plus', kindSeg, h('div', { class: 'bd-form' }, amount, text, cat,
           h('label', { class: 'bd-fixed' }, fixed, h('span', null, 'Fast hver måned')), h('button', { class: 'btn btn-primary', onclick: add }, icon('plus'), 'Tilføj'))),
         panel('Hvad går pengene til?', 'chart', bars)),
+      taxPanel,
       panel('Poster', 'list', list));
   },
 };

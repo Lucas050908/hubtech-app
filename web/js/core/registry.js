@@ -274,7 +274,7 @@ export const APPS = [
   {
     id: 'connect4', name: 'Fire på stribe', tagline: 'Få fire i træk.',
     description: 'Spil mod computeren i tre sværhedsgrader, mod en ven på samme skærm – eller online mod de andre, der har HUBTECH.',
-    icon: 'target', hue: 'var(--hue-games)', route: '#/apps/connect4', category: 'workspace', status: 'available',
+    icon: 'apps', hue: 'var(--hue-boards)', route: '#/apps/connect4', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'night', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/connect4.js'),
     keywords: ['spil', 'fire på stribe', 'connect four', 'to spillere', 'sjov'],
   },
@@ -291,6 +291,27 @@ export const APPS = [
     icon: 'timer', hue: 'var(--hue-games)', route: '#/apps/typerace', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'day', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/typerace.js'),
     keywords: ['spil', 'fart', 'tastatur', 'skrive', 'hurtigskrivning', 'topliste', 'leaderboard', 'løb', 'online', 'sammen'],
+  },
+  {
+    id: 'tictactoe', name: 'Kryds og bolle', tagline: 'Tre på stribe.',
+    description: 'Mod computeren (den umulige taber aldrig), to på én skærm eller online mod de andre på HUBTECH.',
+    icon: 'x', hue: 'var(--hue-boards)', route: '#/apps/tictactoe', category: 'workspace', status: 'available',
+    art: { season: 'spring', time: 'day', focusX: 0.5, tint: '#60a5fa' }, page: () => import('../pages/tictactoe.js'),
+    keywords: ['spil', 'kryds og bolle', 'tic tac toe', 'online', 'to spillere', 'sammen'],
+  },
+  {
+    id: 'aim', name: 'Aim-træner', tagline: 'Klik hurtigt – men ikke på de røde.',
+    description: 'Ram målene så hurtigt du kan. Gyldne mål giver bonus, røde må du ikke røre. Tre spiltyper: Klassisk (med topliste), Reaktion og Præcision.',
+    icon: 'target', hue: 'var(--hue-games)', route: '#/apps/aim', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'dusk', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/aim.js'),
+    keywords: ['spil', 'aim', 'sigte', 'reaktion', 'klik', 'mål', 'topliste'],
+  },
+  {
+    id: 'flags', name: 'Gæt flaget', tagline: 'Flag fra hele verden.',
+    description: 'Fire svarmuligheder – hvor lang en stime kan du få? Den bedste stime kommer på toplisten, og du kan lære alle flagene.',
+    icon: 'flag', hue: 'var(--hue-games)', route: '#/apps/flags', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#e879f9' }, page: () => import('../pages/flags.js'),
+    keywords: ['spil', 'flag', 'lande', 'geografi', 'quiz', 'topliste'],
   },
   {
     id: 'hwtest', name: 'Hardwaretest', tagline: 'Test tastatur, skærm, lyd og kamera.',
@@ -383,7 +404,8 @@ export const SUITES = [
   { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, fokus-timer og vaner.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'focus', 'habits'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
-  { id: 'games', name: 'Spilhal', tagline: 'Spil alene eller sammen – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'typerace', 'connect4', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
+  { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
+  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['connect4', 'tictactoe'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;

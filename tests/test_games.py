@@ -60,6 +60,36 @@ class GamesTest(FreshServer):
         s, d = self.call("GET", f"/api/games/rooms/{rid}", cookie=second)
         self.assertEqual(d["room"]["status"], "done")
 
+    def test_tictactoe_online(self):
+        _, d = self.call("GET", "/api/games/players", cookie=self.a)
+        carl = next(p["id"] for p in d["players"] if p["name"] == "Carl")
+        _, d = self.call("POST", "/api/games/rooms", {"game": "ttt", "invite": [carl]}, cookie=self.a)
+        rid = d["room"]["id"]
+        _, d = self.call("POST", f"/api/games/rooms/{rid}/join", {}, cookie=self.c)
+        first, second = (self.a, self.c) if d["room"]["players"][0]["name"] == "Anna" else (self.c, self.a)
+        for who, cell in [(first, 0), (second, 4), (first, 1), (second, 8)]:
+            self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/move", {"cell": cell}, cookie=who)[0], 200)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/move", {"cell": 4}, cookie=first)[0], 400, "taken")
+        _, d = self.call("POST", f"/api/games/rooms/{rid}/move", {"cell": 2}, cookie=first)
+        self.assertEqual((d["room"]["status"], d["room"]["state"]["winner"], d["room"]["state"]["cells"]), ("done", 1, [0, 1, 2]))
+
+    def test_watch_a_game(self):
+        _, d = self.call("GET", "/api/games/players", cookie=self.a)
+        bo = next(p["id"] for p in d["players"] if p["name"] == "Bo")
+        _, d = self.call("POST", "/api/games/rooms", {"game": "connect4", "invite": [bo]}, cookie=self.a)
+        rid = d["room"]["id"]
+        _, d = self.call("GET", "/api/games/live", cookie=self.c)
+        self.assertNotIn(rid, [r["id"] for r in d["rooms"]], "an invite isn't a game yet")
+        self.call("POST", f"/api/games/rooms/{rid}/join", {}, cookie=self.b)
+        _, d = self.call("GET", "/api/games/live", cookie=self.c)
+        self.assertIn(rid, [r["id"] for r in d["rooms"]])
+        s, d = self.call("POST", f"/api/games/rooms/{rid}/watch", {}, cookie=self.c)
+        self.assertEqual((s, d["room"]["watchers"]), (200, 1))
+        self.assertEqual(self.call("GET", f"/api/games/rooms/{rid}", cookie=self.c)[0], 200)
+        self.assertEqual(self.call("POST", f"/api/games/rooms/{rid}/move", {"col": 3}, cookie=self.c)[0], 409, "watchers can't play")
+        self.call("POST", f"/api/games/rooms/{rid}/unwatch", {}, cookie=self.c)
+        self.assertEqual(self.call("GET", f"/api/games/rooms/{rid}", cookie=self.c)[0], 404)
+
     def test_typing_solo_is_timed_by_server(self):
         s, run = self.call("POST", "/api/games/typing", {}, cookie=self.a)
         tok, text = run["token"], run["text"]
@@ -94,7 +124,7 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", "/api/games/boards/mines-easy", {"score": 25}, cookie=self.b)
         self.assertEqual(d["board"]["rows"][0]["user"]["name"], "Bo", "lowest time wins")
         s, d = self.call("GET", "/api/games/boards", cookie=self.c)
-        self.assertEqual(len(d["boards"]), 9)
+        self.assertEqual(len(d["boards"]), 11)
 
     def test_race(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)

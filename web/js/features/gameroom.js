@@ -18,9 +18,12 @@ export const roomApi = {
   create: (game, invite) => api.post('/api/games/rooms', { game, invite }).then(r => r.room),
   join: (id) => api.post(`/api/games/rooms/${id}/join`, {}).then(r => r.room),
   leave: (id) => api.post(`/api/games/rooms/${id}/leave`, {}),
-  move: (id, col) => api.post(`/api/games/rooms/${id}/move`, { col }).then(r => r.room),
+  move: (id, col, cell) => api.post(`/api/games/rooms/${id}/move`, col !== undefined ? { col } : { cell }).then(r => r.room),
   rematch: (id) => api.post(`/api/games/rooms/${id}/rematch`, {}).then(r => r.room),
   start: (id) => api.post(`/api/games/rooms/${id}/start`, {}).then(r => r.room),
+  live: () => api.get('/api/games/live').then(r => r.rooms),
+  watch: (id) => api.post(`/api/games/rooms/${id}/watch`, {}).then(r => r.room),
+  unwatch: (id) => api.post(`/api/games/rooms/${id}/unwatch`, {}).catch(() => {}),
   progress: (id, typed, errors) => api.post(`/api/games/rooms/${id}/progress`, { typed, errors }),
 };
 
@@ -33,6 +36,9 @@ export function watchRoom(id, fn) {
   return () => { off1(); off2(); off3(); };
 }
 
+/** Am I only watching this room? */
+export const isWatcher = (r) => !!r && !r.players.some(p => p.id === me()) && !r.invited.some(p => p.id === me());
+
 export const person = (p, extra) => h('span', { class: 'gr-person' }, h('span', { class: 'avatar avatar-sm' }, ava(p?.avatar)), h('span', null, p?.name || 'Ukendt'), extra || null);
 
 /**
@@ -42,6 +48,7 @@ export const person = (p, extra) => h('span', { class: 'gr-person' }, h('span', 
 export function lobbyPanel({ game, multi = false, title = 'Spil mod en anden', text, onOpen }) {
   const list = h('div', { class: 'gr-players' });
   const games = h('div', { class: 'gr-games' });
+  const watching = h('div', { class: 'gr-games' });
   const chosen = new Set();
   const go = h('button', { class: 'btn btn-primary', disabled: true }, icon('send'), multi ? 'Invitér' : 'Udfordr');
   let filter = '';
@@ -86,10 +93,26 @@ export function lobbyPanel({ game, multi = false, title = 'Spil mod en anden', t
         h('button', { class: 'icon-btn btn-sm', 'aria-label': mineIn ? 'Forlad spillet' : 'Afvis', title: mineIn ? 'Forlad spillet' : 'Afvis', onclick: async () => { await roomApi.leave(r.id).catch(() => {}); drawGames(); } }, icon('x'))));
     }
   }
+  async function drawLive() {
+    let rooms = [];
+    try { rooms = (await roomApi.live()).filter(r => r.game === game); } catch { /* */ }
+    clear(watching);
+    if (!rooms.length) return;
+    watching.append(h('h3', { class: 'gr-h' }, 'Spil i gang lige nu – se med'));
+    for (const r of rooms.slice(0, 8)) {
+      watching.append(h('div', { class: 'gr-game' },
+        h('div', { class: 'gr-game-who' }, r.players.map(p => person(p))),
+        h('span', { class: ['chip', r.status === 'playing' && 'chip-ok'] }, r.status === 'playing' ? 'I gang' : 'Venter på start'),
+        r.watchers ? h('span', { class: 'faint', style: { fontSize: '13px' } }, `${r.watchers} ser med`) : null,
+        h('button', { class: 'btn btn-sm', onclick: async () => { try { onOpen(await roomApi.watch(r.id)); } catch (e) { toast('Kunne ikke se med', { type: 'bad', text: e.message }); drawLive(); } } }, icon('eye'), 'Se med')));
+    }
+  }
   const off = onLive('game', () => { if (document.body.contains(games)) drawGames(); else off(); });
+  const liveIv = setInterval(() => { if (document.body.contains(watching)) drawLive(); else clearInterval(liveIv); }, 15000);
+  drawLive();
   roomApi.players().then(p => { all = p; drawPlayers(); }).catch(e => list.append(h('p', { class: 'faint' }, e.message)));
   drawGames();
-  return panel(title, 'users', text ? h('p', { class: 'muted', style: { marginTop: 0 } }, text) : null, games, search, list, h('div', { class: 'row-actions' }, go));
+  return panel(title, 'users', text ? h('p', { class: 'muted', style: { marginTop: 0 } }, text) : null, games, watching, search, list, h('div', { class: 'row-actions' }, go));
 }
 
 /** A small leaderboard table. */

@@ -52,3 +52,19 @@ assert.ok(strength(makePassword({ length: 20 })).score === 4);
 assert.equal(strength('').label, 'Ingen kode');
 assert.equal(crackText(0.2), 'under et sekund'); assert.equal(crackText(3600), '1 time'); assert.equal(crackText(7200), '2 timer'); assert.equal(crackText(1e20), 'mere end en million år');
 console.log('apps ok');
+// Kryds og bolle
+{
+  const { tttWinner, tttBest } = await import('../web/js/features/gamelogic.js');
+  assert.deepEqual(tttWinner([1, 1, 1, 0, 0, 0, 0, 0, 0]).cells, [0, 1, 2]);
+  assert.equal(tttWinner([1, 2, 1, 0, 0, 0, 0, 0, 0]), null);
+  assert.equal(tttBest([1, 1, 0, 2, 0, 0, 0, 0, 0], 2, 'hard'), 2, 'blocks');
+  assert.equal(tttBest([1, 1, 0, 2, 2, 0, 1, 0, 0], 2, 'hard'), 5, 'wins rather than blocks');
+  assert.equal(tttBest([2, 2, 0, 1, 1, 0, 0, 0, 0], 2, 'medium'), 2);
+  // the hard computer never loses against random play
+  for (let g = 0; g < 200; g++) {
+    const b = Array(9).fill(0); let t = 1;
+    while (!tttWinner(b) && b.some(x => !x)) { const free = [...Array(9).keys()].filter(i => !b[i]); b[t === 1 ? free[Math.floor(Math.random() * free.length)] : tttBest(b, 2, 'hard')] = t; t = t === 1 ? 2 : 1; }
+    assert.notEqual(tttWinner(b)?.player, 1, 'umulig taber aldrig');
+  }
+  console.log('tictactoe ok');
+}

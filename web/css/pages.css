@@ -1720,3 +1720,52 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .tr-me { display: flex; gap: 8px; align-items: center; font-weight: 700; color: var(--ok); }
 .tr-me svg { width: 18px; height: 18px; }
 @media (max-width: 560px) { .tr-bar { grid-template-columns: 1fr auto; } .tr-bar .tr-track { grid-column: 1 / -1; grid-row: 2; } .tr-bar small { display: none; } }
+.bd-tax { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.bd-tax-in { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 0 12px; }
+.bd-tax-out { display: grid; gap: 6px; padding: 14px 16px; border-radius: var(--r-md); background: var(--glass); border: 1px solid var(--line-2); }
+.bd-tax-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14.5px; color: var(--text-2); }
+.bd-tax-row b { color: var(--text); white-space: nowrap; }
+.bd-tax-row.is-total { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line-2); font-size: 17px; color: var(--text); }
+.bd-tax-row.is-total b { color: var(--ok); font-size: 20px; }
+@media (max-width: 860px) { .bd-tax { grid-template-columns: 1fr; } }
+
+/* ── Kryds og bolle ── */
+.ttt-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: min(100%, 360px); margin: 0 auto; }
+.ttt-cell { aspect-ratio: 1; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--gm-grid); font: 800 clamp(44px, 12vw, 72px)/1 var(--font-display, inherit); color: var(--text); cursor: pointer; display: grid; place-items: center; transition: background var(--t-fast), transform var(--t-fast); }
+.ttt-cell:hover:not(:disabled) { background: color-mix(in srgb, var(--app) 20%, var(--gm-grid)); }
+.ttt-cell:disabled { cursor: default; }
+.ttt-cell.p1, .ttt-mark.p1 { color: #ff6b8b; } .ttt-cell.p2, .ttt-mark.p2 { color: #67e8f9; }
+.ttt-cell.is-win { background: color-mix(in srgb, var(--ok) 25%, var(--gm-grid)); border-color: var(--ok); transform: scale(1.03); }
+.ttt-cell.is-last { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25); }
+.ttt-mark { font-size: 18px; }
+
+/* ── Aim-træner ── */
+.aim-arena { position: relative; height: min(62vh, 520px); min-height: 320px; border-radius: var(--r-lg); background: radial-gradient(circle at 50% 40%, #12243b, #0a1422); border: 1px solid var(--line-2); overflow: hidden; touch-action: manipulation; user-select: none; cursor: crosshair; transition: box-shadow .2s; }
+.aim-arena.is-hurt { box-shadow: inset 0 0 0 4px rgba(239, 68, 68, .7); }
+.aim-hud { margin-bottom: 10px; }
+.aim-start { border-radius: 0; }
+.aim-target { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; border: 0; padding: 0; cursor: crosshair; animation: aim-in .12s ease-out, aim-life var(--life, 1500ms) linear forwards; }
+.aim-target.is-blue { background: radial-gradient(circle, #fff 0 18%, #38bdf8 19% 45%, #fff 46% 58%, #0ea5e9 59%); box-shadow: 0 0 16px rgba(56, 189, 248, .55); }
+.aim-target.is-gold { background: radial-gradient(circle, #fff 0 18%, #facc15 19% 45%, #fff 46% 58%, #eab308 59%); box-shadow: 0 0 22px rgba(250, 204, 21, .8); }
+.aim-target.is-red { background: #ef4444; box-shadow: 0 0 16px rgba(239, 68, 68, .6); color: #fff; font-weight: 900; font-size: 22px; line-height: 1; display: grid; place-items: center; }
+.aim-target.is-small { animation: aim-in .12s ease-out; }
+@keyframes aim-in { from { transform: translate(-50%, -50%) scale(.2); } }
+@keyframes aim-life { to { opacity: .35; transform: translate(-50%, -50%) scale(.6); } }
+.aim-pop { position: absolute; transform: translate(-50%, -50%); font-weight: 900; color: #b9f6ca; pointer-events: none; animation: aim-pop .7s ease-out forwards; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+.aim-pop.is-gold { color: #fde047; font-size: 20px; } .aim-pop.is-bad { color: #fca5a5; font-size: 20px; } .aim-pop.is-miss { color: rgba(255, 255, 255, .55); font-size: 13px; }
+@keyframes aim-pop { to { opacity: 0; transform: translate(-50%, -140%); } }
+.aim-react { position: absolute; inset: 0; border: 0; display: grid; place-content: center; justify-items: center; gap: 8px; color: #fff; cursor: pointer; font-size: 16px; }
+.aim-react b { font: 800 clamp(30px, 6vw, 52px)/1 var(--font-display, inherit); }
+.aim-react.is-wait { background: #b91c1c; } .aim-react.is-go { background: #16a34a; } .aim-react.is-early { background: #a16207; } .aim-react.is-done { background: #1e3a5f; }
+@media (prefers-reduced-motion: reduce) { .aim-target { animation: none; } }
+
+/* ── Gæt flaget ── */
+.fl-stage { display: grid; gap: 18px; justify-items: center; max-width: 620px; margin: 0 auto; }
+.fl-flag { width: min(100%, 360px); aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 34px rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .15); }
+.fl-flag svg, .fl-card svg { display: block; width: 100%; height: 100%; }
+.fl-opts { width: 100%; }
+.fl-opts kbd { font: 700 11px/1 ui-monospace, monospace; padding: 3px 6px; border-radius: 5px; background: var(--glass); border: 1px solid var(--line-2); color: var(--text-3); margin-right: 4px; }
+.fl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+.fl-card { margin: 0; display: grid; gap: 6px; font-size: 13px; color: var(--text-2); text-align: center; }
+.fl-card svg { aspect-ratio: 3 / 2; height: auto; border-radius: 6px; border: 1px solid var(--line-2); }
+@media (max-width: 560px) { .fl-opts { grid-template-columns: 1fr; } }
