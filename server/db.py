@@ -391,6 +391,50 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
         UNIQUE (server_id, name)
     );
     """,
+    # shared documents: polls, events, forms, posts, questions, albums, expenses, wikis, challenges, booking, pages, boards
+    """
+    CREATE TABLE IF NOT EXISTS sh_docs (
+        id TEXT PRIMARY KEY,
+        app TEXT NOT NULL,
+        owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL DEFAULT '',
+        data TEXT NOT NULL DEFAULT '{}',
+        visibility TEXT NOT NULL DEFAULT 'private',
+        public INTEGER NOT NULL DEFAULT 0,
+        token TEXT UNIQUE,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1
+    );
+    CREATE INDEX IF NOT EXISTS idx_sh_docs_app ON sh_docs(app, updated_at);
+    CREATE TABLE IF NOT EXISTS sh_members (
+        doc_id TEXT NOT NULL REFERENCES sh_docs(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role TEXT NOT NULL DEFAULT 'member',
+        added_at INTEGER NOT NULL,
+        PRIMARY KEY (doc_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_sh_members_user ON sh_members(user_id);
+    CREATE TABLE IF NOT EXISTS sh_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doc_id TEXT NOT NULL REFERENCES sh_docs(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        guest TEXT,
+        kind TEXT NOT NULL,
+        data TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sh_entries_doc ON sh_entries(doc_id, kind);
+    CREATE TABLE IF NOT EXISTS sh_files (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        mime TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        data BLOB NOT NULL,
+        created_at INTEGER NOT NULL
+    );
+    """,
 ]
 
 

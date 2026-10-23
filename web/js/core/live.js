@@ -26,7 +26,7 @@ export function serverNow() { return Date.now() + clockOffset; }
 export function noteServerTime(now) { if (typeof now === 'number') clockOffset = now - Date.now(); }
 
 function emit(ev) {
-  for (const key of [ev.type, '*']) for (const fn of subs.get(key) || []) { try { fn(ev); } catch (e) { console.error('live', e); } }
+  for (const key of [ev.type, '*']) for (const fn of [...(subs.get(key) || [])]) { try { fn(ev); } catch (e) { console.error('live', e); } }
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));

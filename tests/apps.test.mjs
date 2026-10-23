@@ -461,3 +461,121 @@ console.log('apps ok');
   assert.equal(new Set(Hg.makePuzzle(3, 'z').colors).size, 25, 'alle felter har forskellig farve');
   console.log('huegame ok');
 }
+{
+  const S = await import('../web/js/features/sharedlogic.js');
+  const votes = [{ kind: 'vote', data: { choices: [0] }, user: { name: 'A' } }, { kind: 'vote', data: { choices: [1] } }, { kind: 'vote', data: { choices: [0, 2] } }, { kind: 'comment', data: {} }];
+  const t = S.tally(votes, 3);
+  assert.deepEqual(t.counts, [2, 1, 1]); assert.equal(t.voters, 3); assert.deepEqual(t.pct, [67, 33, 33]); assert.deepEqual(t.top, [0]); assert.equal(t.who[0].length, 1);
+  const r = S.rsvps([{ kind: 'rsvp', data: { answer: 'yes', plus: 2 } }, { kind: 'rsvp', data: { answer: 'no' } }, { kind: 'rsvp', data: { answer: 'yes' } }]);
+  assert.equal(r.yes.length, 2); assert.equal(r.guests, 4); assert.equal(r.no.length, 1);
+  const now = new Date(2026, 9, 23, 12);
+  assert.equal(S.whenText(new Date(2026, 9, 24, 18).toISOString(), null, now), 'I morgen kl. 18.00');
+  assert.equal(S.whenText(new Date(2026, 9, 23, 11).toISOString(), null, now), 'I gang nu'); assert.equal(S.whenText(new Date(2026, 9, 1).toISOString(), null, now), 'Har været');
+  assert.equal(S.whenText(new Date(2026, 10, 20).toISOString(), null, now), 'Om 28 dage');
+  const cal = S.ics({ title: 'Fest; med venner', start: '2026-11-01T18:00:00Z', place: 'Hjemme' });
+  assert.ok(cal.includes(String.raw`SUMMARY:Fest\; med venner`)); assert.ok(cal.includes('DTSTART:20261101T180000Z')); assert.ok(cal.includes('DTEND:20261101T200000Z'));
+  const fields = [{ id: 'a', type: 'choice', label: 'Farve', options: ['Rød', 'Blå'] }, { id: 'b', type: 'scale', label: 'Hvor godt' }, { id: 'c', type: 'text', label: 'Kommentar' }, { id: 'i', type: 'info', label: 'x' }, { id: 'm', type: 'multi', label: 'Mad', options: ['Pizza', 'Sushi'] }];
+  const resp = [{ data: { answers: { a: 'Rød', b: 4, c: 'Godt', m: ['Pizza', 'Sushi'] } }, at: 1, guest: 'Ida' }, { data: { answers: { a: 'Rød', b: 5, m: ['Pizza'] } }, at: 2 }, { data: { answers: { a: 'Blå', b: 3 } }, at: 3 }];
+  const st = S.formStats(fields, resp);
+  assert.deepEqual(st[0].counts, [2, 1]); assert.equal(st[1].avg, 4); assert.deepEqual(st[1].dist, [0, 0, 1, 1, 1]); assert.deepEqual(st[2].texts, ['Godt']); assert.deepEqual(st[3].counts, [2, 1]);
+  const csv = S.toCSV(fields, resp);
+  assert.ok(csv.startsWith('﻿Tidspunkt;Navn;Farve;Hvor godt;Kommentar;Mad')); assert.ok(csv.includes(';Ida;Rød;4;Godt;Pizza, Sushi'));
+  assert.equal(S.checkAnswers([{ id: 'e', type: 'email', label: 'Mail', required: true }], { e: 'x' }).error, 'Skriv en gyldig e-mail');
+  assert.equal(S.checkAnswers([{ id: 'e', type: 'text', label: 'Navn', required: true }], {}).field, 'e'); assert.equal(S.checkAnswers(fields, {}), null);
+  console.log('sharedlogic batch 1 ok');
+}
+
+{ // sharedlogic batch 2
+  const L = await import('../web/js/features/sharedlogic.js');
+  const parts = L.textParts('Se https://hubtech.dk/x. #Fest i aften #fest (og #ok)');
+  assert.deepEqual(parts.map(p => p.t), ['text', 'link', 'text', 'tag', 'text', 'tag', 'text', 'tag', 'text']);
+  assert.equal(parts[1].v, 'https://hubtech.dk/x');
+  assert.deepEqual(L.tagsOf('#Fest og #fest og #æbler a#b'), ['fest', 'æbler']);
+  assert.equal(L.textParts('ingen links').length, 1);
+  assert.deepEqual(L.topTags([{ data: { text: '#aa #bb' } }, { data: { text: '#bb' } }]), [['bb', 2], ['aa', 1]]);
+  const ents = [{ kind: 'vote', data: { target: 'q', v: 1 } }, { kind: 'vote', data: { target: 7, v: -1 }, mine: true }, { kind: 'vote', data: { target: 8, v: 1 } },
+    { kind: 'answer', id: 7, at: 1 }, { kind: 'answer', id: 8, at: 2 }, { kind: 'answer', id: 9, at: 3 }];
+  const sc = L.scores(ents);
+  assert.deepEqual(sc.s, { q: 1, 7: -1, 8: 1 }); assert.deepEqual(sc.mine, { 7: -1 });
+  assert.deepEqual(L.sortAnswers(ents, null).map(a => a.id), [8, 9, 7]);
+  assert.deepEqual(L.sortAnswers(ents, 9).map(a => a.id), [9, 8, 7]);
+  console.log('sharedlogic batch 2 ok');
+}
+
+{ // sharedlogic: Fællesudgifter
+  const L = await import('../web/js/features/sharedlogic.js');
+  assert.equal(L.toOre('12,50'), 1250); assert.equal(L.toOre('1 000'), 100000);
+  assert.deepEqual(L.splitAmount(1000, ['a', 'b', 'c']), { a: 334, b: 333, c: 333 });
+  const ents = [
+    { kind: 'expense', data: { amount: '300', paidBy: 'a', split: ['a', 'b', 'c'], category: 'Mad' } },
+    { kind: 'expense', data: { amount: '90', paidBy: 'b', split: ['b', 'c'], category: 'Transport' } },
+    { kind: 'expense', data: { amount: '50', paidBy: 'c', split: ['a', 'c'], custom: { a: 4000, c: 1000 } } },
+  ];
+  const b = L.balances(ents);
+  assert.deepEqual(b, { a: 16000, b: -5500, c: -10500 });
+  assert.equal(Object.values(b).reduce((x, y) => x + y, 0), 0);
+  const pay = L.settleUp(b);
+  assert.deepEqual(pay, [{ from: 'c', to: 'a', amount: 10500 }, { from: 'b', to: 'a', amount: 5500 }]);
+  const after = L.balances([...ents, ...pay.map(p => ({ kind: 'settle', data: { ...p, amount: p.amount / 100 } }))]);
+  assert.deepEqual(after, {});
+  assert.deepEqual(L.byCategory(ents)[0], ['Mad', 30000]);
+  assert.equal(L.kr(123456), '1.234,56 kr.');
+  console.log('expenses ok');
+}
+
+{ // sharedlogic: wiki and challenges
+  const L = await import('../web/js/features/sharedlogic.js');
+  assert.equal(L.slugify('Regler for Klassen!'), 'regler-for-klassen');
+  assert.equal(L.slugify('Æbler & pærer'), 'æbler-pærer');
+  const b = L.mdBlocks('# Titel\nFørste linje\nanden\n\n- a\n- b\n1. x\n2. y\n> citat\n```\nkode *ikke*\n```\n---\n## Under');
+  assert.deepEqual(b.map(x => x.t), ['h', 'p', 'ul', 'ol', 'quote', 'code', 'hr', 'h']);
+  assert.equal(b[1].text, 'Første linje\nanden'); assert.deepEqual(b[2].items, ['a', 'b']); assert.equal(b[5].text, 'kode *ikke*'); assert.equal(b[7].level, 2);
+  const inl = L.mdInline('Se **fed** og *skrå* `x` [[Regler for klassen]] [her](https://a.dk) https://b.dk.');
+  assert.deepEqual(inl.map(p => p.t), ['text', 'b', 'text', 'i', 'text', 'code', 'text', 'wiki', 'text', 'link', 'text', 'link', 'text']);
+  assert.equal(inl[7].slug, 'regler-for-klassen'); assert.equal(inl[9].href, 'https://a.dk'); assert.equal(inl[11].href, 'https://b.dk');
+  assert.deepEqual(L.wikiLinks('[[A b]] og\n- [[C]]\n[[A b]]'), ['a-b', 'c']);
+  assert.equal(L.addDays('2026-02-27', 3), '2026-03-02');
+  assert.equal(L.streak(['2026-03-01', '2026-03-02', '2026-03-03'], '2026-03-03'), 3);
+  assert.equal(L.streak(['2026-03-01', '2026-03-02'], '2026-03-03'), 2);      // today not done yet
+  assert.equal(L.streak(['2026-03-01'], '2026-03-03'), 0);
+  const ents = [{ kind: 'join', userId: 1 }, { kind: 'join', userId: 2 },
+    { kind: 'checkin', userId: 1, data: { date: '2026-03-01', amount: 20 } }, { kind: 'checkin', userId: 1, data: { date: '2026-03-02', amount: 30 } },
+    { kind: 'checkin', userId: 2, data: { date: '2026-03-02', amount: 90 } }, { kind: 'checkin', userId: 2, data: { date: '2026-02-20', amount: 999 } }];
+  const st = L.challengeStats(ents, { start: '2026-03-01', days: 7 }, '2026-03-02');
+  assert.deepEqual(st.map(s => [s.id, s.days, s.total, s.streak]), [[1, 2, 50, 2], [2, 1, 90, 1]]);
+  assert.deepEqual(L.challengeDay({ start: '2026-03-01', days: 7 }, '2026-03-03'), { day: 3, left: 4, started: true, done: false });
+  assert.equal(L.challengeDay({ start: '2026-03-01', days: 7 }, '2026-02-25').started, false);
+  assert.equal(L.challengeDay({ start: '2026-03-01', days: 7 }, '2026-03-09').done, true);
+  console.log('wiki + challenges ok');
+}
+
+{ // sharedlogic: Skoleskema
+  const L = await import('../web/js/features/sharedlogic.js');
+  assert.equal(L.isoWeek(new Date(2026, 0, 1)), 1);
+  assert.equal(L.isoWeek(new Date(2026, 9, 23)), 43);
+  assert.equal(L.weekLetter(new Date(2026, 9, 23), true, 1), 'A');
+  assert.equal(L.weekLetter(new Date(2026, 9, 23), true, 0), 'B');
+  const sch = { slots: [{ from: '08:00', to: '08:45' }, { from: '08:50', to: '09:35' }, { from: '10:00', to: '10:45' }],
+    weeks: { A: [[{ subject: 'Dansk' }, { subject: 'Matematik' }, null], [], [], [], [{ subject: 'Idræt' }, null, null]] } };
+  const mon = new Date(2026, 9, 19, 8, 10);   // Monday
+  assert.deepEqual(L.dayLessons(sch, mon).map(x => x.lesson.subject), ['Dansk', 'Matematik']);
+  const nn = L.nowNext(sch, mon);
+  assert.equal(nn.now.lesson.subject, 'Dansk'); assert.equal(nn.next.lesson.subject, 'Matematik'); assert.equal(nn.minsLeft, 35); assert.equal(nn.minsTo, 40);
+  assert.equal(L.nowNext(sch, new Date(2026, 9, 19, 12, 0)).done, true);
+  assert.equal(L.dayLessons(sch, new Date(2026, 9, 24)).length, 0);   // Saturday
+  console.log('schedule ok');
+}
+
+{ // every code challenge's own solution passes its tests (and the starter code doesn't)
+  const { CHALLENGES } = await import('../web/js/data/codechallenges.js');
+  const same = (a, b) => (typeof a === 'number' && typeof b === 'number') ? Math.abs(a - b) < 1e-9 : JSON.stringify(a) === JSON.stringify(b);
+  const ids = new Set();
+  for (const c of CHALLENGES) {
+    assert.ok(!ids.has(c.id), c.id); ids.add(c.id);
+    const f = new Function(`${c.solution}\n;return ${c.fn};`)();
+    for (const t of c.tests) assert.ok(same(f(...structuredClone(t.args)), t.expect), `${c.id} ${JSON.stringify(t.args)} → ${JSON.stringify(f(...structuredClone(t.args)))}`);
+    const s = new Function(`${c.start}\n;return ${c.fn};`)();
+    assert.ok(!c.tests.every(t => { try { return same(s(...structuredClone(t.args)), t.expect); } catch { return false; } }), `${c.id} starter passes`);
+  }
+  console.log(`code challenges ok (${CHALLENGES.length})`);
+}

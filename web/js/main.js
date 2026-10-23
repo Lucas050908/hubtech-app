@@ -50,6 +50,7 @@ const page = (loader, opts = {}) => ({ loader, auth: true, focus: 1, ...opts });
 route('/', { home: true });
 route('/login', { public: true, render: renderLogin, title: 'Log ind' });
 route('/signup', { public: true, render: renderSignup, title: 'Opret konto' });
+route('/p/:token', { public: true, open: true, render: (params) => import('./pages/public.js').then(m => m.renderPublic(params.token)), title: 'HUBTECH' });
 route('/hent', { public: true, open: true, render: () => import('./pages/download.js').then(m => m.renderDownload()), title: 'Hent HUBTECH' });
 route('/dashboard', page(() => import('./pages/dashboard.js')));
 route('/apps', page(() => import('./pages/launcher.js')));
@@ -81,7 +82,7 @@ async function onRoute({ path, route: r, params }) {
 
   if (r.public) {
     if (user && !r.open) return navigate('/', { replace: true });
-    return showPublic(await r.render(), r.title, seq);
+    return showPublic(await r.render(params), r.title, seq);
   }
   if (r.home) {
     if (!user) {

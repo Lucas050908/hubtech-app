@@ -59,6 +59,7 @@ BOARDS = {
     "yatzy": ("Yatzy", True, 374),
     "snake": ("Snake", True, 400),
     "game2048": ("2048", True, 1_000_000),
+    "code": ("Kodeudfordringer", True, 100_000),
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
     "sudoku-easy": ("Sudoku · let", False, 99_999), "sudoku-medium": ("Sudoku · middel", False, 99_999), "sudoku-hard": ("Sudoku · svær", False, 99_999),
 }
