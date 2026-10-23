@@ -138,6 +138,8 @@ const CHALLENGES = [
   ['connect4', 'Fire på stribe', 'apps', 'connect4'], ['ttt', 'Kryds og bolle', 'x', 'tictactoe'], ['draw', 'Tegn og gæt', 'paint', 'drawguess'],
   ['typing', 'Fart-tast (løb)', 'timer', 'typerace'], ['property', 'Ejendomskongen', 'home', 'property'],
   ['chess', 'Skak', 'crown', 'chess'], ['yatzy', 'Yatzy', 'cube', 'yatzy'], ['quizboard', 'Quizbrættet', 'grid', 'quizboard'],
+  ['ludo', 'Ludo', 'cube', 'ludo'], ['otter', 'Otter', 'layers', 'otter'], ['battleship', 'Sænke slagskibe', 'target', 'battleship'], ['checkers', 'Dam', 'grid', 'checkers'],
+  ['kalaha', 'Kalaha', 'cube', 'kalaha'], ['reversi', 'Vend', 'refresh', 'reversi'], ['dots', 'Prikker og streger', 'grid', 'dots'], ['mill', 'Mølle', 'target', 'mill'], ['hearts', 'Hjerterfri', 'heart', 'hearts'], ['meyer', 'Meyer', 'cube', 'meyer'], ['ladders', 'Stigespil', 'trophy', 'ladders'],
 ];
 export function challengeDialog(user) {
   let close;

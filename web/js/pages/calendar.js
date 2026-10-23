@@ -239,7 +239,7 @@ export default {
       });
       syncCal();
       ti.addEventListener('keydown', (k) => { if (k.key === 'Enter') save(); });
-      setTimeout(() => ti.focus(), 50);
+      setTimeout(() => { if (!document.activeElement?.matches?.('.modal input, .modal textarea, .modal select') || document.activeElement === ti) ti.focus(); }, 50);
     }
 
     const when = (e) => `${parseIso(e.date).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' })}${e.endDate ? ' – ' + parseIso(e.endDate).toLocaleDateString('da-DK', { day: 'numeric', month: 'long' }) : ''}${e.allDay ? ' · hele dagen' : e.start ? ` · ${e.start}${e.end ? '–' + e.end : ''}` : ''}`;
@@ -300,7 +300,7 @@ export default {
           h('p', { class: 'faint', style: { margin: 0 } }, 'En delt kalender kan ses af de brugere, du inviterer. Alle med lov til at redigere kan tilføje aftaler – det bliver nemmere at planlægge ting sammen.'),
           h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Navn'), name), h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Farve'), sw), err),
         actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), h('button', { class: 'btn btn-primary', onclick: go }, 'Opret')] });
-      setTimeout(() => name.focus(), 50);
+      setTimeout(() => { if (!document.activeElement?.matches?.('.modal input, .modal textarea, .modal select') || document.activeElement === name) name.focus(); }, 50);
     }
     function manage(c0) {
       let c = c0;

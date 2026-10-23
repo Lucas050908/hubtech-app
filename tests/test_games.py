@@ -228,7 +228,7 @@ class GamesTest(FreshServer):
         s, d = self.call("POST", "/api/games/boards/mines-easy", {"score": 25}, cookie=self.b)
         self.assertEqual(d["board"]["rows"][0]["user"]["name"], "Bo", "lowest time wins")
         s, d = self.call("GET", "/api/games/boards", cookie=self.c)
-        self.assertEqual(len(d["boards"]), 16)
+        self.assertEqual(len(d["boards"]), 24)
 
     def test_race(self):
         _, d = self.call("GET", "/api/games/players", cookie=self.a)

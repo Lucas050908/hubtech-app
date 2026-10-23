@@ -44,11 +44,11 @@ _rooms = {}            # id -> room
 _typing_runs = {}      # token -> {uid, text, start}
 ROOM_TTL = 3600
 GAMES = {"connect4": "Fire på stribe", "typing": "Fart-tast", "ttt": "Kryds og bolle", "draw": "Tegn og gæt", "property": "Ejendomskongen",
-         "yatzy": "Yatzy", "chess": "Skak", "quizboard": "Quizbrættet"}
-APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property", "yatzy": "yatzy", "chess": "chess", "quizboard": "quizboard"}
-MULTI = {"typing": 7, "draw": 7, "property": 5, "yatzy": 5, "quizboard": 7}     # how many can be invited
+         "yatzy": "Yatzy", "chess": "Skak", "quizboard": "Quizbrættet", "ludo": "Ludo", "otter": "Otter", "battleship": "Sænke slagskibe", "checkers": "Dam", "kalaha": "Kalaha", "reversi": "Vend", "dots": "Prikker og streger", "mill": "Mølle", "hearts": "Hjerterfri", "meyer": "Meyer", "ladders": "Stigespil"}
+APP_OF = {"connect4": "connect4", "typing": "typerace", "ttt": "tictactoe", "draw": "drawguess", "property": "property", "yatzy": "yatzy", "chess": "chess", "quizboard": "quizboard", "ludo": "ludo", "otter": "otter", "battleship": "battleship", "checkers": "checkers", "kalaha": "kalaha", "reversi": "reversi", "dots": "dots", "mill": "mill", "hearts": "hearts", "meyer": "meyer", "ladders": "ladders"}
+MULTI = {"typing": 7, "draw": 7, "property": 5, "yatzy": 5, "quizboard": 7, "ludo": 3, "otter": 5, "hearts": 3, "meyer": 5, "ladders": 5}     # how many can be invited
 # games run by the host's browser: the server keeps the latest state and passes the others' moves on
-HOSTED = {"property": 6, "yatzy": 6, "chess": 2, "quizboard": 8}                # max players
+HOSTED = {"property": 6, "yatzy": 6, "chess": 2, "quizboard": 8, "ludo": 4, "otter": 6, "battleship": 2, "checkers": 2, "kalaha": 2, "reversi": 2, "dots": 2, "mill": 2, "hearts": 4, "meyer": 6, "ladders": 6}                # max players
 DUEL = {"connect4", "ttt"}          # two players, taking turns
 # leaderboard games: id -> (label, higher is better, max sane value)
 BOARDS = {
@@ -60,6 +60,14 @@ BOARDS = {
     "snake": ("Snake", True, 400),
     "game2048": ("2048", True, 1_000_000),
     "code": ("Kodeudfordringer", True, 100_000),
+    "math": ("Regnemester · 60 sekunder", True, 200),
+    "blocks": ("Blokfald", True, 10_000_000),
+    "breakout": ("Murbrækker", True, 1_000_000),
+    "flappy": ("Flyvefisk", True, 10_000),
+    "asteroids": ("Asteroider", True, 10_000_000),
+    "anagram": ("Ordrul · 60 sekunder", True, 200),
+    "reaction": ("Reaktion · millisekunder", False, 2000),
+    "jumper": ("Hoppeløb", True, 1_000_000),
     "mines-easy": ("Minestryger · let", False, 99_999), "mines-medium": ("Minestryger · middel", False, 99_999), "mines-hard": ("Minestryger · svær", False, 99_999),
     "sudoku-easy": ("Sudoku · let", False, 99_999), "sudoku-medium": ("Sudoku · middel", False, 99_999), "sudoku-hard": ("Sudoku · svær", False, 99_999),
 }
@@ -84,7 +92,7 @@ def _board_def(game):
     return None
 
 
-MIN_SECS = {"mines-easy": 1, "mines-medium": 5, "mines-hard": 15, "sudoku-easy": 30, "sudoku-medium": 45, "sudoku-hard": 60}
+MIN_SECS = {"reaction": 90, "mines-easy": 1, "mines-medium": 5, "mines-hard": 15, "sudoku-easy": 30, "sudoku-medium": 45, "sudoku-hard": 60}
 
 
 def _cards(ids):

@@ -141,7 +141,7 @@ export default {
         actions,
       });
       na.addEventListener('keydown', (k) => { if (k.key === 'Enter') save(); });
-      setTimeout(() => na.focus(), 50);
+      setTimeout(() => { if (!document.activeElement?.matches?.('.modal input, .modal textarea, .modal select') || document.activeElement === na) na.focus(); }, 50);
     }
 
     // ── shopping list, CSV ──

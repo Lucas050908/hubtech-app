@@ -117,7 +117,7 @@ export default {
           h('button', { class: 'btn btn-primary', onclick: save }, icon('check'), 'Gem')].filter(Boolean) });
       close = m.close;
       title.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-      setTimeout(() => title.focus(), 50);
+      if (!document.activeElement?.matches?.(".modal input, .modal textarea")) title.focus();
     }
 
     // ── statistics ──

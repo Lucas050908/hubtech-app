@@ -118,5 +118,49 @@ class SharedTest(FreshServer):
         self.assertEqual(self.b.req("GET", f"/api/sh/doc/{d['id']}")[0], 404)
 
 
+    def test_wishlist_is_a_surprise(self):
+        d = self.a.req("POST", "/api/sh/wishlist", {"title": "Fødselsdag", "data": {"items": [{"id": "w1", "text": "Bog"}, {"id": "w2", "text": "Spil"}]}, "members": [self.ids["bo"], self.ids["carl"]]})[1]["doc"]
+        self.assertEqual(self.a.req("POST", f"/api/sh/doc/{d['id']}/entries", {"kind": "reserve", "data": {"item": "w1"}})[0], 403, "not your own")
+        self.assertEqual(self.b.req("POST", f"/api/sh/doc/{d['id']}/entries", {"kind": "reserve", "data": {"item": "w1"}})[0], 200)
+        self.assertEqual(self.x.req("POST", f"/api/sh/doc/{d['id']}/entries", {"kind": "reserve", "data": {"item": "w1"}})[1]["code"], "taken")
+        self.assertEqual(self.x.req("POST", f"/api/sh/doc/{d['id']}/entries", {"kind": "reserve", "data": {"item": "w1", "remove": True}})[0], 403)
+        self.assertEqual([e["kind"] for e in self.a.req("GET", f"/api/sh/doc/{d['id']}")[1]["entries"]], [], "the owner sees nothing")
+        self.assertNotIn("reserve", self.a.req("GET", "/api/sh/wishlist")[1]["docs"][0]["counts"])
+        self.assertEqual(len(self.x.req("GET", f"/api/sh/doc/{d['id']}")[1]["entries"]), 1, "the others can see it's taken")
+        self.assertEqual(self.b.req("POST", f"/api/sh/doc/{d['id']}/entries", {"kind": "reserve", "data": {"item": "w1", "remove": True}})[0], 200)
+        self.assertEqual(self.x.req("GET", f"/api/sh/doc/{d['id']}")[1]["entries"], [])
+        self.x.req("POST", f"/api/sh/doc/{d['id']}/entries", {"kind": "comment", "data": {"text": "Skal vi gå sammen om spillet?"}})
+        self.assertEqual(self.a.req("GET", f"/api/sh/doc/{d['id']}")[1]["entries"], [], "the chat about gifts is hidden too")
+
+    def test_signup_datepoll_chores_songs(self):
+        # Fordeling: guests via the link sign up for a slot, and a full slot says so
+        d = self.a.req("POST", "/api/sh/signup", {"title": "Sommerfest", "data": {"slots": [{"id": "s1", "text": "Kage", "need": 1}, {"id": "s2", "text": "Saftevand", "need": 2}]}, "public": True})[1]["doc"]
+        tok = self.a.req("GET", f"/api/sh/doc/{d['id']}")[1]["doc"]["token"]
+        self.assertEqual(self.anon("POST", f"/api/pub/{tok}/entries", {"kind": "claim", "data": {"slot": "s1", "name": "Mormor"}})[0], 200)
+        self.assertEqual(self.anon("POST", f"/api/pub/{tok}/entries", {"kind": "claim", "data": {"slot": "s1", "name": "Morfar"}})[1]["code"], "taken")
+        self.assertEqual(self.anon("POST", f"/api/pub/{tok}/entries", {"kind": "claim", "data": {"slot": "nope", "name": "X"}})[0], 400)
+        claims = [e for e in self.a.req("GET", f"/api/sh/doc/{d['id']}")[1]["entries"] if e["kind"] == "claim"]
+        self.assertEqual(len(claims), 1)
+        # Find en dato: one answer per person, only valid options
+        p = self.a.req("POST", "/api/sh/datepoll", {"title": "Klassefest", "data": {"options": ["2026-11-06", "2026-11-13"]}, "members": [self.ids["bo"]]})[1]["doc"]
+        self.assertEqual(self.b.req("POST", f"/api/sh/doc/{p['id']}/entries", {"kind": "pick", "data": {"yes": [5]}})[0], 400)
+        r0 = self.b.req("POST", f"/api/sh/doc/{p['id']}/entries", {"kind": "pick", "data": {"yes": [0], "maybe": [1]}}); self.assertEqual(r0[0], 200, r0)
+        self.b.req("POST", f"/api/sh/doc/{p['id']}/entries", {"kind": "pick", "data": {"yes": [1], "maybe": []}})
+        ans = [e for e in self.a.req("GET", f"/api/sh/doc/{p['id']}")[1]["entries"] if e["kind"] == "pick"]
+        self.assertEqual([a["data"]["yes"] for a in ans], [[1]])
+        # Pligter: only chores on the list count
+        c = self.a.req("POST", "/api/sh/chores", {"title": "Hjemme", "data": {"chores": [{"id": "c1", "name": "Tøm opvaskeren", "pts": 2}]}, "members": [self.ids["bo"]]})[1]["doc"]
+        self.assertEqual(self.b.req("POST", f"/api/sh/doc/{c['id']}/entries", {"kind": "done", "data": {"chore": "c1"}})[0], 200)
+        self.assertEqual(self.b.req("POST", f"/api/sh/doc/{c['id']}/entries", {"kind": "done", "data": {"chore": "x"}})[0], 400)
+        self.assertEqual(self.x.req("POST", f"/api/sh/doc/{c['id']}/entries", {"kind": "done", "data": {"chore": "c1"}})[0], 404)
+        # Sangønsker: guests wish, members vote once per song
+        sg = self.a.req("POST", "/api/sh/songs", {"title": "Fest", "data": {}, "public": True, "members": [self.ids["bo"]]})[1]["doc"]
+        tok = self.a.req("GET", f"/api/sh/doc/{sg['id']}")[1]["doc"]["token"]
+        self.assertEqual(self.anon("POST", f"/api/pub/{tok}/entries", {"kind": "song", "data": {"title": "", "name": "Ida"}})[0], 400)
+        sid = self.anon("POST", f"/api/pub/{tok}/entries", {"kind": "song", "data": {"title": "En glad sang", "name": "Ida"}})[1]["id"]
+        self.b.req("POST", f"/api/sh/doc/{sg['id']}/entries", {"kind": "vote", "data": {"song": sid}})
+        self.b.req("POST", f"/api/sh/doc/{sg['id']}/entries", {"kind": "vote", "data": {"song": sid}})
+        self.assertEqual(len([e for e in self.a.req("GET", f"/api/sh/doc/{sg['id']}")[1]["entries"] if e["kind"] == "vote"]), 1)
+
 if __name__ == "__main__":
     unittest.main()

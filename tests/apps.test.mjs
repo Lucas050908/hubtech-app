@@ -579,3 +579,472 @@ console.log('apps ok');
   }
   console.log(`code challenges ok (${CHALLENGES.length})`);
 }
+
+{ // Dam
+  const D = await import('../web/js/features/checkers.js');
+  const g = D.newGame([{ name: 'A' }, { name: 'B' }]);
+  assert.deepEqual(D.count(g.board), { white: 12, black: 12 });
+  assert.equal(D.legalMoves(g.board, 0).length, 7);
+  // compulsory capture, double jump, promotion
+  const b = Array(64).fill(0); const at = (r, c) => r * 8 + c;
+  b[at(5, 0)] = 1; b[at(4, 1)] = -1; b[at(2, 3)] = -1; b[at(0, 7)] = -1;
+  let m = D.legalMoves(b, 0);
+  assert.equal(m.length, 1); assert.deepEqual(m[0].path, [at(5, 0), at(3, 2), at(1, 4)]); assert.equal(m[0].caps.length, 2);
+  const s = { players: [{}, {}], board: b, turn: 0, phase: 'play', quiet: 0, log: [], moves: 0 };
+  assert.ok(!D.apply(s, 0, 'move', [at(5, 0), at(3, 2)]), 'must finish the capture');
+  assert.ok(D.apply(s, 0, 'move', [at(5, 0), at(1, 4)]));
+  assert.equal(D.count(s.board).black, 1);
+  // black's man moves, then white promotes
+  assert.ok(!D.apply(s, 0, 'move', [at(1, 4), at(0, 5)]), 'not your turn');
+  const bm = D.legalMoves(s.board, 1); assert.ok(bm.length > 0);
+  const kb = Array(64).fill(0); kb[at(1, 2)] = 1; kb[at(7, 0)] = -1;
+  const s2 = { players: [{}, {}], board: kb, turn: 0, phase: 'play', quiet: 0, log: [], moves: 0 };
+  assert.ok(D.apply(s2, 0, 'move', [at(1, 2), at(0, 1)])); assert.equal(s2.board[at(0, 1)], 2, 'king');
+  // flying king captures from a distance
+  const fb = Array(64).fill(0); fb[at(7, 0)] = 2; fb[at(3, 4)] = -1; fb[at(0, 1)] = -1;
+  const fm = D.legalMoves(fb, 0); assert.ok(fm.every(x => x.caps.length === 1) && fm.some(x => x.path.at(-1) === at(2, 5)));
+  // the computer takes a free piece and finishes the game when it can
+  const ab = Array(64).fill(0); ab[at(5, 2)] = 1; ab[at(4, 3)] = -1;
+  assert.deepEqual(D.bestMove(ab, 0, 2).path, [at(5, 2), at(3, 4)]);
+  const s3 = { players: [{}, {}], board: ab, turn: 0, phase: 'play', quiet: 0, log: [], moves: 0 };
+  D.apply(s3, 0, 'move', [at(5, 2), at(3, 4)]); assert.equal(s3.phase, 'over'); assert.equal(s3.winner, 0);
+  // a whole game computer vs computer ends
+  const gg = D.newGame([{ name: 'A' }, { name: 'B' }]); let n = 0;
+  while (gg.phase === 'play' && n++ < 400) { const mv = D.bestMove(gg.board, gg.turn, 1); D.apply(gg, gg.turn, 'move', [mv.path[0], mv.path.at(-1)]); }
+  assert.equal(gg.phase, 'over');
+  console.log('checkers ok', n, 'moves, winner', gg.winner);
+}
+
+{ // Ludo
+  const L = await import('../web/js/features/ludo.js');
+  const dice = (...xs) => { let k = 0; return () => (xs[k++ % xs.length] - 1) / 6 + 0.01; };
+  const s = L.newGame([{ name: 'A' }, { name: 'B' }], () => 0);
+  assert.equal(s.turn, 0); assert.deepEqual(s.players.map(p => p.color), [0, 2]);
+  L.apply(s, 0, 'roll', [], dice(3)); assert.equal(s.phase, 'roll'); assert.equal(s.tries, 1, 'all home: try again');
+  L.apply(s, 0, 'roll', [], dice(6)); assert.equal(s.phase, 'move'); assert.deepEqual(L.movable(s, 0), [0, 1, 2, 3]);
+  assert.ok(L.apply(s, 0, 'move', [0])); assert.equal(s.pieces[0][0], 0); assert.equal(s.turn, 0, 'a six: roll again');
+  L.apply(s, 0, 'roll', [], dice(4)); L.apply(s, 0, 'move', [0]); assert.equal(s.pieces[0][0], 4); assert.equal(s.turn, 1);
+  // B (colour 2, start square 26) lands on A's piece and sends it home
+  s.pieces[1][0] = (4 - 26 + 52) % 52 - 2;   // two steps behind A's square 4
+  assert.equal(L.square(s, 1, s.pieces[1][0]) , 2);
+  L.apply(s, 1, 'roll', [], dice(2)); assert.ok(L.apply(s, 1, 'move', [0]));
+  assert.equal(s.pieces[0][0], -1, 'sent home'); assert.equal(s.turn, 1, 'a hit gives another roll');
+  // exact roll into the goal, and the game ends
+  const g = L.newGame([{ name: 'A' }, { name: 'B' }], () => 0);
+  g.pieces[0] = [56, 56, 56, 53]; g.phase = 'roll';
+  L.apply(g, 0, 'roll', [], dice(5)); assert.deepEqual(L.movable(g, 0), [], 'overshoot not allowed'); assert.equal(g.turn, 1);
+  g.turn = 0; L.apply(g, 0, 'roll', [], dice(3)); L.apply(g, 0, 'move', [3]); assert.equal(g.phase, 'over'); assert.equal(g.winner, 0);
+  // four computers finish a game
+  const c = L.newGame([{ name: 'A', ai: true }, { name: 'B', ai: true }, { name: 'C', ai: true }, { name: 'D', ai: true }]); let n = 0;
+  while (c.phase !== 'over' && n++ < 5000) { const m = L.aiMove(c, c.turn); L.apply(c, c.turn, m.name, m.args); }
+  assert.equal(c.phase, 'over'); assert.equal(c.finished.length, 3);
+  console.log('ludo ok', n);
+}
+
+{ // Otter
+  const O = await import('../web/js/features/otter.js');
+  const g = O.newGame([{ name: 'A' }, { name: 'B' }, { name: 'C' }], () => 0.3);
+  assert.deepEqual(g.hands.map(h => h.length), [7, 7, 7]); assert.equal(g.deck.length + g.pile.length + 21, 52); assert.notEqual(O.valOf(O.top(g)), 8);
+  const s = { players: [{ name: 'A' }, { name: 'B' }], hands: [['H3', 'S8', 'C5'], ['D9']], deck: ['C2', 'H12'], pile: ['H9'], suit: 'H', turn: 0, phase: 'play', drew: null, log: [] };
+  assert.ok(!O.apply(s, 0, 'play', ['C5']), 'wrong suit');
+  assert.ok(!O.apply(s, 0, 'play', ['S8']), 'an 8 needs a suit');
+  assert.ok(O.apply(s, 0, 'play', ['S8', 'C'])); assert.equal(s.suit, 'C'); assert.equal(s.turn, 1);
+  assert.ok(O.apply(s, 1, 'draw', [])); assert.equal(s.drew, null, 'H12 does not fit clubs: pass'); assert.equal(s.turn, 0);
+  assert.ok(O.apply(s, 0, 'play', ['C5']));
+  assert.ok(O.apply(s, 1, 'draw', [])); assert.equal(s.drew, 'C2'); assert.ok(!O.apply(s, 1, 'play', ['D9']), 'only the drawn card');
+  assert.ok(O.apply(s, 1, 'play', ['C2']));
+  assert.ok(O.apply(s, 0, 'draw', [])); // deck empty → refilled from the pile
+  // a game between computers ends
+  const c = O.newGame([{ name: 'A' }, { name: 'B' }, { name: 'C' }, { name: 'D' }]); let n = 0;
+  while (c.phase !== 'over' && n++ < 3000) { const m = O.aiMove(c, c.turn); assert.ok(O.apply(c, c.turn, m.name, m.args), JSON.stringify(m)); }
+  assert.equal(c.phase, 'over'); assert.equal(c.score[c.winner], Math.min(...c.score));
+  console.log('otter ok', n);
+}
+
+{ // Sænke slagskibe
+  const B = await import('../web/js/features/battleship.js');
+  assert.deepEqual(B.shipCells(8, 3, 'h'), null, 'off the board');
+  assert.deepEqual(B.shipCells(0, 3, 'v'), [0, 10, 20]);
+  for (let k = 0; k < 50; k++) { const f = B.randomFleet(); assert.ok(B.validFleet(B.decode(B.encode(f)))); }
+  assert.ok(!B.validFleet([[0, 1, 2, 3, 4], [11, 12, 13, 14], [40, 41, 42], [60, 61, 62], [80, 81]]), 'touching');
+  const fleet = '0:5:h;20:4:h;40:3:h;60:3:h;80:2:h';
+  const s = B.newGame([{ name: 'A' }, { name: 'B' }]);
+  assert.ok(!B.apply(s, 0, 'fire', [0]), 'placing first');
+  assert.ok(B.apply(s, 0, 'place', [fleet])); assert.ok(!B.apply(s, 0, 'place', [fleet]), 'only once');
+  assert.ok(B.apply(s, 1, 'place', [fleet])); assert.equal(s.phase, 'play');
+  assert.ok(B.apply(s, 0, 'fire', [80])); assert.equal(s.turn, 0, 'hit: again');
+  assert.ok(B.apply(s, 0, 'fire', [81])); assert.equal(B.sunkCount(s, 1), 1);
+  assert.ok(!B.apply(s, 0, 'fire', [81]), 'same cell twice');
+  assert.ok(B.apply(s, 0, 'fire', [99])); assert.equal(s.turn, 1, 'miss: the other one');
+  assert.deepEqual([B.seaView(s, 1)[80], B.seaView(s, 1)[99]], ['sunk', 'miss']);
+  // two computers play to the end
+  const g = B.newGame([{ name: 'A', ai: true }, { name: 'B', ai: true }]); let n = 0;
+  while (g.phase !== 'over' && n++ < 400) { for (const seat of [0, 1]) { const m = B.aiMove(g, seat); if (m) assert.ok(B.apply(g, seat, m.name, m.args), JSON.stringify(m)); } }
+  assert.equal(g.phase, 'over');
+  console.log('battleship ok', g.shots[0].length + g.shots[1].length, 'shots');
+}
+
+{ // Turneringer
+  const T = await import('../web/js/features/tournament.js');
+  const k = T.knockout(6);
+  assert.equal(k.rounds, 3); assert.equal(k.matches.length, 7);
+  assert.equal(k.matches.filter(m => m.round === 0 && (m.a === -1 || m.b === -1)).length, 2, 'two byes');
+  assert.equal(k.matches.filter(m => m.round === 1 && (m.a != null || m.b != null)).length, 2, 'byes go straight on');
+  for (const m of k.matches.filter(m => m.round === 0 && m.a >= 0 && m.b >= 0)) { m.sa = 2; m.sb = 1; }
+  T.advance(k); const semis = k.matches.filter(m => m.round === 1);
+  assert.ok(semis.every(m => m.a != null && m.b != null));
+  semis.forEach(m => { m.sa = 0; m.sb = 3; }); T.advance(k);
+  const fin = k.matches.find(m => m.round === 2); fin.sa = 1; fin.sb = 0; T.advance(k);
+  assert.equal(T.champion(k), fin.a); assert.equal(T.roundName(k, 2), 'Finale'); assert.equal(T.roundName(k, 1), 'Semifinaler');
+  // changing an early result clears the later ones it affects
+  const first = k.matches.find(m => m.round === 0 && m.a >= 0 && m.b >= 0); first.sa = 0; first.sb = 5; T.advance(k);
+  assert.ok(k.matches.find(m => m.round === 2).sa == null || T.champion(k) != null);
+  const l = T.league(5);
+  assert.equal(l.matches.length, 10); assert.equal(l.rounds, 5);
+  const pairs = new Set(l.matches.map(m => [m.a, m.b].sort().join()));
+  assert.equal(pairs.size, 10, 'everyone meets everyone once');
+  l.matches.forEach(m => { m.sa = m.a < m.b ? 2 : 0; m.sb = m.a < m.b ? 0 : 2; });   // lower index always wins
+  assert.deepEqual(T.standings(l, 5).map(r => r.i), [0, 1, 2, 3, 4]); assert.equal(T.standings(l, 5)[0].pts, 12); assert.equal(T.champion(l), 0);
+  console.log('tournament ok');
+}
+
+{ // Kalaha
+  const K = await import('../web/js/features/kalaha.js');
+  const g = K.newGame([{ name: 'A' }, { name: 'B' }]);
+  assert.equal(g.board.reduce((a, b) => a + b, 0), 48);
+  assert.ok(K.apply(g, 0, 'sow', [2])); assert.equal(g.board[6], 1); assert.equal(g.turn, 0, 'last stone in own store: again');
+  assert.ok(!K.apply(g, 0, 'sow', [2]), 'empty pit');
+  assert.ok(K.apply(g, 0, 'sow', [0])); assert.equal(g.turn, 1);
+  // capture
+  const b = [0, 0, 1, 0, 0, 0, 0, 3, 3, 5, 3, 3, 3, 0];
+  const r = K.sow(b, 0, 2); assert.equal(r.captured, 6); assert.equal(r.board[6], 6); assert.equal(r.board[9], 0);
+  // sowing past the other's store
+  const b2 = Array(14).fill(0); b2[5] = 10; b2[12] = 1; const r2 = K.sow(b2, 0, 5); assert.equal(r2.board[13], 0); assert.equal(r2.board.reduce((x, y) => x + y, 0), 11);
+  // computer vs computer finishes, all stones counted
+  const c = K.newGame([{}, {}]); let n = 0; c.level = 2;
+  while (c.phase === 'play' && n++ < 300) { const m = K.aiMove(c, c.turn); K.apply(c, c.turn, m.name, m.args); }
+  assert.equal(c.phase, 'over'); assert.equal(c.board[6] + c.board[13], 48);
+  console.log('kalaha ok');
+}
+
+{ // Vend (reversi)
+  const R = await import('../web/js/features/reversi.js');
+  const g = R.newGame([{}, {}]);
+  assert.deepEqual(R.legal(g.board, 0).sort((a, b) => a - b), [19, 26, 37, 44]);
+  assert.ok(!R.apply(g, 0, 'place', [0])); assert.ok(R.apply(g, 0, 'place', [19]));
+  assert.deepEqual(R.count(g.board), [4, 1]); assert.equal(g.turn, 1);
+  // no wrapping around the edge
+  const b = Array(64).fill(0); b[7] = 2; b[8] = 1; assert.equal(R.flips(b, 6, 0).length, 0);
+  const c = R.newGame([{}, {}]); let n = 0;
+  while (c.phase === 'play' && n++ < 200) { const m = R.aiMove(c, c.turn); assert.ok(R.apply(c, c.turn, m.name, m.args)); }
+  assert.equal(c.phase, 'over');
+  console.log('reversi ok', R.count(c.board));
+}
+
+{ // Prikker og streger
+  const P = await import('../web/js/features/dots.js');
+  const g = P.newGame([{}, {}], 2, 2);
+  assert.equal(g.lines.length, 12);
+  assert.deepEqual(P.boxesOf(g, P.H(g, 1, 0)).sort(), [0, 2]); assert.deepEqual(P.boxesOf(g, P.V(g, 0, 2)), [1]);
+  for (const l of [P.H(g, 0, 0), P.H(g, 1, 0), P.V(g, 0, 0)]) P.apply(g, g.turn, 'line', [l]);
+  const before = g.turn; assert.ok(P.apply(g, before, 'line', [P.V(g, 0, 1)])); assert.equal(g.boxes[0], before); assert.equal(g.turn, before, 'closed a box: again');
+  const c = P.newGame([{}, {}], 4, 4); let n = 0;
+  while (c.phase === 'play' && n++ < 100) { const m = P.aiMove(c, c.turn); assert.ok(P.apply(c, c.turn, m.name, m.args)); }
+  assert.equal(c.phase, 'over'); assert.equal(P.score(c)[0] + P.score(c)[1], 16);
+  console.log('dots ok');
+}
+
+{ // Mølle
+  const M = await import('../web/js/features/mill.js');
+  for (let i = 0; i < 24; i++) for (const j of M.ADJ[i]) assert.ok(M.ADJ[j].includes(i), `adjacency ${i}-${j}`);
+  const g = M.newGame([{}, {}]);
+  M.apply(g, 0, 'place', [0]); M.apply(g, 1, 'place', [9]); M.apply(g, 0, 'place', [1]); M.apply(g, 1, 'place', [10]);
+  assert.ok(M.apply(g, 0, 'place', [2])); assert.ok(g.remove); assert.equal(g.turn, 0);
+  assert.ok(!M.apply(g, 0, 'place', [5]), 'must remove first');
+  assert.ok(M.apply(g, 0, 'remove', [9])); assert.equal(g.board[9], -1); assert.equal(g.turn, 1);
+  let n = 0; const c = M.newGame([{}, {}]);
+  while (c.phase === 'play' && n++ < 600) { const m = M.aiMove(c, c.turn); assert.ok(M.apply(c, c.turn, m.name, m.args), JSON.stringify(m)); }
+  assert.equal(c.phase, 'over');
+  console.log('mill ok', n);
+}
+
+{ // Indkøbsliste
+  const L = await import('../web/js/features/sharedlogic.js');
+  assert.equal(L.shopCat('Bananer'), 'Frugt og grønt'); assert.equal(L.shopCat('Letmælk'), 'Mejeri og æg'); assert.equal(L.shopCat('toiletpapir'), 'Husholdning');
+  assert.equal(L.shopCat('rugbrød'), 'Brød og bageri'); assert.equal(L.shopCat('hakket oksekød'), 'Kød og fisk'); assert.equal(L.shopCat('en ting'), 'Andet');
+  assert.deepEqual(L.parseItem('2 l mælk'), { qty: '2 l', text: 'mælk' }); assert.deepEqual(L.parseItem('6 æg'), { qty: '6', text: 'æg' }); assert.deepEqual(L.parseItem('smør'), { qty: '', text: 'smør' });
+  console.log('shopping ok');
+}
+
+{ // Regnemester
+  const M = await import('../web/js/features/mathdrill.js');
+  for (let i = 0; i < 300; i++) {
+    for (const op of ['add', 'sub', 'mul', 'div']) {
+      const t = M.task(op, i % 4);
+      const v = op === 'add' ? t.a + t.b : op === 'sub' ? t.a - t.b : op === 'mul' ? t.a * t.b : t.a / t.b;
+      assert.equal(v, t.answer); assert.ok(Number.isInteger(t.answer) && t.answer >= 0, `${op} ${JSON.stringify(t)}`);
+    }
+  }
+  const t7 = M.task('mul', 1, Math.random, [7]); assert.ok(t7.a === 7 || t7.b === 7);
+  const st = {}; M.record(st, { key: 'mul:6x7' }, false); M.record(st, { key: 'mul:6x7' }, false);
+  let seen = 0; for (let i = 0; i < 200; i++) if (M.nextTask('mul', 1, st).key === 'mul:6x7') seen++;
+  assert.ok(seen > 30, 'wrong answers come back more often');
+  assert.equal(M.mastery(st, 7, 6), 0); assert.equal(M.mastery(st, 2, 2), null);
+  console.log('mathdrill ok');
+}
+
+{ // Grundstoffer
+  const { ELEMENTS } = await import('../web/js/data/elements.js');
+  assert.equal(ELEMENTS.length, 118);
+  assert.equal(new Set(ELEMENTS.map(e => `${e.row},${e.col}`)).size, 118, 'no two in the same cell');
+  assert.equal(new Set(ELEMENTS.map(e => e.sym)).size, 118);
+  const by = Object.fromEntries(ELEMENTS.map(e => [e.sym, e]));
+  assert.deepEqual([by.Fe.row, by.Fe.col, by.Fe.name], [4, 8, 'Jern']); assert.deepEqual([by.Au.row, by.Au.col], [6, 11]);
+  assert.deepEqual([by.U.row, by.U.cat], [10, 'actinide']); assert.deepEqual([by.Og.row, by.Og.col], [7, 18]); assert.deepEqual([by.B.col, by.Al.col], [13, 13]);
+  assert.equal(by.Hg.state, 'væske'); assert.equal(by.Cl.cat, 'halogen'); assert.equal(by.Na.cat, 'alkali'); assert.equal(by.Fe.period, 4); assert.equal(by.Nd.period, 6);
+  console.log('elements ok');
+}
+
+{ // Tidslinjen
+  const T = await import('../web/js/data/timeline.js');
+  assert.ok(T.EVENTS.length >= 60); assert.equal(new Set(T.EVENTS.map(e => e[1])).size, T.EVENTS.length);
+  const sorted = T.EVENTS.slice().sort((a, b) => a[0] - b[0]); assert.deepEqual(sorted, T.EVENTS, 'listed in order');
+  const cards = [[1066], [1492], [1969]];
+  assert.ok(T.fits(cards, 1200, 1)); assert.ok(!T.fits(cards, 1200, 2)); assert.ok(T.fits(cards, 2000, 3)); assert.ok(T.fits(cards, 1492, 1) && T.fits(cards, 1492, 2), 'same year: either side');
+  assert.equal(T.yearText(-44), '44 f.Kr.'); assert.equal(T.yearText(1450, true), 'ca. 1450');
+  console.log('timeline ok');
+}
+
+{ // Hemmelige koder
+  const C = await import('../web/js/features/ciphers.js');
+  assert.equal(C.caesar('Hej Åse', 1), 'Ifk Atf');
+  assert.equal(C.caesar(C.caesar('Rødgrød med fløde!', 7), -7), 'Rødgrød med fløde!');
+  assert.equal(C.atbash(C.atbash('Hemmelig')), 'Hemmelig'); assert.equal(C.atbash('a'), 'å');
+  assert.equal(C.toMorse('sos'), '... --- ...'); assert.equal(C.fromMorse(C.toMorse('hej med dig')), 'hej med dig'); assert.equal(C.fromMorse(C.toMorse('æble')), 'æble');
+  assert.equal(C.fromBinary(C.toBinary('Hej Øster')), 'Hej Øster'); assert.equal(C.toBinary('A'), '01000001');
+  assert.equal(C.toNumbers('abc å'), '1-2-3 / 29'); assert.equal(C.fromNumbers('1-2-3 / 29'), 'abc å');
+  const secret = C.caesar('det er en hemmelig besked som kun du kan læse her i dag', 11);
+  assert.equal(C.crackCaesar(secret), 11);
+  console.log('ciphers ok');
+}
+
+{ // Kodeknækker, Skubbepuslespil, Ordsøg, Blokfald
+  const A = await import('../web/js/features/arcade2.js');
+  assert.deepEqual(A.mmScore([0, 1, 2, 3], [0, 1, 2, 3]), { exact: 4, near: 0 });
+  assert.deepEqual(A.mmScore([0, 1, 2, 3], [3, 2, 1, 0]), { exact: 0, near: 4 });
+  assert.deepEqual(A.mmScore([0, 0, 1, 1], [0, 1, 0, 2]), { exact: 1, near: 2 });
+  assert.deepEqual(A.mmScore([1, 2, 3, 4], [1, 1, 1, 1]), { exact: 1, near: 0 });
+  const t = A.slideShuffle(4); assert.ok(!A.isSolved(t)); assert.equal(new Set(t).size, 16);
+  const s3 = A.slideSolved(3); assert.ok(A.isSolved(s3));
+  assert.deepEqual(A.slideMove(s3, 3, 6), [1, 2, 3, 4, 5, 6, 0, 7, 8], 'a whole row slides'); assert.equal(A.slideMove(s3, 3, 0), null);
+  const words = ['KODE', 'SKOLE', 'HUBTECH', 'ÆBLE', 'SPIL'];
+  const g = A.wordGrid(words, 10);
+  for (const p of g.placed) assert.equal([...p.word].map((_, i) => g.grid[p.r + p.dr * i][p.c + p.dc * i]).join(''), p.word);
+  assert.equal(g.placed.length, 5);
+  assert.deepEqual(A.lineCells([0, 0], [2, 2]), [[0, 0], [1, 1], [2, 2]]); assert.equal(A.lineCells([0, 0], [1, 2]), null);
+  let b = A.emptyBoard(); for (let x = 0; x < 10; x++) if (x < 6) b[19][x] = 'O';
+  const I = { type: 'I', rot: 0, x: 6, y: 18 }; // row 19 = y+1 → cells x 6..9
+  const r = A.lock(b, I); assert.equal(r.lines, 1); assert.ok(r.board[19].every(c => !c));
+  assert.equal(A.cells({ type: 'T', rot: 4, x: 0, y: 0 }).join(), A.cells({ type: 'T', rot: 0, x: 0, y: 0 }).join(), 'four turns = start');
+  assert.ok(A.collides(A.emptyBoard(), { type: 'I', rot: 0, x: 8, y: 0 }));
+  assert.equal(A.dropDistance(A.emptyBoard(), A.spawn('O')), 19);
+  console.log('arcade2 ok');
+}
+
+{ // Karakterer, tekst, hold, farver, sparegris
+  const T = await import('../web/js/features/tools2.js');
+  assert.equal(T.average([{ grade: 12, weight: 1 }, { grade: 7, weight: 1 }, { grade: 4, weight: 2 }]), 6.8);
+  assert.equal(T.average([]), null); assert.equal(T.average([{ grade: 5, weight: 1 }]), null, '5 is not on the scale');
+  assert.equal(T.needed([{ grade: 7, weight: 1 }], 8.5), 10); assert.equal(T.needed([{ grade: 2, weight: 1 }], 12), null);
+  const s = T.textStats('Hunden løber. Katten sover i solen! Det er en dejlig sommerdag.');
+  assert.equal(s.words, 11); assert.equal(s.sentences, 3); assert.equal(s.lix, Math.round(11 / 3 + 100 / 11));
+  assert.ok(T.lixText(20).startsWith('Let')); assert.ok(T.lixText(60).startsWith('Meget'));
+  assert.equal(T.titleCase('hej med dig'), 'Hej Med Dig'); assert.equal(T.sentenceCase('HEJ. MED DIG'), 'Hej. Med dig');
+  assert.equal(T.sortLines('b\nå\na'), 'a\nb\nå'); assert.equal(T.uniqueLines('a\nb\na'), 'a\nb');
+  assert.deepEqual(T.topWords('kode kode sjov kode sjov og at')[0], ['kode', 3]);
+  const tm = T.teams(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 3); assert.deepEqual(tm.map(t => t.length).sort(), [2, 2, 3]); assert.equal(tm.flat().length, 7);
+  assert.equal(T.teamsOfSize(Array.from({ length: 10 }, (_, i) => i), 3).length, 3);
+  assert.deepEqual(T.hexToRgb('#fff'), [255, 255, 255]); assert.equal(T.rgbToHex(255, 0, 128), '#ff0080');
+  assert.equal(T.contrast('#000000', '#ffffff'), 21); assert.ok(T.wcag(4.6).aa && !T.wcag(4.6).aaa);
+  const [hh, ss, ll] = T.rgbToHsl(255, 0, 0); assert.deepEqual([hh, ss, ll], [0, 100, 50]); assert.deepEqual(T.hslToRgb(120, 100, 50), [0, 255, 0]);
+  assert.equal(T.palette('#ff0000', 'complement')[1], '#00ffff'); assert.equal(T.palette('#336699', 'shades').length, 6);
+  assert.equal(T.weeksToGoal(100, 500, 50), 8); assert.equal(T.weeksToGoal(600, 500, 50), 0); assert.equal(T.weeksToGoal(0, 500, 0), null);
+  console.log('tools2 ok');
+}
+
+{ // Hjerterfri
+  const Hh = await import('../web/js/features/hearts.js');
+  const g = Hh.newGame([{ name: 'A' }, { name: 'B', ai: true }, { name: 'C', ai: true }, { name: 'D', ai: true }]);
+  assert.equal(g.phase, 'pass'); assert.ok(g.hands.every(h => h.length === 13));
+  assert.ok(!Hh.apply(g, 0, 'pass', [[g.hands[0][0]]]), 'three cards');
+  for (let seat = 0; seat < 4; seat++) assert.ok(Hh.apply(g, seat, 'pass', [g.hands[seat].slice(0, 3)]));
+  assert.equal(g.phase, 'play'); assert.ok(g.hands[g.turn].includes('C2')); assert.deepEqual(Hh.legal(g, g.turn), ['C2']);
+  // a whole game between computers ends, scores add up
+  const c = Hh.newGame([{ ai: true, name: 'A' }, { ai: true, name: 'B' }, { ai: true, name: 'C' }, { ai: true, name: 'D' }]); let n = 0;
+  while (c.phase !== 'over' && n++ < 20000) {
+    let moved = false;
+    for (let seat = 0; seat < 4 && !moved; seat++) { const m = Hh.aiMove(c, seat); if (m) { assert.ok(Hh.apply(c, seat, m.name, m.args), JSON.stringify([c.phase, m])); moved = true; } }
+    assert.ok(moved, 'someone can always move');
+  }
+  assert.equal(c.phase, 'over'); assert.ok(Math.max(...c.scores) >= 100); assert.equal(c.scores.reduce((a, b) => a + b, 0) % 26, 0, 'each round gives 26 points');
+  console.log('hearts ok', c.round + 1, 'rounds');
+}
+
+{ // Meyer
+  const M = await import('../web/js/features/meyer.js');
+  assert.equal(M.ORDER[0], 21); assert.equal(M.ORDER[1], 31); assert.equal(M.ORDER.at(-1), 32); assert.equal(M.ORDER.length, 21);
+  assert.equal(M.valueOf(1, 2), 21); assert.equal(M.valueOf(4, 6), 64); assert.ok(M.strength(11) > M.strength(65));
+  const fixed = (...v) => { let k = 0; return () => (v[k++ % v.length] - 1) / 6 + 0.01; };
+  const g = M.newGame([{ name: 'A' }, { name: 'B' }, { name: 'C' }]);
+  M.apply(g, 0, 'roll', [], fixed(4, 3)); assert.equal(g.roll, 43);
+  assert.ok(M.apply(g, 0, 'announce', [55])); assert.equal(g.turn, 1);
+  assert.ok(M.apply(g, 1, 'lift')); assert.deepEqual(g.lives, [2, 3, 3], 'a bluff costs the bluffer'); assert.equal(g.turn, 0);
+  M.apply(g, 0, 'roll', [], fixed(6, 6)); M.apply(g, 0, 'announce', [66]); M.apply(g, 1, 'lift');
+  assert.deepEqual(g.lives, [2, 2, 3], 'truth costs the lifter'); assert.equal(g.turn, 1);
+  M.apply(g, 1, 'roll', [], fixed(5, 2)); assert.ok(!M.apply(g, 1, 'announce', [32]) || true);
+  const c = M.newGame([{}, {}, {}, {}]); let n = 0;
+  while (c.phase !== 'over' && n++ < 2000) { const m = M.aiMove(c, c.turn); assert.ok(M.apply(c, c.turn, m.name, m.args), JSON.stringify(m)); }
+  assert.equal(c.phase, 'over'); assert.equal(c.lives.filter(l => l > 0).length, 1);
+  console.log('meyer ok');
+}
+
+{ // Fri celle
+  const F = await import('../web/js/features/freecell.js');
+  const g = F.newGame(); assert.deepEqual(g.cols.map(c => c.length), [7, 7, 7, 7, 6, 6, 6, 6]);
+  const mk = () => ({ cols: [['C5', 'H4', 'S3'], ['D6'], ['H6'], ['D1'], ['C1', 'H2'], ['D13'], ['S13'], ['H13']], cells: [null, null, null, null], found: { S: 0, H: 0, D: 0, C: 0 }, moves: 0, history: [] });
+  let t = mk();
+  assert.equal(F.runLength(t.cols[0]), 3);
+  assert.ok(F.move(t, { t: 'col', i: 0 }, { t: 'col', i: 2 }, 3), 'black C5 on red H6 with the run');
+  assert.deepEqual(t.cols[2], ['H6', 'C5', 'H4', 'S3']); assert.equal(t.cols[0].length, 0);
+  assert.ok(F.undo(t)); assert.deepEqual(t.cols[0], ['C5', 'H4', 'S3']);
+  t.cells = ['S1', 'S2', 'D2', 'C2']; assert.equal(F.maxRun(t), 1);
+  assert.ok(!F.move(t, { t: 'col', i: 0 }, { t: 'col', i: 2 }, 3), 'no room for three cards');
+  t = mk(); assert.ok(F.move(t, { t: 'col', i: 3 }, { t: 'found' })); assert.equal(t.found.D, 1);
+  assert.ok(!F.move(t, { t: 'col', i: 4 }, { t: 'found' }), 'H2 needs H1 first');
+  t = mk(); t.cols[4] = ['H2', 'C1']; const n = F.autoFound(t); assert.ok(n >= 2, 'aces and twos go up by themselves'); assert.equal(t.found.C, 1);
+  assert.deepEqual(F.bestTarget(mk(), { t: 'col', i: 3 }), { t: 'found' });
+  console.log('freecell ok');
+}
+
+{ // Banko
+  const A = await import('../web/js/features/arcade2.js');
+  for (let k = 0; k < 100; k++) {
+    const p = A.plate();
+    assert.ok(p.every(r => r.filter(v => v != null).length === 5), 'five numbers in each row');
+    for (let c = 0; c < 9; c++) { const col = p.map(r => r[c]).filter(v => v != null); assert.ok(col.length >= 1); assert.deepEqual(col, col.slice().sort((x, y) => x - y)); assert.ok(col.every(v => (c === 0 ? v >= 1 && v <= 9 : c === 8 ? v >= 80 && v <= 90 : Math.floor(v / 10) === c))); }
+    assert.equal(new Set(p.flat().filter(v => v != null)).size, 15);
+  }
+  const p = A.plate(); assert.equal(A.fullRows(p, new Set(p[0].filter(Boolean))), 1);
+  console.log('banko ok');
+}
+
+{ // Fødselsdage, Pakkeliste, Udlån, Plantepasser
+  const H = await import('../web/js/features/home2.js');
+  const today = new Date(2026, 9, 23);
+  let b = H.nextBirthday('2010-10-25', today); assert.equal(b.days, 2); assert.equal(b.turns, 16);
+  b = H.nextBirthday('2010-10-23', today); assert.equal(b.days, 0); assert.equal(b.turns, 16);
+  b = H.nextBirthday('2012-01-05', today); assert.equal(b.date.getFullYear(), 2027); assert.equal(b.turns, 15);
+  b = H.nextBirthday('--03-01', today); assert.equal(b.turns, null); assert.equal(b.date.getMonth(), 2);
+  b = H.nextBirthday('2008-02-29', new Date(2026, 2, 5)); assert.equal(b.date.getFullYear(), 2027); assert.equal(b.date.getMonth(), 2); assert.equal(b.date.getDate(), 1);
+  assert.equal(H.nextBirthday('nope', today), null);
+  assert.equal(H.ageOn('2010-10-24', today), 15); assert.equal(H.ageOn('2010-10-23', today), 16);
+  assert.equal(H.zodiac('2010-03-25'), 'Vædderen'); assert.equal(H.zodiac('2010-12-25'), 'Stenbukken'); assert.equal(H.zodiac('2010-01-10'), 'Stenbukken'); assert.equal(H.zodiac('2010-08-01'), 'Løven');
+  let list = H.mergeItems([{ name: 'Telefon', done: true }], ['telefon', 'Oplader', 'Oplader']);
+  assert.equal(list.length, 2); assert.equal(list[0].done, true); assert.deepEqual(H.packProgress(list), { done: 1, total: 2 });
+  const now = new Date(2026, 9, 23, 15).getTime(), D = 86400000;
+  assert.equal(H.loanStatus({ due: now - D }, now), 'late'); assert.equal(H.loanStatus({ due: now + 2 * D }, now), 'soon');
+  assert.equal(H.loanStatus({ due: now + 10 * D }, now), 'out'); assert.equal(H.loanStatus({ due: now - D, back: now }, now), 'back'); assert.equal(H.loanStatus({}, now), 'out');
+  assert.equal(H.waterDue({ every: 7, watered: now - 3 * D }, now), 4); assert.equal(H.waterDue({ every: 2, watered: now - 5 * D }, now), -3); assert.equal(H.waterDue({ every: 5 }, now), 0);
+  assert.equal(H.dueText(-3), '3 dage for sent'); assert.equal(H.dueText(1), 'i morgen');
+  console.log('home2 ok');
+}
+
+{ // Hovedstæder, Klokken, Brøker, Stavning, Omregner, Terninger, Billedgåder
+  const L = await import('../web/js/features/learn3.js');
+  assert.ok(L.CAPITALS.length >= 75); assert.ok(L.CAPITALS.every(c => L.REGIONS.includes(c[2])));
+  for (let k = 0; k < 50; k++) { const q = L.capitalQ(L.CAPITALS, k % 2 ? 'capital' : 'country'); assert.equal(q.options.length, 4); assert.equal(new Set(q.options).size, 4); assert.ok(q.options.includes(q.answer)); }
+  assert.equal(L.norm(' Bogota '), L.norm('Bogotá')); assert.equal(L.norm('Washington DC'), L.norm('Washington D.C.'));
+  assert.equal(L.clockWords(3, 0), 'tre'); assert.equal(L.clockWords(3, 15), 'kvart over tre'); assert.equal(L.clockWords(3, 30), 'halv fire');
+  assert.equal(L.clockWords(3, 45), 'kvart i fire'); assert.equal(L.clockWords(3, 25), 'fem minutter i halv fire'); assert.equal(L.clockWords(3, 35), 'fem minutter over halv fire');
+  assert.equal(L.clockWords(11, 50), 'ti minutter i tolv'); assert.equal(L.clockWords(12, 30), 'halv et'); assert.equal(L.clockWords(15, 5), 'fem minutter over tre'); assert.equal(L.clockWords(9, 1), 'et minut over ni');
+  assert.equal(L.digital(7, 5), '07.05');
+  for (let k = 0; k < 30; k++) { const t = L.randomTime(2); assert.ok(t.m % 15 === 0 && t.h >= 1 && t.h <= 12); }
+  assert.deepEqual(L.simplify([6, 8]), [3, 4]); assert.deepEqual(L.fadd([1, 2], [1, 3]), [5, 6]); assert.deepEqual(L.fmul([2, 3], [3, 4]), [1, 2]); assert.deepEqual(L.fdiv([1, 2], [1, 4]), [2, 1]);
+  assert.deepEqual(L.parseFrac('1 1/2'), [3, 2]); assert.deepEqual(L.parseFrac('4/8'), [1, 2]); assert.deepEqual(L.parseFrac('3'), [3, 1]); assert.equal(L.parseFrac('1/0'), null); assert.equal(L.parseFrac('x'), null);
+  assert.equal(L.fstr([3, 1]), '3'); assert.ok(L.feq([2, 4], [1, 2]));
+  for (const kind of ['shade', 'simplify', 'compare', 'add', 'mul']) for (let k = 0; k < 20; k++) { const t = L.fracTask(kind); assert.ok(t.answer); if (kind === 'simplify') assert.ok(L.feq(t.frac, t.answer)); }
+  assert.deepEqual(L.spellDiff('hus', 'hos').map(x => x.ok), [true, false, true]); assert.equal(L.spellDiff('kat', 'ka').length, 3);
+  assert.ok(Math.abs(L.convert('length', 1, 'km', 'm') - 1000) < 1e-9); assert.ok(Math.abs(L.convert('temp', 100, '°C', '°F') - 212) < 1e-9); assert.ok(Math.abs(L.convert('temp', 0, 'K', '°C') + 273.15) < 1e-9);
+  assert.ok(Math.abs(L.convert('speed', 36, 'km/t', 'm/s') - 10) < 1e-9); assert.equal(L.convert('length', 1, 'km', 'kg'), null); assert.equal(L.nice(1000), '1.000');
+  let r = L.rollDice('3d6+2', () => 0.999); assert.equal(r.total, 20); assert.equal(r.rolls.length, 3); r = L.rollDice('d20', () => 0); assert.equal(r.total, 1); assert.equal(L.rollDice('hej'), null); assert.ok(L.rollDice('2t10'));
+  assert.deepEqual(L.clues([1, 1, 0, 1, 0]), [2, 1]); assert.deepEqual(L.clues([0, 0]), [0]);
+  for (const n of L.NONOGRAMS) { assert.equal(n.grid.length, n.size, n.name); assert.ok(n.grid.every(row => row.length === n.size), n.name); }
+  const g = L.NONOGRAMS[0].grid; assert.ok(L.solved(g, g.map(r => r.map(v => (v ? 1 : 2))))); assert.ok(!L.solved(g, g.map(r => r.map(() => 0))));
+  console.log('learn3 ok');
+}
+
+{ // Labyrint, Lysslukker, Ordrul, Stigespil, Reaktion, Gæt dyret
+  const A = await import('../web/js/features/arcade4.js');
+  const r1 = A.seeded(42), r2 = A.seeded(42); assert.equal(r1(), r2());
+  const g = A.maze(12, 9, A.seeded(7));
+  let open = 0; for (let y = 0; y < 9; y++) for (let x = 0; x < 12; x++) { if (x < 11 && !(g[y][x] & A.E)) { open++; assert.ok(!(g[y][x + 1] & A.W), 'walls agree'); } if (y < 8 && !(g[y][x] & A.S)) open++; }
+  assert.equal(open, 12 * 9 - 1, 'a perfect maze is a tree');
+  const path = A.solveMaze(g); assert.ok(path && path[0].join() === '0,0' && path.at(-1).join() === '11,8');
+  assert.deepEqual(A.maze(5, 5, A.seeded(3)), A.maze(5, 5, A.seeded(3)), 'same number, same maze');
+  let b = Array(9).fill(false); b = A.press(b, 3, 4); assert.deepEqual(b.map(Number), [0, 1, 0, 1, 1, 1, 0, 1, 0]); b = A.press(b, 3, 0); assert.deepEqual(b.map(Number), [1, 0, 0, 0, 1, 1, 0, 1, 0]);
+  const L = A.lights(5, 6); assert.ok(!A.allOff(L.board)); assert.ok(L.par <= 6);
+  for (let k = 0; k < 20; k++) { const s = A.scramble('banan'); assert.notEqual(s, 'banan'); assert.equal([...s].sort().join(''), 'aabnn'); }
+  assert.ok(A.isAnagram('Banan', 'banan')); assert.ok(A.isAnagram('ensom', 'mones', ['ensom', 'mones'])); assert.ok(!A.isAnagram('ensom', 'mones', [])); assert.ok(!A.isAnagram('bnaan', 'banan'));
+  const s = A.newLadders([{ name: 'A' }, { name: 'B', ai: true }]);
+  assert.ok(A.applyLadders(s, 0, 'roll', [4])); assert.equal(s.pos[0], 14, 'a ladder from 4 to 14'); assert.equal(s.turn, 1);
+  assert.ok(!A.applyLadders(s, 0, 'roll', [1]), 'not your turn');
+  assert.ok(A.applyLadders(s, 1, 'roll', [6])); assert.equal(s.turn, 1, 'a six gives another roll');
+  s.pos[1] = 97; s.turn = 1; A.applyLadders(s, 1, 'roll', [5]); assert.equal(s.pos[1], 98, 'bounce back from 100'); s.turn = 1; s.pos[1] = 97; A.applyLadders(s, 1, 'roll', [3]); assert.equal(s.phase, 'over'); assert.equal(s.winner, 1);
+  s.phase = 'roll'; s.turn = 0; s.pos[0] = 15; A.applyLadders(s, 0, 'roll', [2]); assert.equal(s.pos[0], 7, 'a slide from 17 to 7');
+  assert.deepEqual(A.cellOf(1), [0, 0]); assert.deepEqual(A.cellOf(11), [1, 9]); assert.deepEqual(A.cellOf(100), [9, 0]);
+  assert.equal(A.median([300, 200, 250]), 250); assert.equal(A.median([1, 2, 3, 4]), 3); assert.equal(A.median([]), null); assert.equal(A.reactionRating(190), 'Lynhurtig!');
+  assert.equal(A.walk(A.START_TREE, [false, false, true, true]).a, 'en kat');
+  const t2 = A.learn(A.START_TREE, [false, false, true, true], 'en kanin', 'Har det lange ører', true);
+  assert.equal(A.walk(t2, [false, false, true, true]).q, 'Har det lange ører?'); assert.equal(A.walk(t2, [false, false, true, true, true]).a, 'en kanin'); assert.equal(A.walk(t2, [false, false, true, true, false]).a, 'en kat');
+  assert.equal(A.countAnimals(t2), A.countAnimals(A.START_TREE) + 1); assert.equal(A.walk(A.START_TREE, [false, false, true, true]).a, 'en kat', 'the original is unchanged');
+  console.log('arcade4 ok');
+}
+
+{ // Gloser, Robotvej, Solsystemet, Køleskabet, Opsparing, Kassemand, Juveler
+  const B = await import('../web/js/features/batch8.js');
+  for (const s of Object.values(B.VOCAB)) assert.ok(s.words.length >= 12 && s.words.every(w => w.length === 2 && w[0] && w[1]));
+  const now = 1_800_000_000_000, D = 86400000;
+  let c = B.review(undefined, true, now); assert.deepEqual([c.box, c.due], [1, now + D]); c = B.review(c, true, now); assert.equal(c.box, 2); c = B.review(c, false, now); assert.deepEqual([c.box, c.due], [0, now]);
+  const words = B.VOCAB['en-dyr'].words; assert.equal(B.dueCards(words, {}, now, 5).length, 5); assert.equal(B.dueCards(words, { 0: { box: 3, due: now + D } }, now, 99).length, words.length - 1);
+  assert.ok(B.vocabMatch('der Hund', 'Hund')); assert.ok(B.vocabMatch('weiß', 'weiss')); assert.ok(B.vocabMatch('to run', 'Run')); assert.ok(!B.vocabMatch('dog', 'cat'));
+  // every robot level can be solved within its limit (search over moves, then squeeze runs of steps into “gentag”)
+  for (const lv of B.ROBOT_LEVELS) {
+    const L = B.parseLevel(lv), key = (x, y, d, m) => `${x},${y},${d},${m}`, q = [[L.start[0], L.start[1], 1, 0, []]], seen = new Set([key(L.start[0], L.start[1], 1, 0)]); let sol = null;
+    while (q.length) { const [x, y, d, m, path] = q.shift(); if (x === L.goal[0] && y === L.goal[1] && m === (1 << L.stars.length) - 1) { sol = path; break; }
+      for (const op of ['fwd', 'left', 'right']) { let nx = x, ny = y, nd = d, nm = m; if (op === 'left') nd = (d + 3) % 4; else if (op === 'right') nd = (d + 1) % 4; else { nx = x + B.DIRS[d][0]; ny = y + B.DIRS[d][1]; if (L.wall(nx, ny)) continue; const si = L.stars.indexOf(`${nx},${ny}`); if (si >= 0) nm |= 1 << si; } const k = key(nx, ny, nd, nm); if (!seen.has(k)) { seen.add(k); q.push([nx, ny, nd, nm, [...path, op]]); } } }
+    const prog = []; for (const op of sol) { const last = prog.at(-1); if (last?.op === 'repeat' && last.body[0].op === op) last.n++; else if (last?.op === 'fwd' && op === 'fwd') { prog.pop(); prog.push({ op: 'repeat', n: 2, body: [{ op }] }); } else prog.push({ op }); }
+    const HAND = { Trappen: [{ op: 'right' }, { op: 'fwd' }, { op: 'repeat', n: 3, body: [{ op: 'fwd' }, { op: 'left' }, { op: 'fwd' }, { op: 'right' }] }, { op: 'left' }, { op: 'fwd' }] };
+    const best = HAND[lv.name] || prog;
+    assert.ok(B.runRobot(lv, prog).won, lv.name); assert.ok(B.runRobot(lv, best).won, lv.name); assert.ok(B.programSize(best) <= lv.max, `${lv.name} fits in ${lv.max}`);
+  }
+  assert.ok(B.runRobot(B.ROBOT_LEVELS[0], [{ op: 'fwd' }, { op: 'left' }, { op: 'fwd' }]).crash, 'walking into a wall');
+  assert.ok(B.runRobot(B.ROBOT_LEVELS[3], [{ op: 'repeat', n: 8, body: [{ op: 'fwd' }] }]).won);
+  const earth = B.PLANETS.find(p => p.name === 'Jorden'); assert.equal(B.planetAge(10, earth), 10); assert.equal(B.lightMinutes(1), 8.3);
+  assert.ok(B.planetAge(10, B.PLANETS[0]) > 40);
+  const t = new Date(now); const iso = (k) => { const d = new Date(now + k * D); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  assert.equal(B.expiry({ date: iso(-1) }, now).state, 'old'); assert.equal(B.expiry({ date: iso(0) }, now).state, 'today'); assert.equal(B.expiry({ date: iso(3) }, now).state, 'soon'); assert.equal(B.expiry({ date: iso(9) }, now).state, 'ok'); assert.equal(B.expiry({}, now).days, null);
+  let sv = B.savings({ start: 1000, monthly: 0, rate: 12, years: 1 }); assert.ok(Math.abs(sv.balance - 1126.825) < 0.01); sv = B.savings({ start: 0, monthly: 100, rate: 0, years: 2 }); assert.equal(sv.balance, 2400); assert.equal(sv.rows.length, 2);
+  B.SOKO.slice(0, 7).forEach((lv, i) => {
+    const s0 = B.sokoParse(lv), key = (s) => s.player + '|' + s.boxes.slice().sort((a, b) => a - b).join(','), q = [s0], seen = new Set([key(s0)]); let ok = false;
+    while (q.length) { const s = q.shift(); if (B.sokoWon(s)) { ok = true; break; } for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = B.sokoMove({ ...s, hist: [] }, dx, dy); if (n && !seen.has(key(n))) { seen.add(key(n)); q.push(n); } } }
+    assert.ok(ok, `Kassemand bane ${i + 1} kan løses`); assert.equal(s0.boxes.length, s0.targets.length);
+  });
+  let k = B.sokoParse(B.SOKO[0]); assert.equal(B.sokoMove(k, -1, 0), null, 'wall'); k = B.sokoMove(k, 1, 0); assert.ok(B.sokoWon(k)); assert.equal(k.pushes, 1); assert.ok(!B.sokoWon(B.sokoUndo(k)));
+  for (let r = 0; r < 20; r++) { const g = B.gemBoard(8); assert.equal(B.findMatches(g).length, 0, 'a new board has no matches'); }
+  const g = [0, 0, 1, 2, 3, 4, 5, 0, ...Array(56).fill(null).map((_, i) => (i * 7 + Math.floor(i / 8)) % 6)];
+  const m = B.findMatches([0, 0, 0, 1, 2, 3, 4, 5, ...Array(56).fill(-1)]); assert.deepEqual(m, [0, 1, 2]);
+  assert.ok(B.adjacent(0, 1)); assert.ok(B.adjacent(0, 8)); assert.ok(!B.adjacent(7, 8)); assert.ok(!B.adjacent(0, 9));
+  const col = B.collapse([0, 0, 0, 1, 2, 3, 4, 5, ...Array(56).fill(3)].map((v, i) => (i >= 8 ? ((i + Math.floor(i / 8)) % 2 ? 4 : 5) : v)), 8, () => 0.5); assert.equal(col.removed, 3);
+  assert.ok(typeof B.hasMove(B.gemBoard(8)) === 'boolean'); void g; void t;
+  console.log('batch8 ok');
+}

@@ -11,10 +11,11 @@ import { sh } from '../features/shared.js';
 const VIEWS = {
   form: () => import('./forms.js'), booking: () => import('./booking.js'), page: () => import('./pages-builder.js'),
   poll: () => import('./polls.js'), tournament: () => import('./tournaments.js'), event: () => import('./events.js'),
-  wiki: () => import('./wiki.js'), album: () => import('./albums.js'), expense: () => import('./expenses.js'), challenge: () => import('./challenges.js'), board: () => import('./board.js'),
+  wiki: () => import('./wiki.js'), album: () => import('./albums.js'), expense: () => import('./expenses.js'), challenge: () => import('./challenges.js'), board: () => import('./board.js'), wishlist: () => import('./wishlist.js'),
+  signup: () => import('./together2.js'), datepoll: () => import('./together2.js'), songs: () => import('./together2.js'), chores: () => import('./together2.js'),
 };
-const PAGE = { poll: 'polls', event: 'events', form: 'forms', album: 'albums', expense: 'expenses', wiki: 'wiki', challenge: 'challenges', booking: 'booking', page: 'pages', board: 'board', tournament: 'tournaments' };
-const MAKE = { form: 'Lav din egen formular', booking: 'Lav din egen bookingside', page: 'Lav din egen side', poll: 'Lav din egen afstemning', tournament: 'Lav din egen turnering', event: 'Lav dit eget arrangement' };
+const PAGE = { poll: 'polls', event: 'events', form: 'forms', album: 'albums', expense: 'expenses', wiki: 'wiki', challenge: 'challenges', booking: 'booking', page: 'pages', board: 'board', tournament: 'tournaments', wishlist: 'wishlist', shoplist: 'shopping', signup: 'signup', datepoll: 'datepoll', songs: 'songs', chores: 'chores' };
+const MAKE = { form: 'Lav din egen formular', booking: 'Lav din egen bookingside', page: 'Lav din egen side', poll: 'Lav din egen afstemning', tournament: 'Lav din egen turnering', event: 'Lav dit eget arrangement', wishlist: 'Lav din egen ønskeseddel', album: 'Lav dit eget fotoalbum', wiki: 'Lav din egen wiki', signup: 'Lav din egen fordeling', datepoll: 'Find en dato med dine venner', songs: 'Lav din egen ønskeliste til festen' };
 
 export async function renderPublic(token) {
   const wrap = (body, app) => h('div', { class: 'pub-page' },

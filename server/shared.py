@@ -67,6 +67,12 @@ RULES = {
     "page": {"kinds": {"guestbook": {"who": "public"}}, "public_ok": True},
     "board": {"kinds": {"item": {"who": "member", "edit": "member"}}},
     "tournament": {"kinds": {"comment": {"who": "member"}}, "public_ok": True},
+    "shoplist": {"kinds": {"item": {"who": "member", "edit": "member"}}},
+    "wishlist": {"kinds": {"reserve": {"who": "member", "unique": "slot", "slot": _key("item"), "secret": True}, "comment": {"who": "member", "secret": True}}, "public_ok": True},
+    "signup": {"kinds": {"claim": {"who": "public"}}, "public_ok": True},
+    "datepoll": {"kinds": {"pick": {"who": "public", "unique": "user"}, "comment": {"who": "member"}}, "public_ok": True},
+    "chores": {"kinds": {"done": {"who": "member"}}},
+    "songs": {"kinds": {"song": {"who": "public"}, "vote": {"who": "member", "unique": _key("song")}}, "public_ok": True},
 }
 APP_LIMIT = {"post": 5000, "question": 2000}       # docs per user per app (default 300)
 
@@ -176,6 +182,8 @@ def _entries_out(d, uid, lv):
     for r in rows:
         rule = rules.get(r["kind"], {})
         mine = bool(uid) and r["user_id"] == uid
+        if rule.get("secret") and lv == "owner":
+            continue
         if rule.get("private") and not owner and not mine:
             if d["app"] == "booking":          # others only see that the time is taken
                 data = json.loads(r["data"])
@@ -241,6 +249,8 @@ def list_docs(req, params):
         o = _doc_out(r, u["id"], lv, full=False)
         o["owner"] = cards.get(r["owner_id"])
         o["counts"] = counts.get(r["id"], {})
+        if r["owner_id"] == u["id"]:      # a surprise stays a surprise
+            o["counts"] = {k: v for k, v in o["counts"].items() if not RULES[r["app"]]["kinds"].get(k, {}).get("secret")}
         o["mine"] = mine.get(r["id"], {})
         out.append(o)
     return 200, {"docs": out}
@@ -273,9 +283,9 @@ def create_doc(req, params):
 
 
 _APP_DA = {"poll": "En afstemning", "event": "Et arrangement", "form": "En formular", "post": "Et opslag", "question": "Et spørgsmål", "album": "Et album",
-           "expense": "Fællesudgifter", "wiki": "En wiki", "challenge": "En udfordring", "booking": "En bookingside", "page": "En side", "board": "En tavle", "tournament": "En turnering"}
+           "expense": "Fællesudgifter", "wiki": "En wiki", "challenge": "En udfordring", "booking": "En bookingside", "page": "En side", "board": "En tavle", "tournament": "En turnering", "shoplist": "En indkøbsliste", "wishlist": "En ønskeseddel", "signup": "En fordeling", "datepoll": "En datoafstemning", "chores": "Pligter", "songs": "Sangønsker"}
 _APP_PAGE = {"poll": "polls", "event": "events", "form": "forms", "post": "wall", "question": "qa", "album": "albums", "expense": "expenses",
-             "wiki": "wiki", "challenge": "challenges", "booking": "booking", "page": "pages", "board": "board", "tournament": "tournaments"}
+             "wiki": "wiki", "challenge": "challenges", "booking": "booking", "page": "pages", "board": "board", "tournament": "tournaments", "shoplist": "shopping", "wishlist": "wishlist", "signup": "signup", "datepoll": "datepoll", "chores": "chores", "songs": "songs"}
 
 
 def _set_members(did, u, members, editors=None):
@@ -408,6 +418,19 @@ def _add_entry(d, uid, lv, b, guest=None):
     if uniq == "slot":
         key = rule["slot"](data)
         clash = [r for r in db.all_rows("SELECT id, data, user_id FROM sh_entries WHERE doc_id = ? AND kind = ?", (d["id"], kind)) if rule["slot"](json.loads(r["data"])) == key]
+        if d["app"] == "wishlist":
+            if lv == "owner":
+                raise ApiError(403, "Du kan ikke selv reservere dine ønsker.", "forbidden")
+            if clash and data.get("remove"):
+                if clash[0]["user_id"] != uid:
+                    raise ApiError(403, "Det er en anden, der har reserveret den.", "forbidden")
+                db.q("DELETE FROM sh_entries WHERE id = ?", (clash[0]["id"],))
+                _touch(d); _push(d, "entries")
+                return {"removed": clash[0]["id"]}
+            if clash:
+                raise ApiError(409, "Den er allerede reserveret af en anden.", "taken")
+            if data.get("remove"):
+                return {"removed": None}
         if clash:
             if d["app"] == "wiki":         # a page with that name: edit it instead
                 return _edit(d, clash[0]["id"], uid, lv, data)
@@ -432,10 +455,11 @@ def _add_entry(d, uid, lv, b, guest=None):
                (d["id"], uid, guest if not uid else None, kind, raw, now, now))
     _touch(d)
     _push(d, "entries")
-    if uid != d["owner_id"] and kind in ("response", "booking", "rsvp", "answer", "comment", "guestbook", "photo"):
-        who = guest or (db.one("SELECT display_name FROM users WHERE id = ?", (uid,)) or {}).get("display_name", "Nogen")
+    if uid != d["owner_id"] and kind in ("response", "booking", "rsvp", "answer", "comment", "guestbook", "photo", "claim", "song", "pick") and not rule.get("secret"):
+        row = db.one("SELECT display_name FROM users WHERE id = ?", (uid,)) if uid else None
+        who = guest or (row["display_name"] if row else "Nogen")
         what = {"response": "har svaret på", "booking": "har booket en tid i", "rsvp": "har svaret på", "answer": "har svaret på", "comment": "har kommenteret",
-                "guestbook": "har skrevet i gæstebogen på", "photo": "har lagt et billede i"}[kind]
+                "guestbook": "har skrevet i gæstebogen på", "photo": "har lagt et billede i", "claim": "har skrevet sig på", "song": "har ønsket en sang i", "pick": "har svaret på"}[kind]
         _notify([d["owner_id"]], f"{who} {what} “{d['title'] or _APP_DA.get(d['app'], '')}”", "", f"/apps/{_APP_PAGE.get(d['app'], d['app'])}/d/{d['id']}")
     return {"id": cur.lastrowid}
 
@@ -449,6 +473,25 @@ def _validate(d, kind, data, ddata):
             raise ApiError(400, "Vælg en mulighed.", "invalid")
     if app == "event" and kind == "rsvp" and data.get("answer") not in ("yes", "maybe", "no"):
         raise ApiError(400, "Svar ja, måske eller nej.", "invalid")
+    if app == "signup" and kind == "claim" and not data.get("remove"):
+        slot = next((x for x in (ddata.get("slots") or []) if isinstance(x, dict) and x.get("id") == data.get("slot")), None)
+        if not slot:
+            raise ApiError(400, "Den findes ikke på listen.", "invalid")
+        need = max(1, min(99, int(slot.get("need") or 1)))
+        taken = sum(1 for r in db.all_rows("SELECT data FROM sh_entries WHERE doc_id = ? AND kind = 'claim'", (d["id"],)) if json.loads(r["data"]).get("slot") == slot["id"])
+        if taken >= need:
+            raise ApiError(409, "Der er allerede nok på den. Vælg en anden.", "taken")
+    if app == "datepoll" and kind == "pick" and not data.get("remove"):
+        n = len(ddata.get("options") or [])
+        for k in ("yes", "maybe"):
+            v = data.get(k, [])
+            if not isinstance(v, list) or any(not isinstance(c, int) or c < 0 or c >= n for c in v):
+                raise ApiError(400, "Ugyldigt svar.", "invalid")
+    if app == "chores" and kind == "done":
+        if not any(isinstance(x, dict) and x.get("id") == data.get("chore") for x in (ddata.get("chores") or [])):
+            raise ApiError(400, "Den pligt findes ikke.", "invalid")
+    if app == "songs" and kind == "song" and not str(data.get("title") or "").strip():
+        raise ApiError(400, "Skriv hvilken sang.", "invalid")
     if app == "event" and kind == "rsvp" and data.get("answer") == "yes" and ddata.get("capacity"):
         yes = sum(1 for r in db.all_rows("SELECT data FROM sh_entries WHERE doc_id = ? AND kind = 'rsvp'", (d["id"],)) if json.loads(r["data"]).get("answer") == "yes")
         if yes >= int(ddata["capacity"]):

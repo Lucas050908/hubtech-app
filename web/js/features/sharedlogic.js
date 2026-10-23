@@ -249,3 +249,24 @@ export function nowNext(sch, now = new Date()) {
   const next = list.find(x => toMin(x.slot.from) > m) || null;
   return { now: cur, next, minsLeft: cur ? toMin(cur.slot.to) - m : null, minsTo: next ? toMin(next.slot.from) - m : null, done: !cur && !next && list.length > 0 };
 }
+
+// ── Indkøbsliste ──
+export const SHOP_CATS = ['Frugt og grønt', 'Brød og bageri', 'Mejeri og æg', 'Kød og fisk', 'Frost', 'Kolonial', 'Drikkevarer', 'Snacks og slik', 'Husholdning', 'Personlig pleje', 'Andet'];
+const SHOP_WORDS = [
+  ['Frugt og grønt', /æble|banan|pære|appelsin|citron|agurk|tomat|salat|løg|hvidløg|kartof|gulerod|peber(?!nød)|broccoli|blomkål|kål|avocado|frugt|grønt|bær|drue|melon|svamp|champignon|ingefær|porre|squash|majs|spinat|krydderurt|persille|dild|basilikum/i],
+  ['Brød og bageri', /brød|bolle|rugbrød|toast|knækbrød|tortilla|pita|croissant|wienerbrød|kage|kiks/i],
+  ['Mejeri og æg', /mælk|ost|yoghurt|skyr|smør|fløde|creme fraiche|cremefraiche|æg\b|æggene|æg$|kærnemælk|mozzarella|feta|parmesan|ymer|margarine/i],
+  ['Kød og fisk', /kød|kylling|svin|okse|hakket|bacon|pølse|skinke|laks|tun|fisk|rejer|frikadelle|leverpostej|pålæg|salami|kalkun/i],
+  ['Frost', /frost|frossen|frosne|is\b|isvafler|pizza/i],
+  ['Kolonial', /pasta|ris|mel|sukker|salt|olie|eddike|ketchup|sennep|mayo|krydderi|bønner|linser|dåse|havregryn|müsli|cornflakes|honning|syltetøj|nutella|bouillon|sauce|nudler|tacos|kaffe|te\b/i],
+  ['Drikkevarer', /vand|juice|saft|sodavand|cola|øl|vin|danskvand|kakao|smoothie/i],
+  ['Snacks og slik', /chips|slik|chokolade|nødder|popcorn|lakrids|vingummi/i],
+  ['Husholdning', /toiletpapir|køkkenrulle|opvask|vaskemiddel|skraldepose|folie|bagepapir|batteri|pære\s|sæbe til|rengøring|klud|svamp til/i],
+  ['Personlig pleje', /shampoo|balsam|tandpasta|tandbørste|deo|sæbe|creme|plaster|bind|tampon|barber/i],
+];
+export function shopCat(text) { for (const [c, re] of SHOP_WORDS) if (re.test(text)) return c; return 'Andet'; }
+/** "2 l mælk" → { qty: '2 l', text: 'mælk' } */
+export function parseItem(s) {
+  const m = String(s).trim().match(/^(\d+(?:[.,]\d+)?\s*(?:stk\.?|kg|g|l|dl|ml|pk\.?|ps\.?|bakker?|poser?|dåser?|flasker?)?)\s+(.+)$/i);
+  return m ? { qty: m[1].replace(/\s+/g, ' '), text: m[2].trim() } : { qty: '', text: String(s).trim() };
+}
