@@ -29,7 +29,7 @@ export default {
     if (one) open.add(one);
 
     // ── write a post ──
-    const text = h('textarea', { class: 'textarea wl-text', rows: 3, maxlength: MAX_LEN, placeholder: `Hvad sker der, ${user?.name?.split(' ')[0] || 'du'}?`, 'aria-label': 'Skriv et opslag' });
+    const text = h('textarea', { class: 'textarea wl-text', rows: 3, maxlength: MAX_LEN, placeholder: `Hvad sker der, ${user?.displayName?.split(' ')[0] || 'du'}?`, 'aria-label': 'Skriv et opslag' });
     const pics = [];
     const picBox = h('div', { class: 'wl-pics' });
     const left = h('span', { class: 'faint wl-left' });

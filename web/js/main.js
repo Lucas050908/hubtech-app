@@ -50,6 +50,8 @@ const page = (loader, opts = {}) => ({ loader, auth: true, focus: 1, ...opts });
 route('/', { home: true });
 route('/login', { public: true, render: renderLogin, title: 'Log ind' });
 route('/signup', { public: true, render: renderSignup, title: 'Opret konto' });
+route('/q', { public: true, open: true, render: () => import('./pages/quizshow.js').then(m => m.renderJoin('')), title: 'Quizshow' });
+route('/q/:pin', { public: true, open: true, render: (params) => import('./pages/quizshow.js').then(m => m.renderJoin(params.pin)), title: 'Quizshow' });
 route('/p/:token', { public: true, open: true, render: (params) => import('./pages/public.js').then(m => m.renderPublic(params.token)), title: 'HUBTECH' });
 route('/hent', { public: true, open: true, render: () => import('./pages/download.js').then(m => m.renderDownload()), title: 'Hent HUBTECH' });
 route('/dashboard', page(() => import('./pages/dashboard.js')));
