@@ -203,12 +203,12 @@ export const savings = {
       const calc = () => {
         const r = B.savings({ ...st, years: Math.min(60, st.years) }), max = Math.max(1, ...r.rows.map(x => x.balance));
         h(clear(out), null,
-          h('div', { class: 'sv-big' }, h('span', { class: 'faint' }, `Efter ${st.years} år har du`), h('b', null, kr(r.balance)), h('span', null, `Du har selv sat ${kr(r.paid)} ind – renterne har givet `, h('b', { class: 'ok' }, kr(r.interest)))),
-          r.rows.length ? h('div', { class: 'sv-chart', role: 'img', 'aria-label': 'Opsparingen år for år' }, r.rows.map(x => h('div', { class: 'sv-col', title: `År ${x.year}: ${kr(x.balance)}` }, h('i', { class: 'sv-int', style: { height: `${x.interest / max * 100}%` } }), h('i', { class: 'sv-paid', style: { height: `${x.paid / max * 100}%` } }), r.rows.length <= 20 || x.year % 5 === 0 ? h('small', null, String(x.year)) : null))) : null,
-          h('div', { class: 'sv-legend' }, h('span', null, h('i', { class: 'sv-paid' }), 'Det du har sat ind'), h('span', null, h('i', { class: 'sv-int' }), 'Renter')),
+          h('div', { class: 'os-big' }, h('span', { class: 'faint' }, `Efter ${st.years} år har du`), h('b', null, kr(r.balance)), h('span', null, `Du har selv sat ${kr(r.paid)} ind – renterne har givet `, h('b', { class: 'ok' }, kr(r.interest)))),
+          r.rows.length ? h('div', { class: 'os-chart', role: 'img', 'aria-label': 'Opsparingen år for år' }, r.rows.map(x => h('div', { class: 'os-col', title: `År ${x.year}: ${kr(x.balance)}` }, h('i', { class: 'os-int', style: { height: `${x.interest / max * 100}%` } }), h('i', { class: 'os-paid', style: { height: `${x.paid / max * 100}%` } }), r.rows.length <= 20 || x.year % 5 === 0 ? h('small', null, String(x.year)) : null))) : null,
+          h('div', { class: 'os-legend' }, h('span', null, h('i', { class: 'os-paid' }), 'Det du har sat ind'), h('span', null, h('i', { class: 'os-int' }), 'Renter')),
           h('p', { class: 'faint', style: { fontSize: '12px' } }, 'Regnestykket er et eksempel med samme rente hele vejen og renter tilskrevet hver måned. Det er ikke økonomisk rådgivning.'));
       };
-      h(clear(root), null, h('div', { class: 'sv-wrap' },
+      h(clear(root), null, h('div', { class: 'os-wrap' },
         h('div', { class: 'l3-card', style: { justifyItems: 'stretch', alignContent: 'start' } }, field('start', 'Startbeløb (kr.)', { min: 0 }), field('monthly', 'Sparer hver måned (kr.)', { min: 0 }), field('rate', 'Rente pr. år (%)', { min: 0, max: 30, step: 0.1 }), field('years', 'Antal år', { min: 1, max: 60 })),
         h('div', { class: 'l3-card', style: { justifyItems: 'stretch' } }, out)));
       calc();
@@ -235,11 +235,11 @@ export const sokoban = {
         h('div', { class: 'ng-picks' }, B.SOKO.map((_, i) => h('button', { class: ['sh-tag', i === st.level && 'is-on'], disabled: i > 0 && st.best[i - 1] == null && st.best[i] == null && i !== st.level, onclick: () => go(i) }, st.best[i] != null ? `✓ ${i + 1}` : String(i + 1)))),
         h('div', { class: 'l3-card' },
           h('div', { class: 'l3-score' }, h('span', null, h('b', null, String(s.moves)), ' træk'), h('span', null, h('b', null, String(s.pushes)), ' skub'), st.best[st.level] ? h('span', { class: 'faint' }, `bedste ${st.best[st.level]}`) : null),
-          h('div', { class: ['sk-grid', won && 'is-won'], style: { gridTemplateColumns: `repeat(${s.w}, var(--sk))` } }, s.cells.map((c, k) => h('span', { class: ['sk-cell', c === '#' ? 'wall' : 'floor', s.targets.includes(k) && 'target'] },
-            s.boxes.includes(k) ? h('i', { class: ['sk-box', s.targets.includes(k) && 'on'] }) : s.player === k ? h('i', { class: 'sk-me' }) : null))),
+          h('div', { class: ['ks-grid', won && 'is-won'], style: { gridTemplateColumns: `repeat(${s.w}, var(--sk))` } }, s.cells.map((c, k) => h('span', { class: ['ks-cell', c === '#' ? 'wall' : 'floor', s.targets.includes(k) && 'target'] },
+            s.boxes.includes(k) ? h('i', { class: ['ks-box', s.targets.includes(k) && 'on'] }) : s.player === k ? h('i', { class: 'ks-me' }) : null))),
           h('div', { class: 'row', style: { gap: '8px', justifyContent: 'center' } }, h('button', { class: 'btn', disabled: !s.hist.length || won, onclick: () => { s = B.sokoUndo(s); draw(); } }, icon('undo'), 'Fortryd'), h('button', { class: 'btn', onclick: () => go(st.level) }, icon('refresh'), 'Forfra'),
             won && st.level < B.SOKO.length - 1 ? h('button', { class: 'btn btn-primary', onclick: () => go(st.level + 1) }, 'Næste bane', icon('play')) : null),
-          h('div', { class: 'lb2-pad sk-pad' }, [['', 0, 0], ['▲', 0, -1], ['', 0, 0], ['◀', -1, 0], ['▼', 0, 1], ['▶', 1, 0]].map(([l, dx, dy]) => (l ? h('button', { class: 'bf-key', 'aria-label': { '▲': 'Op', '▼': 'Ned', '◀': 'Venstre', '▶': 'Højre' }[l], onclick: () => move(dx, dy) }, l) : h('span')))),
+          h('div', { class: 'lb2-pad ks-pad' }, [['', 0, 0], ['▲', 0, -1], ['', 0, 0], ['◀', -1, 0], ['▼', 0, 1], ['▶', 1, 0]].map(([l, dx, dy]) => (l ? h('button', { class: 'bf-key', 'aria-label': { '▲': 'Op', '▼': 'Ned', '◀': 'Venstre', '▶': 'Højre' }[l], onclick: () => move(dx, dy) }, l) : h('span')))),
           h('p', { class: 'faint', style: { fontSize: '13px', margin: 0, textAlign: 'center' } }, 'Skub alle kasserne ind på de markerede felter. Du kan kun skubbe – ikke trække. Piletaster, WASD og Z for fortryd.')));
     }
     document.removeEventListener('keydown', this._k);
@@ -281,7 +281,7 @@ export const gems = {
     function draw() {
       h(clear(root), null, h('div', { class: 'l3-card' },
         h('div', { class: 'l3-score' }, h('span', null, h('b', null, String(score)), ' point'), h('span', null, h('b', null, String(moves)), ' træk tilbage'), h('span', { class: 'faint' }, `rekord ${st.best}`)),
-        h('div', { class: 'gm-grid', style: { '--n': N } }, board.map((g, i) => h('button', { class: ['gm-cell', sel === i && 'is-sel', flash.has(i) && 'is-pop'], 'data-i': i, 'aria-label': `Juvel ${i + 1}`, onclick: () => click(i) }, GEM[g]))),
+        h('div', { class: 'jw-grid', style: { '--n': N } }, board.map((g, i) => h('button', { class: ['jw-cell', sel === i && 'is-sel', flash.has(i) && 'is-pop'], 'data-i': i, 'aria-label': `Juvel ${i + 1}`, onclick: () => click(i) }, GEM[g]))),
         over ? h('div', { class: 'l3-fb ok' }, `Slut! ${score} point${score >= st.best ? ' – ny rekord!' : ''}`, h('button', { class: 'btn btn-primary btn-sm', style: { marginLeft: '10px' }, onclick: reset }, 'Spil igen'))
           : h('p', { class: 'faint', style: { fontSize: '13px', margin: 0 } }, 'Byt om på to juveler ved siden af hinanden, så der kommer tre eller flere ens på række. 25 træk.')), lb.el);
     }

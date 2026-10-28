@@ -1048,3 +1048,89 @@ console.log('apps ok');
   assert.ok(typeof B.hasMove(B.gemBoard(8)) === 'boolean'); void g; void t;
   console.log('batch8 ok');
 }
+
+{ // Fem på stribe, Tændstikker, Støjmåler, Ordklasser, Talsystemer, Genveje, Klaver, Morgenrutine
+  const B = await import('../web/js/features/batch9.js');
+  const s = B.newGomoku([{ name: 'A' }, { name: 'B', ai: true }]);
+  for (let k = 0; k < 4; k++) { assert.ok(B.applyGomoku(s, 0, 'place', [7 * 15 + k])); assert.ok(B.applyGomoku(s, 1, 'place', [8 * 15 + k])); }
+  assert.ok(!B.applyGomoku(s, 1, 'place', [0]), 'not your turn'); assert.ok(!B.applyGomoku(s, 0, 'place', [7 * 15]), 'taken');
+  assert.ok(B.applyGomoku(s, 0, 'place', [7 * 15 + 4])); assert.equal(s.phase, 'over'); assert.equal(s.winner, 0); assert.equal(s.line.length, 5);
+  const t = B.newGomoku([{ name: 'A' }, { name: 'B', ai: true }]); [112, 113, 114].forEach((i) => { t.board[i] = 0; }); t.board[30] = 1; t.board[200] = 1; t.moves = 5; t.turn = 1;
+  const mv = B.aiGomoku(t, 1); assert.ok([111, 115].includes(mv.args[0]), 'the computer blocks an open three');
+  t.board[142 + 3] = 1; t.board[142 + 3] = -1; const w = B.newGomoku([{ name: 'A' }, { name: 'B' }]); [0, 1, 2, 3].forEach(i => { w.board[60 + i] = 1; }); w.moves = 8; w.turn = 1; assert.ok([59, 64].includes(B.aiGomoku(w, 1).args[0]), 'the computer wins when it can');
+  // Nim: the computer's move from a winning position leaves a losing one (normal play)
+  for (const rows of [[1, 3, 5, 7], [3, 4, 5], [2, 2, 1]]) { const m = B.nimMove(rows, false), r = rows.slice(); if (B.nimXor(rows)) { r[m.row] -= m.take; assert.equal(B.nimXor(r), 0, String(rows)); } }
+  let r = [0, 0, 5]; let m = B.nimMove(r, true); assert.deepEqual(m, { row: 2, take: 4 }, 'misère: leave one match'); r = [1, 0, 5]; m = B.nimMove(r, true); assert.deepEqual(m, { row: 2, take: 5 });
+  assert.ok(B.nimDone([0, 0])); assert.equal(B.level(new Float32Array(100)), 0); assert.ok(B.level(new Float32Array(100).fill(0.5)) > 80); assert.equal(B.noiseLabel(10)[1], 'Musestille'); assert.equal(B.noiseLabel(95)[1], 'Alt for højt!');
+  for (const sen of B.SENTENCES) assert.ok(B.parseSentence(sen).every(w => w.word && (w.tag === null || B.CLASSES[w.tag])), sen);
+  assert.equal(B.toBase(10, 2), '1010'); assert.equal(B.toBase(255, 16), 'FF'); assert.equal(B.fromBase('ff', 16), 255); assert.equal(B.fromBase('0b101', 2), 5); assert.equal(B.fromBase('12', 2), null); assert.equal(B.fromBase('', 10), null);
+  for (let k = 0; k < 40; k++) { const q = B.numTask(1 + (k % 4)); assert.equal(B.fromBase(q.answer, q.to), q.n); assert.equal(B.fromBase(q.ask, q.from), q.n); }
+  assert.deepEqual(B.bitValues('1011'), [8, 0, 2, 1]);
+  assert.ok(B.SHORTCUTS.length >= 20 && B.SHORTCUTS.every(x => x.length === 3));
+  assert.equal(B.combo({ key: 't', ctrlKey: true, shiftKey: true, altKey: false, metaKey: false }), 'Ctrl+Shift+T'); assert.equal(B.combo({ key: 'Control', ctrlKey: true }), null); assert.equal(B.combo({ key: 'F5' }), 'F5');
+  assert.equal(Math.round(B.freq(69)), 440); assert.equal(Math.round(B.freq(60)), 262); assert.equal(B.noteName(60), 'C4'); assert.equal(B.noteName(71), 'H4');
+  assert.equal(B.streak({ '2026-10-22': true, '2026-10-21': true, '2026-10-19': true }, '2026-10-23'), 2); assert.equal(B.streak({ '2026-10-23': true, '2026-10-22': true }, '2026-10-23'), 2); assert.equal(B.streak({}, '2026-10-23'), 0);
+  console.log('batch9 ok');
+}
+
+{ // Triktrak, 10.000, Sorteper, Del regningen, Navnemaskine, Skriveværksted, Cykelprøven, Kims leg
+  const B = await import('../web/js/features/batch10.js');
+  const s = B.newTriktrak([{ name: 'A' }, { name: 'B', ai: true }]);
+  assert.equal(s.points.reduce((a, v) => a + (v > 0 ? v : 0), 0), 15); assert.equal(s.points.reduce((a, v) => a + (v < 0 ? -v : 0), 0), 15); assert.equal(B.pips(s, 0), 167); assert.equal(B.pips(s, 1), 167);
+  assert.ok(B.applyTriktrak(s, 0, 'roll', [3, 1])); assert.equal(s.phase, 'move');
+  const lm = B.legalMoves(s, 0); assert.ok(lm.some(m => m.from === 7 && m.to === 4 && m.die === 3)); assert.ok(!lm.some(m => m.to === 0 && m.die === 3 && m.from === 3), 'no checker there');
+  assert.ok(B.applyTriktrak(s, 0, 'move', [7, 4, 3])); assert.ok(B.applyTriktrak(s, 0, 'move', [5, 4, 1])); assert.equal(s.points[4], 2, 'made the 5-point'); assert.equal(s.turn, 1);
+  assert.ok(!B.applyTriktrak(s, 0, 'roll'), 'not your turn');
+  // hitting and entering from the bar
+  const h = B.newTriktrak([{ name: 'A' }, { name: 'B' }]); h.points = Array(24).fill(0); h.points[10] = 1; h.points[8] = -1; h.points[20] = -14; h.points[0] = 14; h.phase = 'move'; h.left = [2]; h.turn = 0;
+  assert.ok(B.applyTriktrak(h, 0, 'move', [10, 8, 2])); assert.equal(h.bar[1], 1, 'black is hit');
+  h.turn = 1; h.phase = 'move'; h.left = [3, 5]; assert.ok(B.legalMoves(h, 1).every(m => m.from === 'bar'), 'must enter first');
+  // bearing off: higher die only moves the furthest checker
+  const o = B.newTriktrak([{ name: 'A' }, { name: 'B' }]); o.points = Array(24).fill(0); o.points[2] = 2; o.points[0] = 1; o.points[23] = -15; o.off = [12, 0]; o.phase = 'move'; o.left = [6]; o.turn = 0;
+  const om = B.legalMoves(o, 0); assert.deepEqual(om.map(m => `${m.from}>${m.to}`), ['2>off']);
+  // must use both dice when possible
+  const both = B.newTriktrak([{ name: 'A' }, { name: 'B' }]); both.phase = 'move'; both.left = [6, 5];
+  for (const q of B.sequences(both, 0, [6, 5])) assert.equal(q.moves.length, 2);
+  // the computer plays a whole game against itself without getting stuck
+  const g = B.newTriktrak([{ name: 'A', ai: true }, { name: 'B', ai: true }]); let n = 0;
+  while (g.phase !== 'over' && n++ < 3000) { const mv = B.aiTriktrak(g, g.turn); assert.ok(B.applyTriktrak(g, g.turn, mv.name, mv.args), `stuck at ${n}`); }
+  assert.equal(g.phase, 'over'); assert.equal(g.off[g.winner], 15);
+  // 10.000
+  assert.equal(B.scoreDice([1]), 100); assert.equal(B.scoreDice([5, 5]), 100); assert.equal(B.scoreDice([1, 1, 1]), 1000); assert.equal(B.scoreDice([4, 4, 4, 4]), 800); assert.equal(B.scoreDice([1, 2, 3, 4, 5, 6]), 1500);
+  assert.equal(B.scoreDice([2, 2, 3, 3, 6, 6]), 750); assert.equal(B.scoreDice([2, 1]), 0, 'a dead die makes the choice invalid'); assert.ok(!B.anyScore([2, 3, 4, 6, 2, 3])); assert.ok(B.anyScore([2, 2, 2, 3])); assert.ok(B.anyScore([2, 2, 3, 3, 4, 4]));
+  assert.deepEqual(B.bestKeep([1, 5, 2, 3, 4, 6]).pts, 1500); assert.equal(B.bestKeep([1, 1, 2, 3]).pts, 200);
+  const t = B.newTenk([{ name: 'A' }, { name: 'B', ai: true }]);
+  assert.ok(B.applyTenk(t, 0, 'roll', [[1, 5, 2, 3, 4, 4]])); assert.ok(!B.applyTenk(t, 0, 'keep', [[2]]), 'a 3 does not score'); assert.ok(B.applyTenk(t, 0, 'keep', [[0]])); assert.equal(t.turnPts, 100); assert.equal(t.free, 5);
+  assert.ok(B.applyTenk(t, 0, 'roll', [[2, 3, 4, 6, 2]])); assert.equal(t.phase, 'bust'); assert.ok(B.applyTenk(t, 0, 'next')); assert.equal(t.turn, 1); assert.equal(t.scores[0], 0);
+  assert.ok(B.applyTenk(t, 1, 'roll', [[1, 1, 1, 5, 2, 3]])); assert.ok(B.applyTenk(t, 1, 'bank', [[0, 1, 2, 3]])); assert.equal(t.scores[1], 1050); assert.equal(t.turn, 0);
+  const hot = B.newTenk([{ name: 'A' }, { name: 'B' }]); B.applyTenk(hot, 0, 'roll', [[1, 2, 3, 4, 5, 6]]); B.applyTenk(hot, 0, 'keep', [[0, 1, 2, 3, 4, 5]]); assert.equal(hot.free, 6, 'all six used: roll all again');
+  const ai = B.newTenk([{ name: 'A', ai: true }, { name: 'B', ai: true }]); n = 0; while (ai.phase !== 'over' && n++ < 5000) { const mv = B.aiTenk(ai, ai.turn); assert.ok(B.applyTenk(ai, ai.turn, mv.name, mv.args), `tenk stuck ${n} ${mv.name}`); } assert.equal(ai.phase, 'over');
+  // Sorteper
+  assert.equal(B.oldDeck().length, 51); assert.deepEqual(B.dropPairs(['H5', 'S5', 'D7', 'S11', 'H11']), ['D7', 'S11', 'H11']);
+  for (let k = 0; k < 20; k++) { const om2 = B.newOldmaid([{ name: 'A', ai: true }, { name: 'B', ai: true }, { name: 'C', ai: true }]); let m = 0; while (om2.phase !== 'over' && m++ < 2000) assert.ok(B.applyOldmaid(om2, om2.turn, 'draw')); assert.equal(om2.phase, 'over'); assert.ok(om2.hands[om2.loser].includes(B.OLD)); assert.equal(om2.hands.flat().length, 1); }
+  // Del regningen
+  let b = B.splitBill(600, 4, 10, 1); assert.equal(b.each, 165); b = B.splitBill(100, 3, 0, 10); assert.equal(b.rounded, 40); assert.ok(Math.abs(b.extra - 20) < 1e-9);
+  const su = B.settleUp({ Anna: 300, Bo: 0, Carl: 0 }); assert.equal(su.share, 100); assert.deepEqual(su.out.map(x => [x.from, x.to, x.amount]).sort(), [['Bo', 'Anna', 100], ['Carl', 'Anna', 100]]);
+  for (const k of Object.keys(B.NAME_PARTS)) assert.ok(B.makeName(k).length > 2);
+  assert.deepEqual(B.textCount('Hej med dig. Hvordan går det?'), { words: 6, chars: 29, sentences: 2 }); assert.equal(B.textCount('').words, 0);
+  assert.ok(B.BIKE.length >= 12 && B.BIKE.every(q => q[1].length >= 3 && q[2] >= 0 && q[2] < q[1].length && q[3]));
+  const kr = B.kimRound(8); assert.equal(kr.shown.length, 8); assert.ok(kr.shown.includes(kr.gone)); assert.equal(kr.options.length, 4); assert.ok(kr.options.includes(kr.gone)); assert.equal(kr.options.filter(x => kr.shown.includes(x)).length, 1);
+  console.log('batch10 ok');
+}
+
+{ // Prik til prik, Talrækker, Bogstaver, Tælleleg, Tegneserie, Emojigåder, Puslespil, Dagens plan, Talhukommelse, Ordsprog
+  const B = await import('../web/js/features/batch11.js');
+  for (const p of B.DOT_PICS) assert.ok(p.pts.length >= 8 && p.pts.every(([x, y]) => x >= 0 && x <= 100 && y >= 0 && y <= 100), p.name);
+  for (let lv = 1; lv <= 3; lv++) for (let k = 0; k < 40; k++) { const s = B.sequence(lv); assert.equal(s.shown.length, 5); assert.ok(Number.isInteger(s.answer) && s.rule); }
+  const r = (() => { let i = 0; return () => [0.1, 0.5][i++ % 2]; })(); const sq = B.sequence(1, () => 0); assert.deepEqual(sq.shown, [1, 3, 5, 7, 9]); assert.equal(sq.answer, 11); void r;
+  assert.equal(B.ALPHABET.length, 29); assert.ok(B.ALPHABET.every(l => B.LETTER_WORDS[l]?.[0].toUpperCase() === l));
+  const lr = B.letterRound(4); assert.equal(lr.options.length, 4); assert.ok(lr.options.includes(lr.target));
+  for (let k = 0; k < 30; k++) { const c = B.countRound(10); assert.equal(c.options.length, 4); assert.ok(c.options.includes(c.n)); assert.ok(c.options.every(o => o >= 1)); }
+  assert.equal(B.newComic().panels.length, 3); assert.deepEqual(B.wrapText('Hej med dig hvordan går det i dag', 12), ['Hej med dig', 'hvordan går', 'det i dag']);
+  assert.ok(B.EMOJI_PUZZLES.length >= 20); assert.ok(B.emojiMatch('solsikke', ' Solsikke ')); assert.ok(B.emojiMatch('idé', 'ide')); assert.ok(!B.emojiMatch('sol', 'måne'));
+  const j = B.jigsaw(3); assert.equal(j.length, 9); assert.ok(!B.jigsawDone(j)); assert.ok(B.jigsawDone([0, 1, 2, 3])); assert.deepEqual(B.jigsawSwap([1, 0, 2], 0, 1), [0, 1, 2]);
+  assert.equal(B.nowIndex(B.DEFAULT_PLAN, '12:30'), 3); assert.equal(B.nowIndex(B.DEFAULT_PLAN, '06:00'), -1); assert.equal(B.nowIndex(B.DEFAULT_PLAN, '23:00'), B.DEFAULT_PLAN.length - 1);
+  for (let n = 3; n < 12; n++) { const d = B.digits(n); assert.equal(d.length, n); assert.notEqual(d[0], '0'); }
+  for (let k = 0; k < 20; k++) { const q = B.proverbQ(); assert.equal(q.options.length, 4); assert.ok(q.options.includes(q.p[1])); assert.equal(new Set(q.options).size, 4); }
+  console.log('batch11 ok');
+}

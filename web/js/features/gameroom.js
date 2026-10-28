@@ -139,7 +139,7 @@ const CHALLENGES = [
   ['typing', 'Fart-tast (løb)', 'timer', 'typerace'], ['property', 'Ejendomskongen', 'home', 'property'],
   ['chess', 'Skak', 'crown', 'chess'], ['yatzy', 'Yatzy', 'cube', 'yatzy'], ['quizboard', 'Quizbrættet', 'grid', 'quizboard'],
   ['ludo', 'Ludo', 'cube', 'ludo'], ['otter', 'Otter', 'layers', 'otter'], ['battleship', 'Sænke slagskibe', 'target', 'battleship'], ['checkers', 'Dam', 'grid', 'checkers'],
-  ['kalaha', 'Kalaha', 'cube', 'kalaha'], ['reversi', 'Vend', 'refresh', 'reversi'], ['dots', 'Prikker og streger', 'grid', 'dots'], ['mill', 'Mølle', 'target', 'mill'], ['hearts', 'Hjerterfri', 'heart', 'hearts'], ['meyer', 'Meyer', 'cube', 'meyer'], ['ladders', 'Stigespil', 'trophy', 'ladders'],
+  ['kalaha', 'Kalaha', 'cube', 'kalaha'], ['reversi', 'Vend', 'refresh', 'reversi'], ['dots', 'Prikker og streger', 'grid', 'dots'], ['mill', 'Mølle', 'target', 'mill'], ['hearts', 'Hjerterfri', 'heart', 'hearts'], ['meyer', 'Meyer', 'cube', 'meyer'], ['ladders', 'Stigespil', 'trophy', 'ladders'], ['gomoku', 'Fem på stribe', 'grid', 'gomoku'], ['triktrak', 'Triktrak', 'cube', 'triktrak'], ['tenk', '10.000', 'cube', 'tenk'], ['oldmaid', 'Sorteper', 'layers', 'oldmaid'],
 ];
 export function challengeDialog(user) {
   let close;
