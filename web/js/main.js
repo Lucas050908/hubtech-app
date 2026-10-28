@@ -70,6 +70,9 @@ route('/apps/:app', { auth: true, focus: 1, appRoute: true });
 route('/apps/:app/:sub', { auth: true, focus: 1, appRoute: true });
 route('/apps/:app/:sub/:id', { auth: true, focus: 1, appRoute: true });
 route('/share', page(() => import('./pages/share.js')));
+route('/hubs', page(() => import('./pages/hubs.js')));
+route('/hub/:ticket', { public: true, open: true, render: (params) => import('./pages/hubs.js').then(m => m.renderArrive(params.ticket)), title: 'Forbinder …' });
+route('/hub-go/:rid', { public: true, open: true, render: (params) => import('./pages/hubs.js').then(m => m.renderGo(params.rid)), title: 'Forbinder …' });
 route('/settings', page(() => import('./pages/settings.js'), { app: 'settings' }));
 route('/settings/:tab', page(() => import('./pages/settings.js'), { app: 'settings' }));
 route('/404', { notFound: true });
@@ -107,6 +110,7 @@ async function onRoute({ path, route: r, params }) {
     if (!app || !app.page) return showInShell(notFound(), { title: 'Ikke fundet' }, seq);
     const acc = access(app, user);
     if (!acc.ok) return showInShell(lockedPage(app, acc), { title: app.name }, seq);
+    try { const k = 'hubtech.recentApps', cur = JSON.parse(localStorage.getItem(k) || '[]').filter(x => x !== app.id); localStorage.setItem(k, JSON.stringify([app.id, ...cur].slice(0, 12))); } catch { /* */ }
     const mod = await app.page();
     return showInShell(mod.default, { params, app }, seq);
   }

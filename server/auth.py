@@ -177,7 +177,17 @@ def public_user(row) -> dict:
         "lastLoginAt": row["last_login_at"],
         "onboarding": {"done": bool(row["onboarding_done"]), "step": row["onboarding_step"]},
         "admin": _is_admin(row),
+        "guestOf": _guest_of(row["id"]),
     }
+
+
+def _guest_of(uid):
+    """The connected HUBTECH this account came from (a visitor), or None."""
+    try:
+        r = db.one("SELECT l.id, l.name FROM hub_users hu JOIN hub_links l ON l.id = hu.link_id WHERE hu.user_id = ?", (uid,))
+        return {"id": r["id"], "name": r["name"]} if r else None
+    except Exception:
+        return None
 
 
 def _is_admin(row):

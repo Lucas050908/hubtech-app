@@ -136,6 +136,21 @@ export const GUIDES = [
     actions: [{ label: 'Åbn kurset', href: '#/learn/course/servicetekniker' }],
   },
   {
+    id: 'hub-link', category: 'platform', app: 'settings', icon: 'link', minutes: 2,
+    title: 'Forbind med en vens HUBTECH',
+    summary: 'Besøg hinanden, spil og del – med jeres egne konti.',
+    sections: [
+      { steps: [
+        { t: 'Gør din HUBTECH synlig', d: 'Din ven skal kunne nå din HUBTECH: på samme wifi, eller over internettet med Tailscale under Indstillinger → Om → Netværk.' },
+        { t: 'Lav en kode', d: 'Åbn Forbindelser i menuen til venstre og tryk “Lav en kode”. Send koden til din ven – den virker én gang i 24 timer.' },
+        { t: 'Din ven indsætter koden', d: 'Din ven åbner Forbindelser i sin HUBTECH, indsætter koden og trykker “Forbind”. Så er I forbundet begge veje.' },
+        { t: 'Besøg hinanden', d: 'Tryk “Besøg” – så er du logget ind på din vens HUBTECH med dit eget navn, uden en ny adgangskode. “Tilbage til min HUBTECH” i menuen bringer dig hjem.' },
+        { t: 'Du bestemmer', d: 'Gæster er almindelige brugere. Du kan slå besøg fra eller fjerne forbindelsen når som helst, og jeres data bliver hver især hjemme.' },
+      ] },
+    ],
+    actions: [{ label: 'Åbn Forbindelser', href: '#/hubs' }],
+  },
+  {
     id: 'world', category: 'platform', app: 'settings', icon: 'mountain', minutes: 2,
     title: 'Den levende verden og årstiderne',
     summary: 'Automatisk eller manuel årstid, tid på dagen, vejr og bevægelse.',

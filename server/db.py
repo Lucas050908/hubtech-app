@@ -435,6 +435,45 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
         created_at INTEGER NOT NULL
     );
     """,
+    """
+CREATE TABLE IF NOT EXISTS hub_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    remote_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    url TEXT NOT NULL,
+    secret TEXT NOT NULL,
+    allow_login INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL,
+    last_used INTEGER
+);
+CREATE TABLE IF NOT EXISTS hub_invites (
+    token_hash TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS hub_users (
+    link_id INTEGER NOT NULL REFERENCES hub_links(id) ON DELETE CASCADE,
+    remote_user INTEGER NOT NULL,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (link_id, remote_user)
+);
+CREATE TABLE IF NOT EXISTS hub_nonces (
+    nonce TEXT PRIMARY KEY,
+    expires_at INTEGER NOT NULL
+);
+    """,
+    """
+CREATE TABLE IF NOT EXISTS signup_invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT NOT NULL UNIQUE,
+    created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    uses_left INTEGER NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0
+);
+    """,
 ]
 
 

@@ -26,6 +26,7 @@ const MAIN_NAV = [
   { id: 'apps', label: 'Apps', icon: 'apps', href: '#/apps', match: (p) => p === '/apps' },
   { id: 'projects', label: 'Projekter', icon: 'folder', href: '#/projects', match: (p) => p.startsWith('/projects'), app: 'cursor' },
   { id: 'learn', label: 'Guides & Læring', icon: 'book', href: '#/learn', match: (p) => p.startsWith('/learn') },
+  { id: 'hubs', label: 'Forbindelser', icon: 'link', href: '#/hubs', match: (p) => p.startsWith('/hubs') },
   { id: 'settings', label: 'Indstillinger', icon: 'settings', href: '#/settings', match: (p) => p.startsWith('/settings') },
 ];
 
@@ -186,7 +187,7 @@ function renderUserChip() {
   if (!u) return;
   const btn = h('button', { class: 'user-chip', 'aria-haspopup': 'menu', 'aria-label': `Brugermenu for ${u.displayName}` },
     h('span', { class: 'avatar' }, ava(u.avatar)),
-    h('span', { class: 'user-chip-text' }, h('div', { class: 'user-chip-name' }, u.displayName), h('div', { class: 'user-chip-role' }, u.role === 'owner' ? 'Ejer' : 'Medlem')),
+    h('span', { class: 'user-chip-text' }, h('div', { class: 'user-chip-name' }, u.displayName), h('div', { class: 'user-chip-role' }, u.role === 'owner' ? 'Ejer' : u.guestOf ? `Gæst fra ${u.guestOf.name}` : 'Medlem')),
     icon('chevronDown'));
   btn.addEventListener('click', (e) => { e.stopPropagation(); toggleUserMenu(userChipWrap); });
   userChipWrap.appendChild(btn);
@@ -203,6 +204,7 @@ function toggleUserMenu(anchor) {
   openMenu = h('div', { class: 'menu glass glass-strong', role: 'menu' },
     item('user', 'Profil', () => { location.hash = '#/settings/profile'; }),
     item('settings', 'Indstillinger', () => { location.hash = '#/settings'; }),
+    store.get('user')?.guestOf ? item('home', `Tilbage til ${store.get('user').guestOf.name}`, () => import('../pages/hubs.js').then(m => m.visit({ id: store.get('user').guestOf.id, name: store.get('user').guestOf.name }))) : item('link', 'Forbind med en vens HUBTECH', () => { location.hash = '#/hubs'; }),
     item('sparkles', 'Start introduktion igen', () => { location.hash = '#/'; setTimeout(() => startOnboarding({ restart: true }), 350); }),
     item('help', 'Tastaturgenveje', showShortcuts),
     h('div', { class: 'menu-sep' }),

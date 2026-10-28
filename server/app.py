@@ -25,7 +25,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "server"
 
-from server import api, auth, autosync, backup, adminapp, avatars, ownerapp, games, shared, codelab, quizshow, byteforge_runner, calls, clientlog, config, db, minecraft, notify, social, studio  # noqa: E402
+from server import api, auth, autosync, backup, adminapp, avatars, ownerapp, games, hublink, shared, codelab, quizshow, byteforge_runner, calls, clientlog, config, db, minecraft, notify, social, studio  # noqa: E402
 
 social.install(api)
 studio.install(api)
@@ -37,6 +37,7 @@ clientlog.install(api)
 avatars.install(api)
 ownerapp.install(api)
 games.install(api)
+hublink.install(api)
 shared.install(api)
 codelab.install(api)
 quizshow.install(api)

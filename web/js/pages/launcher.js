@@ -2,7 +2,7 @@
 import { h, clear } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { store, setPref } from '../core/store.js';
-import { APPS, LEARN_APPS, access, isLearnApp, visible, suiteOf, entryApp } from '../core/registry.js';
+import { APPS, LEARN_APPS, SUITES, appById, access, isLearnApp, visible, suiteOf, entryApp } from '../core/registry.js';
 import { getIntegrations } from '../core/services.js';
 import { appCard } from '../features/widgets.js';
 import { segmented, toast } from '../core/ui.js';
@@ -62,10 +62,39 @@ export default {
     }
     draw();
 
+    // ── quick find: search every single app, the ones you used last, and the topics ──
+    const user0 = store.get('user');
+    const usable = (a) => a && a.page && visible(a, user0) && access(a, user0).ok;
+    const tile = (a) => h('a', { class: 'lx-tile', href: a.route, style: { '--app': a.hue }, title: a.tagline || a.name }, h('span', { class: 'lx-ico' }, icon(a.icon)), h('span', { class: 'lx-name' }, a.name));
+    const norm = (t) => String(t || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const found = h('div', { class: 'lx-found' });
+    const search = h('input', { class: 'input lx-search', type: 'search', placeholder: `Søg blandt ${APPS.filter(usable).length} apps – fx “skak”, “gloser” eller “indkøb”`, 'aria-label': 'Søg efter en app', autocomplete: 'off' });
+    const browse = h('div', { class: 'lx-browse' });
+    const doSearch = () => {
+      const q = norm(search.value.trim());
+      if (!q) { found.hidden = true; browse.hidden = false; grid.hidden = false; return; }
+      const hits = APPS.filter(usable).map(a => { const name = norm(a.name), hay = norm([a.tagline, a.description, ...(a.keywords || [])].join(' ')); const sc = name.startsWith(q) ? 3 : name.includes(q) ? 2 : hay.includes(q) ? 1 : 0; return { a, sc }; }).filter(x => x.sc).sort((x, y) => y.sc - x.sc || x.a.name.localeCompare(y.a.name, 'da'));
+      found.hidden = false; browse.hidden = true; grid.hidden = true;
+      h(clear(found), null, hits.length ? h('div', { class: 'lx-tiles' }, hits.slice(0, 40).map(x => tile(x.a))) : h('p', { class: 'faint' }, `Ingen apps matcher “${search.value.trim()}”.`));
+    };
+    search.addEventListener('input', doSearch);
+    search.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const first = found.querySelector('a'); if (first) location.hash = first.getAttribute('href'); } });
+    let recent = []; try { recent = JSON.parse(localStorage.getItem('hubtech.recentApps') || '[]').map(appById).filter(usable).slice(0, 8); } catch { /* */ }
+    const topics = SUITES.map(s => ({ s, apps: s.members.map(appById).filter(usable) })).filter(t => t.apps.length > 1);
+    h(browse, null,
+      recent.length ? h('section', { class: 'lx-sec' }, h('h2', { class: 'lx-h' }, icon('clock'), 'Senest brugt'), h('div', { class: 'lx-tiles' }, recent.map(tile))) : null,
+      h('section', { class: 'lx-sec' }, h('h2', { class: 'lx-h' }, icon('grid'), 'Emner'),
+        h('div', { class: 'lx-topics' }, topics.map(({ s, apps }) => h('details', { class: 'lx-topic', style: { '--app': s.hue } },
+          h('summary', null, h('span', { class: 'lx-ico' }, icon(s.icon)), h('span', { class: 'lx-tt' }, h('b', null, s.name), h('small', null, `${apps.length} apps`)), icon('chevronDown')),
+          h('div', { class: 'lx-tiles' }, apps.map(tile)))))),
+      h('h2', { class: 'lx-h', style: { marginTop: '8px' } }, icon('apps'), 'Alle apps'));
+    found.hidden = true;
+
     return h('div', { class: 'page' },
       h('div', { class: 'page-head' },
         h('div', null, h('div', { class: 'eyebrow' }, 'App-launcher'), h('h1', null, 'Apps'), h('p', null, 'Alle platformens apps samlet ét sted. Fastgør dem, du bruger mest, så de ligger i menuen.')),
         h('div', { class: 'page-head-actions' }, segmented(CATS, cat, (v) => { cat = v; draw(); }, { label: 'Kategori' }))),
+      h('div', { class: 'lx-searchbar' }, icon('search'), search), found, browse,
       h('a', { class: 'callout launcher-learn', href: '#/learn', style: { marginBottom: '18px' } }, icon('book'),
         h('div', null, h('strong', null, 'Al læring er samlet i Guides & Læring. '), `${LEARN_APPS.map(a => a.name).join(', ')} samt kurser og guides ligger dér – med faner øverst.`)),
       grid,

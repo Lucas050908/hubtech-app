@@ -87,13 +87,22 @@ export async function renderLogin() {
   });
   // focus the first field – but never steal focus from a field the person already went to
   requestAnimationFrame(() => { if (!form.contains(document.activeElement)) user.input.focus(); });
-  return authCard(form);
+  const card = authCard(form);
+  import('../pages/hubs.js').then(m => m.loginLinks()).then(el => { if (el) form.append(el); }).catch(() => {});
+  return card;
 }
 
 export async function renderSignup() {
   const status = await api.get('/api/auth/status');
   store.set('authStatus', status);
-  if (!status.signupAllowed) {
+  const inviteToken = query().get('invite');
+  let invite = null;
+  if (inviteToken) { try { invite = await api.get(`/api/auth/invite/${encodeURIComponent(inviteToken)}`); } catch (e) { invite = { error: e.message }; } }
+  if (invite?.error) {
+    return authCard(h('div', null, h('h1', { class: 'auth-title' }, 'Invitationen virker ikke'), h('p', { class: 'muted auth-sub' }, invite.error),
+      h('a', { class: 'btn btn-primary btn-block btn-lg', href: '#/login' }, 'Til login')));
+  }
+  if (!status.signupAllowed && !invite) {
     return authCard(h('div', null,
       h('h1', { class: 'auth-title' }, 'Oprettelse er lukket'),
       h('p', { class: 'muted auth-sub' }, 'Denne HUBTECH-installation tillader ikke, at nye brugere opretter sig selv. Bed platformens ejer om at oprette en konto til dig.'),
@@ -113,6 +122,7 @@ export async function renderSignup() {
   const form = h('form', { novalidate: true },
     h('h1', { class: 'auth-title' }, first ? 'Sæt dit univers op' : 'Opret din konto'),
     h('p', { class: 'muted auth-sub' }, first ? 'Du er den første bruger. Kontoen bliver platformens ejer og får adgang til lokale projekter og integrationer.' : 'Få dit eget arbejdsrum med apps, projekter og læring.'),
+    invite ? h('div', { class: 'callout ok', style: { marginBottom: '16px' } }, icon('sparkles'), h('div', null, h('strong', null, `${invite.by || 'Ejeren'} har inviteret dig til ${invite.hub}. `), 'Lav din konto herunder – så er I venner med det samme.')) : null,
     first ? h('div', { class: 'callout', style: { marginBottom: '16px' } }, icon('shield'), h('div', null, h('strong', null, 'Dine data bliver hos dig. '), 'Konti, fremdrift og indstillinger gemmes i en lokal database på denne maskine. Adgangskoder gemmes kun som scrypt-hash.')) : null,
     formErr, display, user, email, pass, pass2, submit,
     !first ? h('p', { class: 'auth-alt' }, 'Har du allerede en konto? ', h('a', { href: '#/login' }, 'Log ind')) : null);
@@ -127,7 +137,7 @@ export async function renderSignup() {
     if (bad) return;
     try {
       const { user: u } = await api.post('/api/auth/register', {
-        username: user.input.value.trim(), displayName: display.input.value.trim(), email: email.input.value.trim(), password: pass.input.value,
+        username: user.input.value.trim(), displayName: display.input.value.trim(), email: email.input.value.trim(), password: pass.input.value, ...(invite ? { invite: inviteToken } : {}),
       });
       toast(first ? 'Dit univers er klar' : 'Konto oprettet', { type: 'ok', text: `Velkommen, ${u.displayName}!` });
       await onAuthenticated(u);
@@ -141,7 +151,7 @@ export async function renderSignup() {
   return authCard(form);
 }
 
-async function onAuthenticated(user) {
+export async function onAuthenticated(user) {
   store.set('user', user);
   store.set('authStatus', { ...(store.get('authStatus') || {}), authenticated: true, firstRun: false, user });
   await loadUserData();

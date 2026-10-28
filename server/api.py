@@ -1,4 +1,5 @@
 """JSON API handlers. Each handler receives (req, params) and returns (status, payload[, headers])."""
+import hashlib
 import json
 import os
 import secrets
@@ -104,9 +105,54 @@ def auth_status(req, _):
     }
 
 
+def _invite_row(token):
+    if not isinstance(token, str) or not token or len(token) > 64:
+        return None
+    th = hashlib.sha256(token.encode()).hexdigest()
+    r = db.one("SELECT * FROM signup_invites WHERE token_hash = ?", (th,))
+    return r if r and r["uses_left"] > 0 and r["expires_at"] > db.now() else None
+
+
+def invite_info(req, params):
+    """The sign-up page asks: is this invitation still good, and who sent it?"""
+    r = _invite_row(params["token"])
+    if not r:
+        raise ApiError(404, "Invitationen er brugt eller udløbet. Bed om en ny.", "bad_invite")
+    by = db.one("SELECT display_name FROM users WHERE id = ?", (r["created_by"],))
+    from .hublink import hub_name
+    return 200, {"ok": True, "by": by["display_name"] if by else None, "hub": hub_name(), "expiresAt": r["expires_at"]}
+
+
+def invites_list(req, _):
+    require_owner(req)
+    rows = db.all_rows("SELECT * FROM signup_invites WHERE uses_left > 0 AND expires_at > ? ORDER BY created_at DESC", (db.now(),))
+    return 200, {"invites": [{"id": r["id"], "createdAt": r["created_at"], "expiresAt": r["expires_at"], "usesLeft": r["uses_left"], "used": r["used"]} for r in rows]}
+
+
+def invites_create(req, _):
+    u = require_owner(req)
+    b = req.json()
+    days = max(1, min(30, int(b.get("days") or 7))) if str(b.get("days") or "7").isdigit() else 7
+    uses = max(1, min(50, int(b.get("uses") or 1))) if str(b.get("uses") or "1").isdigit() else 1
+    token = secrets.token_urlsafe(16)
+    t = db.now()
+    cur = db.q("INSERT INTO signup_invites(token_hash, created_by, created_at, expires_at, uses_left) VALUES(?,?,?,?,?)",
+               (hashlib.sha256(token.encode()).hexdigest(), u["id"], t, t + days * 86400, uses))
+    return 201, {"id": cur.lastrowid, "token": token, "expiresAt": t + days * 86400, "usesLeft": uses}
+
+
+def invites_delete(req, params):
+    require_owner(req)
+    db.q("DELETE FROM signup_invites WHERE id = ?", (int(params["iid"]),))
+    return 200, {"ok": True}
+
+
 def register(req, _):
     b = req.json()
-    if not signup_allowed():
+    inv = _invite_row(b.get("invite")) if b.get("invite") else None
+    if b.get("invite") and not inv:
+        raise ApiError(403, "Invitationen er brugt eller udløbet. Bed om en ny.", "bad_invite")
+    if not signup_allowed() and not inv:
         raise ApiError(403, "Oprettelse af nye konti er slået fra. Bed platformens ejer om en invitation.",
                        "signup_closed")
     username = body_str(b, "username", 32, required=True)
@@ -134,6 +180,15 @@ def register(req, _):
                "SELECT ?,?,?,?, CASE WHEN EXISTS (SELECT 1 FROM users WHERE role = 'owner') THEN 'member' ELSE 'owner' END, ?",
                (username, display, email or None, auth.hash_password(password), db.now()))
     uid = cur.lastrowid
+    if inv:
+        db.q("UPDATE signup_invites SET uses_left = uses_left - 1, used = used + 1 WHERE id = ?", (inv["id"],))
+        try:   # the one who invited and the new person become friends straight away
+            a_, b_ = min(uid, inv["created_by"]), max(uid, inv["created_by"])
+            db.q("INSERT OR IGNORE INTO cm_friends(user_id, friend_id, status, requested_by, created_at) VALUES(?,?,'accepted',?,?)", (a_, b_, inv["created_by"], db.now()))
+        except Exception:
+            pass
+        from . import live
+        live.publish([inv["created_by"]], {"type": "notify", "kind": "invite", "title": f"{display} har sagt ja til din invitation", "text": "I er nu venner på HUBTECH.", "path": "/"})
     db.q("INSERT INTO prefs(user_id, data, updated_at) VALUES(?, '{}', ?)", (uid, db.now()))
     log_activity(uid, "hubtech", "account", "Konto oprettet", "Velkommen til HUBTECH")
     token = auth.create_session(uid, req.headers.get("User-Agent", ""))
@@ -1617,5 +1672,9 @@ ROUTES = [
     ("GET", r"/api/users", users_list),
     ("POST", r"/api/users", users_create),
     ("PUT", r"/api/users/signup", set_signup),
+    ("GET", r"/api/users/invites", invites_list),
+    ("POST", r"/api/users/invites", invites_create),
+    ("DELETE", r"/api/users/invites/(?P<iid>\d+)", invites_delete),
+    ("GET", r"/api/auth/invite/(?P<token>[A-Za-z0-9_-]{8,64})", invite_info),
 ]
 COMPILED = [(m, re.compile("^" + p + "$"), h) for m, p, h in ROUTES]
