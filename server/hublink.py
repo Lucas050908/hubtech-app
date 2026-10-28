@@ -346,6 +346,21 @@ def sso(req, _):
     return 200, {"user": auth.public_user(row), "from": r["name"]}, {"Set-Cookie": auth.cookie_header(token, secure=is_https(req))}
 
 
+def ping(req, params):
+    """Is the other HUBTECH switched on and reachable from here?"""
+    require_user(req)
+    r = db.one("SELECT * FROM hub_links WHERE id = ?", (_int(params["lid"]),))
+    if not r:
+        raise ApiError(404, "Forbindelsen findes ikke.", "not_found")
+    t0 = time.time()
+    try:
+        with urllib.request.urlopen(urllib.request.Request(r["url"] + "/api/health", headers={"Accept": "application/json"}), timeout=5) as resp:
+            ok = resp.status == 200
+    except (urllib.error.URLError, OSError, ValueError):
+        ok = False
+    return 200, {"online": ok, "ms": int((time.time() - t0) * 1000)}
+
+
 def public_list(req, _):
     """For the login page: which HUBTECHs people may come from (names only)."""
     rows = db.all_rows("SELECT remote_id, name, url FROM hub_links WHERE allow_login = 1 ORDER BY name COLLATE NOCASE")
@@ -364,6 +379,7 @@ ROUTES = [
     ("PATCH", r"/api/hublink/links/(?P<lid>\d+)", update_link),
     ("DELETE", r"/api/hublink/links/(?P<lid>\d+)", delete_link),
     ("POST", r"/api/hublink/links/(?P<lid>\d+)/go", go),
+    ("GET", r"/api/hublink/links/(?P<lid>\d+)/ping", ping),
     ("POST", r"/api/hublink/to/(?P<rid>[0-9a-f]{16})/go", go),
 ]
 

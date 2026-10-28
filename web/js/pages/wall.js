@@ -122,7 +122,9 @@ export default {
       draw();
     }
     let pending = null;
-    this._off = onShared('post', () => { if (!document.body.contains(feed)) return; clearTimeout(pending); pending = setTimeout(() => { if (!feed.querySelector('.wl-edit') && document.activeElement?.closest?.('.wl-comments') == null) load(); }, 400); });
+    // while someone is writing, wait and try again – never drop the update
+    const tryLoad = () => { if (!document.body.contains(feed)) return; if (feed.querySelector('.wl-edit') || document.activeElement?.closest?.('.wl-comments') || document.activeElement?.closest?.('.wl-compose')?.querySelector('textarea')?.value) { pending = setTimeout(tryLoad, 1500); return; } load(); };
+    this._off = onShared('post', () => { if (!document.body.contains(feed)) return; clearTimeout(pending); pending = setTimeout(tryLoad, 400); });
     feed.append(h('p', { class: 'faint' }, 'Henter …'));
     load();
     return h('div', { class: 'page wl-page', style: { '--app': app.hue } },

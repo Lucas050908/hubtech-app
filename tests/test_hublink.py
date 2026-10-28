@@ -68,6 +68,7 @@ class HubLinkTest(unittest.TestCase):
         self.assertEqual(bo.req("POST", "/api/hublink/join", {"code": inv["code"], "url": self.b})[1]["code"], "remote_error")
         links_a = anna.req("GET", "/api/hublink")[1]["links"]
         self.assertEqual([l["name"] for l in links_a], ["Bos HUBTECH"])
+        self.assertTrue(anna.req("GET", f"/api/hublink/links/{links_a[0]['id']}/ping")[1]["online"])
         # Anna visits B: a ticket, and B logs her in on a guest account
         st, g, _ = anna.req("POST", f"/api/hublink/links/{links_a[0]['id']}/go")
         self.assertEqual(st, 200, g)

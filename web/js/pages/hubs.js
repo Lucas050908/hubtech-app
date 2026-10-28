@@ -39,7 +39,7 @@ export default {
       if (!info.links.length) return h('div', { class: 'hl-empty' }, h('span', { class: 'hl-big' }, '🔗'), h('b', null, 'Ingen forbundne HUBTECH’er endnu'),
         h('span', { class: 'faint' }, info.owner ? 'Forbind med en vens HUBTECH herunder – så kan I besøge hinanden og spille sammen med jeres egne konti.' : 'Bed ejeren af denne HUBTECH om at forbinde den med en vens.'));
       return h('div', { class: 'hl-list' }, info.links.map(l => h('div', { class: ['hl-card', !l.allowLogin && 'is-off'] },
-        h('div', { class: 'hl-card-h' }, h('span', { class: 'hl-logo' }, '🏠'), h('div', null, h('b', null, l.name), h('span', { class: 'faint' }, hostOf(l.url)))),
+        h('div', { class: 'hl-card-h' }, h('span', { class: 'hl-logo' }, '🏠'), h('div', null, h('b', null, l.name), h('span', { class: 'faint' }, hostOf(l.url))), (() => { const dot = h('span', { class: 'hl-dot', title: 'Tjekker …' }); api.get(`/api/hublink/links/${l.id}/ping`).then(r => { dot.classList.add(r.online ? 'on' : 'off'); dot.title = r.online ? 'Online' : 'Kan ikke nås lige nu'; dot.textContent = r.online ? 'Online' : 'Ikke tændt'; }).catch(() => {}); return dot; })()),
         info.owner ? h('div', { class: 'faint hl-meta' }, `Brugt ${ago(l.lastUsed)}${l.visitors ? ` · ${l.visitors} ${l.visitors === 1 ? 'gæst' : 'gæster'} herfra har besøgt dig` : ''}`) : null,
         h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', alignItems: 'center' } },
           info.visitorFrom && info.visitorFrom.url === l.url ? h('button', { class: 'btn btn-primary', onclick: () => visit(l) }, icon('home'), 'Tilbage til min HUBTECH')

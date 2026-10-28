@@ -120,6 +120,24 @@ async def main():
             await p3.goto(b + "/#/login"); await p3.wait_for_selector(".hl-login", timeout=10000)
             check("login: “Log ind med …” for forbundne HUBTECH'er", "Olivers værksted" in await p3.inner_text(".hl-login"))
             await p3.screenshot(path=f"{OUT}/hubs-login.png")
+            # a big app group has an “Alle” button with a searchable grid
+            await pga.goto(a + "/#/apps/blocks"); await pga.wait_for_selector(".suite-all")
+            await pga.click(".suite-all"); await pga.fill(".modal input[type=search]", "juvel")
+            await pga.wait_for_timeout(200)
+            check("app-grupper: “Alle” viser gruppen som et gitter med søgning", await pga.locator(".modal .lx-tile").count() == 1 and "Juveler" in await pga.inner_text(".modal .lx-tile"))
+            await pga.screenshot(path=f"{OUT}/suite-all.png")
+            await pga.press(".modal input[type=search]", "Enter"); await pga.wait_for_url("**/apps/gems", timeout=5000)
+            # on a phone: no sideways scrolling on the new pages
+            cm = await browser.new_context(**p.devices["Pixel 7"]); pm = await cm.new_page()
+            await pm.goto(a + "/#/login"); await pm.fill("#login-user", "oliver"); await pm.fill("#login-pass", "Sommer2026xx!"); await pm.click("button[type=submit]")
+            await pm.wait_for_selector(".home-title", timeout=20000)
+            wide = {}
+            for route in ["/", "/hubs", "/apps"]:
+                await pm.goto(a + "/#" + route); await pm.wait_for_timeout(1500)
+                over = await pm.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+                if over > 2: wide[route] = over
+                await pm.screenshot(path=f"{OUT}/phone{route.replace('/', '-') or '-home'}.png", full_page=False)
+            check("telefon: ingen vandret rulning på hjem, forbindelser og apps", not wide, str(wide))
             await browser.close()
     finally:
         for proc in (pa, pb):
