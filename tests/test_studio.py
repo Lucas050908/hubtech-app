@@ -1,5 +1,6 @@
 """App-værkstedet: small web apps that run sandboxed inside HUBTECH."""
 import os
+os.environ.setdefault("HUBTECH_HUB_DISCOVERY", "0")   # test servers must not find (and connect to) each other
 import shutil
 import subprocess
 import sys

@@ -474,6 +474,15 @@ CREATE TABLE IF NOT EXISTS signup_invites (
     used INTEGER NOT NULL DEFAULT 0
 );
     """,
+    # HUBTECHs connect by themselves: how each connection came about, and the ones an owner removed (never re-added automatically)
+    """
+ALTER TABLE hub_links ADD COLUMN via TEXT;
+CREATE TABLE IF NOT EXISTS hub_blocked (
+    remote_id TEXT PRIMARY KEY,
+    name TEXT,
+    blocked_at INTEGER NOT NULL
+);
+    """,
 ]
 
 

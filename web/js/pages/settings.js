@@ -1101,7 +1101,7 @@ export function networkPanel() {
       h('p', { class: 'faint small' }, 'Dine venner kan skrive, ringe og bruge HUBTECH med dig – hjemme hos sig selv eller på mobilnet. HUBTECH sætter det op med Tailscale (gratis, krypteret, https). Alle skal logge ind, og computeren skal være tændt.'),
       wiz, h('div', { class: 'fw-actions' }, offBtn), manual,
       h('p', { class: 'faint small' }, 'Virker opkald ikke fra et bestemt netværk (fx skole- eller arbejds-wifi), så tilføj en TURN-server under Apps og opkald.')));
-    rows.push(h('div', { class: 'callout' }, icon('link'), h('div', null, h('strong', null, 'Har din ven sin egen HUBTECH? '), 'Forbind jeres HUBTECH’er, så kan I besøge hinanden med jeres egne konti. ', h('a', { href: '#/hubs' }, 'Åbn Forbindelser'))));
+    rows.push(h('div', { class: 'callout' }, icon('link'), h('div', null, h('strong', null, 'Alle HUBTECH’er forbindes af sig selv. '), 'Slår du adgang fra netværket eller Tailscale til, kan andre HUBTECH’er finde din – og I kan besøge hinanden med jeres egne konti. ', h('a', { href: '#/hubs' }, 'Åbn Forbindelser'))));
     if (n.open && n.signup === 'open') rows.push(h('div', { class: 'callout warn' }, icon('alert'), h('div', null, 'Tilmelding er åben (HUBTECH_SIGNUP=open). Alle på netværket kan oprette en konto. Overvej “first”.')));
     h(clear(body), null, rows);
   }

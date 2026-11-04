@@ -1,6 +1,7 @@
 """Admin app: only the owner and the people the owner gives access can use it."""
 import json
 import os
+os.environ.setdefault("HUBTECH_HUB_DISCOVERY", "0")   # test servers must not find (and connect to) each other
 import urllib.error
 import sys
 import unittest

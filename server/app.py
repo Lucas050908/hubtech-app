@@ -306,6 +306,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if self.command in MUTATING:
                 key, rate, burst = ((f"u{self.user['id']}", config.WRITE_RATE_USER, config.WRITE_RATE_USER // 2) if self.user
                                     else (f"ip{self.visitor_ip}", config.WRITE_RATE_ANON, config.WRITE_RATE_ANON // 2))
+                if not self.user and path.startswith("/api/hublink/peer/") and self.headers.get("X-Hub-From"):
+                    key, rate, burst = f"hub{self.headers.get('X-Hub-From')[:16]}", config.WRITE_RATE_USER, config.WRITE_RATE_USER // 2   # another HUBTECH: signed, checked in hublink
                 ok, wait = WRITE_LIMIT.allow(key, rate, max(10, burst))
                 if not ok:
                     return self.send_json(429, {"error": "For mange ændringer på kort tid. Vent et øjeblik, og prøv igen.", "code": "rate_limited"},
@@ -534,6 +536,7 @@ def main(argv=None):
     auth.purge_expired()
     threading.Thread(target=_housekeeping, daemon=True).start()
     threading.Thread(target=autosync.loop, name="hubtech-autosync", daemon=True).start()
+    hublink.start()     # HUBTECHs find each other and connect by themselves
     # make sure "finally" (which stops ByteForge) also runs when the process is terminated or the window is closed
     import signal
 

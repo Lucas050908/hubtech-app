@@ -144,7 +144,7 @@ export function hostedGame(opts) {
   }
   function drawOnline() {
     if (!room) {
-      h(clear(board), null, lobbyPanel({ game, multi: maxPlayers > 2, title: `Spil ${opts.title} online`, text: opts.onlineText || 'Invitér en af dem, der har HUBTECH. I spiller hver på jeres egen enhed.', onOpen: openRoom }), opts.rules?.() || null);
+      h(clear(board), null, lobbyPanel({ game, byLink: true, multi: maxPlayers > 2, title: `Spil ${opts.title} online`, text: opts.onlineText || 'Invitér en af dem, der har HUBTECH. I spiller hver på jeres egen enhed.', onOpen: openRoom }), opts.rules?.() || null);
       return;
     }
     if (room.state.blob && (room.status === 'playing' || room.status === 'done')) {
@@ -169,8 +169,19 @@ export function hostedGame(opts) {
       h('div', { class: 'row-actions', style: { marginTop: 0 } }, h('button', { class: 'btn btn-sm', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle spil'),
         !watcher ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { await roomApi.leave(room.id).catch(() => {}); openRoom(null); } }, icon('x'), 'Forlad') : null),
       h('div', { class: 'tr-lobby' }, room.players.map(p => person(p, h('span', { class: 'chip chip-ok' }, 'Klar'))), room.invited.map(p => person(p, h('span', { class: 'chip' }, 'Inviteret')))),
+      room.code && room.players.length < maxPlayers ? inviteLinks(room) : null,
       host ? [botSel ? h('div', { class: 'row-actions' }, botSel) : null, startBtn, h('p', { class: 'faint' }, 'Du er vært: spillet kører på din enhed, så hold HUBTECH åben, mens I spiller.')]
         : h('p', { class: 'muted' }, `${room.players.find(p => p.id === room.host)?.name || 'Værten'} starter spillet, når alle er klar.`)));
+  }
+
+  /** links to this table: one for people here, one for each connected HUBTECH */
+  function inviteLinks(r) {
+    const path = `/apps/${page}/online/${r.id}?k=${r.code}`, box = h('div', { class: 'stack gml-links', style: { gap: '6px' } });
+    const row = (label, url, icn) => h('div', { class: 'gml-link', dataset: { url } }, icon(icn), h('span', null, label), h('button', { class: 'btn btn-sm', onclick: () => import('./appkit.js').then(m => m.copy(url, 'Linket er kopieret – send det til din ven')) }, icon('copy'), 'Kopiér link'),
+      navigator.share ? h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Del', onclick: () => navigator.share({ title: `Spil ${opts.title} med mig`, url }).catch(() => {}) }, icon('share')) : null);
+    h(box, null, h('b', { style: { fontSize: '14px' } }, 'Invitér med et link'), row('Til nogen på denne HUBTECH', `${location.origin}/#${path}`, 'link'));
+    api.get('/api/hublink').then(hi => { for (const l of hi.links) box.append(row(`Til en ven på ${l.name}`, `${l.url}/#/hub-go/${hi.id}?next=${encodeURIComponent(path)}`, 'home')); }).catch(() => {});
+    return box;
   }
 
   /** buttons under the board: new game / leave */
@@ -188,7 +199,9 @@ export function hostedGame(opts) {
 
   const id = location.hash.split('?')[0].split('/')[4];
   if (mode === 'online') {
-    if (id) roomApi.get(id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r)))
+    const k = new URLSearchParams(location.hash.split('?')[1] || '').get('k');
+    if (id && k) roomApi.join(id, k).then(openRoom).catch((e) => { toast('Kunne ikke komme med i spillet', { type: 'warn', text: e.message }); openRoom(null); });
+    else if (id) roomApi.get(id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r)))
       .catch(() => roomApi.watch(id).then(openRoom).catch(() => openRoom(null)));
     else openRoom(null);
   } else if (st.game) { ctl = localCtl(); after(); } else setup();

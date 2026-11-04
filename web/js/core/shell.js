@@ -204,7 +204,7 @@ function toggleUserMenu(anchor) {
   openMenu = h('div', { class: 'menu glass glass-strong', role: 'menu' },
     item('user', 'Profil', () => { location.hash = '#/settings/profile'; }),
     item('settings', 'Indstillinger', () => { location.hash = '#/settings'; }),
-    store.get('user')?.guestOf ? item('home', `Tilbage til ${store.get('user').guestOf.name}`, () => import('../pages/hubs.js').then(m => m.visit({ id: store.get('user').guestOf.id, name: store.get('user').guestOf.name }))) : item('link', 'Forbind med en vens HUBTECH', () => { location.hash = '#/hubs'; }),
+    store.get('user')?.guestOf ? item('home', `Tilbage til ${store.get('user').guestOf.name}`, () => import('../pages/hubs.js').then(m => m.visit({ id: store.get('user').guestOf.id, name: store.get('user').guestOf.name }))) : item('link', 'Forbundne HUBTECH’er', () => { location.hash = '#/hubs'; }),
     item('sparkles', 'Start introduktion igen', () => { location.hash = '#/'; setTimeout(() => startOnboarding({ restart: true }), 350); }),
     item('help', 'Tastaturgenveje', showShortcuts),
     h('div', { class: 'menu-sep' }),

@@ -10,6 +10,7 @@ import base64
 import json
 import urllib.parse
 import os
+os.environ.setdefault("HUBTECH_HUB_DISCOVERY", "0")   # test servers must not find (and connect to) each other
 import sys
 
 from playwright.async_api import async_playwright
@@ -886,7 +887,7 @@ async def main():
         await mj.wait_for_selector(".cal-chip:has-text('Familie')", timeout=8000)
         check("delt kalender: invitation accepteres", True)
         cals = (await api(mj, "GET", "/api/calendars"))["data"]["calendars"]
-        r = await api(mj, "POST", f"/api/calendars/{cals[0]['id']}/events", {"event": {"title": "Farmors fødselsdag", "date": "2026-10-25", "allDay": True}})
+        r = await api(mj, "POST", f"/api/calendars/{cals[0]['id']}/events", {"event": {"title": "Farmors fødselsdag", "date": __import__("datetime").date.today().replace(day=15).isoformat(), "allDay": True}})
         await page.wait_for_timeout(2500)
         await page.goto(BASE + "/#/apps/calendar?r=1")
         await page.wait_for_selector(".cal-pill")

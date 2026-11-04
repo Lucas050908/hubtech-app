@@ -1,6 +1,7 @@
 """HUBTECH sets up Tailscale Funnel by itself (friends on other networks) – against a stand-in `tailscale`."""
 import json
 import os
+os.environ.setdefault("HUBTECH_HUB_DISCOVERY", "0")   # test servers must not find (and connect to) each other
 import sys
 import tempfile
 import time

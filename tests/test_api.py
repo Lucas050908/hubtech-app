@@ -7,6 +7,7 @@ import http.cookiejar
 import io
 import json
 import os
+os.environ.setdefault("HUBTECH_HUB_DISCOVERY", "0")   # test servers must not find (and connect to) each other
 import shutil
 import socket
 import sqlite3

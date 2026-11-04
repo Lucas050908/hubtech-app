@@ -4311,6 +4311,18 @@ i.os-paid { background: color-mix(in srgb, var(--app) 45%, #64748b); } i.os-int 
 .hl-visitor { border-color: var(--app); }
 .hl-arrive { display: grid; justify-items: center; gap: 10px; text-align: center; }
 .hl-login { display: grid; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; }
+.hl-auto { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--app) 9%, var(--glass)); border: 1px solid color-mix(in srgb, var(--app) 35%, var(--line)); }
+.hl-auto > div:nth-child(2) { display: grid; gap: 2px; flex: 1; min-width: 200px; } .hl-auto .faint { font-size: 13px; }
+.hl-auto.is-off { background: var(--glass); border-color: var(--line); }
+.hl-pulse { width: 12px; height: 12px; border-radius: 50%; background: #4ade80; flex: none; box-shadow: 0 0 0 0 rgba(74, 222, 128, .6); animation: hl-pulse 2s infinite; }
+.hl-pulse.is-off { background: var(--text-3, #64748b); animation: none; box-shadow: none; }
+@keyframes hl-pulse { 70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
+@media (prefers-reduced-motion: reduce) { .hl-pulse { animation: none; } }
+.hl-via { font-size: 12px; color: var(--text-2); }
+.hl-blocked { justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--glass); }
+.hl-manual > summary { cursor: pointer; list-style: none; } .hl-manual > summary::-webkit-details-marker { display: none; }
+.hl-manual > summary .panel-title::after { content: '▾'; margin-left: 8px; font-size: 14px; color: var(--text-2); }
+.hl-manual[open] > summary .panel-title::after { content: '▴'; }
 
 /* ── Apps: søg, senest brugt og emner ── */
 .lx-searchbar { position: relative; margin-bottom: 18px; }
@@ -4352,3 +4364,5 @@ i.os-paid { background: color-mix(in srgb, var(--app) 45%, #64748b); } i.os-int 
 .suite-all { position: sticky; left: 0; z-index: 1; background: var(--glass-strong); box-shadow: 6px 0 10px -6px rgba(0, 0, 0, .4); }
 .suite-grid { max-height: 60vh; overflow: auto; padding: 2px; }
 .lx-tile.is-on { border-color: var(--app); box-shadow: 0 0 0 2px var(--app); }
+.gml-links { margin: 10px 0; padding: 12px; border-radius: 14px; background: var(--glass); border: 1px dashed var(--line-2); }
+.gml-link { display: flex; align-items: center; gap: 8px; font-size: 14px; } .gml-link > span { flex: 1; } .gml-link > svg { width: 16px; height: 16px; color: var(--text-2); }

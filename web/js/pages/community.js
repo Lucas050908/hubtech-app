@@ -218,7 +218,7 @@ function buildApp(cm, params) {
       if (!content.length) content = [h('p', { class: 'faint' }, tab === 'incoming' ? 'Ingen ventende anmodninger.' : 'Du har ikke blokeret nogen.')];
       h(clear(body), null, h('div', { class: 'cm-addf' }, h('div', { class: 'cm-addf-in' }, add, sugg), h('button', { class: 'btn btn-primary', onclick: () => addFriend() }, icon('userPlus'), 'Tilføj ven')),
         h('div', { class: 'cm-pane-tools' }, seg), content,
-        tab === 'friends' ? h('a', { class: 'callout cm-hubhint', href: '#/hubs' }, icon('link'), h('div', null, h('strong', null, 'Har din ven sin egen HUBTECH – eller ingen? '), 'Under Forbindelser kan du invitere en ven med et link eller forbinde jeres HUBTECH’er, så I kan besøge hinanden.')) : null);
+        tab === 'friends' ? h('a', { class: 'callout cm-hubhint', href: '#/hubs' }, icon('link'), h('div', null, h('strong', null, 'Har din ven sin egen HUBTECH – eller ingen? '), 'Under Forbindelser kan du invitere en ven med et link – og andre HUBTECH’er forbindes af sig selv, så I kan besøge hinanden.')) : null);
     };
     const groupCall = async () => { const f = S.friends?.friends || []; const pick = await pickFriends(f); if (pick?.length) callGroup(pick); };
     h(clear(main), null, header('users', 'Venner', 'Stories, venner og anmodninger', [h('button', { class: 'btn btn-sm', onclick: groupCall }, icon('phone'), 'Gruppeopkald'), h('button', { class: 'btn btn-sm', onclick: () => sendSnap(cm) }, icon('camera'), 'Snap')]), h('div', { class: 'cm-scroll' }, strip.el, body));

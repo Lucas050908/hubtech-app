@@ -46,8 +46,9 @@ export default {
       const go = (l) => import('./hubs.js').then(m => m.visit(l));
       const body = u.guestOf ? [h('p', { class: 'muted', style: { margin: 0 } }, `Du er på besøg fra ${u.guestOf.name}.`), h('button', { class: 'btn btn-primary', onclick: () => go({ id: u.guestOf.id, name: u.guestOf.name }) }, icon('home'), 'Tilbage til min HUBTECH')]
         : [hi.links.length ? h('div', { class: 'home-hubs' }, hi.links.slice(0, 4).map(l => h('button', { class: 'home-hub', onclick: () => go(l) }, h('span', { class: 'hl-logo' }, '🏠'), h('span', null, h('b', null, l.name), h('small', { class: 'faint' }, 'Besøg med din egen konto')), icon('arrowRight')))) : null,
-          u.role === 'owner' ? h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, h('a', { class: 'btn btn-sm', href: '#/hubs' }, icon('user'), 'Invitér en ven'), h('a', { class: 'btn btn-sm', href: '#/hubs' }, icon('link'), hi.links.length ? 'Forbind med flere' : 'Forbind med en vens HUBTECH'))
-            : !hi.links.length ? h('p', { class: 'faint', style: { margin: 0 } }, 'Spil og del med de andre på denne HUBTECH under Sammen og Brætspil.') : null];
+          u.role === 'owner' ? h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } }, h('a', { class: 'btn btn-sm', href: '#/hubs' }, icon('user'), 'Invitér en ven'), h('a', { class: 'btn btn-sm', href: '#/hubs' }, icon('link'), hi.links.length ? `Alle forbindelser (${hi.links.length})` : 'Forbindelser'))
+            : null,
+          !hi.links.length ? h('p', { class: 'faint', style: { margin: 0 } }, 'Andre HUBTECH’er dukker op her af sig selv, når de bliver fundet. Indtil da: spil og del med de andre her under Sammen og Brætspil.') : null];
       h(together, null, panel('Sammen med andre', { link: { href: '#/hubs', label: 'Forbindelser' } }, h('div', { class: 'stack', style: { gap: '10px' } }, body)));
     }).catch(() => {});
 

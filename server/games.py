@@ -140,6 +140,7 @@ def _public(r):
     pub["invited"] = [cards.get(p) for p in r["invited"] if cards.get(p)]
     pub["state"] = {k: v for k, v in r["state"].items() if not k.startswith("_")}     # "_word" etc. stay on the server
     pub["watchers"] = len(r.get("watchers", ()))
+    pub["code"] = r.get("code")      # the room link: anyone with it may join (shown to people in the room only)
     return pub
 
 
@@ -208,7 +209,7 @@ def create(req, _):
         raise ApiError(400, "Ukendt spil.", "invalid")
     invite = [int(x) for x in (b.get("invite") or []) if str(x).isdigit()][:MULTI.get(game, 1)]
     invite = [x for x in invite if x != u["id"] and db.one("SELECT 1 FROM users WHERE id = ?", (x,)) and not _blocked(u["id"], x)]
-    if not invite:
+    if not invite and not (b.get("link") and game in HOSTED):
         raise ApiError(400, "Vælg hvem du vil spille med.", "invalid")
     with _lock:
         _sweep()
@@ -216,7 +217,7 @@ def create(req, _):
             raise ApiError(429, "Du har for mange åbne spil. Afslut nogle først.", "too_many")
         rid = "g" + secrets.token_hex(6)
         r = {"id": rid, "game": game, "host": u["id"], "players": [u["id"]], "invited": invite, "status": "invite", "created": int(time.time() * 1000),
-             "touched": time.time(), "version": 0, "state": _new_state(game)}
+             "touched": time.time(), "version": 0, "state": _new_state(game), "code": secrets.token_urlsafe(6)}
         _rooms[rid] = r
         _push(r)
         pub = _public(r)
@@ -241,13 +242,21 @@ def get_room(req, params):
 
 def join(req, params):
     u = require_user(req)
+    b = req.json()
+    code = str(b.get("code") or "") if isinstance(b, dict) else ""
     with _lock:
-        r = _get(params["id"], u["id"])
+        r = _rooms.get(params["id"])
+        by_link = bool(r and code and r.get("code") and secrets.compare_digest(code, r["code"]))
+        if not by_link:
+            r = _get(params["id"], u["id"])
+        elif _blocked(r["host"], u["id"]):
+            raise ApiError(404, "Spillet findes ikke længere.", "not_found")
         if u["id"] in r["players"]:
             return 200, {"room": _public(r)}
         if r["status"] == "done" or (r["game"] in DUEL and len(r["players"]) >= 2) or (r["game"] == "typing" and r["state"]["start"]) or (r["game"] == "draw" and len(r["players"]) >= 8) or (r["game"] in HOSTED and (len(r["players"]) >= HOSTED[r["game"]] or r["status"] == "playing")):
             raise ApiError(409, "Spillet er allerede i gang.", "started")
-        r["invited"].remove(u["id"])
+        if u["id"] in r["invited"]:
+            r["invited"].remove(u["id"])
         r["players"].append(u["id"])
         if r["game"] in DUEL:
             r["status"] = "playing"

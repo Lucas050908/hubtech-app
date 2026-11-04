@@ -1,6 +1,7 @@
 /**
- * Forbindelser – connect this HUBTECH with a friend's, and visit it with your own account.
- * Everyone sees the connected HUBTECHs and a “Besøg” button; the owner can invite, paste a code and manage them.
+ * Forbindelser – every HUBTECH connects with the others by itself (same wifi, Tailscale, friends of friends);
+ * this page is the overview. Everyone sees the connected HUBTECHs and a “Besøg” button; the owner can switch the
+ * automatic part off, remove connections and – only for a very first contact – use a code.
  */
 import { h, clear } from '../core/dom.js';
 import { icon } from '../core/icons.js';
@@ -12,11 +13,12 @@ import { copy } from '../features/appkit.js';
 
 const ago = (t) => { if (!t) return 'aldrig'; const s = Date.now() / 1000 - t; return s < 120 ? 'lige nu' : s < 3600 ? `${Math.round(s / 60)} min. siden` : s < 86400 ? `${Math.round(s / 3600)} timer siden` : `${Math.round(s / 86400)} dage siden`; };
 const hostOf = (u) => { try { return new URL(u).host; } catch { return u; } };
+const viaText = (v) => !v ? '' : v === 'lan' ? 'Fundet af sig selv på samme netværk' : v === 'tailscale' ? 'Fundet af sig selv over Tailscale' : v === 'code' ? 'Forbundet med en kode' : v.startsWith('ven:') ? `Forbundet gennem ${v.slice(4)}` : '';
 
 /** send the browser to the other HUBTECH, logged in as yourself */
-export async function visit(link, { remoteId } = {}) {
+export async function visit(link, { remoteId, next } = {}) {
   try {
-    const r = await api.post(remoteId ? `/api/hublink/to/${remoteId}/go` : `/api/hublink/links/${link.id}/go`, {});
+    const r = await api.post(remoteId ? `/api/hublink/to/${remoteId}/go` : `/api/hublink/links/${link.id}/go`, next ? { next } : {});
     toast(r.home ? 'Du går hjem igen …' : `Du går til ${r.name || link?.name || 'den anden HUBTECH'} …`, { type: 'info', ms: 1500 });
     location.href = r.url;
   } catch (e) { toast('Kunne ikke åbne den anden HUBTECH', { type: 'bad', text: e.message }); }
@@ -36,16 +38,17 @@ export default {
       draw();
     }
     function linksBox() {
-      if (!info.links.length) return h('div', { class: 'hl-empty' }, h('span', { class: 'hl-big' }, '🔗'), h('b', null, 'Ingen forbundne HUBTECH’er endnu'),
-        h('span', { class: 'faint' }, info.owner ? 'Forbind med en vens HUBTECH herunder – så kan I besøge hinanden og spille sammen med jeres egne konti.' : 'Bed ejeren af denne HUBTECH om at forbinde den med en vens.'));
+      if (!info.links.length) return h('div', { class: 'hl-empty' }, h('span', { class: 'hl-big' }, '📡'), h('b', null, info.auto ? 'Leder efter andre HUBTECH’er …' : 'Ingen forbundne HUBTECH’er endnu'),
+        h('span', { class: 'faint' }, info.auto ? 'HUBTECH’er på samme wifi eller samme Tailscale dukker op her af sig selv. Og så snart I er forbundet med én, kommer alle dens forbindelser med.' : 'Automatisk forbindelse er slået fra.'));
       return h('div', { class: 'hl-list' }, info.links.map(l => h('div', { class: ['hl-card', !l.allowLogin && 'is-off'] },
         h('div', { class: 'hl-card-h' }, h('span', { class: 'hl-logo' }, '🏠'), h('div', null, h('b', null, l.name), h('span', { class: 'faint' }, hostOf(l.url))), (() => { const dot = h('span', { class: 'hl-dot', title: 'Tjekker …' }); api.get(`/api/hublink/links/${l.id}/ping`).then(r => { dot.classList.add(r.online ? 'on' : 'off'); dot.title = r.online ? 'Online' : 'Kan ikke nås lige nu'; dot.textContent = r.online ? 'Online' : 'Ikke tændt'; }).catch(() => {}); return dot; })()),
+        viaText(l.via) ? h('div', { class: 'hl-via' }, viaText(l.via)) : null,
         info.owner ? h('div', { class: 'faint hl-meta' }, `Brugt ${ago(l.lastUsed)}${l.visitors ? ` · ${l.visitors} ${l.visitors === 1 ? 'gæst' : 'gæster'} herfra har besøgt dig` : ''}`) : null,
         h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', alignItems: 'center' } },
           info.visitorFrom && info.visitorFrom.url === l.url ? h('button', { class: 'btn btn-primary', onclick: () => visit(l) }, icon('home'), 'Tilbage til min HUBTECH')
             : info.visitorFrom ? null : h('button', { class: 'btn btn-primary', onclick: () => visit(l) }, icon('external'), `Besøg ${l.name}`),
           info.owner ? h('label', { class: 'row', style: { gap: '6px', alignItems: 'center' } }, switchControl({ checked: l.allowLogin, label: 'Folk derfra må komme på besøg', onChange: async (v) => { await api.patch(`/api/hublink/links/${l.id}`, { allowLogin: v }).catch(e => toast(e.message, { type: 'bad' })); load(); } }), h('span', { class: 'faint', style: { fontSize: '13px' } }, 'Må besøge mig')) : null,
-          info.owner ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { if (await confirmDialog({ title: `Fjern forbindelsen til ${l.name}?`, text: 'Gæster derfra bliver logget ud her. Du kan altid forbinde igen med en ny kode.', confirmLabel: 'Fjern', danger: true })) { await api.del(`/api/hublink/links/${l.id}`); toast('Forbindelsen er fjernet', { type: 'ok' }); load(); } } }, icon('trash'), 'Fjern') : null))));
+          info.owner ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { if (await confirmDialog({ title: `Fjern forbindelsen til ${l.name}?`, text: 'Gæster derfra bliver logget ud her, og den bliver ikke forbundet igen af sig selv. Du kan altid tillade den igen.', confirmLabel: 'Fjern', danger: true })) { await api.del(`/api/hublink/links/${l.id}`); toast('Forbindelsen er fjernet', { type: 'ok' }); load(); } } }, icon('trash'), 'Fjern') : null))));
     }
     function inviteBox() {
       const out = h('div');
@@ -115,26 +118,55 @@ export default {
       drawList();
       return h('div', { class: 'stack' }, h('div', { class: 'row' }, btn), out, list);
     }
+    function autoBox() {
+      const found = info.links.length;
+      if (!info.owner) return h('div', { class: 'hl-auto' }, h('span', { class: 'hl-pulse', 'aria-hidden': 'true' }), h('div', null, h('b', null, 'Alle HUBTECH’er forbindes af sig selv'), h('span', { class: 'faint' }, 'Du behøver ikke gøre noget – nye dukker op her, når de bliver fundet.')));
+      const search = h('button', { class: 'btn btn-sm' }, icon('refresh'), 'Søg nu');
+      search.addEventListener('click', busy(search, async () => {
+        try { await api.post('/api/hublink/sync', {}); await new Promise(r => setTimeout(r, 4000)); const before = found; await load(); toast(info.links.length > before ? `Fandt ${info.links.length - before} ny${info.links.length - before === 1 ? '' : 'e'}! 🎉` : 'Ingen nye lige nu', { type: info.links.length > before ? 'ok' : 'info', ms: 1800 }); }
+        catch (e) { toast(e.message, { type: 'bad' }); }
+      }));
+      const lonely = !(info.urls || []).length;
+      return h('div', { class: 'stack', style: { gap: '10px' } },
+        h('div', { class: ['hl-auto', !info.auto && 'is-off'] }, info.auto ? h('span', { class: 'hl-pulse', 'aria-hidden': 'true' }) : h('span', { class: 'hl-pulse is-off', 'aria-hidden': 'true' }),
+          h('div', null, h('b', null, info.auto ? 'Forbinder automatisk' : 'Automatisk forbindelse er slået fra'),
+            h('span', { class: 'faint' }, info.auto ? `Finder HUBTECH’er på samme wifi og Tailscale – og venners venner. ${info.lastSync ? `Sidst tjekket ${ago(info.lastSync)}.` : ''}` : 'Kun forbindelser, du selv laver med en kode.')),
+          h('div', { class: 'row', style: { gap: '8px', alignItems: 'center', marginLeft: 'auto' } }, info.auto ? search : null,
+            switchControl({ checked: info.auto, label: 'Forbind automatisk', onChange: async (v) => { try { await api.put('/api/hublink/auto', { on: v }); toast(v ? 'Automatisk forbindelse er slået til' : 'Automatisk forbindelse er slået fra', { type: 'ok', ms: 1500 }); load(); } catch (e) { toast(e.message, { type: 'bad' }); } } }))),
+        info.auto && lonely ? h('div', { class: 'callout warn' }, icon('alert'), h('div', null, 'Din HUBTECH kan kun ses fra denne computer, så andre på wifi’et kan ikke finde den. Slå adgang fra netværket til under ', h('a', { href: '#/settings/about' }, 'Indstillinger → Om → Netværk'), '.')) : null,
+        nameBox());
+    }
+    function blockedBox() {
+      if (!info.owner || !(info.blocked || []).length) return null;
+      return h('details', { class: 'hl-how' }, h('summary', null, `Fjernede forbindelser (${info.blocked.length})`),
+        h('p', { class: 'faint', style: { fontSize: '13px' } }, 'Dem bliver din HUBTECH ikke forbundet med af sig selv.'),
+        h('div', { class: 'stack', style: { gap: '6px' } }, info.blocked.map(b => h('div', { class: 'row hl-blocked' }, h('span', null, b.name || 'HUBTECH'),
+          h('button', { class: 'btn btn-sm', onclick: async () => { await api.del(`/api/hublink/blocked/${b.id}`).catch(e => toast(e.message, { type: 'bad' })); toast(`${b.name || 'Den'} må forbindes igen`, { type: 'ok', text: 'Det sker af sig selv om lidt.' }); load(); } }, 'Tillad igen')))));
+    }
     function draw() {
       h(clear(root), null,
         info.visitorFrom ? h('div', { class: 'callout hl-visitor' }, icon('home'), h('div', null, h('strong', null, `Du er på besøg fra ${info.visitorFrom.name}. `), 'Du kan spille, chatte og dele med folk her – dine egne ting ligger stadig på din egen HUBTECH.')) : null,
-        h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, icon('link'), 'Forbundne HUBTECH’er'), linksBox()),
+        h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, icon('link'), info.links.length ? `Forbundne HUBTECH’er (${info.links.length})` : 'Forbundne HUBTECH’er'), autoBox(), h('div', { style: { marginTop: '14px' } }, linksBox()), blockedBox()),
         info.owner ? h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, icon('user'), 'Invitér en ven, der ikke har en HUBTECH'),
           h('p', { class: 'faint', style: { marginTop: 0 } }, 'Din ven får sin egen konto her på din HUBTECH – og I bliver venner med det samme.'), friendBox()) : null,
-        info.owner ? h('section', { class: 'glass panel' }, h('h2', { class: 'panel-title' }, icon('plus'), 'Forbind med en vens HUBTECH'),
-          h('p', { class: 'faint', style: { marginTop: 0 } }, 'Det tager tre trin. Kun én af jer skal lave en kode.'),
-          step(1, 'Giv din HUBTECH et navn', null, nameBox()),
-          step(2, 'Lav en kode og send den til din ven', 'Din ven indsætter den i sin HUBTECH under Forbindelser.', inviteBox()),
-          step(3, '… eller indsæt den kode, du har fået', 'Har din ven sendt dig en kode? Indsæt den her.', joinBox()),
+        info.owner ? h('section', { class: 'glass panel' }, h('details', { class: 'hl-manual', open: !info.links.length && !info.auto },
+          h('summary', null, h('h2', { class: 'panel-title', style: { margin: 0 } }, icon('plus'), 'Kan I ikke finde hinanden?')),
+          h('p', { class: 'faint' }, 'Er din vens HUBTECH hverken på samme wifi, samme Tailscale eller forbundet med nogen, du kender? Så brug en kode – kun den allerførste gang. Bagefter kommer resten af sig selv.'),
+          step(1, 'Lav en kode og send den til din ven', 'Din ven indsætter den i sin HUBTECH under Forbindelser.', inviteBox()),
+          step(2, '… eller indsæt den kode, du har fået', 'Har din ven sendt dig en kode? Indsæt den her.', joinBox())),
           h('details', { class: 'hl-how' }, h('summary', null, 'Hvordan virker det – og er det sikkert?'),
-            h('ul', null, h('li', null, 'Når to HUBTECH’er er forbundet, kan folk på den ene besøge den anden med deres egen konto – uden at oprette en ny eller huske en adgangskode.'),
+            h('ul', null, h('li', null, 'Alle HUBTECH’er forbinder sig selv: på samme wifi og samme Tailscale finder de hinanden, og er din forbundet med én, bliver den også forbundet med alle dem, den anden kender.'),
+              h('li', null, 'Når to HUBTECH’er er forbundet, kan folk på den ene besøge den anden med deres egen konto – uden at oprette en ny eller huske en adgangskode.'),
               h('li', null, 'Intet flyttes mellem jer: dine data bliver på din HUBTECH, og deres bliver på deres.'),
               h('li', null, 'Besøgende bliver almindelige brugere – aldrig ejere eller administratorer – og du kan slå besøg fra eller fjerne forbindelsen når som helst.'),
-              h('li', null, 'Den anden HUBTECH skal kunne nås fra din: på samme wifi eller over internettet med Tailscale (Indstillinger → Om → Netværk).')))) : null);
+              h('li', null, 'Automatisk forbindelse sker aldrig fra internettet – kun på samme wifi, samme computer, samme Tailscale eller gennem en, I begge er forbundet med.'),
+              h('li', null, 'Fjerner du en forbindelse, bliver den ikke lavet igen af sig selv.')))) : null);
     }
     load();
+    // new ones show up by themselves while the page is open
+    const timer = setInterval(() => { if (!root.isConnected) { clearInterval(timer); return; } if (document.visibilityState === 'visible' && !root.contains(document.activeElement)) api.get('/api/hublink').then(n => { if (JSON.stringify(n.links.map(l => [l.id, l.name])) !== JSON.stringify(info.links.map(l => [l.id, l.name]))) { info = n; draw(); } }).catch(() => {}); }, 15000);
     return h('div', { class: 'page hubs-page' },
-      h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Fællesskab'), h('h1', null, 'Forbindelser'), h('p', { class: 'muted' }, 'Forbind din HUBTECH med dine venners – så kan I besøge hinanden, spille sammen og dele, med jeres egne konti.'))),
+      h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Fællesskab'), h('h1', null, 'Forbindelser'), h('p', { class: 'muted' }, 'Alle HUBTECH’er forbindes af sig selv – så kan I besøge hinanden, spille sammen og dele, med jeres egne konti.'))),
       root);
   },
 };
@@ -146,7 +178,7 @@ export async function renderArrive(ticket) {
     const r = await api.post('/api/hublink/sso', { ticket });
     const { onAuthenticated } = await import('../features/auth.js');
     toast(`Velkommen, ${r.user.displayName}!`, { type: 'ok', text: `Du er på besøg fra ${r.from}.` });
-    history.replaceState(null, '', '#/');
+    history.replaceState(null, '', r.next ? `#/login?next=${encodeURIComponent(r.next)}` : '#/');
     await onAuthenticated(r.user);
   } catch (e) {
     h(clear(box.firstChild), null, h('span', { class: 'hl-big' }, '😕'), h('h1', { class: 'auth-title' }, 'Det virkede ikke'), h('p', { class: 'muted' }, e.message),
@@ -157,9 +189,9 @@ export async function renderArrive(ticket) {
 
 /** #/hub-go/<id> – the login page of a connected HUBTECH sent you home to get a ticket */
 export async function renderGo(rid) {
-  if (!store.get('user')) { navigate(`/login?next=${encodeURIComponent(`/hub-go/${rid}`)}`, { replace: true }); return h('div'); }
+  if (!store.get('user')) { navigate(`/login?next=${encodeURIComponent(location.hash.slice(1))}`, { replace: true }); return h('div'); }
   const box = h('div', { class: 'auth-wrap page' }, h('div', { class: 'auth-card glass glass-strong hl-arrive' }, h('span', { class: 'hl-big' }, '🔗'), h('h1', { class: 'auth-title' }, 'Du sendes videre …')));
-  visit(null, { remoteId: rid });
+  visit(null, { remoteId: rid, next: new URLSearchParams(location.hash.split('?')[1] || '').get('next') || undefined });
   return box;
 }
 

@@ -15,8 +15,8 @@ export const roomApi = {
   players: () => api.get('/api/games/players').then(r => r.players),
   mine: () => api.get('/api/games/rooms').then(r => r.rooms),
   get: (id) => api.get(`/api/games/rooms/${id}`).then(r => r.room),
-  create: (game, invite) => api.post('/api/games/rooms', { game, invite }).then(r => r.room),
-  join: (id) => api.post(`/api/games/rooms/${id}/join`, {}).then(r => r.room),
+  create: (game, invite, extra = {}) => api.post('/api/games/rooms', { game, invite, ...extra }).then(r => r.room),
+  join: (id, code) => api.post(`/api/games/rooms/${id}/join`, code ? { code } : {}).then(r => r.room),
   leave: (id) => api.post(`/api/games/rooms/${id}/leave`, {}),
   move: (id, col, cell) => api.post(`/api/games/rooms/${id}/move`, col !== undefined ? { col } : { cell }).then(r => r.room),
   rematch: (id) => api.post(`/api/games/rooms/${id}/rematch`, {}).then(r => r.room),
@@ -45,7 +45,7 @@ export const person = (p, extra) => h('span', { class: 'gr-person' }, h('span', 
  * The "play with someone" panel: everyone on this HUBTECH (online first) + your open games and invites.
  * opts: { game, multi (several players), title, onOpen(room) }
  */
-export function lobbyPanel({ game, multi = false, title = 'Spil mod en anden', text, onOpen }) {
+export function lobbyPanel({ game, multi = false, title = 'Spil mod en anden', text, onOpen, byLink = false }) {
   const list = h('div', { class: 'gr-players' });
   const games = h('div', { class: 'gr-games' });
   const watching = h('div', { class: 'gr-games' });
@@ -112,7 +112,10 @@ export function lobbyPanel({ game, multi = false, title = 'Spil mod en anden', t
   drawLive();
   roomApi.players().then(p => { all = p; drawPlayers(); }).catch(e => list.append(h('p', { class: 'faint' }, e.message)));
   drawGames();
-  return panel(title, 'users', text ? h('p', { class: 'muted', style: { marginTop: 0 } }, text) : null, games, watching, search, list, h('div', { class: 'row-actions' }, go));
+  // an open table: anyone with the link may sit down – also friends on a connected HUBTECH
+  const linkBtn = byLink ? h('button', { class: 'btn', onclick: async () => { try { onOpen(await roomApi.create(game, [], { link: true })); } catch (e) { toast('Kunne ikke lave spillet', { type: 'bad', text: e.message }); } } }, icon('link'), 'Spil med et link') : null;
+  return panel(title, 'users', text ? h('p', { class: 'muted', style: { marginTop: 0 } }, text) : null, games, watching, search, list, h('div', { class: 'row-actions' }, linkBtn, go),
+    byLink ? h('p', { class: 'faint', style: { fontSize: '13px', margin: '6px 0 0' } }, '“Spil med et link” laver et bord, du kan sende til hvem som helst – også venner på en forbundet HUBTECH.') : null);
 }
 
 /** A small leaderboard table. */

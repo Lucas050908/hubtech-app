@@ -1,6 +1,7 @@
 """Notifications when HUBTECH is closed: ES256 signing for web push, the inbox, push subscriptions and mails."""
 import hashlib
 import os
+os.environ.setdefault("HUBTECH_HUB_DISCOVERY", "0")   # test servers must not find (and connect to) each other
 import socket
 import sys
 import threading
