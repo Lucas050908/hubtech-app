@@ -1,7 +1,8 @@
 /** Budget – income and expenses per month, by category, with fixed items you can copy to the next month. */
 import { h, clear } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { toast, segmented } from '../core/ui.js';
+import { toast, segmented, modal } from '../core/ui.js';
+import { saveBlob } from '../core/files.js';
 import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError, uid } from '../features/appkit.js';
@@ -24,11 +25,22 @@ export default {
     const tiles = h('div', { class: 'bd-tiles' });
     const bars = h('div', { class: 'bd-bars' });
     const list = h('div', { class: 'list' });
+    const carry = h('div');
+    const year = h('div', { class: 'bd-year' });
+    st.limits ||= {};
 
     const items = () => st.items.filter(i => i.month === month).sort((a, b) => (a.kind === b.kind ? b.amount - a.amount : a.kind === 'in' ? -1 : 1));
     function draw() {
       head.textContent = monthName(month);
       const its = items();
+      // a new month: offer last month's fixed items
+      const prevFixed = st.items.filter(i => i.month === shift(month, -1) && i.fixed);
+      const have = new Set(its.map(i => `${i.kind}|${i.cat}|${i.text}`));
+      const missing = prevFixed.filter(i => !have.has(`${i.kind}|${i.cat}|${i.text}`));
+      h(clear(carry), null, missing.length && its.length < prevFixed.length ? h('div', { class: 'callout bd-carry' }, icon('copy'),
+        h('div', null, h('strong', null, `${missing.length} faste ${missing.length === 1 ? 'post' : 'poster'} fra ${monthName(shift(month, -1))} mangler her. `), missing.slice(0, 4).map(i => i.text || i.cat).join(', ') + (missing.length > 4 ? ' …' : '')),
+        h('button', { class: 'btn btn-sm btn-primary', onclick: copyFixed }, 'Hent dem')) : null);
+      drawYear();
       const inc = its.filter(i => i.kind === 'in').reduce((a, i) => a + i.amount, 0);
       const out = its.filter(i => i.kind === 'out').reduce((a, i) => a + i.amount, 0);
       h(clear(tiles), null,
@@ -39,19 +51,66 @@ export default {
       its.filter(i => i.kind === 'out').forEach(i => { byCat[i.cat] = (byCat[i.cat] || 0) + i.amount; });
       const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
       const max = Math.max(1, ...cats.map(c => c[1]));
-      h(clear(bars), null, cats.length ? cats.map(([c, v]) => h('div', { class: 'bd-bar' }, h('span', null, c), h('div', { class: 'bd-track' }, h('i', { style: { width: `${v / max * 100}%` } })), h('b', null, kr(v)), h('small', { class: 'faint' }, out ? `${Math.round(v / out * 100)} %` : '')))
-        : h('p', { class: 'faint', style: { margin: 0 } }, 'Ingen udgifter denne måned.'));
+      for (const c of Object.keys(st.limits)) if (st.limits[c] && !(c in byCat)) cats.push([c, 0]);
+      const top = Math.max(1, ...cats.map(c => Math.max(c[1], st.limits[c[0]] || 0)));
+      h(clear(bars), null, cats.length ? cats.map(([c, v]) => {
+        const lim = st.limits[c] || 0, over = lim && v > lim;
+        return h('div', { class: ['bd-bar', over && 'is-over'] }, h('button', { type: 'button', class: 'bd-lim-btn', title: lim ? `Grænse ${kr(lim)} – tryk for at ændre` : 'Sæt en grænse for kategorien', onclick: () => setLimit(c) }, c),
+          h('div', { class: 'bd-track' }, h('i', { style: { width: `${v / top * 100}%` } }), lim ? h('span', { class: 'bd-lim', style: { left: `${Math.min(100, lim / top * 100)}%` }, title: `Grænse ${kr(lim)}` }) : null),
+          h('b', null, kr(v)), h('small', { class: over ? 'bd-over' : 'faint' }, lim ? (over ? `${kr(v - lim)} over` : `${kr(lim - v)} tilbage`) : out ? `${Math.round(v / out * 100)} %` : ''));
+      }) : h('p', { class: 'faint', style: { margin: 0 } }, 'Ingen udgifter denne måned.'),
+        cats.length ? h('p', { class: 'faint', style: { margin: '4px 0 0', fontSize: '12px' } }, 'Tryk på en kategori for at sætte en grænse pr. måned.') : null);
       clear(list);
       if (!its.length) list.append(h('p', { class: 'faint' }, 'Ingen poster endnu. Tilføj din løn og dine faste udgifter først.'));
       its.forEach(i => {
         const del = h('button', { class: 'icon-btn btn-sm', 'aria-label': `Slet ${i.text || i.cat}` }, icon('trash'));
-        del.addEventListener('click', () => { st.items = st.items.filter(x => x.id !== i.id); store.save(); draw(); });
-        list.append(h('div', { class: 'row' },
+        del.addEventListener('click', (e) => { e.stopPropagation(); const at = st.items.indexOf(i); st.items.splice(at, 1); store.save(); draw(); toast('Posten er slettet', { text: `${i.text || i.cat} · ${kr(i.amount)}`, action: { label: 'Fortryd', onClick: () => { st.items.splice(at, 0, i); store.save(); draw(); } } }); });
+        list.append(h('div', { class: 'row bd-row', role: 'button', tabindex: '0', title: 'Tryk for at rette', onclick: () => editItem(i), onkeydown: (e) => { if (e.key === 'Enter') editItem(i); } },
           h('span', { class: ['row-icon', i.kind === 'in' && 'solid'] }, icon(i.kind === 'in' ? 'download' : 'upload')),
           h('span', { class: 'row-main' }, h('div', { class: 'row-title' }, i.text || i.cat), h('div', { class: 'row-sub' }, `${i.cat}${i.fixed ? ' · fast' : ''}`)),
           h('b', { class: i.kind === 'in' ? 'bd-in' : 'bd-out' }, `${i.kind === 'in' ? '+' : '−'} ${kr(i.amount)}`), del));
       });
     }
+    function editItem(i) {
+      const a = h('input', { class: 'input', type: 'number', inputmode: 'decimal', min: 0, step: 'any', value: i.amount, 'aria-label': 'Beløb' });
+      const t = h('input', { class: 'input', value: i.text || '', maxlength: 60, 'aria-label': 'Tekst' });
+      const c = h('select', { class: 'select', 'aria-label': 'Kategori' }, CATS[i.kind].map(x => h('option', { value: x, selected: x === i.cat }, x)));
+      const f = h('input', { type: 'checkbox', checked: !!i.fixed });
+      const save = () => { const v = Math.round(Number(String(a.value).replace(',', '.')) * 100) / 100; if (!(v > 0)) { a.focus(); return; } Object.assign(i, { amount: v, text: t.value.trim(), cat: c.value, fixed: f.checked }); store.save(); m.close(); draw(); };
+      a.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+      const m = modal({ title: i.kind === 'in' ? 'Ret indtægt' : 'Ret udgift', label: 'Budget', size: 440,
+        body: h('div', { class: 'stack', style: { gap: '10px' } }, h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Beløb (kr.)'), a), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Tekst'), t), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Kategori'), c), h('label', { class: 'bd-fixed' }, f, h('span', null, 'Fast hver måned'))),
+        actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), h('button', { class: 'btn btn-primary', onclick: save }, 'Gem')] });
+      setTimeout(() => a.select(), 50);
+    }
+    function setLimit(c) {
+      const a = h('input', { class: 'input', type: 'number', inputmode: 'decimal', min: 0, step: 'any', value: st.limits[c] || '', placeholder: 'Ingen grænse', 'aria-label': 'Grænse pr. måned' });
+      const save = () => { const v = Math.round(Number(a.value) || 0); if (v > 0) st.limits[c] = v; else delete st.limits[c]; store.save(); m.close(); draw(); };
+      a.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+      const m = modal({ title: `Grænse for ${c}`, label: 'Budget', size: 400,
+        body: h('div', { class: 'stack', style: { gap: '10px' } }, h('p', { class: 'faint', style: { margin: 0 } }, 'Hvor meget vil du højst bruge på det om måneden? Søjlen viser en streg, og du kan se, hvad der er tilbage.'), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Kr. pr. måned'), a)),
+        actions: [st.limits[c] ? h('button', { class: 'btn btn-ghost', style: { marginRight: 'auto' }, onclick: () => { delete st.limits[c]; store.save(); m.close(); draw(); } }, 'Fjern grænsen') : null, h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), h('button', { class: 'btn btn-primary', onclick: save }, 'Gem')] });
+      setTimeout(() => a.focus(), 50);
+    }
+    // the last 12 months at a glance
+    function drawYear() {
+      const months = Array.from({ length: 12 }, (_, k) => shift(month, k - 11));
+      const sums = months.map(m => { const its = st.items.filter(i => i.month === m); return { m, inc: its.filter(i => i.kind === 'in').reduce((a, i) => a + i.amount, 0), out: its.filter(i => i.kind === 'out').reduce((a, i) => a + i.amount, 0) }; });
+      const used = sums.filter(x => x.inc || x.out);
+      const top = Math.max(1, ...sums.map(x => Math.max(x.inc, x.out)));
+      const avg = used.length ? used.reduce((a, x) => a + x.inc - x.out, 0) / used.length : 0;
+      h(clear(year), null, used.length < 2 ? h('p', { class: 'faint', style: { margin: 0 } }, 'Når du har lagt et par måneder ind, kan du se udviklingen her.') : [
+        h('div', { class: 'bd-yb-wrap', role: 'img', 'aria-label': `Indtægter og udgifter de sidste 12 måneder. I gennemsnit ${avg >= 0 ? 'tilbage' : 'underskud'} ${kr(Math.abs(avg))} om måneden.` },
+          sums.map(x => h('button', { type: 'button', class: ['bd-yb', x.m === month && 'is-cur'], title: `${monthName(x.m)}: ind ${kr(x.inc)}, ud ${kr(x.out)}`, onclick: () => { month = x.m; draw(); } },
+            h('span', { class: 'bd-yb-bars' }, h('i', { class: 'in', style: { height: x.inc ? `${Math.max(2, x.inc / top * 100)}%` : '0' } }), h('i', { class: 'out', style: { height: x.out ? `${Math.max(2, x.out / top * 100)}%` : '0' } })),
+            h('small', null, new Date(x.m + '-01T12:00:00').toLocaleDateString('da-DK', { month: 'short' }).replace('.', ''))))),
+        h('p', { class: 'faint', style: { margin: '8px 0 0', fontSize: '13px' } }, h('span', { class: 'bd-key in' }), ' Indtægter ', h('span', { class: 'bd-key out' }), ' Udgifter · ', `I gennemsnit ${avg >= 0 ? 'tilbage' : 'underskud'}: `, h('b', null, kr(Math.abs(avg))), ' om måneden')]);
+    }
+    const exportCsv = () => {
+      const rows = [['Måned', 'Type', 'Kategori', 'Tekst', 'Beløb', 'Fast']].concat([...st.items].sort((a, b) => a.month.localeCompare(b.month)).map(i => [i.month, i.kind === 'in' ? 'Indtægt' : 'Udgift', i.cat, i.text || '', String(i.amount).replace('.', ','), i.fixed ? 'ja' : '']));
+      const csv = '\ufeff' + rows.map(r => r.map(x => /[;"\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x).join(';')).join('\r\n');
+      saveBlob('Budget.csv', new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    };
     // add
     const amount = h('input', { class: 'input', type: 'number', inputmode: 'decimal', min: 0, step: 'any', placeholder: 'Beløb (kr.)', 'aria-label': 'Beløb' });
     const text = h('input', { class: 'input', placeholder: 'Tekst – fx Husleje', maxlength: 60, 'aria-label': 'Tekst' });
@@ -123,12 +182,14 @@ export default {
       panel(null, null,
         h('div', { class: 'bd-head' }, h('button', { class: 'icon-btn', 'aria-label': 'Forrige måned', onclick: () => { month = shift(month, -1); draw(); } }, icon('chevronLeft')), head,
           h('button', { class: 'icon-btn', 'aria-label': 'Næste måned', onclick: () => { month = shift(month, 1); draw(); } }, icon('chevronRight')),
-          h('button', { class: 'btn btn-sm', onclick: copyFixed, title: 'Kopiér poster markeret som faste fra måneden før' }, icon('copy'), 'Hent faste poster')),
-        tiles),
+          h('button', { class: 'btn btn-sm', onclick: copyFixed, title: 'Kopiér poster markeret som faste fra måneden før' }, icon('copy'), 'Hent faste poster'),
+          h('button', { class: 'btn btn-sm btn-ghost', onclick: exportCsv, title: 'Hent alle poster til Excel' }, icon('download'), 'Excel (CSV)')),
+        carry, tiles),
       h('div', { class: 'bd-layout' },
         panel('Tilføj', 'plus', kindSeg, h('div', { class: 'bd-form' }, amount, text, cat,
           h('label', { class: 'bd-fixed' }, fixed, h('span', null, 'Fast hver måned')), h('button', { class: 'btn btn-primary', onclick: add }, icon('plus'), 'Tilføj'))),
         panel('Hvad går pengene til?', 'chart', bars)),
+      panel('De sidste 12 måneder', 'chart', year),
       taxPanel,
       panel('Poster', 'list', list));
   },

@@ -10,6 +10,21 @@ import { store } from '../core/store.js';
 import { getState, saveState } from '../core/services.js';
 import { navigate } from '../core/router.js';
 import { isAndroidApp, scheduleReminders } from '../core/android.js';
+import { nextStart, iso, parseIso } from './calrecur.js';
+
+/** The next few reminder times of a repeating event, from yesterday on: [{ at, date }] */
+export function seriesReminders(e, now = Date.now(), n = 3) {
+  const out = [];
+  const y = new Date(now); y.setHours(0, 0, 0, 0); y.setDate(y.getDate() - 1);
+  let d = nextStart(e, iso(y));
+  while (d && out.length < n) {
+    const at = remindAt({ due: d, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
+    if (at) out.push({ at, date: d });
+    const nx = parseIso(d); nx.setDate(nx.getDate() + 1);
+    d = nextStart(e, iso(nx));
+  }
+  return out;
+}
 
 export const REMIND = {
   none: { label: 'Ingen påmindelse', short: '' },
@@ -95,6 +110,15 @@ async function checkNow() {
   if (!cal || !Array.isArray(cal.events)) return;
   let calChanged = false;
   for (const e of cal.events) {
+    if (e.repeat?.freq && e.remind && e.remind !== 'none') {   // repeating: every time, once
+      for (const r of seriesReminders(e, now)) {
+        if (r.at > now) break;
+        if (r.at <= (e.lastRemind || 0)) continue;
+        e.lastRemind = r.at; calChanged = true;
+        if (now - r.at < 24 * 3600000 && once(`event-${e.id}-${r.at}`)) fireEvent({ ...e, date: r.date });
+      }
+      continue;
+    }
     if (e.reminded || !e.remind || e.remind === 'none') continue;
     const at = e.remindAt ?? remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
     if (!at || at > now) continue;
@@ -118,6 +142,14 @@ export function upcoming(tasks = [], events = [], now = Date.now()) {
     out.push({ id: `task-${t.id}`, at, title: t.title || 'Opgave', text: `Deadline ${fmt(due)}`, path: '/apps/tasks' });
   }
   for (const e of events) {
+    if (e.repeat?.freq && e.remind && e.remind !== 'none') {
+      for (const r of seriesReminders(e, now, 6)) {
+        if (r.at <= now || r.at - now > 60 * 86400e3) continue;
+        const when = `${new Date(`${r.date}T00:00`).toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' })}${e.allDay ? '' : ` kl. ${e.start || ''}`}`;
+        out.push({ id: `event-${e.id}-${r.date}`, at: r.at, title: e.title || 'Aftale', text: `${when}${e.location ? ` · ${e.location}` : ''}`, path: '/apps/calendar' });
+      }
+      continue;
+    }
     if (e.reminded || !e.remind || e.remind === 'none') continue;
     const at = e.remindAt ?? remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
     if (!at || at <= now || at - now > 60 * 86400e3) continue;

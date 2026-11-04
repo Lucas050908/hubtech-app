@@ -8,6 +8,8 @@ import { toast, confirmDialog, stateBlock, modal, segmented } from '../core/ui.j
 import { saveBlob } from '../core/files.js';
 import { appById } from '../core/registry.js';
 import { appHero, heroBtn, heroGhost } from '../features/apphero.js';
+import { tagsOf, toggleLine, continueList } from '../features/notetext.js';
+const TRASH_DAYS = 30;
 
 const COLORS = [
   ['', 'Ingen farve'], ['#ffa63d', 'Rav'], ['#ff4f8b', 'Pink'], ['#22d3ee', 'Cyan'], ['#4ade80', 'Grøn'], ['#a78bfa', 'Violet'],
@@ -16,7 +18,7 @@ const LS_SEL = 'hubtech.notes.selected';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const words = (s) => (s.trim().match(/\S+/g) || []).length;
 
-let st = null, sel = null, onKey = null;
+let st = null, sel = null, onKey = null, mode = 'write';
 
 export default {
   title: 'Noter',
@@ -26,14 +28,18 @@ export default {
     try { st = (await getState('notes', { force: true })) || { notes: [] }; }
     catch (e) { return h('div', { class: 'page' }, stateBlock({ kind: 'error', icon: 'alert', title: 'Noterne kunne ikke hentes', text: e.message })); }
     if (!Array.isArray(st.notes)) st.notes = [];
+    const cutoff = Date.now() - TRASH_DAYS * 86400000;
+    if (st.notes.some(n => n.trashed && n.trashed < cutoff)) { st.notes = st.notes.filter(n => !(n.trashed && n.trashed < cutoff)); saveState('notes', st); }
+    let trashMode = false, tag = '';
+    const live = () => st.notes.filter(n => !n.trashed);
     try { sel = localStorage.getItem(LS_SEL); } catch { sel = null; }
     if (!st.notes.some(n => n.id === sel)) sel = sorted()[0]?.id || null;
 
     const v = { n: h('span'), pinned: h('span'), words: h('span'), last: h('span') };
     const stats = () => {
-      v.n.textContent = String(st.notes.length);
-      v.pinned.textContent = String(st.notes.filter(n => n.pinned).length);
-      v.words.textContent = st.notes.reduce((a, n) => a + words(n.title + ' ' + n.body), 0).toLocaleString('da-DK');
+      v.n.textContent = String(live().length);
+      v.pinned.textContent = String(live().filter(n => n.pinned).length);
+      v.words.textContent = live().reduce((a, n) => a + words(n.title + ' ' + n.body), 0).toLocaleString('da-DK');
       const last = Math.max(0, ...st.notes.map(n => n.updated || 0));
       v.last.textContent = last ? timeAgo(last / 1000) : '—';
     };
@@ -49,7 +55,7 @@ export default {
     };
 
     function sorted() {
-      return [...st.notes].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updated || 0) - (a.updated || 0));
+      return st.notes.filter(n => !!n.trashed === trashMode).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.updated || 0) - (a.updated || 0));
     }
     const q = { v: '' };
     const search = h('input', { class: 'input', type: 'search', placeholder: 'Søg i noter…', 'aria-label': 'Søg i noter' });
@@ -58,8 +64,10 @@ export default {
     const editor = h('div', { class: 'note-editor glass' });
 
     function newNote() {
+      if (trashMode) { trashMode = false; drawSideBits(); }
       const now = Date.now();
-      const n = { id: uid(), title: '', body: '', pinned: false, color: '', created: now, updated: now };
+      const n = { id: uid(), title: '', body: tag ? `\n\n#${tag}` : '', pinned: false, color: '', created: now, updated: now };
+      mode = 'write';
       st.notes.unshift(n);
       select(n.id);
       persist();
@@ -74,27 +82,90 @@ export default {
 
     function drawList() {
       clear(list);
-      const items = sorted().filter(n => !q.v || (n.title + ' ' + n.body).toLowerCase().includes(q.v));
+      const items = sorted().filter(n => (!q.v || (n.title + ' ' + n.body).toLowerCase().includes(q.v)) && (trashMode || !tag || tagsOf(n.body + ' ' + n.title).includes(tag)));
       if (!items.length) {
-        list.appendChild(h('p', { class: 'faint', style: { padding: '14px', fontSize: 'var(--fs-sm)' } }, q.v ? `Ingen noter matcher “${q.v}”.` : 'Ingen noter endnu.'));
+        list.appendChild(h('p', { class: 'faint', style: { padding: '14px', fontSize: 'var(--fs-sm)' } }, trashMode ? 'Papirkurven er tom.' : q.v ? `Ingen noter matcher “${q.v}”.` : tag ? `Ingen noter med #${tag}.` : 'Ingen noter endnu.'));
         return;
       }
       for (const n of items) {
-        const snippet = n.body.trim().split('\n').find(Boolean) || 'Tom note';
+        const snippet = (n.body.trim().split('\n').find(Boolean) || 'Tom note').replace(/^\s*(?:[-*]\s+)?\[ \]/, '☐').replace(/^\s*(?:[-*]\s+)?\[[xX]\]/, '☑');
         list.appendChild(h('button', { class: ['note-item', n.id === sel && 'is-active'], role: 'option', 'aria-selected': String(n.id === sel), style: { '--note': n.color || 'var(--line-2)' }, onclick: () => select(n.id) },
           h('div', { class: 'note-item-top' },
             h('b', null, n.title.trim() || 'Uden titel'),
             n.pinned ? h('span', { class: 'note-pin', html: svg('starFill'), 'aria-label': 'Fastgjort' }) : null),
           h('span', { class: 'note-snip' }, snippet),
-          h('span', { class: 'note-when' }, timeAgo((n.updated || n.created) / 1000))));
+          h('span', { class: 'note-when' }, trashMode ? `Slettet ${timeAgo(n.trashed / 1000)}` : timeAgo((n.updated || n.created) / 1000))));
       }
+    }
+    // tags and the wastebasket under the list
+    const sideBits = h('div', { class: 'note-sidebits' });
+    function drawSideBits() {
+      const tags = {};
+      for (const n of live()) for (const t of tagsOf(n.body + ' ' + n.title)) tags[t] = (tags[t] || 0) + 1;
+      const trashed = st.notes.length - live().length;
+      if (tag && !tags[tag]) tag = '';
+      h(clear(sideBits), null,
+        Object.keys(tags).length && !trashMode ? h('div', { class: 'note-tags', role: 'group', 'aria-label': 'Emner' }, Object.entries(tags).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([t, c]) =>
+          h('button', { type: 'button', class: ['chip', 'note-tag', t === tag && 'is-on'], 'aria-pressed': String(t === tag), onclick: () => { tag = t === tag ? '' : t; drawSideBits(); drawList(); } }, `#${t}`, h('small', null, String(c))))) : null,
+        trashed || trashMode ? h('button', { type: 'button', class: ['btn', 'btn-sm', 'btn-ghost', 'note-trash-btn', trashMode && 'is-on'], onclick: () => { trashMode = !trashMode; tag = ''; drawSideBits(); select(sorted()[0]?.id || null); } },
+          icon(trashMode ? 'chevronLeft' : 'trash'), trashMode ? 'Tilbage til noterne' : `Papirkurv (${trashed})`) : null,
+        trashMode && trashed ? h('button', { type: 'button', class: 'btn btn-sm btn-ghost', style: { color: 'var(--bad)' }, onclick: async () => {
+          if (!await confirmDialog({ title: 'Tøm papirkurven?', text: `${trashed} ${trashed === 1 ? 'note' : 'noter'} slettes for altid.`, confirmLabel: 'Tøm', danger: true })) return;
+          st.notes = live(); persist(); drawSideBits(); select(null);
+        } }, 'Tøm papirkurven') : null);
+    }
+    function trash(n) {
+      n.trashed = Date.now(); persist();
+      select(sorted()[0]?.id || null); drawSideBits();
+      toast('Noten er lagt i papirkurven', { text: n.title || 'Uden titel', action: { label: 'Fortryd', onClick: () => { delete n.trashed; persist(); select(n.id); drawSideBits(); } } });
+    }
+    // read mode: headings, bullets, clickable checkboxes, links and tags
+    function rendered(n, onChange) {
+      const out = h('div', { class: 'note-view' });
+      const inline = (text) => {
+        const parts = []; let last = 0;
+        const rx = /(https?:\/\/[^\s<]+)|(^|\s)#([\p{L}\p{N}_-]{2,30})|\*\*([^*]+)\*\*/gu;
+        let m;
+        while ((m = rx.exec(text))) {
+          parts.push(text.slice(last, m.index));
+          if (m[1]) parts.push(h('a', { href: m[1], target: '_blank', rel: 'noopener noreferrer' }, m[1]));
+          else if (m[3]) parts.push(m[2], h('button', { type: 'button', class: 'chip note-tag', onclick: () => { tag = m[3].toLowerCase(); drawSideBits(); drawList(); } }, `#${m[3]}`));
+          else parts.push(h('b', null, m[4]));
+          last = m.index + m[0].length;
+        }
+        parts.push(text.slice(last));
+        return parts;
+      };
+      const lines = String(n.body || '').split('\n');
+      let ul = null;
+      lines.forEach((l, i) => {
+        const ck = /^(\s*)(?:[-*]\s+)?\[( |x|X)\]\s?(.*)$/.exec(l), bl = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(l), hd = /^(#{1,3})\s+(.*)$/.exec(l);
+        if (ck) {
+          ul = null;
+          out.append(h('label', { class: ['note-ck', ck[2] !== ' ' && 'is-done'] }, h('input', { type: 'checkbox', checked: ck[2] !== ' ', onchange: () => { n.body = toggleLine(n.body, i); onChange(); } }), h('span', null, ...inline(ck[3]))));
+        } else if (hd) { ul = null; out.append(h(`h${hd[1].length + 1}`, null, ...inline(hd[2]))); }
+        else if (bl) { if (!ul) { ul = h('ul'); out.append(ul); } ul.append(h('li', null, ...inline(bl[1]))); }
+        else { ul = null; out.append(l.trim() ? h('p', null, ...inline(l)) : h('div', { class: 'note-gap' })); }
+      });
+      if (!n.body.trim()) out.append(h('p', { class: 'faint' }, 'Noten er tom – skift til “Skriv”.'));
+      return out;
     }
 
     function drawEditor() {
       clear(editor);
       const n = st.notes.find(x => x.id === sel);
       if (!n) {
-        editor.appendChild(stateBlock({ app: app.hue, icon: 'note', title: st.notes.length ? 'Vælg en note' : 'Skriv din første note', text: 'Idéer, mødenoter, huskelister – noterne gemmes automatisk på din konto.', actions: [h('button', { class: 'btn app-solid', onclick: newNote }, icon('plus'), 'Ny note')] }));
+        editor.appendChild(trashMode ? stateBlock({ app: app.hue, icon: 'trash', title: 'Papirkurven', text: `Slettede noter ligger her i ${TRASH_DAYS} dage, så du kan fortryde.` })
+          : stateBlock({ app: app.hue, icon: 'note', title: live().length ? 'Vælg en note' : 'Skriv din første note', text: 'Idéer, mødenoter, huskelister – noterne gemmes automatisk på din konto. Skriv #emne for at samle noter, og [ ] for en tjekliste.', actions: [h('button', { class: 'btn app-solid', onclick: newNote }, icon('plus'), 'Ny note')] }));
+        return;
+      }
+      if (n.trashed) {
+        editor.style.setProperty('--note', n.color || 'var(--app)');
+        editor.append(h('div', { class: 'callout warn' }, icon('trash'), h('div', null, h('strong', null, 'Noten ligger i papirkurven. '), `Den slettes for altid ${new Date(n.trashed + TRASH_DAYS * 86400000).toLocaleDateString('da-DK', { day: 'numeric', month: 'long' })}.`),
+          h('div', { class: 'row', style: { gap: '8px', marginLeft: 'auto' } },
+            h('button', { class: 'btn btn-sm btn-primary', onclick: () => { delete n.trashed; persist(); trashMode = false; drawSideBits(); select(n.id); toast('Noten er gendannet', { type: 'ok' }); } }, icon('refresh'), 'Gendan'),
+            h('button', { class: 'btn btn-sm btn-ghost', style: { color: 'var(--bad)' }, onclick: async () => { if (!await confirmDialog({ title: 'Slet for altid?', text: `“${n.title || 'Uden titel'}” kan ikke gendannes bagefter.`, confirmLabel: 'Slet', danger: true })) return; st.notes = st.notes.filter(x => x !== n); persist(); drawSideBits(); select(sorted()[0]?.id || null); } }, 'Slet for altid'))),
+          h('h2', { class: 'note-title' }, n.title || 'Uden titel'), rendered(n, () => {}));
         return;
       }
       const touch = () => { n.updated = Date.now(); persist(); };
@@ -103,27 +174,45 @@ export default {
       const count = h('span', { class: 'faint' }, `${words(n.body)} ord`);
       const relist = debounce(drawList, 400);
       titleIn.addEventListener('input', () => { n.title = titleIn.value; touch(); relist(); });
-      body.addEventListener('input', () => { n.body = body.value; count.textContent = `${words(n.body)} ord`; touch(); relist(); });
+      const retag = debounce(drawSideBits, 800);
+      body.addEventListener('input', () => { n.body = body.value; count.textContent = `${words(n.body)} ord`; touch(); relist(); retag(); });
+      body.addEventListener('keydown', (e) => {   // Enter keeps a list or checklist going; Enter on an empty bullet ends it
+        if (e.key !== 'Enter' || e.shiftKey || e.isComposing || body.selectionStart !== body.selectionEnd) return;
+        const r = continueList(body.value, body.selectionStart);
+        if (!r) return;
+        e.preventDefault();
+        if (r.insert) body.setRangeText(r.insert, body.selectionStart, body.selectionStart, 'end');
+        else body.setRangeText('', r.clear[0], r.clear[1], 'end');
+        body.dispatchEvent(new Event('input'));
+      });
+      const insertCheck = () => {
+        mode = 'write';
+        const at = body.selectionStart ?? body.value.length, ls = body.value.lastIndexOf('\n', at - 1) + 1;
+        if (/^\s*(?:[-*]\s+)?\[[ xX]\]/.test(body.value.slice(ls))) { body.focus(); return; }
+        body.setRangeText('[ ] ', ls, ls, 'end'); body.focus(); body.dispatchEvent(new Event('input'));
+      };
+      const view = rendered(n, () => { touch(); drawList(); drawEditor(); });
+      const modeSeg = segmented([{ value: 'write', label: 'Skriv', icon: 'edit' }, { value: 'read', label: 'Vis', icon: 'eye' }], mode, (x) => { mode = x; drawEditor(); }, { label: 'Visning' });
       const pin = h('button', { class: 'icon-btn', 'aria-pressed': String(!!n.pinned), 'aria-label': n.pinned ? 'Frigør' : 'Fastgør', title: n.pinned ? 'Frigør' : 'Fastgør øverst', html: svg(n.pinned ? 'starFill' : 'star'), style: { color: n.pinned ? 'var(--warn)' : null } });
       pin.addEventListener('click', () => { n.pinned = !n.pinned; touch(); drawList(); drawEditor(); });
       const swatches = h('div', { class: 'note-swatches', role: 'group', 'aria-label': 'Farve' }, COLORS.map(([c, l]) => h('button', {
         class: 'note-swatch', 'aria-label': l, title: l, 'aria-pressed': String((n.color || '') === c), style: { '--sw': c || 'transparent' },
         onclick: () => { n.color = c; touch(); drawList(); drawEditor(); },
       })));
-      const del = h('button', { class: 'icon-btn', 'aria-label': 'Slet note', title: 'Slet', html: svg('trash') });
-      del.addEventListener('click', async () => {
-        if ((n.title || n.body) && !await confirmDialog({ title: 'Slet note?', text: `“${n.title || 'Uden titel'}” slettes permanent.`, confirmLabel: 'Slet', danger: true })) return;
-        st.notes = st.notes.filter(x => x !== n); persist();
-        select(sorted()[0]?.id || null);
+      const del = h('button', { class: 'icon-btn', 'aria-label': 'Læg i papirkurven', title: 'Slet (kan fortrydes)', html: svg('trash') });
+      del.addEventListener('click', () => {
+        if (!n.title.trim() && !n.body.trim()) { st.notes = st.notes.filter(x => x !== n); persist(); select(sorted()[0]?.id || null); return; }
+        trash(n);
       });
       const copy = h('button', { class: 'icon-btn', 'aria-label': 'Kopiér tekst', title: 'Kopiér', html: svg('copy') });
       copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText((n.title ? n.title + '\n\n' : '') + n.body); toast('Kopieret', { type: 'ok', ms: 1200 }); } catch { toast('Kunne ikke kopiere', { type: 'bad' }); } });
       editor.style.setProperty('--note', n.color || 'var(--app)');
       editor.append(
-        h('div', { class: 'note-toolbar' }, swatches, h('span', { style: { flex: 1 } }), pin, copy,
+        h('div', { class: 'note-toolbar' }, swatches, h('span', { style: { flex: 1 } }), modeSeg,
+          h('button', { class: 'icon-btn', 'aria-label': 'Tjekliste-punkt', title: 'Tjekliste-punkt ([ ])', onclick: insertCheck }, icon('checkCircle')), pin, copy,
           h('button', { class: 'icon-btn', 'aria-label': 'Del noten i Fællesskab', title: 'Del i en chat', onclick: () => import('../features/sharechat.js').then(x => x.shareToChat({ kind: 'note', title: n.title || 'Note', body: String(n.body || '').slice(0, 3000) })), html: svg('share') }),
           h('button', { class: 'icon-btn', 'aria-label': 'Print eller hent som PDF', title: 'Print / PDF', onclick: () => printDialog(n), html: svg('file') }), del),
-        titleIn, body,
+        titleIn, mode === 'read' ? view : body,
         h('div', { class: 'note-foot' }, count, h('span', null, '·'), h('span', { class: 'faint' }, `Oprettet ${new Date(n.created).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' })}`), h('span', { style: { flex: 1 } }), saveLabel));
     }
 
@@ -156,7 +245,7 @@ export default {
     onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); newNote(); } };
     addEventListener('keydown', onKey);
 
-    stats(); drawList(); drawEditor();
+    stats(); drawList(); drawEditor(); drawSideBits();
     if (query().get('new')) { history.replaceState(null, '', '#/apps/notes'); setTimeout(newNote, 200); }
     return h('div', { class: 'page notes-page', style: { '--app': app.hue } },
       appHero(app, {
@@ -172,7 +261,7 @@ export default {
         h('aside', { class: 'glass panel note-side' },
           h('div', { class: 'note-side-head' }, h('div', { class: 'pt-search' }, icon('search'), search),
             h('button', { class: 'icon-btn', 'aria-label': 'Ny note', title: 'Ny note (Ctrl+Alt+N)', onclick: newNote }, icon('plus'))),
-          list),
+          list, sideBits),
         editor));
   },
 };

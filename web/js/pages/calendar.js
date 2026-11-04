@@ -11,6 +11,7 @@ import { saveBlob } from '../core/files.js';
 import { api } from '../core/api.js';
 import { onLive } from '../core/live.js';
 import { store } from '../core/store.js';
+import { REPEAT, repeatShort, occurrenceOn, nextStart, expand, parseQuick, toRrule, fromRrule } from '../features/calrecur.js';
 
 const MONTHS = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
 const DAYS = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn'];
@@ -53,6 +54,9 @@ export function toIcs(events) {
     } else {
       lines.push(`DTSTART:${icsDate(e.date, e.start || '09:00')}`, `DTEND:${icsDate(e.endDate || e.date, e.end || e.start || '10:00')}`);
     }
+    const rr = toRrule(e.repeat);
+    if (rr) lines.push(`RRULE:${rr}`);
+    for (const x of e.repeat?.skip || []) lines.push(e.allDay ? `EXDATE;VALUE=DATE:${icsDate(x)}` : `EXDATE:${icsDate(x, e.start || '09:00')}`);
     lines.push(`SUMMARY:${icsEsc(e.title)}`);
     if (e.location) lines.push(`LOCATION:${icsEsc(e.location)}`);
     if (e.notes) lines.push(`DESCRIPTION:${icsEsc(e.notes)}`);
@@ -74,6 +78,8 @@ export function fromIcs(text) {
     if (!a) continue;
     const allDay = !a.time;
     const ev = { id: uid(), title: un(get('SUMMARY')?.v) || 'Aftale', date: a.date, allDay, start: a.time, end: b?.time || null, location: un(get('LOCATION')?.v), notes: un(get('DESCRIPTION')?.v), color: COLORS[0][0], remind: 'none' };
+    const rep = fromRrule(get('RRULE')?.v);
+    if (rep) ev.repeat = rep;
     if (allDay && b) { const last = iso(addDays(parseIso(b.date), -1)); if (last > a.date) ev.endDate = last; }
     else if (b && b.date !== a.date) ev.endDate = b.date;
     out.push(ev);
@@ -124,26 +130,28 @@ export default {
     ];
 
     // events on a day (multi-day events span their range)
-    const onDay = (d) => allEvents().filter(e => d >= e.date && d <= (e.endDate || e.date)).sort((a, b) => (a.allDay ? -1 : 0) - (b.allDay ? -1 : 0) || String(a.start || '').localeCompare(String(b.start || '')));
+    const onDay = (d) => allEvents().map(e => occurrenceOn(e, d)).filter(Boolean).sort((a, b) => (a.allDay ? -1 : 0) - (b.allDay ? -1 : 0) || String(a.start || '').localeCompare(String(b.start || '')));
     const tasksOn = (d) => tasks.filter(t => t.due === d);
 
     const v = { today: h('span'), week: h('span'), next: h('span'), dl: h('span') };
     function stats() {
       const t = iso(today), wEnd = iso(addDays(today, 7));
       v.today.textContent = String(onDay(t).length);
-      v.week.textContent = String(allEvents().filter(e => e.date >= t && e.date < wEnd).length);
+      v.week.textContent = String(expand(allEvents(), t, iso(addDays(today, 6))).length);
       const now = new Date();
-      const up = allEvents().map(e => ({ e, at: new Date(`${e.date}T${e.allDay ? '00:00' : (e.start || '00:00')}`) })).filter(x => x.at >= now || x.e.date === t).sort((a, b) => a.at - b.at)[0];
+      const up = allEvents().map(e => { const d = nextStart(e, t); return d && { e: { ...e, date: d }, at: new Date(`${d}T${e.allDay ? '00:00' : (e.start || '00:00')}`) }; }).filter(x => x && (x.at >= now || x.e.date === t)).sort((a, b) => a.at - b.at)[0];
       v.next.textContent = up ? `${up.e.date === t ? 'I dag' : up.at.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })}${up.e.allDay ? '' : ' ' + (up.e.start || '')}` : '—';
       v.dl.textContent = String(tasks.filter(x => x.due >= t && x.due < wEnd).length);
     }
 
     // ── editor ──
-    function edit(ev, date) {
+    function edit(ev, date, preset) {
       if (ev?.cal) { const c = calById(ev.cal); if (!c || c.role === 'viewer') return viewOnly(ev, c); }
+      const occ = ev?.series ? ev.occ : null;                    // clicked one day of a repeating event: edit the series
+      if (ev?.series) ev = allEvents().find(x => x.id === ev.series && (x.cal || null) === (ev.cal || null)) || ev;
       const isNew = !ev;
       const fromCal = ev?.cal || null;
-      const e = ev ? { ...ev } : { id: uid(), title: '', date: date || selected, allDay: false, start: '09:00', end: '10:00', location: '', notes: '', color: COLORS[0][0], remind: 'm15' };
+      const e = ev ? { ...ev } : { id: uid(), title: '', date: date || selected, allDay: false, start: '09:00', end: '10:00', location: '', notes: '', color: COLORS[0][0], remind: 'm15', ...(preset || {}) };
       const ti = h('input', { class: 'input', value: e.title, maxlength: 160, placeholder: 'Fx Service hos Jensen A/S', 'aria-label': 'Titel' });
       const da = h('input', { class: 'input', type: 'date', value: e.date, 'aria-label': 'Dato' });
       const de = h('input', { class: 'input', type: 'date', value: e.endDate || '', 'aria-label': 'Slutdato (valgfri)' });
@@ -153,6 +161,12 @@ export default {
       const lo = h('input', { class: 'input', value: e.location || '', maxlength: 200, placeholder: 'Adresse eller sted', 'aria-label': 'Sted' });
       const rm = h('select', { class: 'select', 'aria-label': 'Påmindelse' }, Object.entries(REMIND).map(([k, r]) => h('option', { value: k, selected: (e.remind || 'none') === k }, r.label)));
       const no = h('textarea', { class: 'textarea', rows: 3, placeholder: 'Noter', 'aria-label': 'Noter' }); no.value = e.notes || '';
+      const rp = h('select', { class: 'select', 'aria-label': 'Gentag' }, Object.entries(REPEAT).map(([k, l]) => h('option', { value: k, selected: (e.repeat?.freq || 'none') === k }, l)));
+      const ru = h('input', { class: 'input', type: 'date', value: e.repeat?.until || '', 'aria-label': 'Gentag indtil (valgfri)' });
+      const untilField = h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Indtil (valgfri)'), ru);
+      const syncRep = () => { untilField.hidden = rp.value === 'none'; };
+      rp.addEventListener('change', syncRep); syncRep();
+      const repeatRow = h('div', { class: 'grid-2' }, h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Gentag'), rp), untilField);
       let color = e.color || COLORS[0][0];
       const sw = h('div', { class: 'cal-swatches', role: 'group', 'aria-label': 'Farve' });
       const drawSw = () => h(clear(sw), null, COLORS.map(([c, l]) => h('button', { type: 'button', class: 'cal-swatch', style: { '--sw': c }, 'aria-label': l, 'aria-pressed': String(c === color), onclick: () => { color = c; drawSw(); } })));
@@ -171,7 +185,7 @@ export default {
       calSel?.addEventListener('change', syncCal);
       let m;
       const saveShared = async (target) => {
-        const data = { title: e.title, date: e.date, endDate: e.endDate, allDay: e.allDay, start: e.start, end: e.end, location: e.location, notes: e.notes, color };
+        const data = { title: e.title, date: e.date, endDate: e.endDate, allDay: e.allDay, start: e.start, end: e.end, location: e.location, notes: e.notes, color, ...(e.repeat ? { repeat: e.repeat } : {}) };
         try {
           if (fromCal && fromCal === target) await api.put(`/api/calendars/${target}/events/${e.id}`, { event: data });
           else {
@@ -190,6 +204,9 @@ export default {
         if (!da.value) { err.textContent = 'Vælg en dato.'; return; }
         if (de.value && de.value < da.value) { err.textContent = 'Slutdatoen er før startdatoen.'; return; }
         if (!ad.checked && s1.value && s2.value && !de.value && s2.value < s1.value) { err.textContent = 'Sluttidspunktet er før start.'; return; }
+        if (rp.value !== 'none' && ru.value && ru.value < da.value) { err.textContent = '“Indtil” er før den første gang.'; return; }
+        e.repeat = rp.value === 'none' ? null : { freq: rp.value, ...(ru.value ? { until: ru.value } : {}), ...(e.repeat?.skip?.length && e.repeat.freq === rp.value ? { skip: e.repeat.skip } : {}) };
+        if (!e.repeat) delete e.repeat;
         Object.assign(e, { title, date: da.value, endDate: de.value && de.value !== da.value ? de.value : null, allDay: ad.checked, start: ad.checked ? null : (s1.value || null), end: ad.checked ? null : (s2.value || null), location: lo.value.trim(), notes: no.value.trim(), color, remind: rm.value });
         const target = calSel?.value || '';
         if (target) {
@@ -203,16 +220,17 @@ export default {
           e.id = uid();
           loadShared();
         }
-        const at = remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
+        const at = e.repeat ? null : remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
         if (at !== e.remindAt) { e.remindAt = at; e.reminded = false; }
         if (isNew || fromCal) { st.events.push(e); logActivity('calendar', 'new', e.title, 'Aftale oprettet'); }
-        else Object.assign(st.events.find(x => x.id === e.id), e);
-        selected = e.date;
+        else { const cur = st.events.find(x => x.id === e.id); if (!e.repeat) delete cur.repeat; Object.assign(cur, e); }
+        selected = occ && e.repeat ? occ : e.date;
         const d = parseIso(e.date); cursor = new Date(d.getFullYear(), d.getMonth(), 1);
         persist(); m.close(); draw();
       };
       const actions = [];
       if (!isNew) actions.push(h('button', { class: 'btn btn-ghost', style: { marginRight: 'auto', color: 'var(--bad)' }, onclick: async () => {
+        if (e.repeat) { m.close(); return deleteSeries(ev, occ); }
         if (!await confirmDialog({ title: 'Slet aftale?', text: fromCal ? `“${e.title}” slettes for alle i “${calById(fromCal)?.name}”.` : `“${e.title}” slettes.`, confirmLabel: 'Slet', danger: true })) return;
         if (fromCal) {
           try { await api.del(`/api/calendars/${fromCal}/events/${e.id}`); } catch (x) { toast('Kunne ikke slette', { type: 'bad', text: x.message }); return; }
@@ -222,6 +240,7 @@ export default {
         toast('Aftale slettet', { text: e.title, action: { label: 'Fortryd', onClick: () => { st.events.push(ev); persist(); draw(); } } });
       } }, icon('trash'), 'Slet'));
       if (!isNew) actions.push(h('button', { class: 'btn btn-ghost', title: 'Del aftalen i en chat', onclick: () => shareEvent(e) }, icon('share'), 'Del'));
+      if (!isNew) actions.push(h('button', { class: 'btn btn-ghost', title: 'Lav en ny aftale magen til', onclick: () => { m.close(); edit(null, occ || e.date, { title: e.title, allDay: !!e.allDay, start: e.start || null, end: e.end || null, location: e.location || '', notes: e.notes || '', color: e.color || COLORS[0][0], remind: e.remind || 'none' }); } }, icon('copy'), 'Kopiér'));
       actions.push(h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), h('button', { class: 'btn btn-primary', onclick: save }, 'Gem'));
       m = modal({
         title: isNew ? 'Ny aftale' : 'Redigér aftale', label: 'Kalender', size: 560,
@@ -230,8 +249,10 @@ export default {
           calSel ? h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Kalender'), calSel) : null,
           fromCal && ev.by ? h('p', { class: 'faint', style: { margin: 0 } }, `Oprettet af ${ev.by}${ev.updatedBy && ev.updatedBy !== ev.by ? ` · sidst rettet af ${ev.updatedBy}` : ''}`) : null,
           h('div', { class: 'grid-2' }, h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Dato'), da), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Til og med (valgfri)'), de)),
+          e.repeat && occ ? h('div', { class: 'cal-series-note' }, icon('refresh'), `${repeatShort(e.repeat)} – ændringer gælder alle gange.`) : null,
           h('label', { class: 'cal-check' }, ad, 'Hele dagen'),
           times,
+          repeatRow,
           h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Sted'), lo),
           h('div', { class: 'grid-2' }, remindField, h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Farve'), sw)),
           h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Noter'), no), err),
@@ -257,6 +278,31 @@ export default {
             st.events.push(copy); persist(); draw(); m.close(); toast('Kopieret til din egen kalender', { type: 'ok' });
           } }, icon('copy'), 'Kopiér til min kalender'),
           h('button', { class: 'btn btn-primary', onclick: () => m.close() }, 'Luk')] });
+    }
+    function deleteSeries(ev, occ) {
+      const cal = ev.cal || null;
+      const base = cal ? shared.events.find(x => x.id === ev.id && x.cal === cal) : st.events.find(x => x.id === ev.id);
+      if (!base) return;
+      const backup = JSON.parse(JSON.stringify(base));
+      const fields = (x) => ({ title: x.title, date: x.date, endDate: x.endDate || null, allDay: !!x.allDay, start: x.start || null, end: x.end || null, location: x.location || '', notes: x.notes || '', color: x.color, ...(x.repeat ? { repeat: x.repeat } : {}) });
+      const done = async (text, removed) => {
+        if (cal) {   // a shared calendar: tell the server, then reload
+          try { removed ? await api.del(`/api/calendars/${cal}/events/${base.id}`) : await api.put(`/api/calendars/${cal}/events/${base.id}`, { event: fields(base) }); }
+          catch (x) { toast('Det mislykkedes', { type: 'bad', text: x.message }); return; }
+          await loadShared(); toast(text, { text: base.title });
+          return;
+        }
+        persist(); draw();
+        toast(text, { text: base.title, action: { label: 'Fortryd', onClick: () => { const i = st.events.findIndex(x => x.id === backup.id); if (i >= 0) st.events[i] = backup; else st.events.push(backup); persist(); draw(); } } });
+      };
+      const day = occ || base.date;
+      const m = modal({ title: 'Slet en gentaget aftale', label: 'Kalender', size: 460,
+        body: h('p', { style: { margin: 0 } }, `“${base.title}” gentages ${repeatShort(base.repeat).toLowerCase()}. Hvad vil du slette?`),
+        actions: [
+          h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'),
+          h('button', { class: 'btn', onclick: () => { base.repeat = { ...base.repeat, skip: [...new Set([...(base.repeat.skip || []), day])] }; m.close(); done('Kun denne gang er slettet'); } }, 'Kun denne gang'),
+          day > base.date ? h('button', { class: 'btn', onclick: () => { base.repeat = { ...base.repeat, until: iso(addDays(parseIso(day), -1)) }; m.close(); done('Denne og de næste gange er slettet'); } }, 'Denne og fremover') : null,
+          h('button', { class: 'btn btn-danger', onclick: () => { if (!cal) st.events = st.events.filter(x => x.id !== base.id); m.close(); done('Hele serien er slettet', true); } }, 'Hele serien')] });
     }
     function shareEvent(e) {
       import('../features/sharechat.js').then(x => x.shareToChat({ kind: 'event', title: e.title, date: e.date, endDate: e.endDate || '', start: e.allDay ? '' : (e.start || ''), end: e.allDay ? '' : (e.end || ''), allDay: !!e.allDay, location: e.location || '', body: e.notes || '' }));
@@ -354,8 +400,27 @@ export default {
     const grid = h('div', { class: 'cal-grid', role: 'grid', 'aria-label': 'Måned' });
     const side = h('aside', { class: 'cal-day glass panel', 'aria-live': 'polite' });
     const agenda = h('div', { class: 'cal-agenda glass panel' });
-    const pill = (e, d) => h('button', { type: 'button', class: ['cal-pill', e.allDay && 'is-allday'], style: { '--c': e.color || 'var(--app)' }, title: e.title, onclick: (x) => { x.stopPropagation(); edit(e); } },
+    const movable = (e) => !e.cal && !e.series && st.events.some(x => x.id === e.id);
+    const pill = (e, d) => h('button', { type: 'button', class: ['cal-pill', e.allDay && 'is-allday'], style: { '--c': e.color || 'var(--app)' }, title: movable(e) ? `${e.title} – træk for at flytte` : e.title, draggable: movable(e) ? 'true' : null,
+      ondragstart: movable(e) ? (x) => { x.dataTransfer.setData('text/x-hubtech-event', e.id); x.dataTransfer.effectAllowed = 'move'; } : null,
+      onclick: (x) => { x.stopPropagation(); edit(e); } },
+      e.series ? h('span', { class: 'cal-rep', 'aria-label': 'Gentages' }, '↻') : null,
       !e.allDay && e.start && d === e.date ? h('span', { class: 'cal-time' }, e.start) : null, e.title);
+    function moveTo(id, d) {
+      const e = st.events.find(x => x.id === id);
+      if (!e || e.date === d) return;
+      const before = { date: e.date, endDate: e.endDate, remindAt: e.remindAt, reminded: e.reminded };
+      const shift = Math.round((parseIso(d) - parseIso(e.date)) / 86400000);
+      e.date = d; if (e.endDate) e.endDate = iso(addDays(parseIso(e.endDate), shift));
+      e.remindAt = remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind }); e.reminded = false;
+      selected = d; persist(); draw();
+      toast('Aftalen er flyttet', { type: 'ok', text: `${e.title} → ${parseIso(d).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' })}`, action: { label: 'Fortryd', onClick: () => { Object.assign(e, before); selected = e.date; persist(); draw(); } } });
+    }
+    const dropTarget = (el, d) => {
+      el.addEventListener('dragover', (x) => { if ([...x.dataTransfer.types].includes('text/x-hubtech-event')) { x.preventDefault(); el.classList.add('is-drop'); } });
+      el.addEventListener('dragleave', () => el.classList.remove('is-drop'));
+      el.addEventListener('drop', (x) => { x.preventDefault(); el.classList.remove('is-drop'); moveTo(x.dataTransfer.getData('text/x-hubtech-event'), d); });
+    };
 
     function drawMonth() {
       title.textContent = `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
@@ -374,6 +439,7 @@ export default {
           evs.slice(0, 3).map(e => pill(e, d)),
           evs.length > 3 ? h('span', { class: 'cal-more' }, `+${evs.length - 3} mere`) : null,
           tk.slice(0, 2).map(t => h('a', { class: 'cal-task', href: '#/apps/tasks', onclick: (x) => x.stopPropagation(), title: `Deadline: ${t.title}` }, icon('kanban'), t.title)));
+          dropTarget(cell, d);
           cell.addEventListener('click', () => { selected = d; drawMonth(); drawSide(); });
           cell.addEventListener('dblclick', () => edit(null, d));
           cell.addEventListener('keydown', (k) => {
@@ -397,7 +463,8 @@ export default {
           h('span', { class: 'cal-item-time' }, e.allDay ? 'Hele dagen' : `${e.start || ''}${e.end ? '–' + e.end : ''}`),
           h('b', null, e.title),
           e.location ? h('span', { class: 'faint' }, icon('mapPin'), e.location) : null,
-          e.remind && e.remind !== 'none' ? h('span', { class: 'faint' }, icon('bell'), REMIND[e.remind]?.short) : null)),
+          e.remind && e.remind !== 'none' && !e.cal ? h('span', { class: 'faint' }, icon('bell'), REMIND[e.remind]?.short) : null,
+          e.series ? h('span', { class: 'faint' }, icon('refresh'), repeatShort(e.repeat)) : null)),
         tk.map(t => h('a', { class: 'cal-item is-task', href: '#/apps/tasks' }, h('span', { class: 'cal-item-time' }, 'Deadline'), h('b', null, t.title), h('span', { class: 'faint' }, icon('kanban'), 'Fra Opgaver'))));
     }
     function drawAgenda() {
@@ -417,6 +484,64 @@ export default {
           tk.map(t => h('a', { class: 'cal-item is-task', href: '#/apps/tasks' }, h('span', { class: 'cal-item-time' }, 'Deadline'), h('b', null, t.title)))));
       }
     }
+    // ── week ──
+    const weekBox = h('div', { class: 'cal-wk-view glass panel' });
+    const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
+    function drawWeek() {
+      const first = monday(parseIso(selected)), last = addDays(first, 6), hol = new Map([...holidays(first.getFullYear()), ...holidays(last.getFullYear())]);
+      const nav = (n) => { selected = iso(addDays(parseIso(selected), n)); const nd = parseIso(selected); cursor = new Date(nd.getFullYear(), nd.getMonth(), 1); drawWeek(); };
+      h(clear(weekBox), null,
+        h('div', { class: 'cal-nav' },
+          h('button', { class: 'icon-btn', 'aria-label': 'Forrige uge', onclick: () => nav(-7) }, icon('chevronLeft')),
+          h('h2', { class: 'cal-title', style: { textTransform: 'none' } }, `Uge ${isoWeek(first)} · ${first.getDate()}. ${first.getMonth() !== last.getMonth() ? MONTHS[first.getMonth()].slice(0, 3) + ' ' : ''}– ${last.getDate()}. ${MONTHS[last.getMonth()]}`),
+          h('button', { class: 'icon-btn', 'aria-label': 'Næste uge', onclick: () => nav(7) }, icon('chevronRight')),
+          h('button', { class: 'btn btn-sm', onclick: () => { selected = iso(today); drawWeek(); } }, 'I dag')),
+        h('div', { class: 'cal-wk-grid' }, Array.from({ length: 7 }, (_, i) => {
+          const day = addDays(first, i), d = iso(day), evs = onDay(d), tk = tasksOn(d), hd = hol.get(d);
+          const col = h('div', { class: ['cal-wk-col', d === iso(today) && 'is-today', i >= 5 && 'is-weekend'] },
+            h('button', { type: 'button', class: 'cal-wk-head', title: 'Ny aftale denne dag', onclick: () => edit(null, d) }, h('span', null, DAYS[i]), h('b', null, String(day.getDate())), hd ? h('small', { class: 'cal-hol' }, hd) : null, h('span', { class: 'cal-wk-add', 'aria-hidden': 'true' }, '+')),
+            evs.map(e => h('button', { type: 'button', class: 'cal-item', style: { '--c': e.color || 'var(--app)' }, draggable: movable(e) ? 'true' : null,
+              ondragstart: movable(e) ? (x) => x.dataTransfer.setData('text/x-hubtech-event', e.id) : null, onclick: () => edit(e) },
+              h('span', { class: 'cal-item-time' }, e.allDay ? 'Hele dagen' : `${e.start || ''}${e.end ? '–' + e.end : ''}`), h('b', null, e.series ? '↻ ' : '', e.title), e.location ? h('span', { class: 'faint' }, icon('mapPin'), e.location) : null)),
+            tk.map(t => h('a', { class: 'cal-item is-task', href: '#/apps/tasks' }, h('span', { class: 'cal-item-time' }, 'Deadline'), h('b', null, t.title))),
+            evs.length || tk.length ? null : h('span', { class: 'cal-wk-free faint' }, 'Fri'));
+          dropTarget(col, d);
+          return col;
+        })));
+    }
+
+    // ── search ──
+    const results = h('div', { class: 'cal-results glass panel' });
+    let query = '';
+    function drawResults() {
+      const q = query.toLowerCase(), t = iso(today);
+      const hits = allEvents().filter(e => `${e.title} ${e.location || ''} ${e.notes || ''}`.toLowerCase().includes(q))
+        .map(e => ({ e, d: nextStart(e, t) || e.date })).sort((a, b) => (a.d < t) - (b.d < t) || (a.d < t ? b.d.localeCompare(a.d) : a.d.localeCompare(b.d))).slice(0, 80);
+      h(clear(results), null, h('h3', { style: { marginTop: 0 } }, hits.length ? `${hits.length} ${hits.length === 1 ? 'aftale' : 'aftaler'} med “${query}”` : `Ingen aftaler med “${query}”`),
+        hits.map(({ e, d }) => h('button', { type: 'button', class: 'cal-item', style: { '--c': e.color || 'var(--app)' }, onclick: () => { selected = d; const nd = parseIso(d); cursor = new Date(nd.getFullYear(), nd.getMonth(), 1); edit(occurrenceOn(e, d) || e); } },
+          h('span', { class: 'cal-item-time' }, `${d < t ? 'Var ' : ''}${parseIso(d).toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short', year: d.slice(0, 4) !== t.slice(0, 4) ? 'numeric' : undefined })}${e.allDay ? '' : ' ' + (e.start || '')}`),
+          h('b', null, e.title), e.repeat ? h('span', { class: 'faint' }, icon('refresh'), repeatShort(e.repeat)) : null, e.location ? h('span', { class: 'faint' }, icon('mapPin'), e.location) : null)));
+    }
+    const searchIn = h('input', { class: 'input cal-search', type: 'search', placeholder: 'Søg i aftaler …', 'aria-label': 'Søg i aftaler', oninput: (x) => { query = x.target.value.trim(); draw(); } });
+
+    // ── hurtig tilføj ──
+    const fmtWhen = (r) => [parseIso(r.date).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' }), r.allDay ? 'hele dagen' : `${r.start}–${r.end}`, r.repeat ? repeatShort(r.repeat).toLowerCase() : '', r.location ? `@ ${r.location}` : ''].filter(Boolean).join(' · ');
+    const quickIn = h('input', { class: 'input', placeholder: 'Skriv fx “Tandlæge i morgen kl 10” eller “Fodbold hver tirsdag 17-18”', 'aria-label': 'Hurtig tilføj', maxlength: 200 });
+    const quickHint = h('span', { class: 'cal-quick-hint faint', 'aria-live': 'polite' });
+    const quickAdd = () => {
+      const r = parseQuick(quickIn.value, today);
+      if (!r.title) { quickHint.textContent = 'Skriv hvad aftalen handler om.'; quickIn.focus(); return; }
+      const e = { id: uid(), title: r.title.slice(0, 160), date: r.date, endDate: null, allDay: r.allDay, start: r.start, end: r.end, location: r.location, notes: '', color: COLORS[0][0], remind: r.allDay ? 'none' : 'm15', ...(r.repeat ? { repeat: r.repeat } : {}) };
+      if (!e.repeat) e.remindAt = remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind });
+      st.events.push(e); logActivity('calendar', 'new', e.title, 'Aftale oprettet');
+      selected = e.date; const d = parseIso(e.date); cursor = new Date(d.getFullYear(), d.getMonth(), 1);
+      persist(); quickIn.value = ''; quickHint.textContent = ''; draw();
+      toast(`Tilføjet: ${e.title}`, { type: 'ok', text: fmtWhen(r), action: { label: 'Ret', onClick: () => edit(e) } });
+    };
+    quickIn.addEventListener('input', () => { const r = parseQuick(quickIn.value, today); quickHint.textContent = quickIn.value.trim() && r.title ? `${r.title} – ${fmtWhen(r)}` : ''; });
+    quickIn.addEventListener('keydown', (k) => { if (k.key === 'Enter') { k.preventDefault(); quickAdd(); } });
+    const quickBox = h('div', { class: 'cal-quick glass panel' }, h('div', { class: 'cal-quick-row' }, icon('sparkles'), quickIn, h('button', { class: 'btn app-solid', onclick: quickAdd }, icon('plus'), 'Tilføj')), quickHint);
+
     const monthWrap = h('div', { class: 'cal-layout' }, h('div', { class: 'cal-main glass panel' },
       h('div', { class: 'cal-nav' },
         h('button', { class: 'icon-btn', 'aria-label': 'Forrige måned', onclick: () => { cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); drawMonth(); } }, icon('chevronLeft')),
@@ -426,8 +551,10 @@ export default {
       grid), side);
     function draw() {
       stats();
-      monthWrap.hidden = view !== 'month'; agenda.hidden = view !== 'agenda';
-      if (view === 'month') { drawMonth(); drawSide(); } else drawAgenda();
+      const v0 = query ? 'search' : view;
+      monthWrap.hidden = v0 !== 'month'; agenda.hidden = v0 !== 'agenda'; weekBox.hidden = v0 !== 'week'; results.hidden = v0 !== 'search';
+      if (v0 === 'search') drawResults();
+      else if (v0 === 'month') { drawMonth(); drawSide(); } else if (v0 === 'week') drawWeek(); else drawAgenda();
     }
 
     // ── import / export ──
@@ -446,6 +573,37 @@ export default {
       document.body.appendChild(inp); inp.click();
     };
 
+    // ── subscribe from the phone: a private .ics address the phone's calendar follows by itself ──
+    async function subscribe() {
+      const out = h('div', { class: 'stack', style: { gap: '10px' } });
+      const local = /^(localhost|127\.|\[::1\])/.test(location.host);
+      const show = (r) => {
+        const qr = h('span', { class: 'hl-qr' });
+        import('../features/qr.js').then(m => m.qrSvg(r.webcal, 170)).then(svg => qr.append(svg)).catch(() => {});
+        h(clear(out), null,
+          h('div', { class: 'hl-code' }, qr, h('div', { class: 'stack', style: { gap: '8px', minWidth: 0 } },
+            h('span', { class: 'faint', style: { fontSize: '13px' } }, 'Scan koden med telefonen, eller kopiér adressen ind i Outlook eller Google Kalender (“Tilføj kalender fra URL”).'),
+            h('input', { class: 'input hl-codetext', readonly: true, value: r.url, 'aria-label': 'Kalenderens adresse', onfocus: (e) => e.target.select() }),
+            h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+              h('a', { class: 'btn btn-primary', href: r.webcal }, icon('smartphone'), 'Åbn på denne enhed'),
+              h('button', { class: 'btn', onclick: () => import('../features/appkit.js').then(m => m.copy(r.url, 'Adressen er kopieret')) }, icon('copy'), 'Kopiér')))),
+          h('p', { class: 'faint', style: { margin: 0, fontSize: '13px' } }, 'Telefonen henter ændringer af sig selv (typisk hver time). Kun dem med adressen kan se kalenderen – del den ikke.'),
+          h('div', { class: 'row', style: { gap: '8px' } },
+            h('button', { class: 'btn btn-sm', onclick: async () => show(await api.post('/api/calendar/feed', {})) }, icon('refresh'), 'Lav en ny adresse'),
+            h('button', { class: 'btn btn-sm btn-ghost', style: { color: 'var(--bad)' }, onclick: async () => { await api.del('/api/calendar/feed'); m.close(); toast('Abonnementet er slået fra', { type: 'ok', text: 'Den gamle adresse virker ikke mere.' }); } }, 'Slå fra')));
+      };
+      const startBtn = h('button', { class: 'btn btn-primary' }, icon('smartphone'), 'Lav min kalender-adresse');
+      startBtn.addEventListener('click', async () => { try { show(await api.post('/api/calendar/feed', {})); } catch (e) { toast(e.message, { type: 'bad' }); } });
+      h(out, null, startBtn);
+      const m = modal({ title: 'Se kalenderen i telefonen', label: 'Kalender', size: 560,
+        body: h('div', { class: 'stack', style: { gap: '12px' } },
+          h('p', { style: { margin: 0 } }, 'Få dine HUBTECH-aftaler – også de gentagne – i telefonens egen kalender, så de bliver opdateret af sig selv.'),
+          local ? h('div', { class: 'callout warn' }, icon('alert'), h('div', null, 'Du bruger HUBTECH på denne computers egen adresse, som telefonen ikke kan nå. Åbn HUBTECH via netværks- eller Tailscale-adressen først (', h('a', { href: '#/settings/about' }, 'Indstillinger → Om → Netværk'), ').')) : null,
+          out),
+        actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Luk')] });
+      try { const s0 = await api.get('/api/calendar/feed'); if (s0.active) h(clear(out), null, h('p', { class: 'faint', style: { margin: 0 } }, 'Du har allerede en adresse. Af sikkerhedshensyn kan den ikke vises igen – lav en ny, hvis du skal bruge den (den gamle holder op med at virke).'), startBtn, h('button', { class: 'btn btn-sm btn-ghost', style: { color: 'var(--bad)', justifySelf: 'start' }, onclick: async () => { await api.del('/api/calendar/feed'); m.close(); toast('Abonnementet er slået fra', { type: 'ok' }); } }, 'Slå fra')); } catch { /* */ }
+    }
+
     // ── print / PDF ──
     const printDialog = () => {
       let kind = view === 'agenda' ? 'list' : 'month';
@@ -461,7 +619,7 @@ export default {
       const seg = segmented([{ value: 'month', label: 'Måned', icon: 'grid' }, { value: 'week', label: 'Uge', icon: 'calendar' }, { value: 'list', label: 'Liste', icon: 'list' }], kind, (v) => { kind = v; drawPeriod(); notesRow.hidden = v !== 'list'; }, { label: 'Layout' });
       const notesRow = check(withNotes, 'Noter og sted under aftalerne'); notesRow.hidden = kind !== 'list';
       drawPeriod();
-      const data = () => ({ events: allEvents(), tasks: withTasks.checked ? tasks : [], holidays, withTasks: withTasks.checked });
+      const data = () => ({ events: expand(allEvents(), iso(addDays(today, -400)), iso(addDays(today, 800))), tasks: withTasks.checked ? tasks : [], holidays, withTasks: withTasks.checked });
       const parts = () => {
         if (kind === 'month') { const [y, m] = (monthIn.value || `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`).split('-').map(Number); return { year: y, month: m - 1, name: `${MONTHS[m - 1]}-${y}` }; }
         if (kind === 'week') { const d = parseIso(dayIn.value || selected); return { day: d, name: `uge-${isoWeek(d)}-${d.getFullYear()}` }; }
@@ -496,19 +654,21 @@ export default {
     unsub.forEach(f => f());
     unsub = [onLive('cal', loadShared), onLive('cal-events', (x) => { if (x.by !== store.get('user')?.id) loadShared(); }), onLive('reset', loadShared)];
     drawCals(); loadShared();
-    const viewSel = segmented([{ value: 'month', label: 'Måned', icon: 'grid' }, { value: 'agenda', label: 'Liste', icon: 'list' }], view, (x) => { view = x; draw(); }, { label: 'Visning' });
+    try { const sv = localStorage.getItem('hubtech.cal.view'); if (['month', 'week', 'agenda'].includes(sv)) view = sv; } catch { /* */ }
+    const viewSel = segmented([{ value: 'month', label: 'Måned', icon: 'grid' }, { value: 'week', label: 'Uge', icon: 'calendar' }, { value: 'agenda', label: 'Liste', icon: 'list' }], view, (x) => { view = x; try { localStorage.setItem('hubtech.cal.view', x); } catch { /* */ } draw(); }, { label: 'Visning' });
     draw();
     return h('div', { class: 'page calendar-page', style: { '--app': app.hue } },
       appHero(app, {
         eyebrow: 'Arbejdsrum', title: 'Kalender', lead: 'Dine aftaler, Servicehjælps aftaler, delte kalendere med andre, helligdage og deadlines fra Opgaver – samlet ét sted.',
-        actions: [heroBtn('Ny aftale', 'plus', { onclick: () => edit(null, selected) }), heroGhost('Print / PDF', 'file', { onclick: printDialog }), heroGhost('Hent .ics', 'download', { onclick: exportIcs }), heroGhost('Importér', 'upload', { onclick: importIcs })],
+        actions: [heroBtn('Ny aftale', 'plus', { onclick: () => edit(null, selected) }), heroGhost('Print / PDF', 'file', { onclick: printDialog }), heroGhost('I telefonen', 'smartphone', { onclick: subscribe }), heroGhost('Hent .ics', 'download', { onclick: exportIcs }), heroGhost('Importér', 'upload', { onclick: importIcs })],
         stats: [
           { icon: 'calendar', label: 'Aftaler i dag', value: v.today },
           { icon: 'list', label: 'Næste 7 dage', value: v.week },
           { icon: 'clock', label: 'Næste aftale', value: v.next },
           { icon: 'kanban', label: 'Deadlines denne uge', value: v.dl }],
       }),
-      h('div', { class: 'cal-bar on-world' }, viewSel, h('span', { class: 'faint kb-keys' }, 'Piletaster flytter dagen · Enter eller dobbeltklik opretter en aftale')),
-      calsBox, monthWrap, agenda);
+      quickBox,
+      h('div', { class: 'cal-bar on-world' }, viewSel, searchIn, h('span', { class: 'faint kb-keys' }, 'Træk en aftale til en anden dag · piletaster flytter dagen · Enter opretter')),
+      calsBox, monthWrap, weekBox, results, agenda);
   },
 };

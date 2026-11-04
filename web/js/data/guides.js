@@ -136,6 +136,21 @@ export const GUIDES = [
     actions: [{ label: 'Åbn kurset', href: '#/learn/course/servicetekniker' }],
   },
   {
+    id: 'quick-add', category: 'platform', app: 'calendar', icon: 'sparkles', minutes: 2,
+    title: 'Skriv det, som du siger det',
+    summary: 'Aftaler, opgaver og noter direkte fra søgningen – med dato, tid og gentagelse.',
+    sections: [
+      { steps: [
+        { t: 'Tryk Ctrl+K', d: 'Skriv fx “aftale tandlæge i morgen kl 10”, “opgave ring til Jensen fredag” eller “note idéer til julefrokost”, og tryk Enter.' },
+        { t: 'Dato og tid', d: 'HUBTECH forstår “i dag”, “i morgen”, “på fredag”, “12/3”, “24. december”, “om 2 uger”, “kl 14.30” og “17-18:30”.' },
+        { t: 'Gentagelser', d: '“hver tirsdag”, “hver dag”, “hverdage”, “hver anden uge”, “hver måned” og “hvert år” laver en gentaget aftale – fx “Mors fødselsdag 12/3 hvert år”.' },
+        { t: 'Sted og prioritet', d: 'Skriv “@ Hallen” for et sted. I Opgaver betyder “!” høj prioritet.' },
+        { t: 'Ret bagefter', d: 'Træk en aftale til en anden dag i kalenderen. Sletter du én gang af en gentaget aftale, kan du vælge kun den dag, resten af serien eller det hele.' },
+      ] },
+    ],
+    actions: [{ label: 'Åbn Kalender', href: '#/apps/calendar' }],
+  },
+  {
     id: 'hub-link', category: 'platform', app: 'settings', icon: 'link', minutes: 2,
     title: 'Alle HUBTECH’er er forbundet',
     summary: 'Besøg hinanden, spil og del – med jeres egne konti. Det sker af sig selv.',

@@ -1134,3 +1134,76 @@ console.log('apps ok');
   for (let k = 0; k < 20; k++) { const q = B.proverbQ(); assert.equal(q.options.length, 4); assert.ok(q.options.includes(q.p[1])); assert.equal(new Set(q.options).size, 4); }
   console.log('batch11 ok');
 }
+
+// Kalender: gentagelser og hurtig tilføj
+{
+  const R = await import('../web/js/features/calrecur.js');
+  const wed = new Date(2026, 10, 4);   // onsdag 4. november 2026
+  const q = (t) => R.parseQuick(t, wed);
+  let r = q('Tandlæge i morgen kl 10');
+  assert.deepEqual([r.title, r.date, r.start, r.end, r.allDay], ['Tandlæge', '2026-11-05', '10:00', '11:00', false]);
+  r = q('Fodbold hver tirsdag 17-18:30 @ Hallen');
+  assert.deepEqual([r.title, r.date, r.start, r.end, r.repeat.freq, r.location], ['Fodbold', '2026-11-10', '17:00', '18:30', 'week', 'Hallen']);
+  r = q('Mors fødselsdag 12/3 hvert år');
+  assert.deepEqual([r.title, r.date, r.allDay, r.repeat.freq], ['Mors fødselsdag', '2027-03-12', true, 'year']);
+  r = q('møde på fredag kl. 14.30');
+  assert.deepEqual([r.title, r.date, r.start, r.end], ['Møde', '2026-11-06', '14:30', '15:30']);
+  r = q('Juleferie 24. december');
+  assert.deepEqual([r.title, r.date], ['Juleferie', '2026-12-24']);
+  r = q('Service hos Jensen om 2 uger fra 9 til 12');
+  assert.deepEqual([r.title, r.date, r.start, r.end], ['Service hos Jensen', '2026-11-18', '09:00', '12:00']);
+  r = q('Træning hverdage kl 7');
+  assert.deepEqual([r.title, r.repeat.freq, r.start], ['Træning', 'weekday', '07:00']);
+  r = q('Indkøb');
+  assert.deepEqual([r.title, r.date, r.allDay, r.found.length], ['Indkøb', '2026-11-04', true, 0]);
+  r = q('Ring til bank i dag 16:00');
+  assert.deepEqual([r.title, r.date, r.start], ['Ring til bank', '2026-11-04', '16:00']);
+  // repeating
+  const ev = { id: 'a', date: '2026-11-04', repeat: { freq: 'week', skip: ['2026-11-18'], until: '2026-12-31' } };
+  assert.ok(R.startsOn(ev, '2026-11-11')); assert.ok(!R.startsOn(ev, '2026-11-12')); assert.ok(!R.startsOn(ev, '2026-11-18')); assert.ok(!R.startsOn(ev, '2027-01-06'));
+  assert.equal(R.nextStart(ev, '2026-11-12'), '2026-11-25');
+  assert.equal(R.expand([ev], '2026-11-01', '2026-11-30').length, 3);
+  const span = { id: 'b', date: '2026-11-06', endDate: '2026-11-08', repeat: { freq: 'week' } };
+  assert.equal(R.occurrenceOn(span, '2026-11-15').date, '2026-11-13');
+  assert.equal(R.occurrenceOn(span, '2026-11-16'), null);
+  const bday = { id: 'c', date: '2024-02-29', repeat: { freq: 'year' } };
+  assert.equal(R.nextStart(bday, '2025-01-01'), '2028-02-29');
+  const mon = { id: 'd', date: '2026-01-31', repeat: { freq: 'month' } };
+  assert.equal(R.nextStart(mon, '2026-02-01'), '2026-03-31');
+  assert.ok(R.startsOn({ id: 'e', date: '2026-11-02', repeat: { freq: 'weekday' } }, '2026-11-06')); assert.ok(!R.startsOn({ id: 'e', date: '2026-11-02', repeat: { freq: 'weekday' } }, '2026-11-07'));
+  for (const f of ['day', 'weekday', 'week', '2week', 'month', 'year']) assert.equal(R.fromRrule(R.toRrule({ freq: f, until: '2027-01-01' })).freq, f);
+  assert.equal(R.fromRrule('FREQ=WEEKLY;UNTIL=20270101T000000Z').until, '2027-01-01');
+  console.log('calrecur ok');
+}
+
+// Noter: tags, tjeklister, lister der fortsætter
+{
+  const N = await import('../web/js/features/notetext.js');
+  assert.deepEqual(N.tagsOf('Møde #arbejde og #Idéer\n#arbejde igen, ikke#ord'), ['arbejde', 'idéer']);
+  const body = 'Indkøb\n[ ] mælk\n- [x] brød\nnoget';
+  assert.deepEqual(N.checklist(body).map(c => [c.line, c.done, c.text]), [[1, false, 'mælk'], [2, true, 'brød']]);
+  assert.equal(N.toggleLine(body, 1), 'Indkøb\n[x] mælk\n- [x] brød\nnoget');
+  assert.equal(N.toggleLine(body, 2), 'Indkøb\n[ ] mælk\n- [ ] brød\nnoget');
+  assert.deepEqual(N.continueList('- æg', 4), { insert: '\n- ' });
+  assert.deepEqual(N.continueList('[ ] æg', 6), { insert: '\n[ ] ' });
+  assert.deepEqual(N.continueList('a\n2. to', 6), { insert: '\n3. ' });
+  assert.deepEqual(N.continueList('a\n- ', 4), { clear: [2, 4] });
+  assert.equal(N.continueList('bare tekst', 10), null);
+  console.log('notetext ok');
+}
+
+// Vaner: stimer for daglige vaner og ugemål
+{
+  const H = await import('../web/js/features/habitlogic.js');
+  const t = '2026-11-04';   // onsdag
+  assert.equal(H.mondayKey(t), '2026-11-02'); assert.equal(H.mondayKey('2026-11-08'), '2026-11-02'); assert.equal(H.mondayKey('2026-11-02'), '2026-11-02');
+  assert.equal(H.streak(['2026-11-02', '2026-11-03', '2026-11-04'], 7, t), 3);
+  assert.equal(H.streak(['2026-11-02', '2026-11-03'], undefined, t), 2, 'today not ticked yet still keeps the streak');
+  assert.equal(H.streak(['2026-11-01', '2026-11-03'], 7, t), 1);
+  const w = ['2026-10-20', '2026-10-22', '2026-10-27', '2026-10-30', '2026-11-03'];
+  assert.equal(H.weekCount(w, t), 1);
+  assert.equal(H.streak(w, 2, t), 2, 'two earlier weeks reached, this week not yet');
+  assert.equal(H.streak([...w, '2026-11-04'], 2, t), 3);
+  assert.equal(H.streak(['2026-10-20'], 2, t), 0);
+  console.log('habits ok');
+}

@@ -159,6 +159,9 @@ async def main():
         await page.keyboard.press("Control+k")
         await page.fill(".palette-input", "xyzzyqq")
         await page.wait_for_timeout(200)
+        check("palette: no match offers to create it instead", await page.locator(".palette-empty").count() == 0 and await page.locator(".palette-item:has-text('Ny opgave: xyzzyqq')").count() == 1)
+        await page.fill(".palette-input", "qz")
+        await page.wait_for_timeout(200)
         check("palette empty state", await page.locator(".palette-empty").count() == 1)
         await page.keyboard.press("Escape")
 

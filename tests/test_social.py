@@ -96,6 +96,13 @@ class SocialTest(unittest.TestCase):
         # editing, bad input, removal
         self.assertEqual(a.req("PUT", f"/api/calendars/{cal}/events/{eid}", {"event": {**ev, "title": "Fest", "endDate": "2026-11-04"}})[0], 200)
         self.assertEqual(a.req("POST", f"/api/calendars/{cal}/events", {"event": {"title": "x", "date": "i morgen"}})[0], 400)
+        # a repeating one shows up in later months too, and keeps its skipped days
+        st, rb, _ = a.req("POST", f"/api/calendars/{cal}/events", {"event": {"title": "Træning", "date": "2026-11-03", "repeat": {"freq": "week", "skip": ["2026-11-10", "nej"], "until": "2027-06-30"}}})
+        self.assertEqual((st, rb["event"]["repeat"]), (201, {"freq": "week", "until": "2027-06-30", "skip": ["2026-11-10"]}))
+        later = a.req("GET", "/api/calendars/events?from=2027-03-01&to=2027-03-31")[1]["events"]
+        self.assertEqual([e["title"] for e in later], ["Træning"])
+        self.assertEqual(a.req("GET", "/api/calendars/events?from=2027-08-01&to=2027-08-31")[1]["events"], [])
+        a.req("DELETE", f"/api/calendars/{cal}/events/{rb['event']['id']}")
         self.assertEqual(self.d.req("GET", "/api/calendars/events")[1]["events"], [])
         self.assertEqual(self.d.req("PUT", f"/api/calendars/{cal}/events/{eid}", {"event": ev})[0], 404)
         self.assertEqual(a.req("DELETE", f"/api/calendars/{cal}/members/{self.ids['carl']}")[0], 200)

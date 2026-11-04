@@ -279,7 +279,23 @@ def _clean_event(e):
            "location": str(e.get("location") or "")[:200], "notes": str(e.get("notes") or "")[:4000]}
     if isinstance(e.get("color"), str) and COLOR_RE.match(e["color"]):
         out["color"] = e["color"]
+    r = e.get("repeat")
+    if isinstance(r, dict) and r.get("freq") in ("day", "weekday", "week", "2week", "month", "year"):
+        rep = {"freq": r["freq"]}
+        if DATE_RE.match(str(r.get("until") or "")) and r["until"] >= date:
+            rep["until"] = r["until"]
+        skip = sorted({x for x in (r.get("skip") or []) if isinstance(x, str) and DATE_RE.match(x)})[-200:]
+        if skip:
+            rep["skip"] = skip
+        out["repeat"] = rep
     return out
+
+
+def _last_day(ev):
+    """The last day an event can show up on (for the date range query): the end of a repeating series, or far away."""
+    if ev.get("repeat"):
+        return ev["repeat"].get("until") or "9999-12-31"
+    return ev["endDate"] or ev["date"]
 
 
 def _event_out(r, users):
@@ -309,7 +325,7 @@ def cal_event_create(req, params):
         raise ApiError(400, "Kalenderen er fuld (5000 aftaler).", "limit")
     eid, t = _uid("e"), db.now()
     db.q("INSERT INTO cal_events(id, cal_id, data, date, end_date, created_by, updated_by, updated_at) VALUES(?,?,?,?,?,?,?,?)",
-         (eid, params["id"], json.dumps(ev), ev["date"], ev["endDate"] or ev["date"], u["id"], u["id"], t))
+         (eid, params["id"], json.dumps(ev), ev["date"], _last_day(ev), u["id"], u["id"], t))
     _cal_notify(params["id"], {"type": "cal-events", "cal": params["id"], "by": u["id"]})
     r = db.one("SELECT * FROM cal_events WHERE id = ?", (eid,))
     return 201, {"event": _event_out(r, _users([u["id"]]))}
@@ -330,7 +346,7 @@ def cal_event_update(req, params):
     _cal_event_row(params["id"], params["eid"])
     ev = _clean_event(req.json().get("event"))
     db.q("UPDATE cal_events SET data = ?, date = ?, end_date = ?, updated_by = ?, updated_at = ? WHERE id = ?",
-         (json.dumps(ev), ev["date"], ev["endDate"] or ev["date"], u["id"], db.now(), params["eid"]))
+         (json.dumps(ev), ev["date"], _last_day(ev), u["id"], db.now(), params["eid"]))
     _cal_notify(params["id"], {"type": "cal-events", "cal": params["id"], "by": u["id"]})
     r = db.one("SELECT * FROM cal_events WHERE id = ?", (params["eid"],))
     return 200, {"event": _event_out(r, _users([r["created_by"], u["id"]]))}

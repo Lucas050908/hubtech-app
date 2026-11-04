@@ -7,6 +7,7 @@ import { invoiceState, isoDate, totals, kr } from './invoice.js';
 import { isAndroidApp, updateWidget } from '../core/android.js';
 import { api } from '../core/api.js';
 import { store } from '../core/store.js';
+import { occurrenceOn } from './calrecur.js';
 
 const hm = (t) => new Date(t).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 const dur = (ms) => { const m = Math.max(0, Math.round(ms / 60e3)); return m >= 60 ? `${Math.floor(m / 60)} t ${m % 60} min` : `${m} min`; };
@@ -15,8 +16,9 @@ const dur = (ms) => { const m = Math.max(0, Math.round(ms / 60e3)); return m >= 
 export function buildToday({ calendar, tasks, flashcards, inventory, timesheet, customers, sudoku, invites, me }, now = Date.now()) {
   const today = isoDate(now), tomorrow = isoDate(now + 86400e3);
   const agenda = [];
-  for (const e of calendar?.events || []) {
-    if (e.date <= today && (e.endDate || e.date) >= today) agenda.push({ kind: 'event', time: e.allDay || !e.start ? '' : e.start, title: e.title, sub: [e.allDay || !e.start ? 'Hele dagen' : e.end ? `${e.start}–${e.end}` : e.start, e.location].filter(Boolean).join(' · '), href: '#/apps/calendar', color: e.color });
+  for (const e0 of calendar?.events || []) {
+    const e = occurrenceOn(e0, today);   // repeating ones too
+    if (e) agenda.push({ kind: 'event', time: e.allDay || !e.start ? '' : e.start, title: e.title, sub: [e.allDay || !e.start ? 'Hele dagen' : e.end ? `${e.start}–${e.end}` : e.start, e.location].filter(Boolean).join(' · '), href: '#/apps/calendar', color: e.color });
   }
   const open = (tasks?.tasks || []).filter(t => t.status !== 'done' && t.due);
   for (const t of open) {
@@ -46,7 +48,7 @@ export function buildToday({ calendar, tasks, flashcards, inventory, timesheet, 
     tiles.push({ id: 'invites', icon: 'gamepad', value: String(inv.length), label: inv.length === 1 ? `${from} vil spille med dig` : 'invitationer til spil', href: `#/apps/${APP[inv[0].game] || 'connect4'}/online/${inv[0].id}`, hot: true });
   }
   if (sudoku && !(sudoku.daily?.date === today && sudoku.daily?.done)) tiles.push({ id: 'daily', icon: 'calendar', value: 'Dagens', label: 'sudoku venter på dig', href: '#/apps/sudoku' });
-  const tomorrowCount = (calendar?.events || []).filter(e => e.date <= tomorrow && (e.endDate || e.date) >= tomorrow).length + open.filter(t => t.due === tomorrow).length;
+  const tomorrowCount = (calendar?.events || []).filter(e => occurrenceOn(e, tomorrow)).length + open.filter(t => t.due === tomorrow).length;
   return { agenda, tiles, tomorrowCount };
 }
 
