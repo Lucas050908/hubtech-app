@@ -5,6 +5,7 @@
  */
 import { api } from './api.js';
 import { debounce } from './dom.js';
+import { LOOK_VERSION } from '../features/widgetlogic.js';
 
 const LOCAL_KEY = 'hubtech.device.v1';
 
@@ -97,13 +98,21 @@ export function setWorld(patch) { setPref('world', { ...state.prefs.world, ...pa
 
 export async function loadUserData() {
   const [prefsRes, favRes] = await Promise.all([
-    api.get('/api/me/prefs').catch(() => ({ prefs: {} })),
+    api.get('/api/me/prefs').catch(() => ({ prefs: {}, failed: true })),
     api.get('/api/favorites').catch(() => ({ favorites: [] })),
   ]);
   const server = prefsRes.prefs || {};
   const merged = { ...structuredClone(DEFAULT_PREFS), ...server };
   merged.world = { ...DEFAULT_WORLD, ...(server.world || state.prefs.world || {}) };
   if (!server.theme && state.prefs.theme) merged.theme = state.prefs.theme;
+  // HUBTECH got a new look (the desert design): everyone moves to it once – and can choose something else after
+  if (!prefsRes.failed && (server.look || 0) < LOOK_VERSION) {
+    merged.world = { ...merged.world, source: 'scene', scene: 'desert', style: 'auto' };
+    const { home: _old, ...wid } = server.widgets || {};
+    merged.widgets = { ...wid, weather: false, musicMode: 'title' };
+    merged.look = LOOK_VERSION;
+    api.put('/api/me/prefs', { world: merged.world, widgets: merged.widgets, look: LOOK_VERSION }).catch(() => {});
+  }
   state.prefs = merged;
   state.device.world = merged.world; state.device.theme = merged.theme; writeLocal(state.device);
   // first login on this account: upload the look this device already had

@@ -4,8 +4,10 @@ import { api } from '../core/api.js';
 import { icon } from '../core/icons.js';
 import { store, refreshSummary } from '../core/store.js';
 import { appById, isLearnApp, entryApps, access, visible } from '../core/registry.js';
-import { todayPanel } from '../features/today.js';
-import { widgetPrefs, openCustomize } from '../features/topwidgets.js';
+import { todayPanel, buildToday } from '../features/today.js';
+import { getState } from '../core/services.js';
+import { buildStats, greeting } from '../features/widgetlogic.js';
+import { widgetPrefs, openCustomize, onWeather } from '../features/topwidgets.js';
 import { appCard, profileCard, activityPanel, shortcutsPanel, worldQuickPanel, seasonStrip, projectsPreview, learningPreview, panel } from '../features/widgets.js';
 
 let unsub = [];
@@ -24,15 +26,57 @@ export default {
     unsub.push(store.on('summary', renderProfile));
     refreshSummary();
 
-    // a big clock like on a desk – the desert design's calm overview
+    // ── the desert design's overview: a big clock with the weather and a greeting, four numbers, I dag and "Fortsæt" ──
     const clock = h('div', { class: 'home-clock', 'aria-hidden': 'true' });
-    const tick = () => { const d = new Date(); clock.textContent = d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' }); };
+    const tick = () => { clock.textContent = new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' }).replace('.', ':'); };
     tick();
     const clockTimer = setInterval(() => { if (!clock.isConnected) { clearInterval(clockTimer); return; } tick(); }, 15000);
     unsub.push(() => clearInterval(clockTimer));
-    const hero = h('section', { class: 'home-hero', 'aria-labelledby': 'hero-title' },
-      clock,
-      h('h1', { id: 'hero-title', class: 'home-title' }, `${u.onboarding?.done ? 'Velkommen tilbage' : 'Velkommen'}, ${first}`),
+    const wx = h('div', { class: 'home-wx' });
+    unsub.push(onWeather((x) => {
+      if (!x) { clear(wx); return; }
+      h(clear(wx), null, h('span', { class: 'home-wx-ic' }, icon(x.icon)), h('span', null, h('b', null, `${x.temp} °C`), h('small', null, x.text)));
+      wx.title = x.city; wx.setAttribute('aria-label', `Vejret i ${x.city}: ${x.temp} grader, ${x.text.toLowerCase()}`);
+    }));
+    const greet = h('h1', { id: 'hero-title', class: 'home-title home-greet' }, greeting(first, []));
+    const hero = h('section', { class: 'home-hero home-clockrow', 'aria-labelledby': 'hero-title' }, h('div', { class: 'home-clockline' }, clock, wx), greet);
+
+    const stat = (cls) => h('a', { class: ['glass', 'home-stat', cls] }, h('span', { class: 'home-stat-label' }), h('b', { class: 'home-stat-value' }, '–'), h('span', { class: 'home-stat-sub' }));
+    const st = { cases: stat('is-cases'), appt: stat('is-appt'), hours: stat('is-hours'), level: stat('is-level') };
+    const LABEL = { cases: 'Åbne opgaver', appt: 'Næste aftale', hours: 'Timer denne uge' };
+    const drawStats = (x) => {
+      for (const k of ['cases', 'appt', 'hours', 'level']) {
+        const el = st[k], v = x[k];
+        el.href = v.href;
+        el.querySelector('.home-stat-label').textContent = k === 'level' ? v.label : LABEL[k];
+        el.querySelector('.home-stat-value').textContent = v.value;
+        const sub = el.querySelector('.home-stat-sub');
+        if (k === 'level') h(clear(sub), null, h('span', { class: 'home-stat-bar' }, h('i', { style: { width: `${v.pct}%` } })));
+        else sub.textContent = v.sub;
+        el.classList.toggle('is-warn', !!v.warn); el.classList.toggle('is-hot', !!v.hot);
+      }
+    };
+    const stats = h('section', { class: 'home-stats', 'aria-label': 'Nøgletal' }, st.cases, st.appt, st.hours, st.level);
+    let states = {};
+    const refreshStats = () => drawStats(buildStats({ ...states, summary: store.get('summary') }));
+    Promise.all(['calendar', 'tasks', 'timesheet', 'flashcards'].map(k => getState(k).catch(() => null))).then(([calendar, tasks, timesheet, flashcards]) => {
+      states = { calendar, tasks, timesheet };
+      refreshStats();
+      greet.textContent = greeting(first, buildToday({ calendar, tasks, flashcards }).agenda);
+    });
+    unsub.push(store.on('summary', refreshStats));
+    refreshStats();
+
+    // "Fortsæt hvor du slap": the apps you opened last (or a few good places to start)
+    let recentApps = [];
+    try { recentApps = JSON.parse(localStorage.getItem('hubtech.recentApps') || '[]').map(appById).filter(a => a && a.page && visible(a, u) && access(a, u).ok).slice(0, 3); } catch { /* */ }
+    const starters = ['hubtech', 'learning', 'tasks'].map(appById).filter(a => a && access(a, u).ok);
+    const resumeList = recentApps.length ? recentApps : starters;
+    const resume = panel('Fortsæt hvor du slap', { icon: 'clock' },
+      h('div', { class: 'home-resume' }, resumeList.map(a => h('a', { class: 'home-resume-item', href: a.route, style: { '--app': a.hue } },
+        h('span', { class: 'lx-ico' }, icon(a.icon)), h('span', null, h('b', null, a.name), h('small', null, recentApps.length ? 'Senest brugt' : a.tagline))))));
+
+    const welcome = h('section', { class: 'home-welcome' },
       h('p', { class: 'home-lead' }, 'Dit digitale univers – samlet ét sted.'),
       h('p', { class: 'home-sub' }, 'Her finder du dine projekter, apps, læringsforløb og alt det, der hjælper dig med at udvikle dine idéer og færdigheder.'),
       h('div', { class: 'home-cta' },
@@ -63,7 +107,7 @@ export default {
 
     // every card can be switched off under "Tilpas" (prefs.widgets.home)
     const cards = {
-      hero, today: todayPanel(), apps, together, previews: h('div', { class: 'home-row' }, projectsPreview(), learningPreview()), seasons: seasonStrip(),
+      clock: hero, stats, today: todayPanel(), resume, hero: welcome, apps, together, previews: h('div', { class: 'home-row' }, projectsPreview(), learningPreview()), seasons: seasonStrip(),
       profile: profileSlot, activity: activityPanel({ limit: 4 }), shortcuts: shortcutsPanel(), world: worldQuickPanel(),
     };
     const hiddenNote = h('p', { class: 'faint home-empty on-world', hidden: true }, 'Alle kort er slået fra. ', h('button', { type: 'button', class: 'btn btn-sm', onclick: () => openCustomize() }, icon('sliders'), 'Vælg kort'));
@@ -76,10 +120,17 @@ export default {
       hiddenNote.hidden = Object.keys(cards).some(k => show[k]);
     };
     const layout = h('div', { class: 'with-rail' },
-      h('div', { class: 'stack' }, cards.hero, cards.today, cards.apps, cards.together, cards.previews, cards.seasons),
+      h('div', { class: 'stack' }, cards.hero, cards.apps, cards.together, cards.previews, cards.seasons),
       rail);
-    unsub.push(store.on('prefs', applyCards));
-    applyCards();
-    return h('div', { class: 'page home' }, hiddenNote, layout);
+    const more = ['hero', 'apps', 'together', 'previews', 'seasons'];
+    const applyMore = () => { const show = widgetPrefs().home; layout.hidden = !more.concat(['profile', 'activity', 'shortcuts', 'world']).some(k => show[k]); };
+    unsub.push(store.on('prefs', applyCards), store.on('prefs', applyMore));
+    applyCards(); applyMore();
+    const customize = h('button', { type: 'button', class: 'btn btn-ghost btn-sm home-customize-top', onclick: () => openCustomize() }, icon('sliders'), 'Tilpas forsiden');
+    return h('div', { class: 'page home' }, hiddenNote,
+      h('div', { class: 'home-top' }, cards.clock, customize),
+      cards.stats,
+      h('div', { class: 'home-pair' }, cards.today, cards.resume),
+      layout);
   },
 };

@@ -87,7 +87,9 @@ async def main():
             check("forbindelser: … begge veje, og det nye navn følger med", await card(pgb, b, "Olivers værksted"))
             await pgb.wait_for_selector(".hl-card"); await pgb.wait_for_timeout(800)
             await pgb.screenshot(path=f"{OUT}/hubs-connected.png")
-            await pga.goto(a + "/#/"); await pga.wait_for_selector(".home-hub", timeout=10000)
+            # "Sammen med andre" is one of the extra cards on Hjem (off by default in the desert design): switch it on
+            await pga.evaluate("""async () => { const r = await fetch('/api/me/prefs'); const p = (await r.json()).prefs; const w = p.widgets || {}; await fetch('/api/me/prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'hubtech' }, body: JSON.stringify({ widgets: { ...w, home: { ...(w.home || {}), together: true } } }) }); }""")
+            await pga.goto(a + "/#/"); await pga.reload(); await pga.wait_for_selector(".home-hub", timeout=10000)
             check("hjem: forbundne HUBTECH'er kan besøges fra forsiden", "Majas HUBTECH" in await pga.inner_text(".home-hub"))
             await pga.screenshot(path=f"{OUT}/hubs-home.png")
             # Oliver visits Maja's HUBTECH with one click

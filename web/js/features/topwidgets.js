@@ -7,8 +7,8 @@ import { icon } from '../core/icons.js';
 import { store, setPref } from '../core/store.js';
 import { api } from '../core/api.js';
 import { modal, switchControl, segmented } from '../core/ui.js';
-import { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS } from './widgetlogic.js';
-export { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS };
+import { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS, LOOK_VERSION } from './widgetlogic.js';
+export { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS, LOOK_VERSION };
 
 export function widgetPrefs() {
   const w = store.get('prefs')?.widgets || {};
@@ -42,6 +42,13 @@ async function loadStreaks() {
   if (a) data.active = dayStreak(a.activity.map(x => x.at));
   data.chess = winStreak(c?.state?.rating?.hist || []);
   changed();
+}
+
+/** The weather for Hjem's clock: calls fn now and whenever it changes; returns a function that stops it. */
+export function onWeather(fn) {
+  const f = () => fn(data.weather, data.weatherErr);
+  listeners.add(f); startData(); f();
+  return () => listeners.delete(f);
 }
 
 let timers = [];

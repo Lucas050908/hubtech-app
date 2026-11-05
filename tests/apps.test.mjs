@@ -1356,7 +1356,20 @@ console.log('apps ok');
   assert.equal(W.dayStreak([day(2)], now), 0);
   assert.equal(W.winStreak([{ d: 8 }, { d: -5 }, { d: 6 }, { d: 3 }]), 2);
   assert.equal(W.winStreak([]), 0);
-  assert.ok(W.HOME_CARDS.every(([k]) => W.WIDGET_DEFAULTS.home[k] === true));
-  assert.deepEqual(['weather', 'streak', 'online', 'music'].map(k => W.WIDGET_DEFAULTS[k]), [true, true, true, true]);
+  assert.deepEqual(W.HOME_CARDS.filter(([k]) => W.WIDGET_DEFAULTS.home[k]).map(([k]) => k), ['clock', 'stats', 'today', 'resume'], 'ørken-designets kort er slået til');
+  assert.deepEqual(['weather', 'streak', 'online', 'music'].map(k => W.WIDGET_DEFAULTS[k]), [false, true, true, true]);
+  const t9 = new Date(2026, 10, 5, 9).getTime();
+  const S = W.buildStats({ tasks: { tasks: [{ status: 'todo', due: '2026-11-05' }, { status: 'todo', due: '2026-11-01' }, { status: 'done' }] },
+    calendar: { events: [{ title: 'Morgenmøde', date: '2026-11-05', start: '08:00' }, { title: 'Tandlæge', date: '2026-11-05', start: '10:00' }] },
+    timesheet: { entries: [{ start: new Date(2026, 10, 3, 8).getTime(), end: new Date(2026, 10, 3, 10, 30).getTime() }, { start: new Date(2026, 10, 1, 8).getTime(), end: new Date(2026, 10, 1, 9).getTime() }] },
+    summary: { level: 4, xp: 3420, levelXp: 420, levelSize: 1000 } }, t9);
+  assert.deepEqual([S.cases.value, S.cases.sub, S.cases.warn], ['2', '1 overskredet', true]);
+  assert.deepEqual([S.appt.value, S.appt.sub], ['10:00', 'Tandlæge'], 'næste aftale er den efter nu');
+  assert.equal(S.hours.value, '2,5', 'kun denne uge (mandag–) tæller');
+  assert.deepEqual([S.level.label, S.level.value, S.level.pct], ['Level 4', '3.420', 42]);
+  assert.equal(W.buildStats({ calendar: { events: [{ title: 'Fodbold', date: '2026-11-06', start: '17:00' }] } }, t9).appt.sub, 'I morgen · Fodbold');
+  assert.equal(W.greeting('Lucas', [{ kind: 'event' }, { kind: 'event' }, { kind: 'task' }], new Date(2026, 10, 5, 8)), 'God morgen, Lucas – 2 aftaler og 1 deadline i dag');
+  assert.equal(W.greeting('Lucas', [], new Date(2026, 10, 5, 20)), 'God aften, Lucas – ingen aftaler i dag');
+  assert.equal(W.LOOK_VERSION, 2);
   console.log('widgets ok');
 }

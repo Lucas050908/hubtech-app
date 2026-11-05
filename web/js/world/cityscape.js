@@ -133,11 +133,14 @@ function pyramid(b, cx, base, w, h, lit, shade, edge) {
   for (let i = 1; i < 9; i++) { const yy = base - h * i / 9, half = (w / 2) * (1 - i / 9); b.beginPath(); b.moveTo(cx - half, yy); b.lineTo(cx + half * 0.24 + w * 0.12 * (1 - i / 9) * 0, yy); b.stroke(); }
   b.globalAlpha = 1;
 }
-function desert(S, b, r, s, W, H, time, light) {
+function desert(S, b, r, s, W, Hfull, time, light) {
   const P = DESERT[light && time === 'night' ? 'dusk' : time] || DESERT.night;
+  // the desert is a band at the top (like the design), the rest is warm dark stone with the circuit at the bottom
+  const H = Math.max(Hfull * 0.42, Math.min(Hfull, 300 * s));
+  b.fillStyle = '#141210'; b.fillRect(0, 0, W, Hfull);
   b.fillStyle = vgrad(b, 0, H, P.sky); b.fillRect(0, 0, W, H);
-  for (let i = 0; i < 240 * P.stars; i++) { b.fillStyle = `rgba(255,240,220,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.5, z * s, z * s); }
-  const hz = H * 0.66, sx = W * 0.72, sy = H * (time === 'day' ? 0.2 : 0.42), sr = 34 * s;
+  for (let i = 0; i < 160 * P.stars; i++) { b.fillStyle = `rgba(255,240,220,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.55, z * s, z * s); }
+  const hz = H * 0.66, sx = W * 0.76, sy = H * (time === 'day' ? 0.28 : 0.46), sr = Math.min(70 * s, H * 0.17);
   const g = b.createRadialGradient(sx, sy, 0, sx, sy, sr * 7); g.addColorStop(0, hexA(P.glow, 0.45)); g.addColorStop(1, hexA(P.glow, 0)); b.fillStyle = g; b.fillRect(0, 0, W, H);
   b.globalAlpha = P.sunA; b.fillStyle = P.sun; b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill(); b.globalAlpha = 1;
   dune(b, W, hz, H * 0.025, 3, 0.6, P.far);
@@ -147,8 +150,12 @@ function desert(S, b, r, s, W, H, time, light) {
   dune(b, W, hz + H * 0.07, H * 0.03, 2.2, 2.1, P.mid);
   S.anim.push({ type: 'camel', y: hz + H * 0.085, s: 0.9 * s, sp: 0.012, color: light && time === 'day' ? '#4a2e1a' : '#140c08' });
   dune(b, W, hz + H * 0.16, H * 0.035, 1.6, 4.2, P.near);
+  // the band fades into the stone below
+  const f0 = H * 0.84, f1 = H * 1.02;
+  b.fillStyle = vgrad(b, f0, f1, [[0, 'rgba(20,18,16,0)'], [1, '#141210']]); b.fillRect(0, f0, W, f1 - f0);
+  b.fillStyle = '#141210'; b.fillRect(0, f1, W, Hfull - f1);
   // the circuit: thin traces rising from the bottom edge, with a few pulses travelling up them
-  const paths = [], base = H, top = H * 0.86;
+  const paths = [], base = Hfull, top = Hfull - Math.min(260 * s, Hfull * 0.22);
   for (let x = 20 * s; x < W; x += (46 + r() * 70) * s) {
     const pts = [[x, base + 2]]; let cx = x, cy = base;
     const steps = 2 + Math.floor(r() * 3);
@@ -158,7 +165,7 @@ function desert(S, b, r, s, W, H, time, light) {
   b.save(); b.strokeStyle = hexA('#f97316', light ? 0.16 : 0.13); b.lineWidth = 1.4 * s; b.lineJoin = 'round';
   for (const p of paths) { b.beginPath(); p.forEach(([x, y], i) => i ? b.lineTo(x, y) : b.moveTo(x, y)); b.stroke(); const [ex, ey] = p[p.length - 1]; b.fillStyle = hexA('#f97316', 0.3); b.beginPath(); b.arc(ex, ey, 2.4 * s, 0, TAU); b.fill(); }
   b.restore();
-  const fade = b.createLinearGradient(0, top - 20 * s, 0, H); fade.addColorStop(0, hexA('#f97316', 0)); fade.addColorStop(1, hexA('#f97316', 0.07)); b.fillStyle = fade; b.fillRect(0, top - 20 * s, W, H - top + 20 * s);
+  const fade = b.createLinearGradient(0, top - 20 * s, 0, Hfull); fade.addColorStop(0, hexA('#f97316', 0)); fade.addColorStop(1, hexA('#f97316', 0.07)); b.fillStyle = fade; b.fillRect(0, top - 20 * s, W, Hfull - top + 20 * s);
   S.anim.push({ type: 'pcb', paths: paths.filter((_, i) => i % 3 === 0), s });
   S.anim.push({ type: 'dust', n: Math.round(40 * s), light });
 }

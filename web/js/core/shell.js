@@ -22,6 +22,33 @@ let navEl = null;
 let appsNavEl = null;
 let seasonMini = null;
 let topbar = null;
+let dockEl = null;
+
+// the dock at the bottom (the desert design): the everyday places, like in the mockup
+const DOCK = [
+  { id: 'home', label: 'Hjem', icon: 'home', href: '#/', hue: '#f97316', match: (p) => p === '/' },
+  { app: 'hubtech', label: 'Office' },
+  { app: 'calendar', label: 'Kalender' },
+  { app: 'tasks', label: 'Opgaver' },
+  { app: 'servicehelp', label: 'Service' },
+  { id: 'learn', label: 'Læring', icon: 'graduation', href: '#/learn', hue: '#22c55e', match: (p) => p.startsWith('/learn') },
+  { id: 'apps', label: 'Alle apps', icon: 'apps', href: '#/apps', hue: '#57534e', match: (p) => p === '/apps' },
+];
+function dockItems() {
+  const u = store.get('user');
+  return DOCK.map(d => {
+    if (!d.app) return d;
+    const a = appById(d.app);
+    if (!a || !access(a, u).ok) return null;
+    const route = a.route.replace(/^#/, '');
+    return { id: d.app, label: d.label, icon: a.icon, href: a.route, hue: a.hue, match: (p) => p.startsWith(route) };
+  }).filter(Boolean);
+}
+function renderDock() {
+  if (!dockEl) return;
+  h(clear(dockEl), null, dockItems().map(d => h('a', { class: 'dock-item', href: d.href, dataset: { id: d.id }, style: { '--app': d.hue } },
+    h('span', { class: 'dock-ic' }, icon(d.icon)), h('span', { class: 'dock-label' }, d.label))));
+}
 
 const MAIN_NAV = [
   { id: 'home', label: 'Hjem', icon: 'home', href: '#/', match: (p) => p === '/' },
@@ -60,24 +87,34 @@ export function buildShell(root) {
       h('div', { class: 'quote' }, icon('quote'), h('span', null, QUOTES[new Date().getDate() % QUOTES.length]))),
   );
   topbar = buildTopbar();
+  dockEl = h('nav', { class: 'dock', 'aria-label': 'Dock' });
   shellEl = h('div', { class: 'shell', id: 'shell' },
     sidebar,
-    h('div', { class: 'main-col' }, topbar, outlet));
+    h('div', { class: 'main-col' }, topbar, outlet),
+    dockEl);
   root.appendChild(shellEl);
   // close the mobile drawer when navigating
   addEventListener('hashchange', () => shellEl?.classList.remove('nav-open'));
   addEventListener('scroll', () => topbar.classList.toggle('is-scrolled', scrollY > 8), { passive: true });
   renderNav();
+  renderDock();
   renderAppsNav();
   renderSeasonMini();
   store.on('prefs', () => { renderAppsNav(); renderSeasonMini(); renderThemeBtn(); });
-  store.on('user', () => { renderUserChip(); renderAppsNav(); });
+  store.on('user', () => { renderUserChip(); renderAppsNav(); renderDock(); });
   store.on('summary', renderUserChip);
   return shellEl;
 }
 
 export function setActiveNav(path) {
   if (!navEl) return;
+  if (dockEl) {
+    const items = dockItems();
+    for (const a of dockEl.querySelectorAll('.dock-item')) {
+      const on = items.find(d => d.id === a.dataset.id)?.match(path);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    }
+  }
   for (const a of navEl.querySelectorAll('.nav-item')) {
     const item = MAIN_NAV.find(n => n.id === a.dataset.id);
     const on = item?.match(path);
@@ -181,6 +218,7 @@ function buildTopbar() {
   drawNet(offlineStatus());
   const music = bgmButton();
   return h('header', { class: 'topbar' },
+    h('a', { class: 'top-brand', href: '#/', 'aria-label': 'HUBTECH – til Hjem' }, logo(30), h('span', null, 'HUBTECH')),
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Åbn menu', 'aria-controls': 'sidebar', onclick: () => shellEl.classList.toggle('nav-open') }, icon('menu')),
     h('button', { class: 'search-trigger', dataset: { tour: 'search' }, 'aria-label': 'Søg i platformen (Ctrl+K)', onclick: () => openPalette() },
       icon('search'), h('span', null, 'Søg i platformen, projekter, guides og mere...'), h('kbd', null, navigator.platform?.includes('Mac') ? '⌘ + K' : 'Ctrl + K')),
@@ -216,6 +254,7 @@ function toggleUserMenu(anchor) {
   const item = (ic, label, fn) => h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { closeMenus(); fn(); } }, icon(ic), label);
   openMenu = h('div', { class: 'menu glass glass-strong', role: 'menu' },
     item('user', 'Profil', () => { location.hash = '#/settings/profile'; }),
+    item('dashboard', 'Dashboard', () => { location.hash = '#/dashboard'; }),
     item('settings', 'Indstillinger', () => { location.hash = '#/settings'; }),
     item('sliders', 'Tilpas topbar og forside', () => openCustomize()),
     store.get('user')?.guestOf ? item('home', `Tilbage til ${store.get('user').guestOf.name}`, () => import('../pages/hubs.js').then(m => m.visit({ id: store.get('user').guestOf.id, name: store.get('user').guestOf.name }))) : item('link', 'Forbundne HUBTECH’er', () => { location.hash = '#/hubs'; }),
