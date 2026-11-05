@@ -58,9 +58,18 @@ export function hostedGame(opts) {
     const r = room, blob = room.state.blob;
     syncT = setTimeout(() => api.post(`/api/games/rooms/${r.id}/sync`, { blob }).catch(() => {}), 50);
   }
-  function after() { draw(); scheduleAi(); }
+  function after() { try { draw(); } finally { scheduleAi(); } }
 
   // the computer plays its seats (locally, or on the host's device online)
+  // safety net: if it is a computer's turn and nothing is planned (a lost timer, a redraw that failed), plan it again
+  let aiDue = 0;
+  const watchdog = setInterval(() => {
+    if (dead) { clearInterval(watchdog); return; }
+    const s = mode === 'online' ? room?.state?.blob : st.game;
+    if (!s || s.phase === 'over' || (mode === 'online' && room?.host !== me())) return;
+    if (aiDue && Date.now() - aiDue < 3000) return;
+    if (s.players.some((p, seat) => p.ai && opts.aiMove(s, seat))) { console.warn('[hostedgame] computerens træk blev sat i gang igen'); try { draw(); } catch (e) { console.error(e); } scheduleAi(); }
+  }, 2500);
   function scheduleAi() {
     clearTimeout(aiT);
     const s = mode === 'online' ? room?.state?.blob : st.game;
@@ -70,12 +79,16 @@ export function hostedGame(opts) {
       if (!s.players[seat].ai) continue;
       const mv = opts.aiMove(s, seat);
       if (!mv) continue;
+      const delay = opts.aiDelay ? opts.aiDelay(s, seat, mv) : 700;
+      aiDue = Date.now() + delay;
       aiT = setTimeout(() => {
+        aiDue = 0;
         if (dead) return;
         const cur = mode === 'online' ? room?.state?.blob : st.game;
         if (cur !== s) { if (cur) { draw(); scheduleAi(); } return; }   // the game was reloaded meanwhile (fx synced from another device): carry on with that one
         if (opts.apply(s, seat, mv.name, mv.args || [])) { if (mode === 'online') push(); else store.save(); after(); }
-      }, opts.aiDelay ? opts.aiDelay(s, seat, mv) : 700);
+        else scheduleAi();
+      }, delay);
       return;
     }
   }
@@ -207,5 +220,5 @@ export function hostedGame(opts) {
   } else if (st.game) { ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
 
   h(root, null, h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), board);
-  return { el: root, controls, redraw: () => draw(), destroy() { dead = true; clearTimeout(aiT); clearTimeout(syncT); offs.forEach(f => f()); offs = []; } };
+  return { el: root, controls, redraw: () => draw(), destroy() { dead = true; clearTimeout(aiT); clearInterval(watchdog); clearTimeout(syncT); offs.forEach(f => f()); offs = []; } };
 }
