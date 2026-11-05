@@ -73,7 +73,7 @@ export function hostedGame(opts) {
       aiT = setTimeout(() => {
         if (dead) return;
         const cur = mode === 'online' ? room?.state?.blob : st.game;
-        if (cur !== s) return;
+        if (cur !== s) { if (cur) { draw(); scheduleAi(); } return; }   // the game was reloaded meanwhile (fx synced from another device): carry on with that one
         if (opts.apply(s, seat, mv.name, mv.args || [])) { if (mode === 'online') push(); else store.save(); after(); }
       }, opts.aiDelay ? opts.aiDelay(s, seat, mv) : 700);
       return;

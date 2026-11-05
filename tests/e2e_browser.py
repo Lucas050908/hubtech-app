@@ -2101,8 +2101,8 @@ async def main():
             if await p1.locator(".ld-piece:not([style*='grid-row: 3']):not([style*='grid-row: 4']):not([style*='grid-row: 12']):not([style*='grid-row: 13'])").count():
                 break
             await p1.wait_for_timeout(300)
-        check("ludo: man kan slå og flytte, og computerne spiller med", "slog" in await p1.inner_text(".dm-log"))
         await p1.screenshot(path=f"{OUT}/app-ludo.png")
+        check("ludo: man kan slå og flytte, og computerne spiller med", await p1.locator(".dm-log").count() == 1 and "slog" in await p1.inner_text(".dm-log"), await p1.inner_text(".ld-turn") if await p1.locator(".ld-turn").count() else "intet bræt")
         # Otter against the computer
         await p1.goto(BASE + "/#/apps/otter"); await p1.wait_for_selector(".pg-setup-list")
         await p1.click(".dm-page button:has-text('Start')"); await p1.wait_for_selector(".ot-table")
