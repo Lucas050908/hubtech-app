@@ -287,6 +287,9 @@ a.project-card:hover { transform: translateY(-2px); border-color: var(--line-2);
 .g-p { color: var(--text-2); margin-bottom: 10px; max-width: 70ch; }
 .g-list { padding-left: 20px; display: grid; gap: 6px; color: var(--text-2); margin-bottom: 10px; }
 .g-list li::marker { color: var(--app, var(--accent)); }
+.g-list li.g-code { list-style: none; margin-left: -20px; }
+.g-list li.g-code pre { margin: 4px 0; padding: 10px 12px; border-radius: var(--r-sm, 8px); background: rgba(0,0,0,.28); color: var(--text); font-size: var(--fs-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+.course-hits { display: grid; gap: 8px; }
 .g-table { overflow-x: auto; margin: 6px 0 14px; border: 1px solid var(--line); border-radius: var(--r-md); }
 .g-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 .g-table th, .g-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }

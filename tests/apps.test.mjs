@@ -1268,6 +1268,22 @@ console.log('apps ok');
       for (const q of d.q) assert.ok(q.length === 2 && q[0].length > 8 && q[1].length > 2, `${c.id}: ${q[0]}`);
     }
   }
-  for (const want of ['lasertyper', 'lightburn', 'xcs', 'falcon', 'bambu', 'creality', 'canvasworkspace', 'scal', 'versaworks', 'rolandconnect', 'service-maskiner']) assert.ok(ids.has(want), want);
+  for (const want of ['lasertyper', 'lightburn', 'xcs', 'falcon', 'bambu', 'creality', 'halot-box', 'canvasworkspace', 'scal', 'versaworks', 'rolandconnect', 'service-maskiner']) assert.ok(ids.has(want), want);
   console.log('makercourses ok');
+}
+
+{
+  const { APP_COURSES, APP_GROUPS, htmlToPoints } = await import('../web/js/data/appcourses.js');
+  const groups = new Set(APP_GROUPS.map(g => g[0]));
+  const ids = new Set();
+  for (const c of APP_COURSES) {
+    assert.ok(!ids.has(c.id), c.id); ids.add(c.id);
+    assert.ok(groups.has(c.group) && c.hue && c.days.length >= 2, c.id);
+    for (const d of c.days) assert.ok(d.t && d.g && d.l.length && d.d.length && d.q.length && d.r.length, `${c.id}: ${d.t}`);
+  }
+  for (const want of ['hubtech', 'it-ordbog', 'it-viden', 'phishing', 'kommandoer', 'elektronik', 'digitale-grundfaerdigheder', 'kode-python', 'kode-arduino']) assert.ok(ids.has(want), want);
+  assert.deepEqual(htmlToPoints('<p>Hej <b>du</b></p><ul><li>a &lt; b</li><li>to</li></ul>'), ['Hej du', 'a < b', 'to']);
+  const { MAKER_COURSES } = await import('../web/js/data/makercourses.js');
+  for (const c of MAKER_COURSES) assert.ok(!ids.has(c.id), 'dobbelt id ' + c.id);
+  console.log('appcourses ok');
 }

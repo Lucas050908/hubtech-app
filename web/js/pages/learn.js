@@ -8,7 +8,7 @@ const csXp = (s) => Object.keys(s?.done || {}).length * 20 + Object.values(s?.qu
 import { getState, courseProgress } from '../core/services.js';
 import { api } from '../core/api.js';
 import { GUIDES, GUIDE_CATEGORIES } from '../data/guides.js';
-import { START_COURSE as COURSE, loadMakerCourses } from '../data/courses.js';
+import { START_COURSE as COURSE, loadAllCourses, pointsText } from '../data/courses.js';
 import { paintStill } from '../world/controller.js';
 import { progressBar, stateBlock } from '../core/ui.js';
 
@@ -66,9 +66,12 @@ export default {
       }));
     });
 
-    // machine and software courses: LightBurn, xTool, Bambu Lab, VersaWorks …
+    // every other course: what the learning apps teach (IT, kode, elektronik) and the machine courses (laser, 3D-print …)
+    let allCourses = [];
     const makerSlot = h('section', { class: 'maker-courses' }, h('div', { class: 'skel', style: { height: '160px', borderRadius: 'var(--r-lg)' } }));
-    loadMakerCourses().then(async ({ MAKER_COURSES, MAKER_GROUPS }) => {
+    loadAllCourses().then(async ({ courses: MAKER_COURSES, groups: MAKER_GROUPS }) => {
+      allCourses = MAKER_COURSES;
+      if (q.trim()) drawGuides();
       const all = (await api.get('/api/states/course-').catch(() => null))?.states || {};   // one request for every course
       const states = MAKER_COURSES.map(c => all[c.stateId] || null);
       const card = (c, i) => {
@@ -85,7 +88,7 @@ export default {
           icon('arrowRight'));
       };
       makerSlot.replaceChildren(
-        h('div', { class: 'guide-head' }, h('h2', null, icon('graduation'), 'Kurser i maskiner og software'), h('span', { class: 'faint' }, `${MAKER_COURSES.length} kurser · laser, 3D-print, skæreplottere, storformatprint og service`)),
+        h('div', { class: 'guide-head' }, h('h2', null, icon('graduation'), 'Kurser'), h('span', { class: 'faint' }, `${MAKER_COURSES.length} kurser · ${MAKER_COURSES.reduce((a, c) => a + c.days.length, 0)} lektioner – alt fra læringsappene og maskinerne`)),
         ...MAKER_GROUPS.map(([g, label]) => {
           const list = MAKER_COURSES.map((c, i) => [c, i]).filter(([c]) => c.group === g);
           return h('div', null, h('h3', { class: 'guide-cat' }, label), h('div', { class: 'guide-grid' }, list.map(([c, i]) => card(c, i))));
@@ -93,7 +96,7 @@ export default {
     }).catch(() => makerSlot.replaceChildren());
 
     let q = '', cat = 'all';
-    const search = h('input', { class: 'input', type: 'search', placeholder: 'Søg i guides…', 'aria-label': 'Søg i guides' });
+    const search = h('input', { class: 'input', type: 'search', placeholder: 'Søg i guides og kurser…', 'aria-label': 'Søg i guides og kurser' });
     const catBar = h('div', { class: 'filter-chips', role: 'group', 'aria-label': 'Kategori' });
     const drawCats = () => {
       clear(catBar);
@@ -117,6 +120,16 @@ export default {
         if (!gs.length) continue;
         any = true;
         guideList.appendChild(h('section', null, h('h2', { class: 'guide-cat' }, icon(c.icon), c.label), h('div', { class: 'guide-grid' }, gs.map(guideCard))));
+      }
+      // lessons in the courses are material too: show the ones that match the search
+      const hits = nq ? allCourses.flatMap(c => c.days.map((d, i) => ({ c, d, i }))).filter(({ c, d }) => [c.title, d.t, d.g, pointsText(d.l), d.d.join(' '), d.q.flat().join(' ')].join(' ').toLowerCase().includes(nq)).slice(0, 24) : [];
+      if (hits.length) {
+        any = true;
+        guideList.appendChild(h('section', null, h('h2', { class: 'guide-cat' }, icon('graduation'), `Lektioner i kurserne (${hits.length})`), h('div', { class: 'guide-grid' }, hits.map(({ c, d, i }) =>
+          h('a', { class: 'guide-card glass', href: `#/learn/course/${c.id}/day/${i + 1}`, style: { '--app': c.hue } },
+            h('span', { class: 'row-icon' }, icon(c.icon)),
+            h('div', { class: 'gc-main' }, h('h3', null, d.t), h('p', { class: 'muted' }, d.g), h('div', { class: 'gc-meta' }, h('span', { class: 'chip chip-app' }, c.short), h('span', { class: 'chip' }, `Lektion ${i + 1}`))),
+            icon('arrowRight'))))));
       }
       if (!any) guideList.appendChild(stateBlock({ icon: 'search', title: 'Ingen guides fundet', text: `Intet matcher “${q}”. Prøv fx “cursor”, “quiz” eller “docker”.`, actions: [h('button', { class: 'btn', onclick: () => { q = ''; search.value = ''; cat = 'all'; drawCats(); drawGuides(); } }, 'Ryd søgning')] }));
     };

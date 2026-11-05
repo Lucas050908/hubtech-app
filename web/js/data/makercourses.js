@@ -171,7 +171,7 @@ const bambu = {
 
 const creality = {
   id: 'creality', title: 'Creality: Creality Print og Creality Cloud', short: 'Creality Print', icon: 'cube', group: 'print3d',
-  intro: 'Crealitys slicer og sky til Ender-, K1- og K2-printerne – og deres lasere i et særskilt kursus.',
+  intro: 'Crealitys slicer og sky til Ender-, K1- og K2-printerne: presets, plader, support, kalibrering og service. Lasere og resin har deres egne kurser.',
   days: [
     { t: 'Creality Print: opsætning og slicing', g: 'Du kan slice og sende et print i Creality Print.',
       r: [['Creality Print (GitHub)', 'https://github.com/CrealityOfficial/CrealityPrint'], ['Creality wiki', 'https://wiki.creality.com/']],
@@ -183,6 +183,16 @@ const creality = {
       l: ['K2-serien kan bruge Crealitys filamentsystem (CFS) til flere farver – farver mappes til pladser ligesom i andre flerfarvesystemer.', 'Brug kalibreringsværktøjerne (fx flow og pressure advance/flow dynamics) til nye filamenter.', 'Første lag: niveau (auto-leveling på nyere modeller), ren plade og rigtig Z-offset.', 'Tjek at pladetype og temperaturer i slicer passer til printer og filament.', 'Gem kalibrerede værdier i filament-presets.'],
       d: ['Kør en flow-kalibrering på en ny rulle.', 'Lav et testprint i to farver (hvis printeren har flerfarvesystem).', 'Skriv en tjekliste til "dårligt første lag" på en Ender.'],
       q: [['Hvad styrer afstanden mellem dyse og plade?', 'Z-offset (sammen med niveau/leveling).'], ['Hvor gemmer du kalibrerede værdier?', 'I et eget filament-preset.']] },
+    { t: 'Arbejdsfladen: plader, placering og presets', g: 'Du kan forberede et projekt med flere plader og egne presets.',
+      r: [['Creality Print (download og vejledning)', 'https://www.creality.com/pages/download-software'], ['Creality wiki', 'https://wiki.creality.com/']],
+      l: ['Arbejdsgangen minder om andre moderne slicere: importér model (STL, 3MF, OBJ, STEP) → placér og orientér → vælg printer, filament og proces → slice → forhåndsvis → send eller gem.', 'Et projekt kan have flere plader; auto-arrangér og “læg flade ned på pladen” sparer tid.', 'Klip, skalér og drej modeller direkte på pladen. Sænk en model ned i pladen, hvis kun toppen skal printes.', 'Proces-presets samler lagtykkelse, vægge, fyld og hastighed. Lav egne kopier frem for at ændre originalerne.', 'Preview viser lag for lag, tid og filamentforbrug – brug den før hvert vigtigt print.'],
+      d: ['Lav et projekt med to plader og forskellige modeller.', 'Lav et eget proces-preset med 0,12 mm lag til fine detaljer.', 'Sammenlign printtiden for 0,12 mm og 0,28 mm lag på samme model.'],
+      q: [['Hvorfor laver man egne presets i stedet for at ændre de originale?', 'Så de originale altid kan bruges som sikkert udgangspunkt.'], ['Hvad viser Preview?', 'Printet lag for lag samt tid og filamentforbrug.']] },
+    { t: 'Support, fyld og styrke', g: 'Du kan vælge support og fyld efter emnets brug.',
+      r: [['Creality wiki', 'https://wiki.creality.com/']],
+      l: ['Overhæng over ca. 45° kræver ofte support. Træ-support (tree) bruger mindre materiale og er lettere at fjerne på organiske former.', 'Support kan males på eller blokeres på bestemte flader, så den kun kommer, hvor den er nødvendig.', 'Fyld (infill) på 10–20 % er nok til de fleste pynteting; funktionelle dele får flere vægge frem for meget mere fyld.', 'Styrken kommer især fra antal vægge og top/bund-lag. Lagretningen gør emnet svagest mellem lagene.', 'Brim og raft hjælper små eller høje emner med at blive siddende.'],
+      d: ['Slice samme emne med normal og træ-support, og sammenlign materiale og tid.', 'Mal support på et emne, så den kun kommer under ét overhæng.', 'Print to krogtests: 2 vægge og 4 vægge – hvilken holder bedst?'],
+      q: [['Hvad giver mest styrke – flere vægge eller meget mere fyld?', 'Typisk flere vægge.'], ['Hvornår er træ-support en fordel?', 'På organiske former, hvor den sparer materiale og er lettere at fjerne.']] },
     { t: 'Service på Creality-printere', g: 'Du kan fejlsøge og vedligeholde Creality-printere.',
       r: [['Creality wiki', 'https://wiki.creality.com/']],
       l: ['Ender-modeller: tjek excentriske møtrikker/hjul, remme og hotend-skruer. Mange fejl skyldes slør.', 'K-serien kører hurtigt – rene skinner, stramme remme og korrekt firmware er vigtigt.', 'Tilstopning: tørt filament, rigtig temperatur, cold pull eller dyseskift.', 'Opdatér firmware efter Crealitys vejledning til den præcise model – forkert firmware kan gøre printeren ubrugelig.', 'Saml model, serienummer, firmware, slicerversion og billeder før en servicesag.'],
@@ -306,7 +316,40 @@ const service = {
   ],
 };
 
-export const MAKER_COURSES = [lasertyper, lightburn, xcs, falcon, bambu, creality, canvas, scal, versaworks, rolandconnect, service]
+
+const halot = {
+  id: 'halot-box', title: 'Creality HALOT BOX og resinprint', short: 'HALOT BOX', icon: 'cube', group: 'print3d',
+  intro: 'Resinprint på Crealitys HALOT-printere: sikkerhed, HALOT BOX-sliceren, support, hulning, eksponering og efterbehandling.',
+  days: [
+    { t: 'Resinprint – sådan virker det, og sikkerhed først', g: 'Du kan forklare resinprint og arbejde sikkert med resin.',
+      r: [['HALOT BOX (Creality wiki)', 'https://wiki.creality.com/en/software/halot-box/introduction'], ['HALOT BOX forklaret (All3DP)', 'https://all3dp.com/2/halot-box-resin-slicer-simply-explained/']],
+      l: ['En resinprinter hærder flydende resin lag for lag med UV-lys gennem en LCD-skærm. Emnet hænger på hovedet fra byggepladen.', 'Resultatet er meget fine detaljer – godt til figurer, smykker, tandmodeller og små mekaniske dele.', 'Uhærdet resin irriterer hud og øjne: brug nitrilhandsker og briller, og undgå hudkontakt.', 'Sørg for god ventilation, og opbevar resin mørkt og utilgængeligt for børn.', 'Uhærdet resin og vaskesprit må ikke hældes i vasken – lad det hærde i sollys/UV, og aflever det som farligt affald.'],
+      d: ['Lav en sikkerhedstjekliste til en kunde, der køber sin første resinprinter.', 'Find sikkerhedsdatabladet for en resin, firmaet sælger.', 'Forklar forskellen på FDM (filament) og resinprint på fem linjer.'],
+      q: [['Hvorfor skal man bruge handsker til resin?', 'Uhærdet resin irriterer og kan give allergi ved hudkontakt.'], ['Hvordan bortskaffer man resinrester?', 'Lad dem hærde i UV/sollys og aflever dem som farligt affald – aldrig i vasken.']] },
+    { t: 'HALOT BOX: import, værktøjer og forbindelse', g: 'Du kan forberede en model i HALOT BOX og sende den til printeren.',
+      r: [['HALOT BOX: kom hurtigt i gang', 'https://wiki.creality.com/en/software/halot-box/print-quick-start']],
+      l: ['HALOT BOX er Crealitys slicer til HALOT-serien og andre Creality-resinprintere – den er ikke lavet til andre mærker.', 'Værktøjerne: flyt, skalér, drej, auto-layout, klon, tekst, del (split) og en lag-skyder til at se hvert lag.', 'Den færdige fil kan gemmes på USB eller sendes direkte over Wi-Fi til HALOT-printere, der understøtter det.', 'Biblioteket med gratis modeller hænger sammen med Creality Cloud (kræver en gratis konto).', 'Vælg altid den rigtige printermodel – opløsning og byggeflade er forskellig fra model til model.'],
+      d: ['Importér en model, skalér den og placér tre kopier med klon og auto-layout.', 'Find ud af, hvilke HALOT-modeller der kan modtage filer over Wi-Fi.', 'Tilføj en kort tekst på en sokkel med tekstværktøjet.'],
+      q: [['Hvordan kommer filen over på printeren?', 'Via USB eller direkte over Wi-Fi på modeller, der understøtter det.'], ['Hvorfor skal printermodellen vælges rigtigt?', 'Opløsning og byggeflade er forskellige – ellers passer filen ikke.']] },
+    { t: 'Orientering, support, hulning og drænhuller', g: 'Du kan forberede en model, så printet lykkes.',
+      r: [['HALOT BOX (3Dnatives)', 'https://www.3dnatives.com/en/halot-box-creality-230820244/']],
+      l: ['Vip modellen 30–45°: så bliver hvert lag mindre, sugekræfterne mod bunden mindre, og fladerne pænere.', 'Support placeres automatisk eller manuelt. Tjek med lag-skyderen, at der ikke er “øer”, som starter i luften.', 'Hulning (hollow) sparer resin og mindsker sugekræfter – godt til store emner.', 'Et hult emne skal have drænhuller (bor-værktøjet), ellers fanges uhærdet resin indeni, og emnet kan revne.', 'Læg ikke flade, store flader direkte på byggepladen uden grund – det giver store sugekræfter og fejlprint.'],
+      d: ['Vip en figur 35°, tilføj support, og tjek for øer med lag-skyderen.', 'Hul en vase ud og bor to drænhuller nær bunden.', 'Sammenlign resinforbruget med og uden hulning.'],
+      q: [['Hvorfor skal et hult emne have drænhuller?', 'Ellers fanges uhærdet resin indeni, og emnet kan revne eller lække.'], ['Hvorfor vipper man modellen?', 'Mindre lagflade og sugekraft – og pænere flader.']] },
+    { t: 'Eksponering og printindstillinger', g: 'Du kan justere eksponering efter resin og model.',
+      r: [['HALOT BOX forklaret (All3DP)', 'https://all3dp.com/2/halot-box-resin-slicer-simply-explained/']],
+      l: ['De vigtigste indstillinger: resintype, lagtykkelse, eksponeringstid, bundlag og deres eksponering, løftehøjde og -hastighed samt pause før næste lag.', 'Bundlagene får længere eksponering, så emnet hænger fast på byggepladen.', 'For kort eksponering: emnet falder af, eller detaljer mangler. For lang: detaljer “vokser sammen” og huller lukker til.', 'Start med resinproducentens anbefalede værdier, og lav en eksponeringstest ved ny resin eller ny temperatur.', 'Kold resin (under ca. 20 °C) hærder dårligere – hold rummet tempereret.'],
+      d: ['Find resinproducentens anbefalede værdier, og indtast dem.', 'Print en eksponeringstest og vælg den bedste tid.', 'Skriv en tabel: symptom → sandsynlig eksponeringsfejl.'],
+      q: [['Hvad sker der ved for kort eksponering?', 'Emnet falder af byggepladen eller mangler detaljer.'], ['Hvorfor får bundlagene længere eksponering?', 'Så emnet hæfter godt på byggepladen.']] },
+    { t: 'Efterbehandling og service', g: 'Du kan vaske, hærde og vedligeholde en resinprinter.',
+      r: [['Creality wiki', 'https://wiki.creality.com/']],
+      l: ['Vask emnet i isopropylalkohol (IPA) eller vaskbar resin i vand efter producentens anvisning – typisk to vaske.', 'Fjern support, mens emnet er lidt blødt, og efterhærd derefter i UV-lys (fx en wash & cure-station).', 'Rengør karret (vat) efter fejlprint: fjern hærdede stykker med en plastspartel – aldrig metal på FEP-filmen.', 'FEP/release-filmen er en sliddel. Ridser, uklarhed eller lækager betyder, at den skal skiftes.', 'Niveauér byggepladen efter vejledningen, når den har været afmonteret, og tjek LCD-skærmen med printerens testfunktion.'],
+      d: ['Lav en arbejdsgang: print → vask → tør → fjern support → efterhærd.', 'Find, hvordan man skifter FEP-filmen på en HALOT-model.', 'Skriv en kundeguide: “Printet sidder i karret i stedet for på pladen”.'],
+      q: [['Hvad gør du, når printet sidder fast i karret?', 'Fjern stykkerne forsigtigt med en plastspartel, tjek FEP-filmen og eksponering/niveau.'], ['Hvorfor må man ikke bruge metalværktøj i karret?', 'Det kan ridse eller punktere FEP-filmen.']] },
+  ],
+};
+
+export const MAKER_COURSES = [lasertyper, lightburn, xcs, falcon, bambu, creality, halot, canvas, scal, versaworks, rolandconnect, service]
   .map(c => ({ ...c, stateId: `course-${c.id}`, unit: 'Lektion', hue: { laser: '#f97316', print3d: '#22c55e', cut: '#a855f7', print: '#0ea5e9', service: '#eab308' }[c.group], note: 'Programmerne opdateres ofte, så menunavne og funktioner kan være ændret. Brug altid producentens seneste vejledning som facit.' }));
 
 export const MAKER_GROUPS = [['laser', 'Laser'], ['print3d', '3D-print'], ['cut', 'Skæreplottere'], ['print', 'Storformatprint'], ['service', 'Service']];

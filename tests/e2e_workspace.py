@@ -375,7 +375,7 @@ async def main():
             # machine and software courses
             await p1.goto(BASE + "/#/learn"); await p1.wait_for_selector(".maker-courses .guide-card", timeout=10000)
             n = await p1.locator(".maker-courses .guide-card").count()
-            check("kurser: 11 maskin- og softwarekurser i Guides & Læring", n == 11, n)
+            check("kurser: læringsappenes og maskinernes kurser i Guides & Læring", n >= 25, n)
             await p1.screenshot(path=f'{OUT}/ws-kurser.png', full_page=False)
             await p1.click(".maker-courses .guide-card[data-course='lightburn']"); await p1.wait_for_selector(".day-grid")
             check("kurser: LightBurn-oversigten viser lektioner", "lektioner" in (await p1.inner_text(".course-page")).lower() and await p1.locator(".day-tile").count() >= 5)
@@ -387,6 +387,13 @@ async def main():
             check("kurser: afkrydsning gemmes pr. kursus", bool(st and st["days"]["0"]["tasks"][0]), st)
             summ = (await api(p1, "GET", "/api/me/summary"))["data"] or {}
             check("kurser: øvelser giver XP på kontoen", (summ.get("courseTasksDone") or 0) >= 1, summ)
+            await p1.goto(BASE + "/#/learn/course/kode-python/day/1"); await p1.wait_for_selector(".day-card .g-code pre")
+            check("kurser: Kodeskolens lektioner kan læses som kursus med kodeeksempel", "print" in await p1.inner_text(".day-card .g-code pre"))
+            check("kurser: link til selve lektionen i Kodeskolen", await p1.locator(".day-card .read-list a[href='#/learn/codeschool/python/py1']").count() == 1)
+            await p1.goto(BASE + "/#/learn"); await p1.wait_for_selector(".maker-courses .guide-card")
+            await p1.fill("input[aria-label='Søg i guides og kurser']", "ipconfig"); await p1.wait_for_timeout(500)
+            check("kurser: søgningen finder lektioner i kurserne", await p1.locator(".guide-card[href^='#/learn/course/kommandoer']").count() >= 1)
+            await p1.screenshot(path=f'{OUT}/ws-kursus-soeg.png', full_page=False)
             await p1.goto(BASE + "/#/learn/course/findesikke"); await p1.wait_for_selector(".course-page")
             check("kurser: ukendt kursus giver en venlig besked", "Kurset findes ikke" in await p1.inner_text(".course-page"))
         except Exception as ex:
