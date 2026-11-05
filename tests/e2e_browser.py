@@ -1548,6 +1548,7 @@ async def main():
             await pg.wait_for_selector(".home-title", timeout=20000)
             return c, pg
         c1, p1 = await login_ctx("oliver", "Sommer2026x!")
+        p1_errs = []; p1.on("pageerror", lambda e: p1_errs.append(str(e)[:300])); p1.on("console", lambda m: p1_errs.append(m.type + ": " + m.text[:200]) if m.type in ("error", "warning") else None)
         c2, p2 = await login_ctx("maja", "Vinter2026xx", **p.devices["Pixel 7"])
         await p2.wait_for_timeout(2500)      # the live connection is up
         await p1.goto(BASE + "/#/apps/connect4/online"); await p1.reload(); await p1.wait_for_selector(".gr-player")
@@ -2102,7 +2103,7 @@ async def main():
                 break
             await p1.wait_for_timeout(300)
         await p1.screenshot(path=f"{OUT}/app-ludo.png")
-        dbg = await p1.evaluate("(() => { const r = document.querySelector('.cmd-filters')?.parentElement; return { hg: r?.__hg?.(), hash: location.hash, pages: document.querySelectorAll('.ld-board').length, logs: document.querySelectorAll('.dm-log').length, status: document.querySelector('.dm-status')?.innerText, filters: document.querySelectorAll('.cmd-filters').length, inDom: !!r?.isConnected, warns: (window.__warns || []).slice(-5) }; })()")
+        dbg = await p1.evaluate("(() => { const r = document.querySelector('.cmd-filters')?.parentElement; return { hg: r?.__hg?.(), hash: location.hash, pages: document.querySelectorAll('.ld-board').length, logs: document.querySelectorAll('.dm-log').length, status: document.querySelector('.dm-status')?.innerText, filters: document.querySelectorAll('.cmd-filters').length, inDom: !!r?.isConnected, turnText: document.querySelector('.ld-turn')?.innerText, warns: (window.__warns || []).slice(-5) }; })()"); dbg['errs'] = p1_errs[-8:]
         check("ludo: man kan slå og flytte, og computerne spiller med", await p1.locator(".dm-log").count() == 1 and "slog" in await p1.inner_text(".dm-log"), str(dbg))
         # Otter against the computer
         await p1.goto(BASE + "/#/apps/otter"); await p1.wait_for_selector(".pg-setup-list")
