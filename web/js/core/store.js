@@ -113,13 +113,14 @@ export async function loadUserData() {
   refreshSummary();
 }
 
-export async function refreshSummary() {
-  if (!state.user) return null;
-  try {
-    const s = await api.get('/api/me/summary');
-    store.set('summary', s);
-    return s;
-  } catch { return null; }
+// several parts of a page ask for the summary at once on start: share one request (and reuse it for a moment)
+let summaryReq = null, summaryAt = 0;
+export function refreshSummary() {
+  if (!state.user) return Promise.resolve(null);
+  if (summaryReq && Date.now() - summaryAt < 300) return summaryReq;
+  summaryAt = Date.now();
+  summaryReq = api.get('/api/me/summary').then(s => { store.set('summary', s); return s; }).catch(() => null);
+  return summaryReq;
 }
 
 export function isFavorite(kind, ref) { return state.favorites.some(f => f.kind === kind && f.ref === ref); }

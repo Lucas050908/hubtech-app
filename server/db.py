@@ -495,6 +495,11 @@ def conn() -> sqlite3.Connection:
         c.execute("PRAGMA foreign_keys = ON")
         c.execute("PRAGMA journal_mode = WAL")
         c.execute("PRAGMA busy_timeout = 5000")
+        # with WAL, NORMAL is still safe against crashes (only the very last write can be lost on a power cut) and
+        # saves a disk flush on every write; temp tables in memory, and a modest page cache to keep RAM down
+        c.execute("PRAGMA synchronous = NORMAL")
+        c.execute("PRAGMA temp_store = MEMORY")
+        c.execute("PRAGMA cache_size = -4000")
         _local.conn = c
     return c
 

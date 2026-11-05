@@ -43,8 +43,26 @@ export function appCard(app, { compact = false } = {}) {
     h('p', { class: 'app-card-tag' }, app.tagline),
     h('span', { class: 'app-card-cta' }, acc.ok ? h('span', null, 'Åbn app') : h('span', null, acc.reason), icon(acc.ok ? 'arrowRight' : acc.kind === 'coming' ? 'clock' : 'lock'))),
   acc.ok ? fav : null);
-  requestAnimationFrame(() => paintStill(cv, { ...app.art, landscape: 'valley' }));
+  lazyPaint(cv, { ...app.art, landscape: 'valley' });
   return el;
+}
+
+// App pictures are painted when they scroll into view (the app list has 100+ of them): faster to open, less memory
+let paintObs = null;
+const pending = new WeakMap();
+function lazyPaint(cv, art) {
+  if (typeof IntersectionObserver === 'undefined') { requestAnimationFrame(() => paintStill(cv, art)); return; }
+  paintObs ||= new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.target.isConnected) { paintObs.unobserve(e.target); pending.delete(e.target); continue; }
+      if (!e.isIntersecting) continue;
+      paintObs.unobserve(e.target);
+      const a = pending.get(e.target); pending.delete(e.target);
+      if (a) requestAnimationFrame(() => { if (e.target.isConnected) paintStill(e.target, a); });
+    }
+  }, { rootMargin: '300px 0px' });
+  pending.set(cv, art);
+  paintObs.observe(cv);
 }
 
 export function profileCard(summary) {

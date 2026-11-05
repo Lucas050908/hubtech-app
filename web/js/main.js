@@ -12,7 +12,7 @@ import { initWorld, setFocus } from './world/controller.js';
 import { stateBlock, toast, closeAllModals } from './core/ui.js';
 import { icon } from './core/icons.js';
 import { renderLogin, renderSignup } from './features/auth.js';
-import { maybeStartOnboarding } from './features/onboarding.js';
+const maybeStartOnboarding = () => { const u = store.get('user'); if (u && !u.onboarding?.done) import('./features/onboarding.js').then(m => m.maybeStartOnboarding()).catch(() => {}); };
 import { applyDisplay } from './core/display.js';
 import { initDesktop } from './core/desktop.js';
 

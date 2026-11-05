@@ -6,6 +6,7 @@
 Serves the web app from ./web and the JSON API under /api.
 """
 import argparse
+import collections
 import gzip
 import re
 import http.server
@@ -68,7 +69,13 @@ CSP_SITES = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://acco
 
 # Explicit types: on Windows the registry can map .js to text/plain, which breaks ES modules.
 # ── static files: compressed once and kept in memory; big files streamed (with Range for seeking) ──
-_STATIC_CACHE = {}          # (path, mtime, size) -> (bytes, gzip bytes or None)
+# A small LRU with a byte budget (HUBTECH_STATIC_CACHE_MB, default 24): the files people actually use stay in memory,
+# big rarely-used ones (Pyodide, PDF and Office libraries) don't keep the server's memory up. Big files keep only their
+# compressed copy; the plain bytes are read from disk (the operating system caches them anyway).
+_STATIC_CACHE = collections.OrderedDict()   # (path, mtime, size) -> (bytes or None, gzip bytes or None)
+_STATIC_BYTES = [0]
+_STATIC_BUDGET = int(float(os.environ.get("HUBTECH_STATIC_CACHE_MB") or 24) * 1024 * 1024)
+_KEEP_PLAIN_UNDER = 256 * 1024
 _STATIC_LOCK = threading.Lock()
 COMPRESSIBLE = ("text/", "application/javascript", "application/json", "image/svg+xml", "application/manifest+json", "application/wasm")
 STREAM_OVER = 4 * 1024 * 1024
@@ -397,6 +404,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         key = (rel, stat.st_mtime, stat.st_size)
         with _STATIC_LOCK:
             hit = _STATIC_CACHE.get(key)
+            if hit is not None:
+                _STATIC_CACHE.move_to_end(key)
+        if hit is not None and hit[0] is None:     # only the compressed copy is kept
+            if "gzip" not in (self.headers.get("Accept-Encoding") or ""):
+                hit = (target.read_bytes(), None)
         if hit is None:
             data = target.read_bytes()
             if rel in THEMED_SITES:
@@ -410,11 +422,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if gz is not None and len(gz) >= len(data) * 0.9:
                 gz = None
             hit = (data, gz)
-            if rel != "index.html":          # index.html carries the preload list, which follows the js files
-                with _STATIC_LOCK:
-                    if len(_STATIC_CACHE) > 3000:
-                        _STATIC_CACHE.clear()
-                    _STATIC_CACHE[key] = hit
+            if rel != "index.html":   # index.html carries the preload list, which follows the js files
+                keep = (data if len(data) < _KEEP_PLAIN_UNDER or gz is None else None, gz)
+                size = len(keep[0] or b"") + len(keep[1] or b"")
+                if size <= _STATIC_BUDGET // 4:
+                    with _STATIC_LOCK:
+                        old = _STATIC_CACHE.pop(key, None)
+                        if old:
+                            _STATIC_BYTES[0] -= len(old[0] or b"") + len(old[1] or b"")
+                        _STATIC_CACHE[key] = keep
+                        _STATIC_BYTES[0] += size
+                        while _STATIC_BYTES[0] > _STATIC_BUDGET and _STATIC_CACHE:
+                            _, ev = _STATIC_CACHE.popitem(last=False)
+                            _STATIC_BYTES[0] -= len(ev[0] or b"") + len(ev[1] or b"")
         data, gz = hit
         use_gz = gz is not None and "gzip" in (self.headers.get("Accept-Encoding") or "")
         body = gz if use_gz else data
@@ -522,6 +542,15 @@ def _housekeeping():
             api.cleanup_files()
         except Exception:
             pass
+        try:   # keep the database small and its query plans fresh
+            t = db.now()
+            db.q("DELETE FROM hub_nonces WHERE expires_at < ?", (t,))
+            db.q("DELETE FROM hub_invites WHERE expires_at < ? OR used_at IS NOT NULL AND used_at < ?", (t - 86400, t - 7 * 86400))
+            db.conn().execute("PRAGMA optimize")
+        except Exception:
+            pass
+        finally:
+            db.close_thread_conn()
         try:
             social.cleanup()
             notify.cleanup()

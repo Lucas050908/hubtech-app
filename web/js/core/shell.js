@@ -6,8 +6,9 @@ import { APPS, appById, access, isLearnApp, visible, entryApps, suiteOf } from '
 import { api } from './api.js';
 import { paintStill, describeWorld } from '../world/controller.js';
 import { SEASONS, SEASON_LABEL } from '../world/palettes.js';
-import { openPalette } from '../features/palette.js';
-import { startOnboarding } from '../features/onboarding.js';
+// loaded when first needed (the search with its guide index, and the introduction) – keeps the start light
+const openPalette = (...a) => import('../features/palette.js').then(m => m.openPalette(...a));
+const startOnboarding = (...a) => import('../features/onboarding.js').then(m => m.startOnboarding(...a));
 import { logout } from '../features/auth.js';
 import { bgmButton, initBgm } from '../features/bgm.js';
 import { modal, toast } from './ui.js';

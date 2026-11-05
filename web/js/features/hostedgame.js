@@ -128,6 +128,7 @@ export function hostedGame(opts) {
 
   // ── online ──
   function openRoom(r) {
+    if (dead) return;   // an answer that arrives after the page was left must not touch the address or listen again
     offs.forEach(f => f()); offs = [];
     room = r; ctl = null;
     if (!r) { history.replaceState(null, '', `#/apps/${page}/online`); return drawOnline(); }

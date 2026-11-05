@@ -4489,3 +4489,7 @@ html.is-widget #world-scrim { opacity: .9; }
 .wgset-how p { margin: 6px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.5; }
 .wgset-qr { display: flex; gap: 12px; align-items: center; margin-top: 12px; } .wgset-qr .faint { font-size: 13px; }
 @media (max-width: 520px) { .wgset-qr { flex-direction: column; align-items: flex-start; } }
+
+/* long lists: let the browser skip drawing what is far off screen (faster scrolling, less work) */
+.launcher-item, .lx-tile, .kb-card, .note-item { content-visibility: auto; contain-intrinsic-size: auto 120px; }
+.launcher-item { contain-intrinsic-size: auto 300px; }
