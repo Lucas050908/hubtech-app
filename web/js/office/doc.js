@@ -6,6 +6,7 @@ import { htmlToDocx } from './docx.js';
 import { sanitizeHtml, textOf, escapeHtml } from './sanitize.js';
 import { autosaver, download, safeName, readFile, imageToDataUrl, uploadImage, inlineImages } from './store.js';
 import { editorFrame, toolBtn, toolSep, printNode } from './frame.js';
+import { findBar, typingShortcuts, outline, tableTools } from './doctools.js';
 
 const STYLES = [['p', 'Normal tekst'], ['h1', 'Overskrift 1'], ['h2', 'Overskrift 2'], ['h3', 'Overskrift 3'], ['blockquote', 'Citat'], ['pre', 'Kode']];
 const SIZES = [['2', 'Lille'], ['3', 'Normal'], ['4', 'Stor'], ['5', 'Større'], ['6', 'Meget stor']];
@@ -124,8 +125,11 @@ export function docEditor(doc, ctx) {
     actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), h('button', { class: 'btn btn-primary', onclick: () => {
       const r = Math.max(1, Math.min(30, +rows.value || 3)), c = Math.max(1, Math.min(10, +cols.value || 3));
       const row = (tag) => `<tr>${Array.from({ length: c }, () => `<${tag}><br></${tag}>`).join('')}</tr>`;
-      const html = `<table><tbody>${head.checked ? row('th') : ''}${Array.from({ length: head.checked ? r - 1 : r }, () => row('td')).join('')}</tbody></table><p><br></p>`;
-      m.close(); page.focus(); restoreSel(); document.execCommand('insertHTML', false, html); changed();
+      const html = `<table data-new="1"><tbody>${head.checked ? row('th') : ''}${Array.from({ length: head.checked ? r - 1 : r }, () => row('td')).join('')}</tbody></table><p><br></p>`;
+      m.close(); page.focus(); restoreSel(); document.execCommand('insertHTML', false, html);
+      const t = page.querySelector('table[data-new]');   // start typing in the first cell
+      if (t) { t.removeAttribute('data-new'); const c = t.querySelector('th, td'); const rg = document.createRange(); rg.selectNodeContents(c); rg.collapse(true); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); }
+      changed(); tables.sync();
     } }, 'Indsæt')] });
   }
 
@@ -138,7 +142,16 @@ export function docEditor(doc, ctx) {
     tb('list', 'Punktliste', 'insertUnorderedList'), tb('listOl', 'Nummereret liste', 'insertOrderedList'), checkBtn,
     tb('outdent', 'Formindsk indrykning', 'outdent'), tb('indent', 'Forøg indrykning', 'indent'), toolSep(),
     linkBtn, imgBtn, tableBtn, tb('minus', 'Vandret linje', 'insertHorizontalRule'), toolSep(),
-    tb('eraser', 'Ryd formatering', 'removeFormat'), imgInput);
+    tb('eraser', 'Ryd formatering', 'removeFormat'), imgInput, toolSep());
+  const finder = findBar(page, { changed: () => changed(), toolbar: frame.toolbar });
+  const ol = outline(page);
+  let showOutline = false;
+  try { showOutline = localStorage.getItem('hubtech.doc.outline') === '1'; } catch { /* */ }
+  const olBtn = toolBtn('list', 'Overblik over overskrifter', () => { showOutline = !showOutline; try { localStorage.setItem('hubtech.doc.outline', showOutline ? '1' : '0'); } catch { /* */ } ol.el.hidden = !showOutline; olBtn.setAttribute('aria-pressed', String(showOutline)); });
+  olBtn.setAttribute('aria-pressed', String(showOutline)); ol.el.hidden = !showOutline;
+  frame.toolbar.append(olBtn);
+  const tables = tableTools(page, () => changed());
+  typingShortcuts(page, exec);
 
   function refreshState() {
     for (const [cmd, b] of Object.entries(stateBtns)) { let on = false; try { on = document.queryCommandState(cmd); } catch { /* */ } b.setAttribute('aria-pressed', String(on)); }
@@ -148,14 +161,15 @@ export function docEditor(doc, ctx) {
   function count() {
     const t = page.innerText.trim();
     const w = t ? t.split(/\s+/).length : 0;
-    words.textContent = `${w.toLocaleString('da-DK')} ord`;
+    words.textContent = `${w.toLocaleString('da-DK')} ord${w > 150 ? ` · ca. ${Math.max(1, Math.round(w / 220))} min. læsning` : ''}`;
     chars.textContent = `${t.length.toLocaleString('da-DK')} tegn`;
   }
-  function changed() { saver.touch(); count(); }
+  let olT = 0;
+  function changed() { saver.touch(); count(); clearTimeout(olT); olT = setTimeout(() => { ol.draw(); finder.refresh(); }, 400); }
 
   page.addEventListener('input', changed);
   document.addEventListener('selectionchange', onSel);
-  function onSel() { if (page.isConnected && page.contains(getSelection().anchorNode)) refreshState(); }
+  function onSel() { if (page.isConnected && page.contains(getSelection().anchorNode)) { refreshState(); tables.sync(); } }
   page.addEventListener('change', (e) => { if (e.target.matches('input[type=checkbox]')) { e.target.toggleAttribute('checked', e.target.checked); changed(); } });
   page.addEventListener('click', (e) => { const a = e.target.closest('a'); if (a && (e.ctrlKey || e.metaKey)) window.open(a.href, '_blank', 'noopener'); });
   page.addEventListener('paste', (e) => {
@@ -168,12 +182,13 @@ export function docEditor(doc, ctx) {
   });
   page.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); insertLink(); }
-    if (e.key === 'Tab' && !e.shiftKey && getSelection().anchorNode?.parentElement?.closest('li')) { e.preventDefault(); exec('indent'); }
+    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')) { e.preventDefault(); finder.open(e.key.toLowerCase() === 'h'); }
+    if (e.key === 'Tab' && !e.shiftKey && getSelection().anchorNode?.parentElement?.closest('li') && !e.defaultPrevented) { e.preventDefault(); exec('indent'); }
     if (e.key === 'Tab' && e.shiftKey && getSelection().anchorNode?.parentElement?.closest('li')) { e.preventDefault(); exec('outdent'); }
   });
 
   frame.status.append(words, h('span', { class: 'ofx-dot' }, '·'), chars);
-  frame.body.append(h('div', { class: 'doc-scroll' }, page));
+  frame.body.append(finder.el, tables.el, h('div', { class: 'doc-scroll' }, ol.el, page));
   count();
   setTimeout(() => { page.focus(); try { const r = document.createRange(); r.selectNodeContents(page); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch { /* */ } }, 60);
 

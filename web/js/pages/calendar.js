@@ -419,15 +419,23 @@ export default {
       onclick: (x) => { x.stopPropagation(); edit(e); } },
       e.series && !e.bday ? h('span', { class: 'cal-rep', 'aria-label': 'Gentages' }, '↻') : null,
       !e.allDay && e.start && d === e.date ? h('span', { class: 'cal-time' }, e.start) : null, e.title);
-    function moveTo(id, d) {
+    const toMin = (t) => { const [a, b] = String(t || '0:0').split(':').map(Number); return a * 60 + (b || 0); };
+    const toHm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    function moveTo(id, d, atMin) {
       const e = st.events.find(x => x.id === id);
-      if (!e || e.date === d) return;
-      const before = { date: e.date, endDate: e.endDate, remindAt: e.remindAt, reminded: e.reminded };
+      const timed = atMin != null && e && !e.endDate;
+      if (!e || (e.date === d && (!timed || (!e.allDay && toMin(e.start) === atMin)))) return;
+      const before = { date: e.date, endDate: e.endDate, remindAt: e.remindAt, reminded: e.reminded, start: e.start, end: e.end, allDay: e.allDay };
       const shift = Math.round((parseIso(d) - parseIso(e.date)) / 86400000);
       e.date = d; if (e.endDate) e.endDate = iso(addDays(parseIso(e.endDate), shift));
+      if (timed) {   // dropped on a time in the week grid: keep the length
+        const len = !e.allDay && e.start && e.end ? Math.max(15, toMin(e.end) - toMin(e.start)) : 60;
+        const st0 = Math.min(atMin, 24 * 60 - len);
+        Object.assign(e, { allDay: false, start: toHm(st0), end: toHm(Math.min(24 * 60 - 1, st0 + len)) });
+      }
       e.remindAt = remindAt({ due: e.date, dueTime: e.allDay ? '09:00' : (e.start || '09:00'), remind: e.remind }); e.reminded = false;
       selected = d; persist(); draw();
-      toast('Aftalen er flyttet', { type: 'ok', text: `${e.title} → ${parseIso(d).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' })}`, action: { label: 'Fortryd', onClick: () => { Object.assign(e, before); selected = e.date; persist(); draw(); } } });
+      toast('Aftalen er flyttet', { type: 'ok', text: `${e.title} → ${parseIso(d).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' })}${timed ? ` kl. ${e.start}` : ''}`, action: { label: 'Fortryd', onClick: () => { Object.assign(e, before); selected = e.date; persist(); draw(); } } });
     }
     const dropTarget = (el, d) => {
       el.addEventListener('dragover', (x) => { if ([...x.dataTransfer.types].includes('text/x-hubtech-event')) { x.preventDefault(); el.classList.add('is-drop'); } });
@@ -500,6 +508,85 @@ export default {
     // ── week ──
     const weekBox = h('div', { class: 'cal-wk-view glass panel' });
     const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
+    function pointerDrag(el, e, minAtFor) {
+      el.style.touchAction = 'none';
+      el.addEventListener('pointerdown', (pd) => {
+        if (pd.button !== 0) return;
+        const r0 = el.getBoundingClientRect(), grab = pd.clientY - r0.top, x0 = pd.clientX, y0 = pd.clientY;
+        let moving = false, target = null;
+        const move = (pm) => {
+          if (!moving && Math.hypot(pm.clientX - x0, pm.clientY - y0) < 6) return;
+          if (!moving) { moving = true; el.classList.add('is-dragging'); try { el.setPointerCapture(pd.pointerId); } catch { /* */ } }
+          el.style.transform = `translate(${pm.clientX - x0}px, ${pm.clientY - y0}px)`;
+          el.style.pointerEvents = 'none';
+          const under = document.elementFromPoint(pm.clientX, pm.clientY)?.closest?.('.cal-tg-col');
+          if (target && target !== under) target.classList.remove('is-drop');
+          target = under || null; target?.classList.add('is-drop');
+          el.style.pointerEvents = '';
+        };
+        const up = (pu) => {
+          removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+          target?.classList.remove('is-drop');
+          if (!moving) return;
+          el.dataset.dragged = '1'; setTimeout(() => { delete el.dataset.dragged; }, 50);
+          el.classList.remove('is-dragging'); el.style.transform = '';
+          if (pu.type === 'pointerup' && target) moveTo(e.id, target.dataset.d, minAtFor(target, pu.clientY, grab));
+        };
+        addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+      });
+    }
+    // the week as a timetable (wide screens): hours down the side, each appointment where it belongs
+    const HOUR = 44;
+    function timeGrid(first, hol) {
+      const days = Array.from({ length: 7 }, (_, i) => { const day = addDays(first, i), d = iso(day); return { i, day, d, evs: onDay(d), tk: tasksOn(d), hd: hol.get(d) }; });
+      const timedOf = (x) => x.evs.filter(e => !e.allDay && e.start && e.date === x.d);
+      const all = days.flatMap(timedOf);
+      const h0 = Math.min(7, ...all.map(e => Math.floor(toMin(e.start) / 60)));
+      const h1 = Math.max(22, ...all.map(e => Math.ceil(toMin(e.end || e.start) / 60) || 0));
+      const px = (m) => ((m - h0 * 60) / 60) * HOUR;
+      const minAtFor = (colEl, clientY, grab) => { const r = colEl.getBoundingClientRect(), z = r.height / ((h1 - h0) * HOUR) || 1; const y = (clientY - r.top) / z - grab; return Math.max(h0 * 60, Math.min(h1 * 60 - 15, Math.round((h0 * 60 + (y / HOUR) * 60) / 15) * 15)); };
+      const head = h('div', { class: 'cal-tg-row cal-tg-head' }, h('span'), days.map(x => h('button', { type: 'button', class: ['cal-wk-head', x.d === iso(today) && 'is-today'], title: 'Ny aftale denne dag', onclick: () => edit(null, x.d) },
+        h('span', null, DAYS[x.i]), h('b', null, String(x.day.getDate())), x.hd ? h('small', { class: 'cal-hol' }, x.hd) : null, h('span', { class: 'cal-wk-add', 'aria-hidden': 'true' }, '+'))));
+      const allDay = h('div', { class: 'cal-tg-row cal-tg-allday' }, h('span', { class: 'cal-tg-lbl' }, 'Hele dagen'), days.map(x => {
+        const cell = h('div', { class: 'cal-tg-adcell' },
+          x.evs.filter(e => e.allDay || !e.start || e.date !== x.d).map(e => pill(e, x.d)),
+          x.tk.map(t => h('a', { class: 'cal-pill is-task', href: '#/apps/tasks', title: t.title }, '☐ ', t.title)));
+        dropTarget(cell, x.d);
+        return cell;
+      }));
+      const body = h('div', { class: 'cal-tg-body', style: { height: `${(h1 - h0) * HOUR}px` } },
+        h('div', { class: 'cal-tg-hours' }, Array.from({ length: h1 - h0 }, (_, k) => h('span', { style: { top: `${k * HOUR}px` } }, `${String(h0 + k).padStart(2, '0')}:00`))),
+        days.map(x => {
+          const col = h('div', { class: ['cal-tg-col', x.d === iso(today) && 'is-today', x.i >= 5 && 'is-weekend'], title: 'Klik for en ny aftale på det tidspunkt' });
+          // lanes for overlapping appointments
+          const evs = timedOf(x).map(e => ({ e, a: toMin(e.start), b: Math.max(toMin(e.start) + 20, toMin(e.end || e.start) || toMin(e.start) + 60) })).sort((p, q) => p.a - q.a || q.b - p.b);
+          const lanesEnd = [];
+          for (const v of evs) { let l = lanesEnd.findIndex(end => end <= v.a); if (l < 0) { l = lanesEnd.length; lanesEnd.push(0); } lanesEnd[l] = v.b; v.lane = l; }
+          for (const v of evs) v.of = Math.max(...evs.filter(w => w.a < v.b && w.b > v.a).map(w => w.lane)) + 1;
+          for (const v of evs) {
+            const e = v.e;
+            const evEl = h('button', { type: 'button', class: ['cal-tg-ev', movable(e) && 'is-movable'], style: { '--c': e.color || 'var(--app)', top: `${px(v.a)}px`, height: `${Math.max(20, px(v.b) - px(v.a) - 2)}px`, left: `calc(${(100 / v.of) * v.lane}% + 2px)`, width: `calc(${100 / v.of}% - 4px)` },
+              title: `${e.start}${e.end ? '–' + e.end : ''} ${e.title}${e.location ? ' · ' + e.location : ''}${movable(e) ? ' – træk for at flytte' : ''}`,
+              onclick: (ev) => { ev.stopPropagation(); if (evEl.dataset.dragged) { delete evEl.dataset.dragged; return; } edit(e); } },
+              h('b', null, e.series && !e.bday ? '↻ ' : '', e.title), h('span', null, `${e.start}${e.end ? '–' + e.end : ''}`), e.location && px(v.b) - px(v.a) > 50 ? h('span', null, e.location) : null);
+            if (movable(e)) pointerDrag(evEl, e, minAtFor);   // mouse and finger: drag to another day or time
+            col.append(evEl);
+          }
+          if (x.d === iso(today)) { const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); if (m >= h0 * 60 && m <= h1 * 60) col.append(h('i', { class: 'cal-tg-now', style: { top: `${px(m)}px` }, 'aria-hidden': 'true' })); }
+          const minAt = (y) => Math.max(h0 * 60, Math.min(h1 * 60 - 15, Math.round((h0 * 60 + (y / HOUR) * 60) / 15) * 15));
+          col.addEventListener('click', (ev) => { if (ev.target !== col) return; const m0 = Math.floor(minAt(ev.offsetY) / 30) * 30; edit(null, x.d, { allDay: false, start: toHm(m0), end: toHm(Math.min(23 * 60 + 59, m0 + 60)) }); });
+          col.dataset.d = x.d;
+          // pills from the all-day row (or other views) can still be dropped onto a time
+          col.addEventListener('dragover', (ev) => { if ([...ev.dataTransfer.types].includes('text/x-hubtech-event')) { ev.preventDefault(); col.classList.add('is-drop'); } });
+          col.addEventListener('dragleave', () => col.classList.remove('is-drop'));
+          col.addEventListener('drop', (ev) => { ev.preventDefault(); col.classList.remove('is-drop'); moveTo(ev.dataTransfer.getData('text/x-hubtech-event'), x.d, minAtFor(col, ev.clientY, 0)); });
+          return col;
+        }));
+      const wrap = h('div', { class: 'cal-tg' }, head, allDay, h('div', { class: 'cal-tg-scroll' }, body));
+      // start the view around the morning (or the first appointment)
+      requestAnimationFrame(() => { const sc = wrap.querySelector('.cal-tg-scroll'); const firstM = Math.min(8 * 60, ...all.map(e => toMin(e.start))); if (sc) sc.scrollTop = Math.max(0, px(firstM) - 10); });
+      return wrap;
+    }
     function drawWeek() {
       const first = monday(parseIso(selected)), last = addDays(first, 6), hol = new Map([...holidays(first.getFullYear()), ...holidays(last.getFullYear())]);
       const nav = (n) => { selected = iso(addDays(parseIso(selected), n)); const nd = parseIso(selected); cursor = new Date(nd.getFullYear(), nd.getMonth(), 1); drawWeek(); };
@@ -509,7 +596,7 @@ export default {
           h('h2', { class: 'cal-title', style: { textTransform: 'none' } }, `Uge ${isoWeek(first)} · ${first.getDate()}. ${first.getMonth() !== last.getMonth() ? MONTHS[first.getMonth()].slice(0, 3) + ' ' : ''}– ${last.getDate()}. ${MONTHS[last.getMonth()]}`),
           h('button', { class: 'icon-btn', 'aria-label': 'Næste uge', onclick: () => nav(7) }, icon('chevronRight')),
           h('button', { class: 'btn btn-sm', onclick: () => { selected = iso(today); drawWeek(); } }, 'I dag')),
-        h('div', { class: 'cal-wk-grid' }, Array.from({ length: 7 }, (_, i) => {
+        innerWidth > 900 ? timeGrid(first, hol) : h('div', { class: 'cal-wk-grid' }, Array.from({ length: 7 }, (_, i) => {
           const day = addDays(first, i), d = iso(day), evs = onDay(d), tk = tasksOn(d), hd = hol.get(d);
           const col = h('div', { class: ['cal-wk-col', d === iso(today) && 'is-today', i >= 5 && 'is-weekend'] },
             h('button', { type: 'button', class: 'cal-wk-head', title: 'Ny aftale denne dag', onclick: () => edit(null, d) }, h('span', null, DAYS[i]), h('b', null, String(day.getDate())), hd ? h('small', { class: 'cal-hol' }, hd) : null, h('span', { class: 'cal-wk-add', 'aria-hidden': 'true' }, '+')),

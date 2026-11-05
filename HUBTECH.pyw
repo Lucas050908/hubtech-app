@@ -6,6 +6,9 @@ own app window (Microsoft Edge or Google Chrome in app mode – no tabs, no addr
 and stops the server again when the window is closed.
 
 If HUBTECH is already running on this computer, the window simply opens against it.
+
+    HUBTECH.pyw --widget   opens "I dag" as a small widget window at the right edge of the screen
+                           (the "HUBTECH I dag" shortcut from the installer does this).
 Without Edge/Chrome, HUBTECH opens in the default browser and keeps running until you
 choose Indstillinger → Om → "Luk HUBTECH".
 """
@@ -29,7 +32,8 @@ from server import config  # noqa: E402  (reads .env: HUBTECH_PORT, HUBTECH_DATA
 
 PORT = config.PORT
 BASE = f"http://127.0.0.1:{PORT}"
-APP_URL = f"{BASE}/?source=app"
+WIDGET = "--widget" in sys.argv[1:]
+APP_URL = f"{BASE}/widget" if WIDGET else f"{BASE}/?source=app"
 DATA_DIR = config.DATA_DIR
 PROFILE = DATA_DIR / "app-profile"
 WINDOWS = os.name == "nt"
@@ -196,10 +200,22 @@ def profile_in_use():
 
 def open_window(browser):
     PROFILE.mkdir(parents=True, exist_ok=True)
+    size = ["--window-size=400,700", f"--window-position={widget_x()},40"] if WIDGET else ["--window-size=1440,900"]
     args = [browser, f"--app={APP_URL}", f"--user-data-dir={PROFILE}", "--no-first-run", "--no-default-browser-check",
-            "--disable-background-mode", "--window-size=1440,900", "--class=HUBTECH"]
+            "--disable-background-mode", *size, "--class=HUBTECH"]
     kw = {"creationflags": NO_WINDOW} if WINDOWS else {"start_new_session": True}
     return subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
+
+
+def widget_x():
+    """Put the widget window near the right edge of the main screen."""
+    try:
+        if WINDOWS:
+            import ctypes
+            return max(0, ctypes.windll.user32.GetSystemMetrics(0) - 420)
+    except Exception:
+        pass
+    return 1000
 
 
 def app_seen_ago():

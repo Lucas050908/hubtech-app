@@ -55,6 +55,7 @@ route('/q', { public: true, open: true, render: () => import('./pages/quizshow.j
 route('/q/:pin', { public: true, open: true, render: (params) => import('./pages/quizshow.js').then(m => m.renderJoin(params.pin)), title: 'Quizshow' });
 route('/p/:token', { public: true, open: true, render: (params) => import('./pages/public.js').then(m => m.renderPublic(params.token)), title: 'HUBTECH' });
 route('/hent', { public: true, open: true, render: () => import('./pages/download.js').then(m => m.renderDownload()), title: 'Hent HUBTECH' });
+route('/widget', { public: true, open: true, render: () => import('./pages/widget.js').then(m => m.renderWidget()), title: 'I dag' });
 route('/dashboard', page(() => import('./pages/dashboard.js')));
 route('/apps', page(() => import('./pages/launcher.js')));
 route('/projects', page(() => import('./pages/projects.js'), { app: 'cursor' }));
@@ -239,6 +240,8 @@ async function boot() {
     }))));
     return;
   }
+  // /widget (the installed "I dag" app on a phone or Windows) opens straight at the widget
+  if (location.pathname.replace(/\/$/, '') === '/widget' && (!location.hash || location.hash === '#' || location.hash === '#/')) history.replaceState(null, '', '/widget#/widget');
   startRouter(onRoute);
   if (store.get('user')) import('./features/reminders.js').then(m => m.startReminders()).catch(() => {});
   // a Fokus timer that was running before a reload keeps running (and notifies) on every page

@@ -8,6 +8,7 @@ import { download, safeName, readFile, loadXlsx } from './store.js';
 import { errorToast } from '../core/ui.js';
 import { editorFrame, toolBtn, toolSep, printNode, popMenu } from './frame.js';
 import { escapeHtml } from './sanitize.js';
+import { fillSeries, shiftFormula, shiftCells } from './sheetfill.js';
 
 const FORMATS = [['auto', 'Automatisk'], ['num2', 'Tal 0,00'], ['int', 'Heltal'], ['kr', 'Valuta (kr.)'], ['pct', 'Procent'], ['date', 'Dato'], ['datetime', 'Dato og tid']];
 const DEF_W = 104;
@@ -159,6 +160,7 @@ export function sheetEditor(doc, ctx) {
     }
     thead.querySelectorAll('.sh-col').forEach(th => th.classList.toggle('is-hl', +th.dataset.c >= c1 && +th.dataset.c <= c2));
     tbody.querySelectorAll('.sh-row').forEach(th => th.classList.toggle('is-hl', +th.dataset.r >= r1 && +th.dataset.r <= r2));
+    placeHandle();
     nameBox.value = c1 === c2 && r1 === r2 ? ref(anchor.c, anchor.r) : `${ref(c1, r1)}:${ref(c2, r2)}`;
     if (!editing) fx.value = S().cells[ref(anchor.c, anchor.r)]?.v || '';
     const st = S().cells[ref(anchor.c, anchor.r)]?.s || {};
@@ -206,11 +208,128 @@ export function sheetEditor(doc, ctx) {
   }
   function doUndo(stack, other) {
     const x = stack.pop(); if (!x) return;
+    if (x.snap) {   // rows/columns inserted or deleted: swap the whole sheet back
+      if (x.si !== si) si = x.si;
+      const s = S(), cur = { cells: s.cells, rows: s.rows, cols: s.cols, colW: s.colW };
+      Object.assign(s, x.snap); x.snap = cur; other.push(x); saver.touch(); build(); recalc(); return;
+    }
     if (x.si !== si) { si = x.si; build(); }
     const s = S();
     for (const ch of x.changes) { const v = stack === undo ? ch.before : ch.after; if (v && (v.v || v.s)) s.cells[ch.id] = clone(v); else delete s.cells[ch.id]; }
     other.push(x); saver.touch(); recalc();
   }
+
+  // ── fill (Ctrl+D / Ctrl+R / the little square in the corner) ──
+  function fillTo(dir, to) {   // dir 'down' | 'right'; to = last row/column to fill
+    const s = S(), { c1, c2, r1, r2 } = rng(), ch = [];
+    const down = dir === 'down';
+    const lanes = down ? [c1, c2] : [r1, r2];
+    for (let L = lanes[0]; L <= lanes[1]; L++) {
+      const src = [], styles = [];
+      if (down) for (let r = r1; r <= r2; r++) { src.push(s.cells[ref(L, r)]?.v || ''); styles.push(s.cells[ref(L, r)]?.s); }
+      else for (let c = c1; c <= c2; c++) { src.push(s.cells[ref(c, L)]?.v || ''); styles.push(s.cells[ref(c, L)]?.s); }
+      const from = down ? r2 + 1 : c2 + 1, count = to - from + 1;
+      if (count <= 0) continue;
+      const vals = src.every(v => !v) ? Array(count).fill('') : fillSeries(src, count, down ? { dc: 0, dr: 1 } : { dc: 1, dr: 0 });
+      vals.forEach((v, i) => {
+        const id = down ? ref(L, from + i) : ref(from + i, L), before = clone(s.cells[id]);
+        const st = clone(styles[i % styles.length]);
+        ch.push({ id, before, after: { ...(before || {}), v: String(v), s: st } });
+      });
+    }
+    if (ch.length) { apply(ch); focus = down ? { c: focus.c, r: Math.max(focus.r, to) } : { c: Math.max(focus.c, to), r: focus.r }; if (down) anchor = { c: anchor.c, r: Math.min(anchor.r, r1) }; paintSel(true); }
+  }
+  function copyFirst(dir) {    // Ctrl+D / Ctrl+R: copy the first row (column) of the selection into the rest
+    const s = S(), { c1, c2, r1, r2 } = rng(), ch = [];
+    if (dir === 'down' ? r1 === r2 : c1 === c2) { toast(dir === 'down' ? 'Markér flere rækker først' : 'Markér flere kolonner først', { type: 'info', ms: 1800 }); return; }
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
+      if (dir === 'down' ? r === r1 : c === c1) continue;
+      const src = s.cells[dir === 'down' ? ref(c, r1) : ref(c1, r)], id = ref(c, r), before = clone(s.cells[id]);
+      const v = src?.v || '', moved = v.startsWith('=') ? shiftFormula(v, dir === 'down' ? 0 : c - c1, dir === 'down' ? r - r1 : 0) : v;
+      ch.push({ id, before, after: { ...(before || {}), v: moved, s: clone(src?.s) } });
+    }
+    apply(ch);
+  }
+  // eslint-disable-next-line no-var
+  var handle = h('div', { class: 'sh-handle', title: 'Træk for at fylde ud (tal, datoer, ugedage og formler fortsætter)', 'aria-hidden': 'true' });
+  function placeHandle() {
+    if (!handle) return;
+    const { c2, r2 } = rng(), td = tds[r2]?.[c2];
+    if (!td || editing) { handle.hidden = true; return; }
+    handle.hidden = false;
+    Object.assign(handle.style, { left: `${td.offsetLeft + td.offsetWidth - 5}px`, top: `${td.offsetTop + td.offsetHeight - 5}px` });
+    if (!handle.isConnected) scroll.appendChild(handle);
+  }
+  let filling = null;
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    filling = { ...rng(), to: null, dir: null, marked: [] };
+    const over = (ev) => {
+      const td = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.sh-grid td'); if (!td) return;
+      const c = +td.dataset.c, r = +td.dataset.r, f = filling;
+      const dr = r - f.r2, dc = c - f.c2;
+      f.marked.forEach(x => x.classList.remove('is-fill')); f.marked = [];
+      if (dr <= 0 && dc <= 0) { f.dir = null; return; }
+      f.dir = dr >= dc ? 'down' : 'right'; f.to = f.dir === 'down' ? r : c;
+      for (let rr = f.dir === 'down' ? f.r2 + 1 : f.r1; rr <= (f.dir === 'down' ? r : f.r2); rr++) for (let cc = f.dir === 'down' ? f.c1 : f.c2 + 1; cc <= (f.dir === 'down' ? f.c2 : c); cc++) { const x = tds[rr]?.[cc]; if (x) { x.classList.add('is-fill'); f.marked.push(x); } }
+    };
+    const stop = () => {
+      removeEventListener('mousemove', over); removeEventListener('mouseup', stop);
+      const f = filling; filling = null;
+      f.marked.forEach(x => x.classList.remove('is-fill'));
+      if (f.dir) fillTo(f.dir, f.to);
+      scroll.focus({ preventScroll: true });
+    };
+    addEventListener('mousemove', over); addEventListener('mouseup', stop);
+  });
+
+  // ── insert / delete rows and columns (formulas follow) ──
+  function restructure(axis, at, n, text) {
+    const s = S();
+    if (n < 0 && (axis === 'row' ? s.rows + n < 1 : s.cols + n < 1)) return;
+    if (axis === 'col' && n > 0 && s.cols + n > 52) { toast('Højst 52 kolonner', { type: 'warn' }); return; }
+    undo.push({ si, snap: { cells: s.cells, rows: s.rows, cols: s.cols, colW: { ...s.colW } } }); redo.length = 0;
+    s.cells = shiftCells(s.cells, axis, at, n);
+    if (axis === 'row') s.rows += n;
+    else {
+      s.cols += n;
+      const w = {};
+      for (const [k, v] of Object.entries(s.colW || {})) { const i = colIndexOf(k); const j = n > 0 ? (i >= at ? i + n : i) : (i >= at - n ? i + n : i < at ? i : null); if (j !== null) w[colName(j)] = v; }
+      s.colW = w;
+    }
+    saver.touch(); build(); recalc(); paintSel(true);
+    toast(text, { type: 'ok', ms: 1600, action: { label: 'Fortryd', onClick: () => doUndo(undo, redo) } });
+  }
+  const colIndexOf = (name) => [...name].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+  function cellMenu(x, y) {
+    const { c1, c2, r1, r2 } = rng(), nr = r2 - r1 + 1, nc = c2 - c1 + 1;
+    const pin = h('span', { style: { position: 'fixed', left: `${x}px`, top: `${y}px`, width: '1px', height: '1px' } });
+    document.body.appendChild(pin);
+    popMenu(pin, [
+      ['Kopiér', 'copy', () => { navigator.clipboard?.writeText(selectionTsv()).then(() => toast('Kopieret', { type: 'ok', ms: 1000 })).catch(() => {}); }],
+      ['Fyld ned (Ctrl+D)', 'arrowDown', () => copyFirst('down')],
+      ['Ryd celler', 'eraser', () => clearSel()],
+      'sep',
+      [nr > 1 ? `Indsæt ${nr} rækker over` : 'Indsæt række over', 'rowPlus', () => restructure('row', r1, nr, nr > 1 ? `${nr} rækker indsat` : 'Række indsat')],
+      [nr > 1 ? `Indsæt ${nr} rækker under` : 'Indsæt række under', 'rowPlus', () => restructure('row', r2 + 1, nr, nr > 1 ? `${nr} rækker indsat` : 'Række indsat')],
+      [nr > 1 ? `Slet ${nr} rækker` : `Slet række ${r1 + 1}`, 'trash', () => restructure('row', r1, -nr, nr > 1 ? `${nr} rækker slettet` : 'Række slettet'), { danger: true }],
+      'sep',
+      [nc > 1 ? `Indsæt ${nc} kolonner til venstre` : 'Indsæt kolonne til venstre', 'colPlus', () => restructure('col', c1, nc, 'Kolonne indsat')],
+      [nc > 1 ? `Indsæt ${nc} kolonner til højre` : 'Indsæt kolonne til højre', 'colPlus', () => restructure('col', c2 + 1, nc, 'Kolonne indsat')],
+      [nc > 1 ? `Slet ${nc} kolonner` : `Slet kolonne ${colName(c1)}`, 'trash', () => restructure('col', c1, -nc, nc > 1 ? `${nc} kolonner slettet` : 'Kolonne slettet'), { danger: true }],
+    ]);
+    setTimeout(() => pin.remove(), 0);
+  }
+  scroll.addEventListener('contextmenu', (e) => {
+    const td = e.target.closest('td, th.sh-row, th.sh-col'); if (!td) return;
+    e.preventDefault();
+    if (editing) commit();
+    const { c1, c2, r1, r2 } = rng();
+    if (td.matches('td')) { const c = +td.dataset.c, r = +td.dataset.r; if (c < c1 || c > c2 || r < r1 || r > r2) select(c, r); }
+    else if (td.matches('.sh-row')) { const r = +td.dataset.r; if (r < r1 || r > r2) { anchor = { c: 0, r }; focus = { c: S().cols - 1, r }; paintSel(true); } }
+    else { const c = +td.dataset.c; if (c < c1 || c > c2) { anchor = { c, r: 0 }; focus = { c, r: S().rows - 1 }; paintSel(true); } }
+    cellMenu(e.clientX, e.clientY);
+  });
 
   // ── in-cell editor ──
   function startEdit(initial, keepRaw, focusInput = true) {
@@ -290,6 +409,9 @@ export function sheetEditor(doc, ctx) {
     if (mod && (k.toLowerCase() === 'y' || (e.shiftKey && k.toLowerCase() === 'z'))) { e.preventDefault(); doUndo(redo, undo); return; }
     if (mod && k.toLowerCase() === 'b') { e.preventDefault(); toggle('b'); return; }
     if (mod && k.toLowerCase() === 'i') { e.preventDefault(); toggle('i'); return; }
+    if (mod && k.toLowerCase() === 'd') { e.preventDefault(); copyFirst('down'); return; }
+    if (mod && k.toLowerCase() === 'r') { e.preventDefault(); copyFirst('right'); return; }
+    if (e.shiftKey && k === 'F10') { e.preventDefault(); const td = tds[anchor.r]?.[anchor.c]; const rc = td ? rect(td) : { left: 100, bottom: 100 }; cellMenu(rc.left + 10, rc.bottom); return; }
     if (mod && k.toLowerCase() === 'a') { e.preventDefault(); anchor = { c: 0, r: 0 }; focus = { c: S().cols - 1, r: S().rows - 1 }; paintSel(true); return; }
     if (!mod && !e.altKey && k.length === 1) { e.preventDefault(); startEdit(k); }
   });

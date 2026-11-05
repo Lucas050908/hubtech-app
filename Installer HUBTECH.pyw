@@ -18,6 +18,7 @@ ICON_PNG = ROOT / "web" / "assets" / "icons" / "app-512.png"
 WINDOWS = os.name == "nt"
 MAC = sys.platform == "darwin"
 NAME = "HUBTECH"
+WIDGET_NAME = "HUBTECH I dag"
 
 
 def gui_python():
@@ -59,19 +60,29 @@ foreach ($dir in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFo
   $lnk.Description = 'HUBTECH – din platform'
   $lnk.WindowStyle = 1
   $lnk.Save()
+  # "HUBTECH I dag": today's appointments, deadlines and habits in a small widget window
+  $w = $ws.CreateShortcut((Join-Path $dir '{WIDGET_NAME}.lnk'))
+  $w.TargetPath = {_q(gui_python())}
+  $w.Arguments = '"' + {_q(LAUNCHER)} + '" --widget'
+  $w.WorkingDirectory = {_q(ROOT)}
+  $w.IconLocation = {_q(str(ICON_ICO) + ',0')}
+  $w.Description = 'HUBTECH I dag – dagens aftaler, opgaver og vaner'
+  $w.WindowStyle = 1
+  $w.Save()
 }}
 """
     _ps(script)
-    return [d / f"{NAME}.lnk" for d in win_folders()]
+    return [d / f"{n}.lnk" for d in win_folders() for n in (NAME, WIDGET_NAME)]
 
 
 def win_uninstall():
     removed = []
     for d in win_folders():
-        p = d / f"{NAME}.lnk"
-        if p.exists():
-            p.unlink()
-            removed.append(p)
+        for n in (NAME, WIDGET_NAME):
+            p = d / f"{n}.lnk"
+            if p.exists():
+                p.unlink()
+                removed.append(p)
     return removed
 
 
@@ -211,7 +222,8 @@ def main():
         try:
             install()
             refresh()
-            if messagebox.askyesno("HUBTECH", f"HUBTECH er installeret på {where}.\n\nVil du starte HUBTECH nu?"):
+            extra = "\n\n“HUBTECH I dag” åbner dagens aftaler, opgaver og vaner i et lille vindue. Vil du have det, hver gang Windows starter, så kopiér genvejen til mappen shell:startup (Win+R)." if WINDOWS else ""
+            if messagebox.askyesno("HUBTECH", f"HUBTECH er installeret på {where}.{extra}\n\nVil du starte HUBTECH nu?"):
                 kw = {"creationflags": 0x08000000} if WINDOWS else {"start_new_session": True}
                 subprocess.Popen([gui_python(), str(LAUNCHER)], cwd=str(ROOT), **kw)
                 root.destroy()

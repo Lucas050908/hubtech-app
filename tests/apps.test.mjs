@@ -1207,3 +1207,49 @@ console.log('apps ok');
   assert.equal(H.streak(['2026-10-20'], 2, t), 0);
   console.log('habits ok');
 }
+
+// Office-dokument: genveje mens man skriver, og find
+{
+  const T = await import('../web/js/office/doctext.js').catch(e => ({ err: e }));
+  if (T.err) { console.log('doctools skipped (needs DOM):', T.err.message.slice(0, 60)); }
+  else {
+    assert.deepEqual(T.shortcutFor('##'), ['block', 'h2']); assert.deepEqual(T.shortcutFor('1.'), ['ol']); assert.deepEqual(T.shortcutFor('[]'), ['check']); assert.equal(T.shortcutFor('hej'), null);
+    assert.deepEqual(T.findAll('Hej hej HEJ', 'hej'), [0, 4, 8]); assert.deepEqual(T.findAll('Hej hej HEJ', 'hej', true), [4]); assert.deepEqual(T.findAll('aaa', 'aa'), [0]); assert.deepEqual(T.findAll('x', ''), []);
+    assert.equal(T.keepCase('Æbler', 'pærer'), 'Pærer'); assert.equal(T.keepCase('ÆBLER', 'pærer'), 'PÆRER'); assert.equal(T.keepCase('æbler', 'Pærer'), 'Pærer');
+    console.log('doctools ok');
+  }
+}
+
+// Regneark: fyld serier, flyt formler, indsæt/slet rækker og kolonner
+{
+  const F = await import('../web/js/office/sheetfill.js');
+  assert.equal(F.shiftFormula('=A1+$B$2+B$3*$C4', 1, 2), '=B3+$B$2+C$3*$C6');
+  assert.equal(F.shiftFormula('=SUM(A1:A3)&"A1"', 0, 1), '=SUM(A2:A4)&"A1"');
+  assert.equal(F.shiftFormula('=LOG10(A1)', 0, 1), '=LOG10(A2)');
+  assert.equal(F.shiftFormula('=A1', 0, -1), '=#REF!');
+  assert.deepEqual(F.fillSeries(['1', '2'], 3), ['3', '4', '5']);
+  assert.deepEqual(F.fillSeries(['5'], 2), ['5', '5']);
+  assert.deepEqual(F.fillSeries(['2,5', '3'], 2), ['3,5', '4,0']);
+  assert.deepEqual(F.fillSeries(['Mandag'], 3), ['Tirsdag', 'Onsdag', 'Torsdag']);
+  assert.deepEqual(F.fillSeries(['november', 'december'], 2), ['januar', 'februar']);
+  assert.deepEqual(F.fillSeries(['Uge 44'], 2), ['Uge 45', 'Uge 46']);
+  assert.deepEqual(F.fillSeries(['05-11-2026', '12-11-2026'], 2), ['19-11-2026', '26-11-2026']);
+  assert.deepEqual(F.fillSeries(['30-12-2026'], 3), ['31-12-2026', '01-01-2027', '02-01-2027']);
+  assert.deepEqual(F.fillSeries(['=A1*2'], 2), ['=A2*2', '=A3*2']);
+  assert.deepEqual(F.fillSeries(['=A1*2'], 2, { dc: 1, dr: 0 }), ['=B1*2', '=C1*2']);
+  assert.deepEqual(F.fillSeries(['ja', 'nej'], 3), ['ja', 'nej', 'ja']);
+  // insert a row above row 2: B3's formula follows
+  let cells = { A1: { v: '1' }, A2: { v: '2' }, A3: { v: '3' }, B1: { v: '=SUM(A1:A3)' }, B3: { v: '=A2+A3' } };
+  let r = F.shiftCells(cells, 'row', 1, 1);
+  assert.deepEqual(Object.keys(r).sort(), ['A1', 'A3', 'A4', 'B1', 'B4']);
+  assert.equal(r.B1.v, '=SUM(A1:A4)'); assert.equal(r.B4.v, '=A3+A4');
+  // delete row 2: the range shrinks, a direct reference breaks
+  r = F.shiftCells(cells, 'row', 1, -1);
+  assert.equal(r.B1.v, '=SUM(A1:A2)'); assert.equal(r.B2.v, '=#REF!+A2'); assert.equal(r.A2.v, '3');
+  // columns
+  r = F.shiftCells({ A1: { v: '1' }, B1: { v: '2' }, C1: { v: '=A1+B1' } }, 'col', 1, 1);
+  assert.deepEqual(Object.keys(r).sort(), ['A1', 'C1', 'D1']); assert.equal(r.D1.v, '=A1+C1');
+  r = F.shiftCells({ A1: { v: '1' }, B1: { v: '2' }, C1: { v: '=SUM(A1:B1)' } }, 'col', 0, -1);
+  assert.equal(r.B1.v, '=SUM(A1:A1)');
+  console.log('sheetfill ok');
+}

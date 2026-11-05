@@ -364,3 +364,30 @@ a.ofh-file:hover { transform: translateY(-3px); border-color: color-mix(in srgb,
 .ofx-banner > svg { flex: none; width: 20px; height: 20px; color: var(--warn); }
 .ofx-banner > span { flex: 1 1 260px; }
 .ofx-banner-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* document tools: find & replace, outline, table editing */
+.ofx-find { position: sticky; top: 8px; z-index: 5; display: grid; gap: 6px; padding: 8px 10px; margin: 0 auto 8px; width: min(816px, 100%); border-radius: 14px; }
+.ofx-find[hidden], .ofx-tabletools[hidden], .ofx-outline[hidden] { display: none; }
+.ofx-find-row { display: flex; gap: 6px; align-items: center; } .ofx-find-row[hidden] { display: none; }
+.ofx-find-row > svg { width: 18px; height: 18px; color: var(--text-2); flex: none; }
+.ofx-find-row .input { flex: 1; min-width: 0; height: 34px; }
+.ofx-find-n { font-size: 12px; min-width: 64px; text-align: right; white-space: nowrap; }
+.ofx-find-case { display: inline-flex; gap: 4px; align-items: center; font-size: 13px; font-weight: 700; padding: 0 6px; cursor: pointer; }
+::highlight(ofx-find) { background-color: #fde68a; color: #1c2430; }
+::highlight(ofx-find-cur) { background-color: #f59e0b; color: #111; }
+.doc-scroll { gap: 18px; align-items: flex-start; }
+.ofx-outline { position: sticky; top: 12px; width: 210px; flex: none; display: grid; gap: 2px; align-content: start; max-height: calc(100vh - 160px); overflow: auto; padding: 10px; border-radius: 14px; background: var(--glass); border: 1px solid var(--line); }
+.ofx-outline-t { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-2); margin-bottom: 4px; }
+.ofx-outline button { all: unset; cursor: pointer; padding: 4px 8px; border-radius: 8px; font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
+.ofx-outline button:hover, .ofx-outline button:focus-visible { background: var(--glass-strong); }
+.ofx-outline .ofx-ol-h1 { font-weight: 700; } .ofx-outline .ofx-ol-h2 { padding-left: 18px; } .ofx-outline .ofx-ol-h3 { padding-left: 30px; color: var(--text-2); }
+.ofx-outline p { font-size: 12px; margin: 0; }
+@media (max-width: 1180px) { .ofx-outline { display: none; } }
+.ofx-tabletools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 0 auto 8px; width: min(816px, 100%); padding: 6px 8px; border-radius: 12px; background: color-mix(in srgb, var(--kind) 12%, var(--glass)); border: 1px solid color-mix(in srgb, var(--kind) 35%, var(--line)); }
+.ofx-tt-l { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 700; margin-right: 6px; } .ofx-tt-l svg { width: 16px; height: 16px; }
+
+/* spreadsheet: fill handle */
+.sh-handle { position: absolute; width: 9px; height: 9px; background: var(--kind); border: 2px solid #fff; border-radius: 2px; cursor: crosshair; z-index: 4; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.sh-handle[hidden] { display: none; }
+.sh-grid td.is-fill { outline: 1px dashed var(--kind); outline-offset: -2px; background: color-mix(in srgb, var(--kind) 10%, transparent); }
+@media (pointer: coarse) { .sh-handle { width: 16px; height: 16px; } }

@@ -775,6 +775,26 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .cal-wk-free { font-size: 12px; text-align: center; padding: 10px 0; }
 @media (max-width: 900px) { .cal-wk-grid { grid-template-columns: minmax(0, 1fr); } .cal-wk-col { min-height: 0; } .cal-wk-free { text-align: left; padding: 2px 6px; } }
 .cal-results { padding: 14px; display: grid; gap: 8px; }
+.cal-tg { display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--glass); }
+.cal-tg-row { display: grid; grid-template-columns: 56px repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.cal-tg-head .cal-wk-head { border-bottom: 0; border-left: 1px solid var(--line); border-radius: 0; padding: 8px; }
+.cal-tg-head .cal-wk-head.is-today b { color: var(--app); }
+.cal-tg-lbl { font-size: 11px; color: var(--text-3); padding: 6px 4px; text-align: right; }
+.cal-tg-adcell { display: grid; gap: 3px; align-content: start; padding: 4px; min-height: 30px; border-left: 1px solid var(--line); min-width: 0; }
+.cal-tg-adcell.is-drop { outline: 2px dashed var(--app); outline-offset: -2px; }
+.cal-tg-scroll { max-height: 560px; overflow-y: auto; }
+.cal-tg-body { position: relative; display: grid; grid-template-columns: 56px repeat(7, minmax(0, 1fr)); background-image: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 44px); }
+.cal-tg-hours { position: relative; } .cal-tg-hours span { position: absolute; right: 6px; transform: translateY(-50%); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; } .cal-tg-hours span:first-child { transform: none; }
+.cal-tg-col { position: relative; border-left: 1px solid var(--line); cursor: copy; }
+.cal-tg-col.is-weekend { background: color-mix(in srgb, var(--glass) 50%, transparent); }
+.cal-tg-col.is-today { background: color-mix(in srgb, var(--app) 6%, transparent); }
+.cal-tg-col.is-drop { background: color-mix(in srgb, var(--app) 14%, transparent); }
+.cal-tg-ev { all: unset; box-sizing: border-box; position: absolute; display: grid; align-content: start; gap: 1px; padding: 3px 6px; border-radius: 8px; overflow: hidden; cursor: pointer; font-size: 12px; line-height: 1.25;
+  background: color-mix(in srgb, var(--c) 28%, var(--surface-solid, #0f172a)); border-left: 3px solid var(--c); color: var(--text); box-shadow: 0 2px 6px -2px rgba(0,0,0,.4); }
+.cal-tg-ev:hover, .cal-tg-ev:focus-visible { background: color-mix(in srgb, var(--c) 40%, var(--surface-solid, #0f172a)); z-index: 2; }
+.cal-tg-ev b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .cal-tg-ev span { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-tg-ev[draggable=true] { cursor: grab; }
+.cal-tg-now { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; pointer-events: none; z-index: 3; } .cal-tg-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
 @media (max-width: 1100px) { .cal-layout { grid-template-columns: minmax(0, 1fr); } }
 .cal-main { padding: 12px; }
 .cal-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
@@ -4429,3 +4449,43 @@ i.os-paid { background: color-mix(in srgb, var(--app) 45%, #64748b); } i.os-int 
 .lx-tile.is-on { border-color: var(--app); box-shadow: 0 0 0 2px var(--app); }
 .gml-links { margin: 10px 0; padding: 12px; border-radius: 14px; background: var(--glass); border: 1px dashed var(--line-2); }
 .gml-link { display: flex; align-items: center; gap: 8px; font-size: 14px; } .gml-link > span { flex: 1; } .gml-link > svg { width: 16px; height: 16px; color: var(--text-2); }
+.cal-tg-ev.is-movable { cursor: grab; } .cal-tg-ev.is-dragging { cursor: grabbing; opacity: .85; z-index: 10; box-shadow: 0 10px 24px -8px rgba(0,0,0,.6); transition: none; }
+
+/* ── I dag-widget (/widget): small window, phone home screen ── */
+html.is-widget #world-scrim { opacity: .9; }
+.wg { max-width: 520px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)); display: grid; gap: 10px; }
+.wg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wg-head > div:first-child { display: grid; }
+.wg-clock { font: 800 2.1rem/1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.wg-date { color: var(--text-2); font-size: 14px; }
+.wg-head-btns { display: flex; gap: 6px; flex-wrap: wrap; } .wg-head-btns [hidden] { display: none; }
+.wg-add { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--line); }
+.wg-add > svg { width: 18px; height: 18px; color: var(--app, #38bdf8); flex: none; } .wg-add .input { border: 0; background: transparent; padding-left: 0; }
+.wg-hint { font-size: 12px; padding: 0 4px; min-height: 1em; } .wg-hint:empty { display: none; }
+.wg-body { display: grid; gap: 10px; }
+.wg-sec { padding: 10px 12px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(10px); }
+.wg-sec h2 { display: flex; align-items: center; gap: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-2); margin: 0 0 6px; }
+.wg-sec h2 svg { width: 16px; height: 16px; } .wg-sec h2 small { margin-left: auto; font-size: 12px; letter-spacing: 0; }
+.wg-list { list-style: none; display: grid; gap: 4px; }
+.wg-list li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-radius: 10px; min-width: 0; }
+.wg-list li::before { content: ''; width: 4px; align-self: stretch; border-radius: 4px; background: var(--dot, transparent); flex: none; }
+.wg-list li.is-late .wg-what span { color: var(--bad); }
+.wg-time { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 64px; font-size: 14px; }
+.wg-what { display: grid; min-width: 0; } .wg-what b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .wg-what span { font-size: 12px; color: var(--text-2); }
+.wg-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line-2, var(--line)); flex: none; transition: background .15s, border-color .15s; }
+.wg-check:hover, .wg-check:focus-visible { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 25%, transparent); }
+.wg-none { margin: 0; font-size: 13px; padding: 2px 4px; }
+.wg-habits { display: flex; flex-wrap: wrap; gap: 6px; }
+.wg-habit { display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--glass-soft, var(--glass)); font-size: 13px; }
+.wg-habit.is-on { background: color-mix(in srgb, var(--ok) 28%, transparent); border-color: var(--ok); }
+.wg-timer { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 14px; background: color-mix(in srgb, #f59e0b 22%, var(--glass)); border: 1px solid #f59e0b; }
+.wg-timer svg { width: 18px; height: 18px; } .wg-timer span { color: var(--text-2); font-size: 13px; }
+.wg-tomorrow, .wg-tip { margin: 0; font-size: 13px; text-align: center; } .wg-tip { display: flex; gap: 6px; justify-content: center; align-items: center; } .wg-tip svg { width: 16px; height: 16px; }
+@media (max-width: 380px) { .wg-head-btns .btn span, .wg-head-btns .btn { font-size: 12px; } }
+.wgset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.wgset-how { padding: 10px 12px; border-radius: 14px; background: var(--glass); border: 1px solid var(--line); }
+.wgset-how.is-here { border-color: var(--app, #38bdf8); }
+.wgset-how b { display: flex; gap: 8px; align-items: center; } .wgset-how b svg { width: 18px; height: 18px; } .wgset-how .chip { margin-left: auto; height: 22px; font-size: 11px; }
+.wgset-how p { margin: 6px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.wgset-qr { display: flex; gap: 12px; align-items: center; margin-top: 12px; } .wgset-qr .faint { font-size: 13px; }
+@media (max-width: 520px) { .wgset-qr { flex-direction: column; align-items: flex-start; } }

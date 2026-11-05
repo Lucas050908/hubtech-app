@@ -79,8 +79,8 @@ async def main():
             evs = (await api(p1, "GET", "/api/state/calendar"))["data"]["state"]["events"]
             check("kalender: træk en aftale til en anden dag", next(e for e in evs if e["title"] == "Tandlæge")["date"] == target, target)
             # week view
-            await p1.click(".cal-bar .segmented button:has-text('Uge')"); await p1.wait_for_selector(".cal-wk-col")
-            check("kalender: ugevisning med syv dage", await p1.locator(".cal-wk-col").count() == 7)
+            await p1.click(".cal-bar .segmented button:has-text('Uge')"); await p1.wait_for_selector(".cal-tg-col")
+            check("kalender: ugevisning med syv dage", await p1.locator(".cal-tg-col").count() == 7)
             await p1.screenshot(path=f"{OUT}/cal-week.png")
             # search
             await p1.fill(".cal-search", "hallen"); await p1.wait_for_selector(".cal-results .cal-item")
@@ -222,6 +222,130 @@ async def main():
             await p1.goto(BASE + "/#/apps/tasks"); await p1.wait_for_selector(".kb-sort")
             await p1.select_option(".kb-sort", "due"); await p1.wait_for_timeout(300)
             check("opgaver: sortér efter deadline", await p1.locator(".kb-card").count() >= 1)
+            import datetime as _dt
+            t = _dt.date.today().isoformat()
+            evs = [{"id": "w1", "title": "Møde", "date": t, "start": "09:00", "end": "10:30", "allDay": False, "color": "#38bdf8"},
+                   {"id": "w2", "title": "Frokost", "date": t, "start": "10:00", "end": "11:00", "allDay": False, "color": "#f472b6"},
+                   {"id": "w3", "title": "Ferie", "date": t, "allDay": True, "color": "#4ade80"}]
+            await api(p1, "PUT", "/api/state/calendar", {"state": {"events": evs}})
+            await p1.evaluate("localStorage.setItem('hubtech.cal.view', 'week')")
+            await p1.goto(BASE + "/#/"); await p1.wait_for_selector(".home-title")
+            await p1.goto(BASE + "/#/apps/calendar"); await p1.wait_for_selector(".cal-tg")
+            await p1.wait_for_timeout(1200)   # shared calendars and birthdays load after the first draw
+            check("kalender: ugen som skema med timer", await p1.locator(".cal-tg-ev").count() == 2 and await p1.locator(".cal-tg-adcell .cal-pill:has-text('Ferie')").count() == 1)
+            boxes = [await p1.locator(f".cal-tg-ev:has-text('{n}')").bounding_box() for n in ("Møde", "Frokost")]
+            check("kalender: aftaler, der overlapper, står side om side", abs(boxes[0]["x"] - boxes[1]["x"]) > 10 and boxes[0]["width"] < 120)
+            await p1.screenshot(path=f"{OUT}/cal-timegrid.png")
+            # drag Møde to 14:00 the same day (scroll the timetable so 09–15 is in view first)
+            await p1.evaluate("document.querySelector('.cal-tg-scroll').scrollTop = 2 * 44; document.querySelector('.cal-tg-scroll').scrollIntoView({block: 'center'})")
+            await p1.wait_for_timeout(200)
+            col = p1.locator(".cal-tg-col.is-today")
+            cb = await col.bounding_box()
+            src = p1.locator(".cal-tg-ev:has-text('Møde')")
+            sb = await src.bounding_box()
+            # 14:00 is (14-7) hours below the top
+            sb = await src.bounding_box(); cb = await col.bounding_box()
+            await p1.mouse.move(sb["x"] + 8, sb["y"] + 4); await p1.mouse.down()
+            await p1.mouse.move(cb["x"] + 12, cb["y"] + (14 - 7) * 44 + 4, steps=12); await p1.mouse.up()
+            await p1.wait_for_timeout(600)
+            st = (await api(p1, "GET", "/api/state/calendar"))["data"]["state"]["events"]
+            m = next(e for e in st if e["id"] == "w1")
+            check("kalender: træk en aftale til et andet tidspunkt – længden bevares", m["start"] == "14:00" and m["end"] == "15:30", (m["start"], m["end"]))
+            # click an empty slot → new appointment at that time
+            await p1.evaluate("document.querySelector('.cal-tg-scroll').scrollTop = 6 * 44; document.querySelector('.cal-tg-scroll').scrollIntoView({block: 'center'})")
+            await p1.wait_for_timeout(200)
+            await p1.locator(".cal-tg-col.is-today").click(position={"x": 10, "y": (16 - 7) * 44 + 10}); await p1.wait_for_selector(".modal")
+            st1 = await p1.input_value(".modal input[aria-label='Starttid'], .modal input[type=time] >> nth=0")
+            check("kalender: klik på et tidspunkt laver en aftale der", st1 == "16:00", st1)
+            await p1.keyboard.press("Escape")
+            await p1.evaluate("localStorage.setItem('hubtech.cal.view', 'month')")
+            d = await api(p1, "POST", "/api/office/docs", {"kind": "doc", "title": "Rapport"})
+            dd = d["data"]; did = (dd.get("doc") or dd)["id"]
+            await p1.goto(BASE + f"/#/apps/hubtech/doc/{did}"); await p1.wait_for_selector(".doc-page")
+            await p1.click(".doc-page")
+            await p1.keyboard.type("# Indledning"); await p1.keyboard.press("Enter")
+            await p1.keyboard.type("- æbler"); await p1.keyboard.press("Enter"); await p1.keyboard.type("pærer"); await p1.keyboard.press("Enter"); await p1.keyboard.press("Enter")
+            await p1.keyboard.type("Æbler er gode. Æbler er røde."); await p1.keyboard.press("Enter")
+            html = await p1.inner_html(".doc-page")
+            check("dokument: “# ” bliver en overskrift og “- ” en punktliste", "<h1>Indledning</h1>" in html and "<li>æbler</li>" in html and "<li>pærer</li>" in html, html[:300])
+            await p1.keyboard.press("Control+h"); await p1.wait_for_selector(".ofx-find:not([hidden])")
+            await p1.fill(".ofx-find input[aria-label=Find]", "æbler")
+            n = await p1.inner_text(".ofx-find-n")
+            check("dokument: find viser antal", "af 3" in n, n)
+            await p1.fill(".ofx-find input[aria-label='Erstat med']", "pærer"); await p1.click(".ofx-find button:has-text('Erstat alle')")
+            await p1.wait_for_timeout(200)
+            txt = await p1.inner_text(".doc-page")
+            check("dokument: erstat alle", "æbler" not in txt.lower() and txt.lower().count("pærer") == 4, txt)
+            await p1.screenshot(path=f"{OUT}/doc-find.png")
+            await p1.keyboard.press("Escape")
+            await p1.click(".doc-page"); await p1.keyboard.press("Control+End")
+            await p1.click(".ofx-tool[aria-label='Indsæt tabel']"); await p1.click(".modal .btn-primary")
+            await p1.wait_for_selector(".ofx-tabletools:not([hidden])")
+            await p1.click(".ofx-tabletools .ofx-tool[aria-label='Indsæt kolonne til højre']")
+            cols = await p1.locator(".doc-page table tr >> nth=0").locator("th, td").count()
+            check("dokument: tabelværktøjer dukker op og tilføjer en kolonne", cols == 4, cols)
+            await p1.click(".ofx-tool[aria-label='Overblik over overskrifter']")
+            check("dokument: overblik med overskrifterne", "Indledning" in await p1.inner_text(".ofx-outline"))
+            await p1.screenshot(path=f"{OUT}/doc-tools.png")
+            d = await api(p1, "POST", "/api/office/docs", {"kind": "sheet", "title": "Uger"})
+            dd = d["data"]; sid = (dd.get("doc") or dd)["id"]
+            await p1.goto(BASE + f"/#/apps/hubtech/sheet/{sid}"); await p1.wait_for_selector(".sh-grid td")
+            await p1.click(".sh-grid td[data-c='0'][data-r='0']")
+            for v in ["Mandag", "Tirsdag"]:
+                await p1.keyboard.type(v); await p1.keyboard.press("Enter")
+            await p1.click(".sh-grid td[data-c='1'][data-r='0']"); await p1.keyboard.type("10"); await p1.keyboard.press("Enter"); await p1.keyboard.type("20"); await p1.keyboard.press("Enter")
+            await p1.click(".sh-grid td[data-c='2'][data-r='0']"); await p1.keyboard.type("=B1*2"); await p1.keyboard.press("Enter")
+            # select A1:C2 then drag the handle down to row 5
+            await p1.click(".sh-grid td[data-c='0'][data-r='0']"); await p1.click(".sh-grid td[data-c='2'][data-r='1']", modifiers=["Shift"])
+            hb = await p1.locator(".sh-handle").bounding_box()
+            tgt = await p1.locator(".sh-grid td[data-c='2'][data-r='4']").bounding_box()
+            await p1.mouse.move(hb["x"] + 4, hb["y"] + 4); await p1.mouse.down(); await p1.mouse.move(tgt["x"] + 10, tgt["y"] + 8, steps=8); await p1.mouse.up()
+            await p1.wait_for_timeout(300)
+            col = lambda c: [p1.locator(f".sh-grid td[data-c='{c}'][data-r='{r}']").inner_text() for r in range(5)]
+            a = [await x for x in col(0)]; b = [await x for x in col(1)]; c = [await x for x in col(2)]
+            check("regneark: træk i hjørnet fortsætter ugedage og tal", a == ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag"] and b == ["10", "20", "30", "40", "50"], (a, b))
+            check("regneark: formler følger med, når de fyldes ned (mønsteret gentages som i Excel)", c == ["20", "", "60", "", "100"], c)
+            await p1.screenshot(path=f"{OUT}/sheet-fill.png")
+            # right-click: insert a row above row 2, the formula in C3 now points at B3
+            await p1.click(".sh-grid td[data-c='0'][data-r='1']", button="right"); await p1.click(".ofx-menu button:has-text('Indsæt række over')")
+            await p1.wait_for_timeout(300)
+            await p1.click(".sh-grid td[data-c='2'][data-r='3']")
+            fxv = await p1.input_value(".sh-fx")
+            check("regneark: højreklik → indsæt række, og formlerne retter sig", fxv == "=B4*2" and await p1.locator(".sh-grid td[data-c='0'][data-r='1']").inner_text() == "", fxv)
+            await p1.keyboard.press("Control+z"); await p1.wait_for_timeout(300)
+            check("regneark: fortryd indsat række", await p1.locator(".sh-grid td[data-c='0'][data-r='1']").inner_text() == "Tirsdag")
+            import datetime as _dt
+            t = _dt.date.today().isoformat()
+            await api(p1, "PUT", "/api/state/calendar", {"state": {"events": [{"id": "g1", "title": "Tandlæge", "date": t, "start": "10:00", "end": "11:00", "allDay": False, "color": "#38bdf8"},
+                {"id": "g2", "title": "Fodbold", "date": "2026-01-01", "start": "17:00", "end": "18:00", "allDay": False, "repeat": {"freq": "day"}}]}})
+            await api(p1, "PUT", "/api/state/tasks", {"state": {"tasks": [{"id": "k1", "title": "Ring til Jensen", "status": "todo", "prio": "med", "due": t, "created": 1, "updated": 1}]}})
+            await api(p1, "PUT", "/api/state/habits", {"state": {"habits": [{"id": "h1", "name": "Gå en tur", "emoji": "🚶", "goal": 7, "days": []}]}})
+            await p1.goto(BASE + "/widget"); await p1.wait_for_selector(".wg-sec")
+            check("widget: /widget åbner “I dag” uden menuer", await p1.locator(".wg-list li:has-text('Tandlæge')").count() == 1 and await p1.locator(".wg-list li:has-text('Fodbold')").count() == 1 and await p1.locator(".sidebar, .side-nav, .topbar").count() == 0)
+            man = await p1.evaluate("document.querySelector('link[rel=manifest]').getAttribute('href')")
+            check("widget: egen manifest, så den kan installeres som sin egen app", man == "widget.webmanifest", man)
+            await p1.click(".wg-check"); await p1.wait_for_timeout(600)
+            ts = (await api(p1, "GET", "/api/state/tasks"))["data"]["state"]["tasks"]
+            check("widget: sæt flueben ved en opgave", ts[0]["status"] == "done")
+            await p1.click(".wg-habit"); await p1.wait_for_timeout(600)
+            hb = (await api(p1, "GET", "/api/state/habits"))["data"]["state"]["habits"]
+            check("widget: sæt flueben ved en vane", t in hb[0]["days"])
+            await p1.fill(".wg-add input", "Møde i morgen kl 9"); await p1.press(".wg-add input", "Enter"); await p1.wait_for_timeout(700)
+            ev = (await api(p1, "GET", "/api/state/calendar"))["data"]["state"]["events"]
+            check("widget: tilføj en aftale fra widgetten", any(e["title"] == "Møde" and e["start"] == "09:00" for e in ev))
+            await p1.set_viewport_size({"width": 400, "height": 700})
+            await p1.screenshot(path=f"{OUT}/widget-window.png")
+            await p1.set_viewport_size({"width": 1280, "height": 900})
+            await p2.goto(BASE + "/widget"); await p2.wait_for_selector(".wg-sec")
+            over = await p2.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+            check("widget: på telefonen uden vandret rulning", over <= 2, over)
+            await p2.screenshot(path=f"{OUT}/widget-phone.png")
+            c5 = await browser.new_context(); p5 = await c5.new_page()
+            await p5.goto(BASE + "/widget"); await p5.wait_for_selector("#login-user", timeout=10000)
+            check("widget: uden login sendes man til log ind", "widget" in p5.url, p5.url)
+            await c5.close()
+            await p1.goto(BASE + "/#/settings/apps"); await p1.wait_for_selector(".wgset-grid")
+            check("indstillinger: widget-vejledning til Windows, iPhone og Android", await p1.locator(".wgset-how").count() == 3)
         except Exception as ex:
             print('ERR', str(ex)[:600], flush=True); await p1.screenshot(path=f'{OUT}/dbg-p1.png'); raise
         await c1.close(); await c2.close()

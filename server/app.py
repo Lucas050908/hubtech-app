@@ -349,6 +349,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _static(self, path):
         web = config.WEB_DIR
         rel = path.lstrip("/")
+        widget = rel.rstrip("/") == "widget"     # /widget: the small "I dag" view, installable as its own app (phone, Windows)
+        if widget:
+            rel = "index.html"
         if rel == "" or rel.endswith("/"):
             rel += "index.html"
         target = (web / rel).resolve()
@@ -378,6 +381,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         etag = f'"{int(stat.st_mtime)}-{stat.st_size}"'
         if target.relative_to(web).as_posix() in THEMED_SITES:
             etag = etag[:-1] + '-t2"'
+        if widget:
+            etag = etag[:-1] + '-w"'
         if self.headers.get("If-None-Match") == etag:
             self.send_response(304)
             self.send_header("ETag", etag)
@@ -399,6 +404,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 data = data.replace(b"</head>", THEME_INJECT + b"</head>", 1)
             if rel == "index.html":
                 data = data.replace(b'<script type="module" src="js/main.js"></script>', _preload_tags(web) + b'<script type="module" src="js/main.js"></script>', 1)
+                if widget:
+                    data = data.replace(b'href="manifest.webmanifest"', b'href="widget.webmanifest"', 1).replace("<title>HUBTECH — dit digitale univers</title>".encode(), "<title>HUBTECH · I dag</title>".encode(), 1)
             gz = gzip.compress(data, 6, mtime=0) if len(data) > 1024 and ctype.startswith(COMPRESSIBLE) else None
             if gz is not None and len(gz) >= len(data) * 0.9:
                 gz = None

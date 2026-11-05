@@ -718,8 +718,29 @@ function studioPanel() {
     row('Skriftstørrelse i editoren', null, size));
 }
 
+/** "I dag" as a widget on Windows, iPhone and Android. */
+function widgetPanel() {
+  const url = `${location.origin}/widget`;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), win = /windows/i.test(navigator.userAgent);
+  const qr = h('span', { class: 'hl-qr' });
+  import('../features/qr.js').then(m => m.qrSvg(url, 140)).then(svg => qr.append(svg)).catch(() => {});
+  const how = (ic, title, text, on) => h('div', { class: ['wgset-how', on && 'is-here'] }, h('b', null, icon(ic), title, on ? h('span', { class: 'chip' }, 'Denne enhed') : null), h('p', null, ...text));
+  return h('section', { class: 'glass panel' },
+    h('h2', { class: 'panel-title', style: { marginBottom: '6px' } }, icon('calendar'), 'Widget: I dag'),
+    h('p', { class: 'faint', style: { marginTop: 0 } }, 'Dagens aftaler, deadlines og vaner i et lille vindue – du kan sætte flueben og tilføje aftaler direkte. Den opdaterer sig selv.'),
+    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', marginBottom: '12px' } },
+      h('a', { class: 'btn btn-primary', href: '/widget', target: '_blank' }, icon('external'), 'Åbn widgetten'),
+      h('button', { class: 'btn', onclick: () => window.open('/widget', 'hubtech-i-dag', 'popup,width=400,height=680') }, 'Åbn som lille vindue'),
+      h('button', { class: 'btn btn-ghost', onclick: () => navigator.clipboard?.writeText(url).then(() => toast('Adressen er kopieret', { type: 'ok', ms: 1200 })).catch(() => {}) }, icon('copy'), 'Kopiér adressen')),
+    h('div', { class: 'wgset-grid' },
+      how('monitor', 'Windows', ['Brug genvejen ', h('b', null, 'HUBTECH I dag'), ' (laves af “Installer HUBTECH”) – den åbner widgetten i et lille vindue i højre side. Eller åbn widgetten i Edge/Chrome og vælg ', h('b', null, 'Installér'), ' i adresselinjen. Skal den starte med Windows: kopiér genvejen til mappen ', h('code', null, 'shell:startup'), ' (Win+R).'], win),
+      how('smartphone', 'iPhone og iPad', ['Åbn widget-adressen i Safari, tryk ', h('b', null, 'Del'), ' og så ', h('b', null, 'Føj til hjemmeskærm'), '. Så åbner ikonet direkte på “I dag”.'], ios),
+      how('smartphone', 'Android', ['I HUBTECH-appen: hold fingeren på hjemmeskærmen → ', h('b', null, 'Widgets'), ' → ', h('b', null, 'HUBTECH I dag'), '. I Chrome: åbn widget-adressen og vælg ', h('b', null, 'Føj til startskærm'), '.'], !ios && /android/i.test(navigator.userAgent))),
+    h('div', { class: 'wgset-qr' }, qr, h('span', { class: 'faint' }, 'Scan med telefonen for at åbne widgetten. Telefonen skal kunne nå HUBTECH (samme wifi eller Tailscale – se Om → Netværk).')));
+}
+
 function appsTab() {
-  return h('div', { class: 'stack', style: { display: 'grid', gap: '16px' } }, callPanel(), relayPanel(), notifyPanel(), mailServerPanel(), musicPanel(), aiPanel(), studioPanel());
+  return h('div', { class: 'stack', style: { display: 'grid', gap: '16px' } }, widgetPanel(), callPanel(), relayPanel(), notifyPanel(), mailServerPanel(), musicPanel(), aiPanel(), studioPanel());
 }
 
 function integrationsTab() {
