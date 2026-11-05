@@ -195,6 +195,16 @@ console.log('apps ok');
   const m1 = C.fromFEN('6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1'); const mv = C.bestMove(m1, 'easy', () => 0.5);
   assert.equal(C.sqName(mv.to), 'a8');
   const fq = C.fromFEN('4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1'); assert.equal(C.sqName(C.bestMove(fq, 'medium', () => 0.5).to), 'd5');
+  // bots, Elo and ranks
+  assert.equal(C.BOTS.length, 7); assert.ok(C.BOTS.every((b, i) => i === 0 || b.rating > C.BOTS[i - 1].rating));
+  assert.equal(C.rate(800, 800, 1, 0), 820); assert.equal(C.rate(800, 800, 0, 30), 790); assert.equal(C.rate(1500, 1500, 0.5, 30), 1500);
+  assert.ok(C.rate(800, 400, 1, 0) - 800 < C.rate(800, 1300, 1, 0) - 800);        // beating a stronger bot gives more
+  assert.equal(C.rankOf(599).name, 'Bonde'); assert.equal(C.rankOf(600).name, 'Springer'); assert.equal(C.rankOf(2500).name, 'Skakmester'); assert.equal(C.rankOf(1250).toNext, 250);
+  let rec = C.applyResult(null, 1000, 1, 'Klub-Karl'); assert.equal(rec.games, 1); assert.ok(rec.r > 800 && rec.best === rec.r && rec.w === 1 && rec.hist.length === 1);
+  rec = C.applyResult(rec, 400, 0, 'Bo'); assert.equal(rec.l, 1); assert.ok(rec.best >= rec.r);
+  // a blundering bot with a forced random move still plays legal moves; every bot finds mate in one when it does not blunder
+  for (const b of C.BOTS) { const mv2 = C.bestMove(C.fromFEN('6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1'), b.id, () => 0.99); assert.equal(C.sqName(mv2.to), 'a8', b.id); }
+  const rnd = C.bestMove(C.newGame(), 'bo', () => 0.01); assert.ok(C.legalMoves(C.newGame()).some(m => m.from === rnd.from && m.to === rnd.to));
   console.log('chess ok');
 }
 {

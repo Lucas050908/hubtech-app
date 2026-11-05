@@ -1204,10 +1204,10 @@ export const APPS = [
   },
   {
     id: 'chess', name: 'Skak', tagline: 'Mod computeren eller en ven.',
-    description: 'Skak med alle regler: rokade, en passant, bondeforvandling, pat og remis. Spil mod computeren på fire niveauer, to på samme skærm eller online – og se andres partier.',
+    description: 'Skak med alle regler: rokade, en passant, bondeforvandling, pat og remis. Spil mod syv bots fra begynder til mester, få din egen rating og rang, spil to på samme skærm eller online – og se andres partier.',
     icon: 'crown', hue: 'var(--hue-chess)', route: '#/apps/chess', category: 'workspace', status: 'available',
     art: { season: 'winter', time: 'day', focusX: 0.55, tint: '#a3a3a3' }, page: () => import('../pages/chess.js'),
-    keywords: ['spil', 'skak', 'chess', 'brætspil', 'konge', 'dronning', 'online', 'computer'],
+    keywords: ['spil', 'skak', 'chess', 'brætspil', 'konge', 'dronning', 'online', 'computer', 'bot', 'rating', 'elo', 'rang', 'rangliste', 'sværhedsgrad'],
   },
   {
     id: 'property', name: 'Ejendomskongen', tagline: 'Køb gader, byg hoteller.',

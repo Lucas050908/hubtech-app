@@ -1,5 +1,7 @@
 /**
- * Skak – against the computer (four levels), two on the same screen, or online with someone on HUBTECH.
+ * Skak – against seven bots with a rating (400–2200), two on the same screen, or online with someone on HUBTECH.
+ * Rated games against bots and online move your own rating (Elo) and rank, like on the big chess sites.
+ * The engine thinks in a worker, so the board never freezes.
  * Online the host's browser checks the moves, the server keeps the position and passes the other player's moves on.
  */
 import { h, clear } from '../core/dom.js';
@@ -14,6 +16,23 @@ import { lobbyPanel, roomApi, watchRoom, person, me, isWatcher } from '../featur
 import * as C from '../features/chess.js';
 
 const COLOR = { w: 'Hvid', b: 'Sort' };
+
+// the engine runs in a worker (falls back to the page if workers are not available)
+let worker = null, wid = 0;
+const waiting = new Map();
+function think(s, level) {
+  try {
+    if (!worker) {
+      worker = new Worker(new URL('../features/chessworker.js', import.meta.url), { type: 'module' });
+      worker.onmessage = (e) => { const f = waiting.get(e.data.id); waiting.delete(e.data.id); f?.(e.data.move); };
+      worker.onerror = () => { worker = null; for (const [id, f] of waiting) { waiting.delete(id); f(undefined); } };
+    }
+    const id = ++wid;
+    return new Promise((res) => { waiting.set(id, (m) => res(m === undefined ? C.bestMove(s, level) : m)); worker.postMessage({ id, s: JSON.parse(JSON.stringify(s)), level }); });
+  } catch { return Promise.resolve(C.bestMove(s, level)); }
+}
+const botOf = (G) => C.botById(G?.bot) || C.botById(C.LEVEL_BOT[G?.level]) || C.botById('karl');
+const rankChip = (r) => { const k = C.rankOf(r); return h('span', { class: 'chip ch-rankchip', title: k.name }, h('b', null, k.icon), ` ${k.name}`); };
 const pieceName = (p) => `${p === p.toUpperCase() ? 'hvid' : 'sort'} ${C.NAMES[p.toLowerCase()]}`;
 /** Replay a list of moves from the start (used for take-backs). */
 function replay(line) {
@@ -28,7 +47,7 @@ export default {
   async render(ctx) {
     const app = appById('chess');
     let store;
-    try { store = await appState('chess', { game: null, setup: { vs: 'ai', level: 'medium', color: 'w' }, stats: {}, flip: false }); } catch (e) { return loadError('Skak', e); }
+    try { store = await appState('chess', { game: null, setup: { vs: 'ai', bot: 'karl', rated: true, color: 'w' }, stats: {}, flip: false, rating: null, ratedRooms: [] }); } catch (e) { return loadError('Skak', e); }
     const st = store.data, self = this;
     const root = h('div');
     let mode = ctx?.params?.sub === 'online' ? 'online' : 'local';
@@ -43,7 +62,7 @@ export default {
         myColor: G.vs === 'ai' ? G.color : G.s.turn,
         bottom: G.vs === 'ai' ? G.color : (st.flip ? 'b' : 'w'),
         canMove: () => !G.s.result && (G.vs !== 'ai' || G.s.turn === G.color),
-        name: (c) => (G.vs === 'ai' ? (c === G.color ? 'Dig' : `Computer (${C.LEVELS[G.level].label.toLowerCase()})`) : COLOR[c]),
+        name: (c) => (G.vs === 'ai' ? (c === G.color ? `Dig${st.rating?.games ? ` (${st.rating.r})` : ''}` : `${botOf(G).avatar} ${botOf(G).name} (${botOf(G).rating})`) : COLOR[c]),
         move(f, t, pr) { if (C.play(G.s, f, t, pr)) { G.line.push([f, t, pr]); finishLocal(); store.save(); draw(); } },
         resign() { C.resign(G.s, G.vs === 'ai' ? G.color : G.s.turn); finishLocal(); store.save(); draw(); },
         draw() { C.agreeDraw(G.s); store.save(); draw(); },
@@ -107,31 +126,80 @@ export default {
       const G = st.game, res = G.s.result;
       if (!res || G.vs !== 'ai' || G.counted) return;
       G.counted = true;
-      const k = st.stats[G.level] || (st.stats[G.level] = { w: 0, l: 0, d: 0 });
-      if (!res.winner) k.d++; else if (res.winner === G.color) { k.w++; toast('Du vandt!', { type: 'xp', text: `Mod computeren på ${C.LEVELS[G.level].label.toLowerCase()}` }); } else k.l++;
+      const bot = botOf(G), key = bot.id;
+      const k = st.stats[key] || (st.stats[key] = { w: 0, l: 0, d: 0 });
+      const score = !res.winner ? 0.5 : res.winner === G.color ? 1 : 0;
+      if (score === 0.5) k.d++; else if (score === 1) k.w++; else k.l++;
+      if (G.rated) {
+        const before = st.rating?.games ? st.rating.r : C.START_RATING, rankBefore = C.rankOf(before).index;
+        st.rating = C.applyResult(st.rating, bot.rating, score, bot.name);
+        const d = st.rating.r - before;
+        toast(score === 1 ? 'Du vandt!' : score === 0.5 ? 'Remis' : 'Du tabte', { type: score === 1 ? 'xp' : 'info', text: `Rating ${st.rating.r} (${d >= 0 ? '+' : ''}${d}) mod ${bot.name}` });
+        const rk = C.rankOf(st.rating.r);
+        if (rk.index > rankBefore) setTimeout(() => toast(`Ny rang: ${rk.icon} ${rk.name}`, { type: 'xp', text: 'Godt spillet – du er rykket op!' }), 900);
+      } else if (score === 1) toast('Du vandt!', { type: 'xp', text: `Mod ${bot.name} (uden rating)` });
     }
 
     // ── setup on one screen ──
     function setup() {
-      const o = { ...st.setup };
+      const o = { vs: 'ai', bot: 'karl', rated: true, color: 'w', ...st.setup };
+      if (!C.botById(o.bot)) o.bot = C.LEVEL_BOT[o.level] || 'karl';
       const levelRow = h('div'), clockRow = h('div');
-      const vsSeg = segmented([{ value: 'ai', label: 'Mod computeren', icon: 'bot' }, { value: 'two', label: 'To på samme skærm', icon: 'users' }], o.vs, (v) => { o.vs = v; levelRow.hidden = v !== 'ai'; clockRow.hidden = v === 'ai'; }, { label: 'Modstander' });
+      const vsSeg = segmented([{ value: 'ai', label: 'Mod en bot', icon: 'bot' }, { value: 'two', label: 'To på samme skærm', icon: 'users' }], o.vs, (v) => { o.vs = v; levelRow.hidden = v !== 'ai'; clockRow.hidden = v === 'ai'; }, { label: 'Modstander' });
       o.clock = o.clock || 'none';
       h(clockRow, { hidden: o.vs === 'ai' }, h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Skakur'), clockSeg(o.clock, (v) => { o.clock = v; })));
-      const lvSeg = segmented(Object.entries(C.LEVELS).map(([value, l]) => ({ value, label: l.label })), o.level, (v) => { o.level = v; }, { label: 'Sværhedsgrad' });
+      const my = st.rating?.games ? st.rating.r : C.START_RATING;
+      const bots = h('div', { class: 'ch-bots', role: 'radiogroup', 'aria-label': 'Vælg en bot' });
+      const drawBots = () => bots.replaceChildren(...C.BOTS.map(b => {
+        const k = st.stats[b.id], diff = b.rating - my;
+        return h('button', { class: ['ch-bot', o.bot === b.id && 'is-on'], role: 'radio', 'aria-checked': String(o.bot === b.id), dataset: { bot: b.id }, onclick: () => { o.bot = b.id; drawBots(); } },
+          h('span', { class: 'ch-bot-av', 'aria-hidden': 'true' }, b.avatar),
+          h('span', { class: 'ch-bot-main' }, h('b', null, b.name), h('span', { class: 'faint' }, b.about),
+            k && k.w + k.d + k.l ? h('span', { class: 'ch-bot-rec' }, `${k.w} sejre · ${k.d} remis · ${k.l} tab`) : null),
+          h('span', { class: 'ch-bot-r' }, h('b', null, String(b.rating)), h('span', { class: 'faint' }, diff > 250 ? 'Svær for dig' : diff < -250 ? 'Let for dig' : 'Lige op')));
+      }));
+      drawBots();
+      const ratedSeg = segmented([{ value: 'y', label: 'Med rating' }, { value: 'n', label: 'Uden rating' }], o.rated === false ? 'n' : 'y', (v) => { o.rated = v === 'y'; }, { label: 'Rating' });
       const colSeg = segmented([{ value: 'w', label: 'Hvid' }, { value: 'b', label: 'Sort' }, { value: 'r', label: 'Tilfældig' }], o.color, (v) => { o.color = v; }, { label: 'Din farve' });
-      h(levelRow, { hidden: o.vs !== 'ai' }, h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Sværhedsgrad'), lvSeg), h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Du spiller'), colSeg));
-      const stats = Object.entries(C.LEVELS).map(([id, l]) => { const k = st.stats[id]; return k && k.w + k.l + k.d ? h('span', { class: 'chip' }, `${l.label}: ${k.w} sejre · ${k.d} remis · ${k.l} tab`) : null; }).filter(Boolean);
-      h(clear(root), null, panel('Nyt parti', 'play',
-        h('div', { class: 'ch-setup-row' }, vsSeg), levelRow, clockRow,
-        stats.length ? h('div', { class: 'ch-stats' }, h('span', { class: 'faint' }, 'Dine resultater mod computeren:'), stats) : null,
-        h('div', { class: 'row-actions' }, h('button', { class: 'btn btn-primary btn-lg', onclick: () => {
-          st.setup = o;
-          const color = o.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : o.color;
-          st.game = { s: C.newGame(), line: [], vs: o.vs, level: o.level, color };
-          if (o.vs === 'two') C.setClock(st.game.s, o.clock);
-          sel = -1; hint = null; store.save(); ctl = localCtl(); draw();
-        } }, icon('play'), 'Start partiet'))), rules());
+      h(levelRow, { hidden: o.vs !== 'ai' }, bots,
+        h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Partiet'), ratedSeg),
+        h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Du spiller'), colSeg));
+      h(clear(root), null, h('div', { class: 'ch-setup-wrap' },
+        panel('Nyt parti', 'play',
+          h('div', { class: 'ch-setup-row' }, vsSeg), levelRow, clockRow,
+          h('div', { class: 'row-actions' }, h('button', { class: 'btn btn-primary btn-lg', onclick: () => {
+            st.setup = o;
+            const color = o.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : o.color;
+            st.game = { s: C.newGame(), line: [], vs: o.vs, bot: o.bot, rated: o.vs === 'ai' && o.rated !== false, color };
+            if (o.vs === 'two') C.setClock(st.game.s, o.clock);
+            sel = -1; hint = null; store.save(); ctl = localCtl(); draw();
+          } }, icon('play'), 'Start partiet'))),
+        h('div', { class: 'stack' }, ratingPanel(), ladderPanel(), rules())));
+    }
+    function ratingPanel() {
+      const R = st.rating?.games ? st.rating : null, r = R ? R.r : C.START_RATING, k = C.rankOf(r);
+      const prog = k.next ? Math.round((r - k.min) / (k.next.min - k.min) * 100) : 100;
+      const hist = (R?.hist || []).slice(-20);
+      let spark = null;
+      if (hist.length > 1) {
+        const vs = hist.map(x => x.r), lo = Math.min(...vs) - 10, hi = Math.max(...vs) + 10, W = 220, H = 48;
+        const pts = vs.map((v, i) => `${(i / (vs.length - 1) * W).toFixed(1)},${(H - (v - lo) / (hi - lo) * H).toFixed(1)}`).join(' ');
+        spark = h('svg', { class: 'ch-spark', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Rating over de sidste ${hist.length} partier` }, h('polyline', { points: pts, fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linejoin': 'round' }));
+      }
+      return panel('Din rating', 'trophy',
+        h('div', { class: 'ch-rating' }, h('span', { class: 'ch-rank-icon', 'aria-hidden': 'true' }, k.icon),
+          h('div', null, h('b', { class: 'ch-rating-n' }, R ? String(r) : `${r}?`), h('div', null, k.name), h('div', { class: 'faint' }, R ? `${R.games} partier · ${R.w} sejre · ${R.d} remis · ${R.l} tab${R.games < 20 ? ' · foreløbig' : ''}` : 'Spil et parti med rating for at få din første rating.'))),
+        k.next ? h('div', { class: 'ch-next' }, h('div', { class: 'ch-row-sb' }, h('span', { class: 'faint' }, `Næste rang: ${k.next.icon} ${k.next.name}`), h('span', { class: 'faint' }, `${k.toNext} point`)), h('div', { class: 'lab-bar-track' }, h('span', { style: { width: `${prog}%` } }))) : h('p', { class: 'faint' }, 'Du har den højeste rang.'),
+        spark, R?.best ? h('p', { class: 'faint', style: { margin: 0 } }, `Bedste rating: ${R.best}`) : null);
+    }
+    function ladderPanel() {
+      const list = h('ol', { class: 'ch-ladder' }, h('li', { class: 'faint' }, 'Henter …'));
+      api.get('/api/chess/ratings').then(d => {
+        const es = d.entries || [];
+        list.replaceChildren(...(es.length ? es.slice(0, 10).map((e, i) => h('li', { class: e.me ? 'is-me' : null }, h('span', { class: 'ch-ladder-n' }, String(i + 1)), h('span', { class: 'ch-ladder-k', title: C.rankOf(e.r).name }, C.rankOf(e.r).icon), h('b', null, e.u), h('span', { class: 'mono' }, String(e.r))))
+          : [h('li', { class: 'faint' }, 'Ingen har en rating endnu – bliv den første.')]));
+      }).catch(() => list.replaceChildren(h('li', { class: 'faint' }, 'Ranglisten kunne ikke hentes.')));
+      return panel('Rangliste', 'award', list, h('p', { class: 'faint', style: { fontSize: 'var(--fs-xs)', margin: '8px 0 0' } }, 'Rang: ♟ Bonde · ♞ Springer 600 · ♝ Løber 900 · ♜ Tårn 1200 · ♛ Dronning 1500 · ♚ Konge 1800 · 🏆 Skakmester 2100'));
     }
     const clockSeg = (val, fn) => segmented(C.CLOCKS.map(c => ({ value: c.id, label: c.label })), val, fn, { label: 'Skakur' });
     const rules = () => panel('Godt at vide', 'help', h('ul', { class: 'pg-rules' },
@@ -186,6 +254,7 @@ export default {
         s.clock ? h('span', { class: ['ch-clock', c === s.turn && s.clock.since != null && !s.result && 'is-on', ctl.left(c) < 20e3 && 'is-low'], dataset: { c }, 'aria-label': `${COLOR[c]}s tid` }, C.fmtClock(ctl.left(c))) : null);
       if (hint && hint.n !== s.moves.length) hint = null;
       const res = s.result;
+      if (ctl.online && res && ctl.myColor && room && !(st.ratedRooms || []).includes(room.id) && s.moves.length >= 2) rateOnline(room.id, ctl.B, ctl.myColor, res);
       const status = res
         ? h('div', { class: 'ch-status is-over' }, icon('trophy'), h('div', null, h('b', null, res.winner ? `${ctl.name(res.winner)} vinder` : 'Uafgjort'), h('span', { class: 'faint' }, C.RESULT_TEXT[res.why] || '')))
         : h('div', { class: 'ch-status' }, h('b', null, ctl.canMove() ? (ctl.online || st.game?.vs === 'ai' ? 'Dit træk' : `${COLOR[s.turn]} trækker`) : `${ctl.name(s.turn)} tænker …`),
@@ -207,14 +276,17 @@ export default {
       const acts = h('div', { class: 'row-actions' },
         ctl.online ? h('button', { class: 'btn btn-sm', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle spil')
           : h('button', { class: 'btn btn-sm', onclick: async () => {
-            if (!res && s.moves.length > 2 && !await confirmDialog({ title: 'Start et nyt parti?', text: 'Partiet, du er i gang med, forsvinder.', confirmLabel: 'Nyt parti' })) return;
+            const ratedLoss = !res && G?.rated && s.moves.length >= 2;
+            if (!res && s.moves.length > 2 && !await confirmDialog({ title: 'Start et nyt parti?', text: ratedLoss ? 'Partiet tæller som tabt i din rating.' : 'Partiet, du er i gang med, forsvinder.', confirmLabel: 'Nyt parti' })) return;
+            if (ratedLoss) { C.resign(G.s, G.color); finishLocal(); }
             st.game = null; store.save(); ctl = null; sel = -1; setup();
           } }, icon('plus'), 'Nyt parti'),
         !ctl.online && !res && G.vs === 'ai' && ctl.canMove() ? h('button', { class: 'btn btn-sm', onclick: () => {
-          const m = C.bestMove(s, 'hard'); if (!m) return;
-          hint = { ...m, n: s.moves.length }; G.hints = (G.hints || 0) + 1; store.save(); draw();
+          if (G.rated) { G.rated = false; toast('Partiet tæller ikke længere i din rating', { type: 'info', text: 'Hints og fortryd gør partiet uden rating.' }); }
+          think(s, 'holger').then(m => { if (!m || st.game !== G || G.s.moves.length !== s.moves.length) return; hint = { ...m, n: s.moves.length }; G.hints = (G.hints || 0) + 1; store.save(); draw(); });
         } }, icon('sparkles'), 'Hint') : null,
         !ctl.online && !res && G.line.length && !s.clock ? h('button', { class: 'btn btn-sm', onclick: () => {
+          if (G.rated) { G.rated = false; toast('Partiet tæller ikke længere i din rating', { type: 'info' }); }
           const back = G.vs === 'ai' ? (G.s.turn === G.color ? 2 : 1) : 1;
           G.line = G.line.slice(0, Math.max(0, G.line.length - back)); G.s = replay(G.line); sel = -1; ctl = localCtl(); store.save(); draw();
         } }, icon('undo'), 'Fortryd') : null,
@@ -230,7 +302,7 @@ export default {
         ctl.online && res && ctl.host ? h('button', { class: 'btn btn-sm btn-primary', onclick: rematch }, icon('refresh'), 'Spil igen') : null,
         !ctl.online && res ? h('button', { class: 'btn btn-sm btn-primary', onclick: () => {
           const color = G.vs === 'ai' && st.setup.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : G.color;
-          st.game = { s: C.setClock(C.newGame(), G.s.clock?.id), line: [], vs: G.vs, level: G.level, color }; sel = -1; hint = null; store.save(); ctl = localCtl(); draw();
+          st.game = { s: C.setClock(C.newGame(), G.s.clock?.id), line: [], vs: G.vs, bot: botOf(G).id, rated: G.vs === 'ai' && st.setup.rated !== false, color }; sel = -1; hint = null; store.save(); ctl = localCtl(); draw();
         } }, icon('refresh'), 'Spil igen') : null);
       const top = bottom === 'w' ? 'b' : 'w';
       h(clear(root), null, h('div', { class: 'ch-wrap' },
@@ -238,17 +310,32 @@ export default {
         h('div', { class: 'ch-side' }, status, offer, acts, h('h3', { class: 'gr-h' }, 'Træk'), s.moves.length ? moves : h('p', { class: 'faint', style: { margin: 0 } }, 'Hvid starter.'))));
       moves.scrollTop = moves.scrollHeight;
     }
+    /** An online game is over: move my rating against the opponent's (from the ranking). Each player updates their own. */
+    function rateOnline(id, B, mine, res) {
+      st.ratedRooms = [...(st.ratedRooms || []), id].slice(-60); store.save();
+      const opp = mine === 'w' ? B.b : B.w, oppName = B.names?.[mine === 'w' ? 'b' : 'w'] || 'modstander';
+      api.get('/api/chess/ratings').then(d => d.entries || []).catch(() => []).then(es => {
+        const or = es.find(e => e.id === opp)?.r || C.START_RATING;
+        const score = !res.winner ? 0.5 : res.winner === mine ? 1 : 0;
+        const before = st.rating?.games ? st.rating.r : C.START_RATING;
+        st.rating = C.applyResult(st.rating, or, score, oppName); store.save();
+        const dlt = st.rating.r - before;
+        toast(`Rating ${st.rating.r} (${dlt >= 0 ? '+' : ''}${dlt})`, { type: score === 1 ? 'xp' : 'info', text: `Online mod ${oppName}` });
+      });
+    }
     function scheduleAI() {
       clearTimeout(self._t);
       const G = st.game;
       if (ctl?.online || !G || G.vs !== 'ai' || G.s.result || G.s.turn === G.color) return;
       const s = G.s;
-      self._t = setTimeout(() => {
+      const n = s.moves.length;
+      self._t = setTimeout(async () => {
         if (!document.body.contains(root) || st.game?.s !== s) return;
-        const m = C.bestMove(s, G.level);
+        const m = await think(s, botOf(G).id);
+        if (!document.body.contains(root) || st.game?.s !== s || s.moves.length !== n) return;     // a take-back or a new game meanwhile
         if (m && C.play(s, m.from, m.to, m.promo)) { G.line.push([m.from, m.to, m.promo]); finishLocal(); store.save(); }
         if (ctl && !ctl.online) draw();
-      }, 450);
+      }, 350);
     }
 
     // ── online ──
@@ -344,7 +431,7 @@ export default {
       else openRoom(null);
     } else if (st.game) { C.resumeClock(st.game.s); ctl = localCtl(); draw(); } else setup();
     return h('div', { class: 'page gm-page ch-page', style: { '--app': app.hue } },
-      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Skak', lead: 'Spil mod computeren på fire niveauer, to på samme skærm eller online mod en ven.', compact: true }),
+      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Skak', lead: 'Spil mod syv bots fra 400 til 2200 i rating, to på samme skærm eller online – og stig i rang.', compact: true }),
       h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), root);
   },
 };

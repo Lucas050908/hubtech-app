@@ -287,13 +287,59 @@ function search(s, depth, alpha, beta, ply, stats) {
   return best;
 }
 export const LEVELS = { easy: { label: 'Let', depth: 1, noise: 150 }, medium: { label: 'Middel', depth: 2, noise: 30 }, hard: { label: 'Svær', depth: 3, noise: 0 }, master: { label: 'Mester', depth: 4, noise: 0 } };
-/** The computer's move for the side to move: { from, to, promo }. */
+
+/**
+ * Bots with a rating, from beginner to very strong – like on the big chess sites. Weaker bots look less far ahead,
+ * judge moves more loosely (noise) and now and then simply blunder (a random legal move).
+ */
+export const BOTS = [
+  { id: 'bo', name: 'Bo Begynder', rating: 400, depth: 1, noise: 500, blunder: 0.35, avatar: '🐣', about: 'Kender reglerne, men glemmer tit, at brikker kan slås.' },
+  { id: 'lise', name: 'Lise Lærling', rating: 700, depth: 1, noise: 220, blunder: 0.15, avatar: '🙂', about: 'Tager gerne dine brikker – men passer ikke altid på sine egne.' },
+  { id: 'karl', name: 'Klub-Karl', rating: 1000, depth: 2, noise: 90, blunder: 0.06, avatar: '🧢', about: 'Spiller i klubben om tirsdagen. Solid, men laver fejl under pres.' },
+  { id: 'tanja', name: 'Taktik-Tanja', rating: 1300, depth: 2, noise: 20, blunder: 0.02, avatar: '⚡', about: 'Ser gafler og bindinger. Giv hende ikke en løs brik.' },
+  { id: 'holger', name: 'Holger Strateg', rating: 1600, depth: 3, noise: 12, blunder: 0, avatar: '🎩', about: 'Tænker tre træk frem og straffer de fleste fejl.' },
+  { id: 'astrid', name: 'Astrid Mester', rating: 1900, depth: 3, noise: 0, blunder: 0, max: 120000, avatar: '👑', about: 'Stærk og præcis. Du skal spille godt for at få remis.' },
+  { id: 'pind', name: 'Professor Pind', rating: 2200, depth: 4, noise: 0, blunder: 0, max: 220000, avatar: '🦉', about: 'Laboratoriets stærkeste. Tænker sig længe om – og sjældent forkert.' },
+];
+export const botById = (id) => BOTS.find(b => b.id === id) || null;
+/** Old games used the four levels – they map onto bots. */
+export const LEVEL_BOT = { easy: 'lise', medium: 'karl', hard: 'holger', master: 'pind' };
+
+// ── rating (Elo) and ranks ──
+export const START_RATING = 800;
+export const expected = (a, b) => 1 / (1 + 10 ** ((b - a) / 400));
+/** New rating after one game: score 1 = win, 0.5 = draw, 0 = loss. The first 20 games move it faster. */
+export function rate(r, opp, score, games = 0) {
+  const k = games < 20 ? 40 : 20;
+  return Math.max(100, Math.round(r + k * (score - expected(r, opp))));
+}
+export const RANKS = [
+  { min: 0, name: 'Bonde', icon: '♟' }, { min: 600, name: 'Springer', icon: '♞' }, { min: 900, name: 'Løber', icon: '♝' },
+  { min: 1200, name: 'Tårn', icon: '♜' }, { min: 1500, name: 'Dronning', icon: '♛' }, { min: 1800, name: 'Konge', icon: '♚' }, { min: 2100, name: 'Skakmester', icon: '🏆' },
+];
+export function rankOf(r) {
+  let i = 0;
+  while (i + 1 < RANKS.length && r >= RANKS[i + 1].min) i++;
+  const next = RANKS[i + 1];
+  return { ...RANKS[i], index: i, next: next || null, toNext: next ? next.min - r : 0 };
+}
+/** Apply a finished rated game to a rating record { r, games, best, w, d, l, hist[] }. */
+export function applyResult(rec, opp, score, label = '') {
+  const cur = rec && rec.games ? rec : { r: START_RATING, games: 0, best: START_RATING, w: 0, d: 0, l: 0, hist: [] };
+  const r = rate(cur.r, opp, score, cur.games);
+  const out = { ...cur, r, games: cur.games + 1, best: Math.max(cur.best || 0, r), w: cur.w + (score === 1 ? 1 : 0), d: cur.d + (score === 0.5 ? 1 : 0), l: cur.l + (score === 0 ? 1 : 0) };
+  out.hist = [...(cur.hist || []), { r, d: r - cur.r, vs: label, at: Date.now() }].slice(-40);
+  return out;
+}
+
+/** The computer's move for the side to move: { from, to, promo }. `level` is a bot id (or one of the old levels). */
 export function bestMove(s0, level = 'medium', r = Math.random) {
   const s = { ...s0, board: [...s0.board] };
-  const L = LEVELS[level] || LEVELS.medium;
+  const L = botById(level) || botById(LEVEL_BOT[level]) || LEVELS[level] || LEVELS.medium;
   const ms = order(legalMoves(s));
   if (!ms.length) return null;
-  const stats = { n: 0, max: 60000 };
+  if (L.blunder && r() < L.blunder) { const m = ms[Math.floor(r() * ms.length)]; return { from: m.from, to: m.to, promo: m.promo || 'q' }; }
+  const stats = { n: 0, max: L.max || 60000 };
   let best = null, bv = -Infinity;
   for (const m of ms) {
     const u = make(s, m);

@@ -567,6 +567,26 @@ def leaderboard(req, _):
     return 200, {"entries": out}
 
 
+def chess_ratings(req, _):
+    """The chess ranking: every player's rating from their own chess state (games against bots and online)."""
+    require_user(req)
+    rows = db.all_rows("SELECT u.id, u.display_name, u.avatar, s.data FROM users u "
+                       "JOIN app_state s ON s.user_id = u.id AND s.app_id = 'chess'")
+    out = []
+    for r in rows:
+        try:
+            d = json.loads(r["data"]) if r["data"] else {}
+        except ValueError:
+            continue
+        rt = d.get("rating") if isinstance(d, dict) else None
+        if not isinstance(rt, dict) or not _num(rt.get("games")):
+            continue
+        out.append({"id": r["id"], "u": r["display_name"], "av": r["avatar"], "r": max(100, min(3000, _num(rt.get("r")))),
+                    "games": _num(rt.get("games")), "best": _num(rt.get("best")), "me": r["id"] == req.user["id"]})
+    out.sort(key=lambda e: -e["r"])
+    return 200, {"entries": out[:100]}
+
+
 # ── Projects (Cursor) ─────────────────────────────────────────────────────
 def _meta_map(uid):
     rows = db.all_rows("SELECT project_id, data FROM project_meta WHERE user_id = ?", (uid,))
@@ -1658,6 +1678,7 @@ ROUTES = [
     ("PUT", r"/api/me/prefs", put_prefs),
     ("POST", r"/api/me/onboarding", onboarding),
     ("GET", r"/api/me/summary", summary),
+    ("GET", r"/api/chess/ratings", chess_ratings),
     ("GET", r"/api/state/(?P<app>[^/]+)", get_state),
     ("PUT", r"/api/state/(?P<app>[^/]+)", put_state),
     ("GET", r"/api/states/(?P<prefix>[a-z0-9-]{2,20})", get_states_prefix),

@@ -640,7 +640,7 @@ async def main():
         names = await page.locator(".launcher-item .app-card-name").all_text_contents()
         side = await page.locator(".nav-item").all_text_contents()
         check("læring: læringsapps samlet på læringssiden, ikke i launcher og menu",
-              tiles == ["Kodeskolen", "Kodestumper", "Huskekort", "Quiz", "Phishing-træner", "IT-ordbog", "Tastaturtræner", "Bit-spil", "CircuitPilot", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
+              tiles == ["Øvelseslab", "Kodeskolen", "Kodestumper", "Huskekort", "Quiz", "Phishing-træner", "IT-ordbog", "Tastaturtræner", "Bit-spil", "CircuitPilot", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
 
         # ── Værktøjskasse: IT tools ──
         await page.goto(BASE + "/#/learn/toolkit")
@@ -1376,6 +1376,7 @@ async def main():
         await page.click(".ch-page button:has-text('Fortryd')"); await page.wait_for_timeout(300)
         check("skak: fortryd tager dit og computerens træk tilbage", await page.locator(".ch-moves li").count() == 1)
         await page.click(".ch-page button:has-text('Hint')")
+        await page.wait_for_selector(".ch-sq.is-hint", timeout=10000)
         check("skak: hint viser et træk", await page.locator(".ch-sq.is-hint").count() == 2)
         # two on one screen with a clock
         await page.click(".ch-page button:has-text('Nyt parti')"); await page.wait_for_timeout(400)
@@ -1388,6 +1389,26 @@ async def main():
         black = await page.inner_text(".ch-clock.is-on")
         check("skak: skakuret går for den, der skal trække", black.startswith("2:5"), black)
         await page.screenshot(path=f"{OUT}/app-chess-clock.png")
+        # rated game against a bot: seven bots, resigning moves the rating, the ranking shows it
+        await page.click(".ch-page button:has-text('Nyt parti')"); await page.wait_for_timeout(300)
+        if await page.locator(".modal button:has-text('Nyt parti')").count():
+            await page.click(".modal button:has-text('Nyt parti')")
+        await page.wait_for_selector(".ch-setup-row")
+        await page.click(".ch-setup-row button:has-text('Mod en bot')"); await page.wait_for_selector(".ch-bot")
+        check("skak: syv bots med rating", await page.locator(".ch-bot").count() == 7)
+        await page.click(".ch-bot[data-bot='tanja']"); await page.click(".ch-setup-row button:has-text('Med rating')"); await page.click(".ch-setup-row button:has-text('Hvid')")
+        await page.screenshot(path=f"{OUT}/app-chess-bots.png")
+        await page.click(".ch-page button:has-text('Start partiet')"); await page.wait_for_selector(".ch-board")
+        check("skak: botten står med navn og rating", "Taktik-Tanja (1300)" in await page.inner_text(".ch-main"))
+        await page.click(".ch-sq[data-sq='d2']"); await page.click(".ch-sq[data-sq='d4']")
+        await page.wait_for_selector(".ch-moves li span:nth-child(3):not(:empty)", timeout=20000)
+        await page.click(".ch-page button:has-text('Opgiv')"); await page.click(".modal button:has-text('Opgiv')"); await page.wait_for_timeout(800)
+        rt = (await api(page, "GET", "/api/state/chess"))["data"]["state"].get("rating") or {}
+        check("skak: et tabt parti med rating flytter din rating", rt.get("games") == 1 and 760 < rt.get("r", 0) < 800, rt)
+        lad = (await api(page, "GET", "/api/chess/ratings"))["data"]["entries"]
+        check("skak: ranglisten viser din rating", any(e["me"] and e["r"] == rt.get("r") for e in lad), lad)
+        await page.click(".ch-page button:has-text('Nyt parti')"); await page.wait_for_selector(".ch-rating")
+        check("skak: rang og rating vises", str(rt.get("r")) in await page.inner_text(".ch-rating") and "Springer" in await page.inner_text(".ch-rating"))
         # ── Quizbrættet ──
         await go("apps/quizboard", ".qb-chips")
         await page.click(".qb-page button:has-text('Start spillet')"); await page.wait_for_selector(".qb-board")
