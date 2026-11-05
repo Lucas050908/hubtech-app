@@ -213,6 +213,11 @@ def widget_x():
         if WINDOWS:
             import ctypes
             return max(0, ctypes.windll.user32.GetSystemMetrics(0) - 420)
+        import tkinter                       # Linux and macOS: the screen width from the standard library, when Tk is there
+        t = tkinter.Tk(); t.withdraw()
+        w = t.winfo_screenwidth(); t.destroy()
+        if w > 600:
+            return w - 420
     except Exception:
         pass
     return 1000
