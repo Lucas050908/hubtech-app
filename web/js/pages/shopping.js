@@ -67,7 +67,7 @@ export default {
           await sh.add(doc.id, 'item', { text, qty, cat: shopCat(text), done: false }).catch(e => toast('Kunne ikke tilføje', { type: 'bad', text: e.message }));
           memo.data.recent = [text, ...(memo.data.recent || []).filter(t => t.toLowerCase() !== text.toLowerCase())].slice(0, 80);
         }
-        memo.save(); refresh();
+        memo.save(); (self._refresh || refresh)();   // the list may have been redrawn meanwhile (fx after sharing)
       };
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.value.trim()) { add(input.value); input.value = ''; } });
       const toggle = async (it) => { it.data.done = !it.data.done; drawList(); await sh.edit(it.id, it.data).catch(() => {}); };
@@ -88,6 +88,9 @@ export default {
       }
       const countEl = h('span', { class: 'faint' });
       const quick = (memo.data.recent || []).slice(0, 12);
+      const prev = root.querySelector('.sp-add-in');   // keep what you were typing if the page redraws
+      if (prev?.value) input.value = prev.value;
+      self._refresh = refresh;
       h(clear(root), null,
         h('div', { class: 'sh-detail-h' }, h('a', { class: 'btn btn-sm', href: `#/apps/${PAGE}?all=1` }, icon('arrowLeft'), 'Lister'),
           owner ? (() => { const t = h('input', { class: 'input pg-title', value: doc.title, maxlength: 60, 'aria-label': 'Navn på listen' }); t.addEventListener('change', () => sh.update(doc.id, { title: t.value.trim() || 'Indkøb' }).catch(() => {})); return t; })() : h('h2', null, doc.title),

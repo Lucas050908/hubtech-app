@@ -94,6 +94,12 @@ async def main():
             after = await p1.locator(".cal-pill:has-text('Fodbold')").count()
             check("kalender: slet kun én gang af en gentaget aftale", after == before - 1, (before, after))
             await p1.screenshot(path=f"{OUT}/cal-after-skip.png")
+            import datetime as _dt
+            _t = _dt.date.today().replace(day=20)
+            await api(p1, "PUT", "/api/state/birthdays", {"state": {"people": [{"id": "f1", "name": "Farmor", "date": f"1950-{_t.month:02d}-20"}]}})
+            await p1.goto(BASE + "/#/apps/calendar"); await p1.click(".cal-bar .segmented button:has-text('Måned')"); await p1.wait_for_selector(".cal-pill")
+            await p1.wait_for_timeout(600)
+            check("kalender: fødselsdage fra Fødselsdage vises med alder", await p1.locator(f".cal-pill:has-text('Farmor ({_t.year - 1950} år)')").count() == 1)
             await p2.goto(BASE + "/#/apps/calendar"); await p2.wait_for_selector(".cal-quick input")
             over = await p2.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
             await p2.click(".cal-bar .segmented button:has-text('Uge')"); await p2.wait_for_selector(".cal-wk-col")

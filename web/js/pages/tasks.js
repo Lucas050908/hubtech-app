@@ -9,6 +9,7 @@ import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { REMIND, remindAt, notifyPermissionButton } from '../features/reminders.js';
 import { listDocs, KINDS } from '../office/store.js';
+import { celebrate } from '../features/celebrate.js';
 import { parseQuick, nextStart, REPEAT, repeatShort, iso as isoDate, parseIso } from '../features/calrecur.js';
 const localToday = () => isoDate(new Date());
 
@@ -129,6 +130,7 @@ export default {
       t.status = status; t.updated = Date.now();
       if (status === 'done' && was !== 'done') {
         t.doneAt = Date.now(); logActivity('tasks', 'done', t.title, 'Opgave færdig');
+        setTimeout(() => celebrate(document.querySelector(`.kb-card[data-id="${t.id}"]`) || document.querySelector('.kb-list[data-status=done]'), { count: 18 }), 30);
         const nx = t.repeat?.freq && t.due ? nextStart({ date: t.due, repeat: t.repeat }, (() => { const d = parseIso(t.due > localToday() ? t.due : localToday()); d.setDate(d.getDate() + 1); return isoDate(d); })()) : null;
         if (nx && !st.tasks.some(x => x.series === (t.series || t.id) && x.due === nx)) {
           const n = { ...t, id: uid(), status: 'todo', due: nx, doneAt: null, reminded: false, created: Date.now(), updated: Date.now(), series: t.series || t.id, checks: (t.checks || []).map(c => ({ ...c, done: false })) };

@@ -2166,9 +2166,13 @@ async def main():
             except Exception:
                 await p1.click(".sh-detail-h button:has-text('Del')"); await p1.wait_for_selector(".modal .sh-person-btn:has-text('Maja')")
             await p1.click(".modal .sh-person-btn:has-text('Maja')"); await p1.click(".modal button:has-text('Gem')")
-        await p1.wait_for_selector(".sp-add-in")
-        await p1.fill(".sp-add-in", "2 l mælk, bananer, toiletpapir"); await p1.press(".sp-add-in", "Enter")
-        await p1.wait_for_selector(".sp-item:has-text('toiletpapir')")
+        await p1.wait_for_selector(".modal", state="detached", timeout=8000); await p1.wait_for_selector(".sp-add-in"); await p1.wait_for_timeout(600)
+        for _ in range(3):   # the list re-draws once sharing is saved; type again if it swallowed the first try
+            await p1.fill(".sp-add-in", "2 l mælk, bananer, toiletpapir"); await p1.press(".sp-add-in", "Enter")
+            try:
+                await p1.wait_for_selector(".sp-item:has-text('toiletpapir')", timeout=5000); break
+            except Exception:
+                pass
         check("indkøbsliste: flere varer på én gang, sorteret efter butik", "Mejeri og æg" in await p1.inner_text(".sp-list") and await p1.locator(".sp-item b:has-text('2 l')").count() == 1)
         await p2.goto(BASE + "/#/apps/shopping"); await p2.wait_for_selector(".sp-item:has-text('bananer')", timeout=10000)
         await p2.click(".sp-item:has-text('bananer') .sp-check")

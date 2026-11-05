@@ -104,6 +104,17 @@ export default {
     if (!Array.isArray(st.events)) st.events = [];
     let tasks = [];
     getState('tasks', { force: true }).then(t => { tasks = (t?.tasks || []).filter(x => x.due && x.status !== 'done'); draw(); }).catch(() => {});
+    // birthdays from Fødselsdage show up every year (read-only here)
+    let bdays = [];
+    getState('birthdays', { force: true }).then(b => {
+      bdays = (b?.people || []).filter(p => /^(\d{4}|--)-?\d{2}-\d{2}$/.test(p.date || '')).map(p => {
+        const md = p.date.slice(-5), born = /^\d{4}/.test(p.date) ? Number(p.date.slice(0, 4)) : null;
+        const first = born ? p.date : `2000-${md}`;
+        return { id: `bday-${p.id}`, bday: true, born, title: `🎂 ${p.name}`, date: first, allDay: true, color: '#f472b6', notes: p.note || '', repeat: { freq: 'year' } };
+      });
+      draw();
+    }).catch(() => {});
+    const ageOn = (e, d) => (e.born ? ` (${Number(d.slice(0, 4)) - e.born} år)` : '');
 
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let cursor = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -127,10 +138,11 @@ export default {
     const allEvents = () => [
       ...(hidden.has('mine') ? [] : st.events),
       ...shared.events.filter(e => !hidden.has(e.cal) && calById(e.cal)).map(e => ({ ...e, color: e.color || calById(e.cal)?.color })),
+      ...(hidden.has('mine') ? [] : bdays),
     ];
 
     // events on a day (multi-day events span their range)
-    const onDay = (d) => allEvents().map(e => occurrenceOn(e, d)).filter(Boolean).sort((a, b) => (a.allDay ? -1 : 0) - (b.allDay ? -1 : 0) || String(a.start || '').localeCompare(String(b.start || '')));
+    const onDay = (d) => allEvents().map(e => occurrenceOn(e, d)).filter(Boolean).map(e => (e.bday ? { ...e, title: e.title + ageOn(e, e.date) } : e)).sort((a, b) => (a.allDay ? -1 : 0) - (b.allDay ? -1 : 0) || String(a.start || '').localeCompare(String(b.start || '')));
     const tasksOn = (d) => tasks.filter(t => t.due === d);
 
     const v = { today: h('span'), week: h('span'), next: h('span'), dl: h('span') };
@@ -146,6 +158,7 @@ export default {
 
     // ── editor ──
     function edit(ev, date, preset) {
+      if (ev?.bday) { location.hash = '#/apps/birthdays'; return; }
       if (ev?.cal) { const c = calById(ev.cal); if (!c || c.role === 'viewer') return viewOnly(ev, c); }
       const occ = ev?.series ? ev.occ : null;                    // clicked one day of a repeating event: edit the series
       if (ev?.series) ev = allEvents().find(x => x.id === ev.series && (x.cal || null) === (ev.cal || null)) || ev;
@@ -558,7 +571,7 @@ export default {
     }
 
     // ── import / export ──
-    const exportIcs = () => { saveBlob('HUBTECH-kalender.ics', new Blob([toIcs(allEvents())], { type: 'text/calendar' })); toast('Kalender hentet', { type: 'ok', text: 'Åbn .ics-filen på telefonen eller i Outlook/Google Kalender.' }); };
+    const exportIcs = () => { saveBlob('HUBTECH-kalender.ics', new Blob([toIcs(allEvents().filter(e => !e.bday))], { type: 'text/calendar' })); toast('Kalender hentet', { type: 'ok', text: 'Åbn .ics-filen på telefonen eller i Outlook/Google Kalender.' }); };
     const importIcs = () => {
       const inp = h('input', { type: 'file', accept: '.ics,text/calendar', style: { display: 'none' } });
       inp.addEventListener('change', async () => {

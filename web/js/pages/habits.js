@@ -6,6 +6,7 @@ import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError, uid, todayKey } from '../features/appkit.js';
 import { streak, weekCount, mondayKey } from '../features/habitlogic.js';
+import { celebrate } from '../features/celebrate.js';
 
 const SUGGEST = [['Drik 2 liter vand', '💧', 7], ['Gå en tur', '🚶', 7], ['Læs 20 minutter', '📚', 5], ['Træn', '💪', 3], ['Ingen skærm efter kl. 22', '🌙', 7], ['Lær ét nyt IT-ord', '🧠', 5]];
 const EMOJI = ['💧', '🚶', '📚', '⌨️', '🌙', '💪', '🧠', '🥗', '🎸', '🧘', '✍️', '⭐'];
@@ -32,7 +33,7 @@ export default {
       if (k === todayKey()) {
         if ((!x.goal || x.goal >= 7) && s > 1 && s % 7 === 0) toast(`${s} dage i træk!`, { type: 'xp', text: x.name });
         else if (x.goal && x.goal < 7 && weekCount(x.days, todayKey()) === x.goal) toast('Ugens mål er nået! 🎯', { type: 'xp', text: `${x.name} – ${goalText(x.goal).toLowerCase()}` });
-        if (st.habits.length > 1 && st.habits.every(y => y.days.includes(k))) toast('Alle vaner klaret i dag! 🎉', { type: 'ok', text: 'Godt gået.' });
+        if (st.habits.length > 1 && st.habits.every(y => y.days.includes(k))) { toast('Alle vaner klaret i dag! 🎉', { type: 'ok', text: 'Godt gået.' }); celebrate(null, { count: 40, spread: 1.6 }); }
       }
     }
     function editHabit(x) {
