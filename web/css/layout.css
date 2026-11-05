@@ -252,3 +252,4 @@ a.tw-chip:hover, a.tw-chip:focus-visible { border-color: color-mix(in srgb, var(
 @media (max-width: 640px) { .top-widgets, .tw-customize { display: none; } .tw-row-extra { margin-left: 0; } .tw-cards { grid-template-columns: minmax(0, 1fr); } }
 .home-clock { font: 600 clamp(2.6rem, 6vw, 4.4rem)/1 var(--font-mono, ui-monospace, monospace); letter-spacing: -.02em; color: #fff; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
 :root:not([data-style="orken"]) .home-clock { display: none; }
+:root[data-style="orken"] .topbar .user-chip-role { color: #fdba74; }

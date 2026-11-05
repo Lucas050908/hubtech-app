@@ -184,6 +184,8 @@
 :root[data-theme="dark"][data-style="orken"] { --glass: rgba(28, 25, 23, .66); --glass-strong: rgba(24, 21, 19, .84); --line: rgba(255, 228, 200, .11); --line-2: rgba(255, 228, 200, .2); }
 :root[data-theme="light"][data-style="orken"] { --accent: #c2410c; --accent-soft: rgba(194, 65, 12, .12); }
 :root[data-style="orken"] .topbar .user-chip-role { color: #fdba74; }
+:root[data-style="orken"] :is(.on-world, .page > .page-head, .home-hero, .guide-cat, .guide-head, .course-top, .landing-hero, .section-head, .public-nav) { --accent: #fdba74; --accent-soft: rgba(253, 186, 116, .16); }
+:root[data-style="orken"] { --hue-hubtech: #f97316; }
 :root[data-style="orken"] .topbar.is-scrolled { background: rgba(20, 18, 16, .66); }
 :root[data-style="neon"] { --accent: #ff4fa8; --accent-2: #3df2ff; --accent-glow: rgba(255, 79, 168, .5); --accent-soft: rgba(255, 79, 168, .16); }
 :root[data-theme="dark"][data-style="neon"] { --glass: rgba(16, 8, 30, .64); --glass-strong: rgba(14, 7, 26, .82); --line: rgba(255, 120, 210, .13); --line-2: rgba(255, 120, 210, .24); }

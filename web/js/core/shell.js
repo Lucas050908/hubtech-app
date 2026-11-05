@@ -6,6 +6,7 @@ import { APPS, appById, access, isLearnApp, visible, entryApps, suiteOf } from '
 import { api } from './api.js';
 import { paintStill, describeWorld } from '../world/controller.js';
 import { SEASONS, SEASON_LABEL } from '../world/palettes.js';
+import { SCENES } from '../world/scenes.js';
 // loaded when first needed (the search with its guide index, and the introduction) – keeps the start light
 const openPalette = (...a) => import('../features/palette.js').then(m => m.openPalette(...a));
 const startOnboarding = (...a) => import('../features/onboarding.js').then(m => m.startOnboarding(...a));
@@ -121,6 +122,15 @@ function renderSeasonMini() {
   const d = describeWorld();
   clear(seasonMini);
   const cv = h('canvas', { 'aria-hidden': 'true' });
+  // a theme scene (the desert is the standard look): show it, its name, and a shortcut to the settings – seasons don't apply
+  const w = store.get('prefs').world;
+  if (w.source === 'scene' && SCENES[w.scene]) {
+    seasonMini.append(cv,
+      h('div', { class: 'season-mini-bar' }, h('div', { class: 'lbl' }, h('small', null, 'Baggrund'), h('b', null, SCENES[w.scene].name))),
+      h('a', { class: 'season-mini-settings', href: '#/settings/world' }, icon('settings'), 'Skift baggrund'));
+    requestAnimationFrame(() => import('../world/cityscape.js').then(m => m.paintScene(cv, w.scene, { time: ['tokyo', 'neon', 'future'].includes(w.scene) ? 'night' : d.time, light: document.documentElement.dataset.theme === 'light' })));
+    return;
+  }
   const step = (dir) => {
     const i = SEASONS.indexOf(d.season);
     const next = SEASONS[(i + dir + 4) % 4];
