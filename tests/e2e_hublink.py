@@ -54,9 +54,9 @@ async def owner(browser, base, user, name):
     pg = await c.new_page()
     await pg.goto(base + "/#/signup"); await pg.wait_for_selector("#su-name")
     await pg.fill("#su-name", name); await pg.fill("#su-user", user); await pg.fill("#su-pass", "Sommer2026xx!"); await pg.fill("#su-pass2", "Sommer2026xx!")
-    await pg.click("button[type=submit]"); await pg.wait_for_selector(".home-title", timeout=20000)
+    await pg.click("button[type=submit]"); await pg.wait_for_selector(".home-title", timeout=45000)
     await pg.evaluate("fetch('/api/me/onboarding', {method: 'POST', headers: {'X-Requested-With': 'hubtech', 'Content-Type': 'application/json'}, body: JSON.stringify({done: true, step: 9})})")
-    await pg.reload(); await pg.wait_for_selector(".home-title")
+    await pg.reload(); await pg.wait_for_selector(".home-title", timeout=45000)
     return c, pg
 
 

@@ -137,7 +137,17 @@ function showPublic(node, title, seq, focus = 1) {
   bootDone();
 }
 
-async function showInShell(mod, { params = {}, app = null, title, focus } = {}, seq) {
+// One page render at a time: a render that loses the race destroys its own page (pages keep their running instance on the
+// module, so letting two renders overlap could stop the page that is actually shown – fx a game whose computer players froze).
+let inflight = Promise.resolve();
+async function showInShell(mod, opts = {}, seq) {
+  const prev = inflight;
+  let release;
+  inflight = new Promise(r => { release = r; });
+  try { await Promise.race([prev, new Promise(r => setTimeout(r, 8000))]); if (seq !== renderSeq) return; await showInShellNow(mod, opts, seq); }
+  finally { release(); }
+}
+async function showInShellNow(mod, { params = {}, app = null, title, focus } = {}, seq) {
   if (!hasShell()) { buildShell(root); initAutoSync(); startLive(); import('./ai/panel.js').then(m => m.initAssistant()).catch(e => console.error(e)); import('./features/calls.js').then(m => m.initCalls()).catch(e => console.error(e)); import('./features/bgm.js').then(m => m.initBgm()).catch(e => console.error(e)); }
   const outlet = getOutlet();
   setActiveNav(currentPath());
