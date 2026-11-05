@@ -27,8 +27,8 @@ assert.equal(pickFor(0.5 * GB).model.id, 'qwen05');
 assert.equal(pickFor(0.75 * GB).model.id, 'qwen05');
 assert.equal(pickFor(1 * GB).model.id, 'llama1b');
 assert.equal(pickFor(1.5 * GB).model.id, 'qwen15');
-assert.equal(pickFor(2 * GB).model.id, 'qwen15');
-assert.equal(pickFor(3 * GB).model.id, 'llama3b');
+assert.equal(pickFor(2 * GB).model.id, 'qwen3_17');   // Qwen 3 is the new default on computers
+assert.equal(pickFor(3 * GB).model.id, 'qwen3_4');
 for (const lim of [0.75, 1, 1.5, 2, 2.5, 3, 4]) { const p = pickFor(lim * GB); assert.ok(p.ram <= lim * GB, `fits ${lim}`); }
 assert.ok(pickFor(0.2 * GB).tooSmall);
 assert.ok(ramFor(MODELS[0], 4096) > ramFor(MODELS[0], 1024));

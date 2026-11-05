@@ -318,3 +318,20 @@ a.tw-chip:hover, a.tw-chip:focus-visible { border-color: color-mix(in srgb, var(
 .home-welcome { padding: 6px 4px; }
 @media (max-width: 1100px) { .home-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .home-top { flex-direction: column; } .home-stats { gap: 10px; } .home-stat { padding: 14px; } .home-clockline { gap: 14px; } }
+/* Tilpas → Dock */
+.tw-dock-count { display: flex; align-items: center; gap: 12px; padding: 8px 0 10px; border-top: 1px solid var(--line); font-weight: 600; font-size: var(--fs-sm); }
+.tw-range { flex: 1; accent-color: var(--accent); }
+.tw-count { min-width: 2ch; text-align: right; font: 700 var(--fs-md) var(--font-mono, monospace); }
+.tw-dock-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.tw-dock-item { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; border-radius: 12px; border: 1px solid var(--line); }
+.tw-dock-item.is-hidden { opacity: .5; border-style: dashed; }
+.tw-dock-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; background: linear-gradient(160deg, color-mix(in srgb, var(--app) 78%, #fff), var(--app) 45%, color-mix(in srgb, var(--app) 62%, #000)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45); }
+.tw-dock-ic svg { width: 16px; height: 16px; }
+.tw-dock-name { flex: 1; min-width: 0; font-weight: 600; font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tw-dock-item .icon-btn { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
+.tw-add { width: 100%; }
+.home-tip { display: inline-flex; align-items: center; gap: 10px; justify-self: start; max-width: 100%; margin-top: 4px; padding: 6px 14px 6px 6px; border-radius: 999px; border: 1px solid rgba(253, 186, 116, .28); background: rgba(28, 25, 23, .72); color: #f5f5f4; font: 500 var(--fs-sm)/1.35 var(--font-body); text-align: left; cursor: pointer; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.home-tip:hover, .home-tip:focus-visible { border-color: #fb923c; }
+.home-tip b { color: #fdba74; font-weight: 700; }
+.home-tip-mark { width: 30px; height: 30px; border-radius: 10px; overflow: hidden; flex: none; }
+.home-tip-mark .gnist-mark { width: 100%; height: 100%; }

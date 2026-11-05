@@ -3,22 +3,23 @@
  * are skipped automatically. Progress is stored on the account (/api/me/onboarding).
  */
 import { h, clear, rect, viewW, viewH } from '../core/dom.js';
-import { icon, svg } from '../core/icons.js';
+import { icon, gnist } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { store, refreshSummary } from '../core/store.js';
 import { currentPath } from '../core/router.js';
 import { toast } from '../core/ui.js';
 
+// the tour is told by Gnist, HUBTECH's mascot (mood: how the little spark looks on that step)
 const STEPS = [
-  { id: 'intro', title: 'Velkommen til HUBTECH', text: 'HUBTECH samler apps, spil, kurser og læring ét sted. Denne korte rundvisning tager under et minut.', icon: 'sparkles' },
-  { id: 'progress', target: 'progress', title: 'Din profil og fremdrift', text: 'Dit level samler XP fra Elværkstedet, kurser og introduktionen. Under Dashboard i menuen finder du hele overblikket: fremdrift, favoritter og integrationer.' },
-  { id: 'launcher', target: 'launcher', title: 'App-launcheren', text: 'Dine fastgjorte apps ligger her. “Flere apps” åbner launcheren, hvor du kan fastgøre og stjernemarkere apps.' },
-  { id: 'apps', target: 'home-apps', title: 'Én platform, mange apps', text: 'Alle apps deler login, design og data – men har hver deres formål. Det du laver, gemmes på din konto.' },
-  { id: 'projects', target: 'projects-preview', owner: true, title: 'Dine rigtige projekter', text: 'Projektoversigten læser dine Cursor-projekter direkte fra computeren, HUBTECH kører på. Er Cursor ikke forbundet, viser den præcis hvad der mangler.' },
-  { id: 'learning', target: 'learning-preview', title: 'Læring', text: 'Fortsæt et kursus eller Elværkstedet, præcis hvor du slap. Fremdriften gemmes på din konto.' },
-  { id: 'search', target: 'search', title: 'Søgning og guides', text: 'Tryk Ctrl+K for at finde apps, guides, kursusdage og projekter – eller køre kommandoer. Alle guides ligger under Guides & Læring.' },
-  { id: 'profile', target: 'profile', title: 'Personlige indstillinger', text: 'Her finder du profil, sikkerhed, tema og notifikationer – og kan starte denne introduktion igen.' },
-  { id: 'world', target: 'seasons', title: 'Verdenen og årstiderne', text: 'Baggrunden følger årstiden og tiden på dagen. Vælg en årstid her, eller finjustér vejr, bevægelse og lysstyrke under Indstillinger → Verden.' },
+  { id: 'intro', mood: 'wave', title: 'Hej! Jeg hedder Gnist', text: 'Jeg er HUBTECHs maskot – og din AI-assistent. Lad mig vise dig rundt. Det tager under et minut, og du kan altid springe over.' },
+  { id: 'clock', target: 'clock', title: 'Her starter din dag', text: 'Uret, vejret og hvad du skal nå i dag. Jeg tæller dine aftaler og deadlines, så du ved, hvad der venter.' },
+  { id: 'stats', target: 'stats', title: 'Fire hurtige tal', text: 'Åbne opgaver, næste aftale, timer denne uge og dit level. Klik på et kort, så hopper du direkte ind i appen.' },
+  { id: 'dock', target: 'dock', title: 'Docken', text: 'Dine vigtigste apps er altid ét klik væk. Du vælger selv, hvilke og hvor mange der skal være her.' },
+  { id: 'widgets', target: 'widgets', title: 'Streak og hvem der er online', text: 'Flammen tæller dine dage i træk – hold den i live! Ved siden af kan du se, hvem der er her lige nu.' },
+  { id: 'customize', target: 'customize', title: 'Gør den til din egen', text: 'Under Tilpas vælger du widgets, hvad de viser, kortene på Hjem og apps i docken.' },
+  { id: 'search', target: 'search', title: 'Find alt med Ctrl+K', text: 'Apps, guides, kursuslektioner og projekter – skriv bare, hvad du leder efter.' },
+  { id: 'gnist', target: 'gnist', mood: 'wave', title: 'Og her bor jeg!', text: 'Klik på mig eller tryk Ctrl+J. Jeg kender alle guides og kurser, kan planlægge din dag og hjælpe med at fejlfinde – og jeg kører på din egen enhed.' },
+  { id: 'profile', target: 'profile', title: 'Din profil', text: 'Profil, sikkerhed, tema og notifikationer. Herfra kan du også tage rundturen med mig igen.' },
 ];
 
 let active = null;
@@ -72,7 +73,7 @@ function runTour(allSteps, { persist, startAt = 0 }) {
     const next = h('button', { class: 'btn btn-primary btn-sm' }, i === steps.length - 1 ? 'Afslut' : 'Næste', icon(i === steps.length - 1 ? 'check' : 'arrowRight'));
     next.addEventListener('click', () => go(1));
     card.append(
-      h('div', { class: 'tour-head' }, h('span', { class: 'tour-icon', html: svg(step.icon || 'info') }), h('span', { class: 'faint mono', style: { fontSize: 'var(--fs-xs)' } }, `${i + 1} / ${steps.length}`)),
+      h('div', { class: 'tour-head' }, h('span', { class: 'tour-gnist' }, gnist(46, { mood: step.mood || 'idle' })), h('span', { class: 'tour-who' }, h('b', null, 'Gnist'), h('span', { class: 'faint mono' }, `${i + 1} / ${steps.length}`))),
       h('h2', { class: 'tour-title', id: 'tour-t' }, step.title),
       h('p', { class: 'muted' }, step.text),
       h('div', { class: 'tour-foot' }, dots,
@@ -128,10 +129,10 @@ function runTour(allSteps, { persist, startAt = 0 }) {
       store.set('user', { ...store.get('user'), onboarding });
       if (!wasDone) setTimeout(() => import('./friendsetup.js').then(m => m.maybeOfferFriends()).catch(() => {}), 1500);
       if (completed && !wasDone) {
-        toast('Introduktion gennemført', { type: 'xp', text: '+50 XP. Du kan altid starte den igen fra brugermenuen.' });
+        toast('Rundturen er færdig – godt gået! ⚡', { type: 'xp', text: '+50 XP fra Gnist. Du kan tage turen igen fra brugermenuen.' });
         refreshSummary();
       } else if (!completed) {
-        toast('Introduktionen er sprunget over', { text: 'Start den igen når som helst fra brugermenuen øverst til højre.' });
+        toast('Okay, vi tager turen en anden gang', { text: 'Gnist venter i brugermenuen øverst til højre, når du er klar.' });
       }
     } catch { /* offline: try again next time */ }
   }

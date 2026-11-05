@@ -112,7 +112,7 @@ async function overview(app) {
 function newApp() {
   let tpl = TEMPLATES[0], ic = tpl.icon;
   const name = h('input', { class: 'input', maxlength: 60, placeholder: 'Fx Min huskeliste', 'aria-label': 'Navn' });
-  const idea = h('textarea', { class: 'textarea', rows: 3, maxlength: 1000, placeholder: 'Valgfrit: beskriv appen, så skriver AI-assistenten den for dig. Fx “En app hvor jeg kan registrere hvor meget vand jeg drikker hver dag”', 'aria-label': 'Beskriv appen til AI-assistenten' });
+  const idea = h('textarea', { class: 'textarea', rows: 3, maxlength: 1000, placeholder: 'Valgfrit: beskriv appen, så skriver Gnist den for dig. Fx “En app hvor jeg kan registrere hvor meget vand jeg drikker hver dag”', 'aria-label': 'Beskriv appen til AI-assistenten' });
   const tpls = h('div', { class: 'st-tpls', role: 'radiogroup', 'aria-label': 'Skabelon' });
   const icons = h('div', { class: 'cm-iconpick', role: 'group', 'aria-label': 'Ikon' });
   const draw = () => {
@@ -136,7 +136,7 @@ function newApp() {
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Navn'), name),
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Start fra'), tpls),
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Ikon'), icons),
-      h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Lad AI-assistenten bygge den'), idea), err),
+      h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Lad Gnist bygge den'), idea), err),
     actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuller'), ok] });
   setTimeout(() => name.focus(), 50);
 }

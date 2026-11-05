@@ -67,6 +67,7 @@ async def main():
         # ── onboarding tour ──
         await page.wait_for_selector(".tour-card", timeout=5000)
         check("onboarding starts for new user", await page.locator(".tour-card").count() == 1)
+        check("rundturen fortælles af maskotten Gnist", await page.locator(".tour-card .gnist-mark").count() == 1 and "Gnist" in await page.inner_text(".tour-card"))
         steps = 0
         while await page.locator(".tour-card").count() and steps < 15:
             btn = page.locator(".tour-card .btn-primary")
@@ -128,9 +129,53 @@ async def main():
         check("widgets: valgene huskes efter genindlæsning", await page.locator(".top-widgets .tw-streak").count() == 0 and await page.locator(".home-stats").is_hidden())
         await page.click(".tw-customize"); await page.click(".tw-reset"); await page.click(".modal-actions button:has-text('Færdig')")
         await page.wait_for_selector(".top-widgets .tw-streak")
+        # the dock: choose how many apps it shows
+        await page.click(".tw-customize"); await page.wait_for_selector(".tw-dock")
+        n0 = await page.locator(".dock .dock-item").count()
+        await page.locator(".tw-dock-item").first.locator("[aria-label^='Fjern']").click(); await page.wait_for_timeout(200)
+        check("dock: en app kan fjernes", await page.locator(".dock .dock-item").count() == n0 - 1, (n0, await page.locator(".dock .dock-item").count()))
+        await page.fill(".tw-dock-count input[type=range]", "3"); await page.dispatch_event(".tw-dock-count input[type=range]", "change"); await page.wait_for_timeout(200)
+        check("dock: antallet af apps kan vælges", await page.locator(".dock .dock-item").count() == 3)
+        await page.select_option(".tw-add", "linux"); await page.wait_for_timeout(200)
+        check("dock: en app kan tilføjes", await page.locator(".dock .dock-item[data-id='linux']").count() == 1)
+        await page.click(".tw-reset"); await page.click(".modal-actions button:has-text('Færdig')"); await page.wait_for_timeout(300)
+        check("dock: nulstil giver standard-docken med Gnist", await page.locator(".dock .dock-item").count() == n0 and await page.locator(".dock .dock-item[data-id='gnist']").count() == 1)
+        check("Hjem: dagens tip fra Gnist", "Tip fra Gnist" in await page.inner_text(".home-tip"))
+        await page.click(".dock .dock-item[data-id='gnist']"); await page.wait_for_selector(".gn-page .ai-panel.is-page")
+        check("Gnist: egen app på fuld skærm", await page.locator(".gn-page .ai-panel.is-page").is_visible() and await page.locator(".ai-fab").is_hidden())
+        await page.screenshot(path=f"{OUT}/gnist-app.png")
+        await page.click(".dock .dock-item[data-id='home']"); await page.wait_for_selector(".home .home-hero")
+        check("Gnist: vinduet er tilbage som lille pop-up, når appen forlades", await page.locator("body > .ai-panel").count() == 1 and await page.locator(".ai-fab").is_visible())
         check("widgets: nulstil giver standardvalgene", await page.locator(".home-stats").is_visible() and await page.locator("[data-tour='home-apps']").is_hidden())
         await page.goto(BASE + "/#/apps/casino"); await page.wait_for_timeout(600)
         check("kasinoet er fjernet: gamle links går til Apps", page.url.endswith("#/apps") and await page.locator(".cs-table").count() == 0, page.url)
+
+        # ── Linux-terminal: a real Linux in v86 – boot, type, save, come back ──
+        await page.goto(BASE + "/#/learn/linux"); await page.wait_for_selector(".lx-term .xterm")
+        await page.wait_for_selector(".lx-boot", state="hidden", timeout=150000)
+        await page.wait_for_timeout(1200)
+        await page.click(".lx-term")
+        await page.keyboard.type("echo blåbærgrød > hej.txt && cat hej.txt && uname -s\n")
+        await page.wait_for_timeout(2500)
+        scr = await page.evaluate("document.querySelector('.lx-term .xterm-rows')?.innerText || ''")
+        check("linux: en rigtig Linux starter og svarer (med æøå)", "blåbærgrød" in scr and "Linux" in scr, scr[-200:])
+        await page.click(".lx-keys .lx-key:has-text('CTRL')")
+        check("linux: CTRL i tastrækken er klæbrig", await page.get_attribute(".lx-keys .lx-key:has-text('CTRL')", "aria-pressed") == "true")
+        await page.click(".lx-keys .lx-key:has-text('CTRL')")
+        await page.screenshot(path=f"{OUT}/linux.png")
+        await page.click(".lx-actions button:has-text('Gem maskinen')")
+        for _ in range(120):
+            if "gemt kl." in await page.inner_text(".lx-status"): break
+            await page.wait_for_timeout(500)
+        check("linux: maskinen kan gemmes", "gemt kl." in await page.inner_text(".lx-status"), await page.inner_text(".lx-status"))
+        await page.goto(BASE + "/#/learn"); await page.wait_for_timeout(800)
+        await page.goto(BASE + "/#/learn/linux"); await page.wait_for_selector(".lx-term .xterm")
+        for _ in range(120):
+            if "Kører" in await page.inner_text(".lx-status"): break
+            await page.wait_for_timeout(250)
+        await page.wait_for_timeout(1200); await page.click(".lx-term"); await page.keyboard.type("cat hej.txt\n"); await page.wait_for_timeout(1500)
+        scr = await page.evaluate("document.querySelector('.lx-term .xterm-rows')?.innerText || ''")
+        check("linux: filerne er der stadig næste gang", scr.count("blåbærgrød") >= 1 and "cat hej.txt" in scr, scr[-200:])
 
         # ── Elværkstedet (replaced CircuitPilot): old links redirect, simulator, calculations and fault finding save XP ──
         await page.goto(BASE + "/#/learn/circuitpilot"); await page.wait_for_selector(".el-page", timeout=10000)
@@ -681,7 +726,7 @@ async def main():
         names = await page.locator(".launcher-item .app-card-name").all_text_contents()
         side = await page.locator(".nav-item").all_text_contents()
         check("læring: læringsapps samlet på læringssiden, ikke i launcher og menu",
-              tiles == ["Øvelseslab", "Kodeskolen", "Kodestumper", "Huskekort", "Quiz", "Phishing-træner", "IT-ordbog", "Tastaturtræner", "Bit-spil", "Elværkstedet", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
+              tiles == ["Øvelseslab", "Linux-terminal", "Kodeskolen", "Kodestumper", "Huskekort", "Quiz", "Phishing-træner", "IT-ordbog", "Tastaturtræner", "Bit-spil", "Elværkstedet", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
 
         # ── Værktøjskasse: IT tools ──
         await page.goto(BASE + "/#/learn/toolkit")
@@ -958,6 +1003,7 @@ async def main():
         await page.keyboard.press("Control+j")
         await page.wait_for_selector(".ai-panel:not([hidden])")
         check("ai: pop-up åbner med Ctrl+J", True)
+        check("ai: siden er isoleret, så AI'en kan bruge flere kerner", await page.evaluate("crossOriginIsolated === true && typeof SharedArrayBuffer === 'function'"))
         await page.click(".ai-head [aria-label='Indstillinger for assistenten']")
         await page.fill(".ai-settings input[type=range]", "0.75")
         await page.dispatch_event(".ai-settings input[type=range]", "change")
@@ -979,6 +1025,37 @@ async def main():
                 await page.wait_for_timeout(500)
             txt = await page.evaluate("document.querySelector('.ai-msg.is-bot:last-of-type')?.textContent || ''")
             check("ai: modellen kører lokalt og svarer", len(txt) > 3, txt[:80])
+            # a question HUBTECH's guides answer: the answer shows its sources, and "Prøv igen" asks once more
+            await page.click(".ai-head [aria-label='Ny samtale']")
+            await page.fill(".ai-input", "Min printer er offline – hvad gør jeg?")
+            await page.keyboard.press("Enter")
+            await page.wait_for_timeout(800)
+            for _ in range(120):
+                if await page.evaluate("!document.querySelector('.ai-send').classList.contains('is-stop')"): break
+                await page.wait_for_timeout(500)
+            src = await page.locator(".ai-sources a.ai-source").all_text_contents()
+            check("ai: svaret viser kilder fra HUBTECHs guides og kurser", any("rinter" in x for x in src), src)
+            href = await page.get_attribute(".ai-sources a.ai-source", "href")
+            check("ai: kilderne linker til guiden eller lektionen", (href or "").startswith("#/learn/"), href)
+            await page.screenshot(path=f"{OUT}/ai-kilder.png")
+            await page.click(".ai-msg-tools [aria-label='Prøv igen med et nyt svar']")
+            await page.wait_for_timeout(600)
+            for _ in range(120):
+                if await page.evaluate("!document.querySelector('.ai-send').classList.contains('is-stop')"): break
+                await page.wait_for_timeout(500)
+            check("ai: prøv igen giver et nyt svar i stedet for et ekstra", await page.locator(".ai-msg.is-user").count() == 1 and await page.locator(".ai-msg.is-bot").count() == 1)
+            # earlier conversations are kept on the profile (for every model, small or big) and can be opened again
+            await page.click(".ai-head [aria-label='Ny samtale']"); await page.wait_for_timeout(800)
+            await page.click(".ai-head [aria-label='Tidligere samtaler']"); await page.wait_for_selector(".ai-hist-item", timeout=8000)
+            check("ai: tidligere samtaler gemmes", "printer" in (await page.inner_text(".ai-hist-item")).lower())
+            await page.click(".ai-hist-item"); await page.wait_for_timeout(400)
+            check("ai: en tidligere samtale kan åbnes igen", await page.locator(".ai-msg.is-user").count() == 1)
+            st = (await api(page, "GET", "/api/state/gnist"))["data"]["state"]
+            check("ai: samtalerne ligger på profilen (følger med på tværs af enheder og modeller)", len(st.get("chats", [])) >= 1)
+            await page.click(".ai-head [aria-label='Indstillinger for assistenten']"); await page.wait_for_selector(".ai-ext-h")
+            await page.wait_for_timeout(1200)
+            check("ai: store modeller (4–32 GB) via Ollama/LM Studio kan vælges", "Store modeller" in await page.inner_text(".ai-ext") and ("Ikke fundet" in await page.inner_text(".ai-ext") or await page.locator(".ai-tier").count() == 4), await page.inner_text(".ai-ext"))
+            await page.click(".ai-head [aria-label='Indstillinger for assistenten']")
         else:
             check("ai: test-model findes (sæt HUBTECH_TEST_GGUF)", False, tiny)
         # action proposals need a confirmation before anything changes
@@ -1033,11 +1110,11 @@ async def main():
         # ── app groups: Planlæg / Service / Office share one menu entry with tabs; Kodestumper lives in Læring ──
         await page.goto(BASE + "/#/apps/tasks"); await page.wait_for_selector(".suite-tabs")
         tabs = await page.locator(".suite-tabs .learn-tab").all_text_contents()
-        check("app-grupper: Opgaver har faner for Planlæg", [t.strip() for t in tabs] == ["Kalender", "Opgaver", "Madplan", "Fokus", "Vaner", "Træning"], tabs)
+        check("app-grupper: Opgaver har faner for Planlæg", [t.strip() for t in tabs if not t.strip().startswith("Alle ")] == ["Kalender", "Opgaver", "Dagens plan", "Morgenrutine", "Pligter", "Fødselsdage", "Arrangementer", "Find en dato", "Booking", "Skoleskema", "Madplan", "Fokus", "Vaner", "Træning", "Stopur", "Verdensur"], tabs)
         await page.goto(BASE + "/#/apps"); await page.wait_for_selector(".launcher-item")
         names = await page.locator(".launcher-item .app-card-title, .launcher-item h3").all_text_contents()
         joined = " | ".join(names)
-        check("app-grupper: én indgang for Planlæg og Service", "Planlæg" in joined and "Service" in joined and "Opgaver" not in joined and "Lager" not in joined, joined[:300])
+        check("app-grupper: én indgang for Planlæg, Værksted og service, Økonomi og Udvikling", all(x in joined for x in ["Planlæg", "Værksted og service", "Økonomi", "Udvikling", "HUBTECH Office"]) and not any(f"| {x} |" in f"| {joined} |" for x in ["Opgaver", "Lager", "Budget", "Wiki", "App-værksted"]), joined[:300])
         await page.fill(".lx-search", "gloser"); await page.wait_for_selector(".lx-found .lx-tile")
         check("apps: søgning finder en enkelt app", "Gloser" in await page.inner_text(".lx-found") and await page.locator(".launcher-grid").is_hidden())
         await page.fill(".lx-search", ""); await page.click(".lx-topic summary >> nth=0")

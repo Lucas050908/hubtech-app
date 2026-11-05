@@ -1,6 +1,6 @@
 /** The logged-in workspace frame: sidebar, topbar, content outlet. Built once, updated reactively. */
 import { h, clear, timeAgo, ava } from './dom.js';
-import { icon, logo, svg } from './icons.js';
+import { icon, tileIcon, logo, svg } from './icons.js';
 import { store, setPref, setWorld } from './store.js';
 import { APPS, appById, access, isLearnApp, visible, entryApps, suiteOf } from './registry.js';
 import { api } from './api.js';
@@ -13,6 +13,7 @@ const startOnboarding = (...a) => import('../features/onboarding.js').then(m => 
 import { logout } from '../features/auth.js';
 import { bgmButton, initBgm } from '../features/bgm.js';
 import { topWidgets, customizeButton, openCustomize } from '../features/topwidgets.js';
+import { dockIds } from '../features/widgetlogic.js';
 import { modal, toast } from './ui.js';
 import { onOfflineChange, offlineStatus, replay } from './offline.js';
 
@@ -24,30 +25,28 @@ let seasonMini = null;
 let topbar = null;
 let dockEl = null;
 
-// the dock at the bottom (the desert design): the everyday places, like in the mockup
-const DOCK = [
-  { id: 'home', label: 'Hjem', icon: 'home', href: '#/', hue: '#f97316', match: (p) => p === '/' },
-  { app: 'hubtech', label: 'Office' },
-  { app: 'calendar', label: 'Kalender' },
-  { app: 'tasks', label: 'Opgaver' },
-  { app: 'servicehelp', label: 'Service' },
-  { id: 'learn', label: 'Læring', icon: 'graduation', href: '#/learn', hue: '#22c55e', match: (p) => p.startsWith('/learn') },
-  { id: 'apps', label: 'Alle apps', icon: 'apps', href: '#/apps', hue: '#57534e', match: (p) => p === '/apps' },
-];
+// the dock at the bottom (the desert design): you choose which apps and how many (Tilpas → Dock)
+const DOCK_PLACES = {
+  home: { id: 'home', label: 'Hjem', icon: 'home', href: '#/', hue: '#f97316', match: (p) => p === '/' },
+  learn: { id: 'learn', label: 'Læring', icon: 'graduation', href: '#/learn', hue: '#22c55e', match: (p) => p.startsWith('/learn') },
+  apps: { id: 'apps', label: 'Alle apps', icon: 'apps', href: '#/apps', hue: '#57534e', match: (p) => p === '/apps' },
+};
+const SHORT = { hubtech: 'Office', servicehelp: 'Service', calendar: 'Kalender', tasks: 'Opgaver' };
+export function dockEntry(id, u = store.get('user')) {
+  if (DOCK_PLACES[id]) return DOCK_PLACES[id];
+  const a = appById(id);
+  if (!a || !access(a, u).ok) return null;
+  const route = a.route.replace(/^#/, '');
+  return { id, label: SHORT[id] || a.name, icon: a.icon, href: a.route, hue: a.hue, match: (p) => p.startsWith(route) };
+}
 function dockItems() {
   const u = store.get('user');
-  return DOCK.map(d => {
-    if (!d.app) return d;
-    const a = appById(d.app);
-    if (!a || !access(a, u).ok) return null;
-    const route = a.route.replace(/^#/, '');
-    return { id: d.app, label: d.label, icon: a.icon, href: a.route, hue: a.hue, match: (p) => p.startsWith(route) };
-  }).filter(Boolean);
+  return dockIds(store.get('prefs')?.widgets || {}).map(id => dockEntry(id, u)).filter(Boolean);
 }
 function renderDock() {
   if (!dockEl) return;
   h(clear(dockEl), null, dockItems().map(d => h('a', { class: 'dock-item', href: d.href, dataset: { id: d.id }, style: { '--app': d.hue } },
-    h('span', { class: 'dock-ic' }, icon(d.icon)), h('span', { class: 'dock-label' }, d.label))));
+    h('span', { class: 'dock-ic' }, tileIcon(d.icon)), h('span', { class: 'dock-label' }, d.label))));
 }
 
 const MAIN_NAV = [
@@ -87,7 +86,7 @@ export function buildShell(root) {
       h('div', { class: 'quote' }, icon('quote'), h('span', null, QUOTES[new Date().getDate() % QUOTES.length]))),
   );
   topbar = buildTopbar();
-  dockEl = h('nav', { class: 'dock', 'aria-label': 'Dock' });
+  dockEl = h('nav', { class: 'dock', 'aria-label': 'Dock', dataset: { tour: 'dock' } });
   shellEl = h('div', { class: 'shell', id: 'shell' },
     sidebar,
     h('div', { class: 'main-col' }, topbar, outlet),
@@ -102,6 +101,7 @@ export function buildShell(root) {
   renderSeasonMini();
   store.on('prefs', () => { renderAppsNav(); renderSeasonMini(); renderThemeBtn(); });
   store.on('user', () => { renderUserChip(); renderAppsNav(); renderDock(); });
+  store.on('prefs', () => { renderDock(); setActiveNav(location.hash.replace(/^#/, '').split('?')[0] || '/'); });
   store.on('summary', renderUserChip);
   return shellEl;
 }
@@ -147,7 +147,7 @@ function renderAppsNav() {
       class: ['nav-item', !acc.ok && 'is-locked'], href: app.route, dataset: { id: app.id }, style: { '--app': app.hue },
       title: acc.ok ? app.tagline : acc.reason,
     },
-    h('span', { class: 'nav-app-icon' }, icon(app.icon)),
+    h('span', { class: 'nav-app-icon' }, tileIcon(app.icon)),
     h('span', null, app.name),
     h('span', { class: 'nav-end' }, acc.ok ? icon('chevronRight') : icon('lock'))));
   }
@@ -192,7 +192,7 @@ function buildTopbar() {
   });
   renderThemeBtn();
   bellWrap = h('div', { class: 'pop-anchor' });
-  const aiBtn = h('button', { class: 'icon-btn ai-top', 'aria-label': 'AI-assistent (Ctrl+J)', title: 'AI-assistent (Ctrl+J)', onclick: () => import('../ai/panel.js').then(m => m.toggleAssistant()) }, icon('sparkles'));
+  const aiBtn = h('button', { class: 'icon-btn ai-top', 'aria-label': 'Gnist – AI-assistent (Ctrl+J)', title: 'Gnist – AI-assistent (Ctrl+J)', onclick: () => import('../ai/panel.js').then(m => m.toggleAssistant()) }, icon('sparkles'));
   const bell = h('button', { class: 'icon-btn', 'aria-label': 'Aktivitet og notifikationer', 'aria-haspopup': 'true' }, icon('bell'), h('span', { class: 'dot', hidden: true }));
   api.get('/api/activity?limit=1').then(({ activity }) => {
     const seen = Number(store.device('seenActivity') || 0);

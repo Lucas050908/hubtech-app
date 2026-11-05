@@ -40,6 +40,20 @@ export const APPS = [
     keywords: ['elektronik', 'ohm', 'kredsløb', 'simulator', 'modstand', 'led', 'fejlfinding', 'voltmeter', 'multimeter', 'circuitpilot'],
   },
   {
+    id: 'gnist', name: 'Gnist', tagline: 'HUBTECHs AI – på fuld skærm.',
+    description: 'Gnist er HUBTECHs maskot og AI-assistent. Hun kender alle guides og kurser, kan læse dine noter, opgaver og aftaler, planlægge din dag og hjælpe med at fejlfinde – og hun kører på din egen enhed, så intet forlader computeren.',
+    icon: 'spark', hue: '#f97316', route: '#/apps/gnist', category: 'workspace', status: 'available',
+    art: { season: 'summer', time: 'dusk', focusX: 0.5, tint: '#f97316' }, page: () => import('../pages/gnist.js'),
+    keywords: ['ai', 'assistent', 'chat', 'gnist', 'hjælp', 'spørg', 'chatbot', 'sprogmodel', 'llm', 'qwen'],
+  },
+  {
+    id: 'linux', name: 'Linux-terminal', tagline: 'En rigtig Linux at lege i – lige som Termux.',
+    description: 'En ægte Linux (Buildroot · Linux 6.8 · BusyBox) der kører i en lukket maskine på din enhed: shell, vi, less, top, Lua og 200 andre kommandoer, ekstra tastrække som i Termux, og maskinen gemmes, så dine filer er der næste gang. Ingen adgang til din computer eller internettet.',
+    icon: 'terminal', hue: '#f97316', route: '#/learn/linux', category: 'learning', status: 'available',
+    art: { season: 'autumn', time: 'dusk', focusX: 0.4, tint: '#f97316' }, page: () => import('../pages/linux.js'),
+    keywords: ['linux', 'terminal', 'termux', 'shell', 'bash', 'kommandolinje', 'konsol', 'busybox', 'vi', 'ubuntu', 'kommandoer'],
+  },
+  {
     id: 'codeschool', name: 'Kodeskolen', tagline: 'Lær at programmere – trin for trin.',
     description: 'Korte lektioner i Python, JavaScript, HTML/CSS, Git og Arduino med kode du kører direkte i browseren, opgaver der rettes automatisk, quizzer og XP.',
     icon: 'graduation', hue: 'var(--hue-codeschool)', route: '#/learn/codeschool', category: 'learning', status: 'available',
@@ -140,7 +154,7 @@ export const APPS = [
   },
   {
     id: 'studio', name: 'App-værksted', tagline: 'Byg dine egne apps – med AI-hjælp.',
-    description: 'En kode-editor til HTML, CSS og JavaScript med live forhåndsvisning og konsol. Din lokale AI-assistent kan skrive og rette koden for dig. Appene kører sikkert inde i HUBTECH, gemmer deres data på din konto og kan deles med andre brugere.',
+    description: 'En kode-editor til HTML, CSS og JavaScript med live forhåndsvisning og konsol. Gnist, din lokale AI-assistent, kan skrive og rette koden for dig. Appene kører sikkert inde i HUBTECH, gemmer deres data på din konto og kan deles med andre brugere.',
     icon: 'code', hue: 'var(--hue-studio)', route: '#/apps/studio', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'dusk', focusX: 0.6, tint: '#fbbf24' }, page: () => import('../pages/studio.js'),
     keywords: ['kode', 'editor', 'app', 'html', 'css', 'javascript', 'ai', 'byg', 'program', 'web', 'værksted', 'ide'],
@@ -1313,7 +1327,7 @@ export const APPS = [
 export const appById = (id) => APPS.find(a => a.id === id);
 /** Learning apps live inside Guides & Læring (#/learn/<id>) instead of the app launcher and sidebar. */
 export const isLearnApp = (a) => !!a && a.category === 'learning' && a.id !== 'learning';
-const LEARN_ORDER = ['labs', 'codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'electro', 'toolkit'];
+const LEARN_ORDER = ['labs', 'linux', 'codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'electro', 'toolkit'];
 export const LEARN_APPS = APPS.filter(isLearnApp).sort((a, b) => (LEARN_ORDER.indexOf(a.id) + 1 || 99) - (LEARN_ORDER.indexOf(b.id) + 1 || 99));
 
 /** Is the app usable by this user? Returns { ok, reason } */
@@ -1333,19 +1347,20 @@ export const visible = (app, user) => access(app, user).kind !== 'hidden';
  * (like Guides & Læring). The first member is where the group opens. Old links to every app still work.
  */
 export const SUITES = [
-  { id: 'creative', name: 'Kreativt', tagline: 'Tegnebræt, kalejdoskop, pixelkunst og beats.', icon: 'paint', hue: 'var(--hue-draw)', members: ['draw', 'kaleidoscope', 'pixels', 'beats', 'piano', 'writing', 'namegen', 'comic'] },
+  { id: 'creative', name: 'Kreativt', tagline: 'Tegnebræt, kalejdoskop, pixelkunst og beats.', icon: 'paint', hue: 'var(--hue-draw)', members: ['draw', 'kaleidoscope', 'pixels', 'beats', 'piano', 'namegen', 'comic'] },
   { id: 'kids', name: 'For de mindste', tagline: 'Bogstaver, tælleleg og prik til prik.', icon: 'star', hue: 'var(--hue-letters)', members: ['letters', 'counting', 'dotdot'] },
-  { id: 'together', name: 'Sammen', tagline: 'Væggen, arrangementer, afstemninger, find en dato, fordeling, sangønsker og mere.', icon: 'users', hue: 'var(--hue-wall)', members: ['wall', 'events', 'polls', 'qa', 'albums', 'challenges', 'board', 'tournaments', 'wishlist', 'datepoll', 'signup', 'songs'] },
-  { id: 'share', name: 'Del ud', tagline: 'Formularer, booking, sidebygger, fællesudgifter og wiki – ting man deler med et link.', icon: 'share', hue: 'var(--hue-forms)', members: ['forms', 'booking', 'pages', 'expenses', 'wiki'] },
-  { id: 'school', name: 'Skole', tagline: 'Skoleskema, Quizshow, regning, brøker, stavning, klokken, hovedstæder og mere.', icon: 'school', hue: 'var(--hue-schedule)', members: ['schedule', 'quizshow', 'codelab', 'mathdrill', 'elements', 'timeline', 'ciphers', 'grades', 'charts', 'capitals', 'clock', 'fractions', 'spelling', 'vocab', 'robot', 'solar', 'wordclass', 'numsys', 'shortcuts', 'bikequiz', 'sequences', 'proverbs'] },
-  { id: 'home', name: 'Hjemme', tagline: 'Indkøbsliste, dagbog, stopur, sparegris og verdensur.', icon: 'home', hue: 'var(--hue-shopping)', members: ['shopping', 'journal', 'timers', 'piggy', 'worldclock', 'birthdays', 'packing', 'loans', 'plants', 'chores', 'fridge', 'routine', 'dayplan'] },
-  { id: 'tools2', name: 'Værktøjer', tagline: 'Omregner, terninger, tæller, tekst, læs op, lykkehjul, farver og mere.', icon: 'tool', hue: 'var(--hue-texttools)', members: ['texttools', 'tts', 'wheel', 'colors', 'recorder', 'photobooth', 'music', 'units', 'dice', 'tally', 'savings', 'noise', 'splitbill'] },
-  { id: 'office', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og noter.', members: ['hubtech', 'notes'] },
-  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer, vaner og træning.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits', 'workout'] },
-  { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
+  { id: 'together', name: 'Sammen', tagline: 'Væggen, arrangementer, afstemninger, find en dato, fordeling, sangønsker og mere.', icon: 'users', hue: 'var(--hue-wall)', members: ['wall', 'polls', 'qa', 'albums', 'challenges', 'board', 'tournaments', 'wishlist', 'signup', 'songs'] },
+  { id: 'school', name: 'Skole', tagline: 'Skoleskema, Quizshow, regning, brøker, stavning, klokken, hovedstæder og mere.', icon: 'school', hue: 'var(--hue-schedule)', members: ['quizshow', 'codelab', 'mathdrill', 'elements', 'timeline', 'ciphers', 'grades', 'capitals', 'clock', 'fractions', 'spelling', 'vocab', 'robot', 'solar', 'wordclass', 'numsys', 'shortcuts', 'bikequiz', 'sequences', 'proverbs'] },
+  { id: 'home', name: 'Hjemme', tagline: 'Indkøbsliste, dagbog, stopur, sparegris og verdensur.', icon: 'home', hue: 'var(--hue-shopping)', members: ['shopping', 'packing', 'plants', 'fridge', 'library', 'calm'] },
+  { id: 'tools2', name: 'Værktøjer', tagline: 'Omregner, terninger, tæller, tekst, læs op, lykkehjul, farver og mere.', icon: 'tool', hue: 'var(--hue-texttools)', members: ['tts', 'wheel', 'colors', 'recorder', 'photobooth', 'music', 'units', 'dice', 'tally', 'noise', 'calculator'] },
+  { id: 'office', name: 'HUBTECH Office', icon: 'hubtech', hue: 'var(--hue-hubtech)', tagline: 'Dokumenter, regneark, præsentationer, noter, wiki, dagbog, diagrammer og formularer.', members: ['hubtech', 'notes', 'wiki', 'journal', 'writing', 'texttools', 'charts', 'forms', 'pages'] },
+  { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, dagens plan, rutiner, fødselsdage, arrangementer, booking og mere.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'dayplan', 'routine', 'chores', 'birthdays', 'events', 'datepoll', 'booking', 'schedule', 'mealplan', 'focus', 'habits', 'workout', 'timers', 'worldclock'] },
+  { id: 'service', name: 'Værksted og service', tagline: 'Servicehjælp, kunder, lager og tidsregistrering – til værkstedet og servicesagerne.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
   { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'ordjagt', 'huegame', 'blocks', 'breakout', 'nim', 'kim', 'emojiquiz', 'jigsaw', 'digitspan', 'gems', 'invaders', 'sokoban', 'jumper', 'reaction', 'anagram', 'labyrinth', 'lightsout', 'nonogram', 'animals', 'minigolf', 'flappy', 'pong', 'asteroids', 'mastermind', 'slide', 'simon', 'wordsearch', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
   { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'ludo', 'otter', 'battleship', 'checkers', 'kalaha', 'reversi', 'dots', 'mill', 'hearts', 'meyer', 'ladders', 'gomoku', 'triktrak', 'tenk', 'oldmaid', 'banko', 'freecell', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, netværk, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'netcalc', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
+  { id: 'money', name: 'Økonomi', tagline: 'Budget, opsparing, sparegris, fællesudgifter, del regningen og udlån.', icon: 'wallet', hue: 'var(--hue-budget, #16a34a)', members: ['budget', 'savings', 'piggy', 'expenses', 'splitbill', 'loans'] },
+  { id: 'dev', name: 'Udvikling', tagline: 'App-værksted, Cursor-projekter, ByteForge, Minecraft-server og ARCHIVE-01.', icon: 'code', hue: 'var(--hue-studio)', members: ['studio', 'cursor', 'byteforge', 'minecraft', 'archive-01'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;
 /** The app as it is shown in menus: a group's first member carries the group's name; the others are hidden there. */

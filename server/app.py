@@ -26,7 +26,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     __package__ = "server"
 
-from server import api, auth, autosync, backup, adminapp, avatars, calfeed, ownerapp, games, hublink, shared, codelab, quizshow, byteforge_runner, calls, clientlog, config, db, minecraft, notify, social, studio  # noqa: E402
+from server import api, aiexternal, auth, autosync, backup, adminapp, avatars, calfeed, ownerapp, games, hublink, shared, codelab, quizshow, byteforge_runner, calls, clientlog, config, db, minecraft, notify, social, studio  # noqa: E402
 
 social.install(api)
 studio.install(api)
@@ -43,6 +43,7 @@ calfeed.install(api)
 shared.install(api)
 codelab.install(api)
 quizshow.install(api)
+aiexternal.install(api)
 
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")
@@ -141,6 +142,12 @@ def shell_csp():
     return base + "; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; frame-src " + " ".join(frames)
 
 
+def isolation_on():
+    """Cross-origin isolation lets the local AI use several CPU cores (SharedArrayBuffer). Frames from other addresses
+    (the ByteForge panel) are then embedded as credentialless frames. HUBTECH_NO_ISOLATION=1 turns it off."""
+    return os.environ.get("HUBTECH_NO_ISOLATION", "") != "1"
+
+
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -231,6 +238,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(self), display-capture=(self)")
         if csp:
             self.send_header("Content-Security-Policy", csp)
+        if isolation_on():
+            # a published site opened on its own keeps embeds from other sites (maps, weather); inside HUBTECH it is isolated too
+            own_site = (self.path or "").startswith("/sites/") and self.headers.get("Sec-Fetch-Dest") != "iframe"
+            if not own_site:
+                self.send_header("Cross-Origin-Embedder-Policy", "credentialless")
+                self.send_header("Cross-Origin-Opener-Policy", "same-origin")
 
     def send_json(self, status, payload, headers=None):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -244,6 +257,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
+
+    def send_stream(self, status, chunks, headers=None):
+        """Send pieces as they are produced (HTTP/1.1 chunked), then close."""
+        self.send_response(status)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.send_header("X-Accel-Buffering", "no")
+        self._security_headers()
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        try:
+            for piece in chunks:
+                if not piece:
+                    continue
+                self.wfile.write(b"%x\r\n%s\r\n" % (len(piece), piece))
+                self.wfile.flush()
+            self.wfile.write(b"0\r\n\r\n")
+        except (BrokenPipeError, ConnectionResetError):
+            pass                                      # the user pressed stop
+        finally:
+            try:
+                chunks.close()
+            except Exception:
+                pass
 
     def send_bytes(self, status, body, headers=None):
         self.send_response(status)
@@ -333,6 +371,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 headers = result[2] if len(result) > 2 else None
                 if isinstance(payload, (bytes, bytearray)):
                     return self.send_bytes(status, payload, headers)
+                if hasattr(payload, "__next__"):          # a generator: stream the pieces as they come (Gnist's big models)
+                    return self.send_stream(status, payload, headers)
                 return self.send_json(status, payload, headers)
             if allowed:
                 return self.send_json(405, {"error": "Metoden er ikke tilladt.", "allow": allowed},

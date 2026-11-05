@@ -1,6 +1,6 @@
 /** App launcher: every registered app, its status and requirements; pin to sidebar. */
 import { h, clear } from '../core/dom.js';
-import { icon, svg } from '../core/icons.js';
+import { icon, tileIcon, svg } from '../core/icons.js';
 import { store, setPref } from '../core/store.js';
 import { APPS, LEARN_APPS, SUITES, appById, access, isLearnApp, visible, suiteOf, entryApp } from '../core/registry.js';
 import { getIntegrations } from '../core/services.js';
@@ -65,7 +65,7 @@ export default {
     // ── quick find: search every single app, the ones you used last, and the topics ──
     const user0 = store.get('user');
     const usable = (a) => a && a.page && visible(a, user0) && access(a, user0).ok;
-    const tile = (a) => h('a', { class: 'lx-tile', href: a.route, style: { '--app': a.hue }, title: a.tagline || a.name }, h('span', { class: 'lx-ico' }, icon(a.icon)), h('span', { class: 'lx-name' }, a.name));
+    const tile = (a) => h('a', { class: 'lx-tile', href: a.route, style: { '--app': a.hue }, title: a.tagline || a.name }, h('span', { class: 'lx-ico' }, tileIcon(a.icon)), h('span', { class: 'lx-name' }, a.name));
     const norm = (t) => String(t || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
     const found = h('div', { class: 'lx-found' });
     const search = h('input', { class: 'input lx-search', type: 'search', placeholder: `Søg blandt ${APPS.filter(usable).length} apps – fx “skak”, “gloser” eller “indkøb”`, 'aria-label': 'Søg efter en app', autocomplete: 'off' });
@@ -85,7 +85,7 @@ export default {
       recent.length ? h('section', { class: 'lx-sec' }, h('h2', { class: 'lx-h' }, icon('clock'), 'Senest brugt'), h('div', { class: 'lx-tiles' }, recent.map(tile))) : null,
       h('section', { class: 'lx-sec' }, h('h2', { class: 'lx-h' }, icon('grid'), 'Emner'),
         h('div', { class: 'lx-topics' }, topics.map(({ s, apps }) => h('details', { class: 'lx-topic', style: { '--app': s.hue } },
-          h('summary', null, h('span', { class: 'lx-ico' }, icon(s.icon)), h('span', { class: 'lx-tt' }, h('b', null, s.name), h('small', null, `${apps.length} apps`)), icon('chevronDown')),
+          h('summary', null, h('span', { class: 'lx-ico' }, tileIcon(s.icon)), h('span', { class: 'lx-tt' }, h('b', null, s.name), h('small', null, `${apps.length} apps`)), icon('chevronDown')),
           h('div', { class: 'lx-tiles' }, apps.map(tile)))))),
       h('h2', { class: 'lx-h', style: { marginTop: '8px' } }, icon('apps'), 'Alle apps'));
     found.hidden = true;

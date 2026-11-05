@@ -1,5 +1,6 @@
 /** Consistent 24px stroke icon set (1.8px, round caps). Static, trusted markup. */
 import { raw } from './dom.js';
+import { GLYPHS } from './appglyphs.js';
 
 const P = {
   phone: '<path d="M5 4h3.5l1.8 4.5-2.3 1.5a11 11 0 0 0 6 6l1.5-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/>',
@@ -137,6 +138,9 @@ const P = {
   snow: '<path d="M12 2.5v19M4 7l16 10M20 7 4 17"/><path d="m9.5 4 2.5 2 2.5-2M9.5 20l2.5-2 2.5 2M3.5 10.5l3-.8-.8-3M20.5 13.5l-3 .8.8 3M20.5 10.5l-3-.8.8-3M3.5 13.5l3 .8-.8 3"/>',
   rain: '<path d="M7 15.5a4.5 4.5 0 0 1-.5-9 6 6 0 0 1 11.5 1.5 3.8 3.8 0 0 1-.5 7.5"/><path d="m8.5 18-1 2.5M12.5 18l-1 2.5M16.5 18l-1 2.5"/>',
   cloud: '<path d="M7 18.5a4.5 4.5 0 0 1-.5-9 6 6 0 0 1 11.5 1.5 3.8 3.8 0 0 1-.5 7.5z"/>',
+  spark: '<path d="M12 3c.8 4.6 2.6 6.4 7.2 7.2-4.6.8-6.4 2.6-7.2 7.2-.8-4.6-2.6-6.4-7.2-7.2C9.4 9.4 11.2 7.6 12 3z"/><path d="M18.5 17.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  save: '<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>',
+  maximize: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   sliders: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
   wind: '<path d="M3 9h11a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3M3 12h7"/>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -179,6 +183,12 @@ export function svg(name, cls = '') {
 
 export function icon(name, cls) { return raw(svg(name, cls)); }
 
+/** The detailed two-tone icon for a coloured app tile (appglyphs.js), or the plain icon when there is none. */
+export function tileIcon(name) {
+  const g = GLYPHS[name];
+  return g ? raw(`<svg class="glyph" viewBox="0 0 32 32" aria-hidden="true" focusable="false">${g}</svg>`) : icon(name);
+}
+
 /** The HUBTECH mark: three peaks drawn as a circuit — landscape meets technology. */
 /** The HUBTECH logo: a terminal with a prompt, an H and a blinking cursor (logo 5). */
 export function logoSvg(size = 36) {
@@ -191,3 +201,21 @@ export function logoSvg(size = 36) {
   </svg>`;
 }
 export const logo = (s) => raw(logoSvg(s));
+
+/** Gnist – the assistant's own mark: a warm spark with two eyes, on a dark tile. */
+let gnistN = 0;
+export function gnistSvg(size = 32, { mood = 'idle' } = {}) {
+  const id = `gn${++gnistN}`;
+  return `<svg class="gnist-mark is-${mood}" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
+    <defs>
+      <radialGradient id="${id}g" cx="50%" cy="42%" r="60%"><stop offset="0" stop-color="#fde68a"/><stop offset=".55" stop-color="#fb923c"/><stop offset="1" stop-color="#c2410c"/></radialGradient>
+      <radialGradient id="${id}h" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fdba74" stop-opacity=".55"/><stop offset="1" stop-color="#fdba74" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="64" height="64" rx="18" fill="#1c1206"/>
+    <circle class="gnist-halo" cx="32" cy="33" r="27" fill="url(#${id}h)"/>
+    <path class="gnist-body" d="M32 6 C34.5 19 40 24.5 54 27 C40 29.5 34.5 35 32 50 C29.5 35 24 29.5 10 27 C24 24.5 29.5 19 32 6 Z" fill="url(#${id}g)"/>
+    <g class="gnist-eyes" fill="#1c1206"><ellipse cx="27.5" cy="27" rx="2.4" ry="3.2"/><ellipse cx="36.5" cy="27" rx="2.4" ry="3.2"/></g>
+    <circle cx="49" cy="47" r="3" fill="#fbbf24"/><circle cx="15" cy="49" r="2" fill="#fdba74" opacity=".8"/><circle cx="46" cy="12" r="1.8" fill="#fde68a" opacity=".85"/>
+  </svg>`;
+}
+export const gnist = (s, o) => raw(gnistSvg(s, o));

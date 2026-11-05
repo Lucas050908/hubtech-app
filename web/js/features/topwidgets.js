@@ -3,11 +3,12 @@
  * and which cards on Hjem – are shown, and what information each one shows. Saved in prefs.widgets on the profile.
  */
 import { h, clear, ava } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, tileIcon } from '../core/icons.js';
 import { store, setPref } from '../core/store.js';
 import { api } from '../core/api.js';
 import { modal, switchControl, segmented } from '../core/ui.js';
-import { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS, LOOK_VERSION } from './widgetlogic.js';
+import { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS, LOOK_VERSION, DOCK_DEFAULT, DOCK_MIN, DOCK_MAX, dockIds } from './widgetlogic.js';
+import { APPS, appById, access, visible, isLearnApp } from '../core/registry.js';
 export { dayStreak, winStreak, HOME_CARDS, WIDGET_DEFAULTS, LOOK_VERSION };
 
 export function widgetPrefs() {
@@ -93,7 +94,7 @@ function onlineChip(w) {
 
 /** The widgets row for the top bar. `music` is the existing music button; it is shown or hidden from the same prefs. */
 export function topWidgets(music) {
-  const row = h('div', { class: 'top-widgets', role: 'group', 'aria-label': 'Widgets' });
+  const row = h('div', { class: 'top-widgets', role: 'group', 'aria-label': 'Widgets', dataset: { tour: 'widgets' } });
   const draw = () => {
     const w = widgetPrefs();
     h(clear(row), null, weatherChip(w), streakChip(w), onlineChip(w));
@@ -111,10 +112,12 @@ export function topWidgets(music) {
 }
 
 export function customizeButton() {
-  return h('button', { class: 'icon-btn tw-customize', 'aria-label': 'Tilpas topbar og forside', title: 'Tilpas topbar og forside', onclick: () => openCustomize() }, icon('sliders'));
+  return h('button', { class: 'icon-btn tw-customize', dataset: { tour: 'customize' }, 'aria-label': 'Tilpas topbar og forside', title: 'Tilpas topbar og forside', onclick: () => openCustomize() }, icon('sliders'));
 }
 
 /** The "Tilpas" dialog: everything changes right away and is saved on the profile. */
+const PLACES = { home: ['Hjem', 'home', '#f97316'], learn: ['Læring', 'graduation', '#22c55e'], apps: ['Alle apps', 'apps', '#57534e'] };
+
 export function openCustomize() {
   const w = () => widgetPrefs();
   const line = (title, sub, key, extra) => h('div', { class: 'tw-row' },
@@ -138,10 +141,42 @@ export function openCustomize() {
       line('Streak', 'Hvor mange dage eller sejre i træk', 'streak', () => seg('streakMode', [['learn', 'Læring'], ['active', 'Brug af HUBTECH'], ['chess', 'Skaksejre']], 'Hvad streak tæller')),
       line('Online', 'Hvem der er her lige nu', 'online', () => seg('onlineMode', [['avatars', 'Ansigter og antal'], ['count', 'Kun antal'], ['hubs', 'Forbundne HUBTECH’er']], 'Hvad online viser')),
       line('Musik', 'Klaveret i topbaren', 'music', () => seg('musicMode', [['compact', 'Kun knappen'], ['title', 'Knap og stemning']], 'Hvad musikken viser')),
+      dockSection(),
       h('h3', { class: 'tw-sec' }, 'Kort på Hjem'),
       h('div', { class: 'tw-cards' }, HOME_CARDS.map(([k, label]) => h('label', { class: 'tw-card' },
         switchControl({ checked: cur.home[k], label, onChange: (v) => { setWidgets({ home: { ...w().home, [k]: v } }); } }), h('span', null, label)))),
       h('button', { type: 'button', class: 'btn btn-ghost btn-sm tw-reset', onclick: () => { setPref('widgets', { ...WIDGET_DEFAULTS }); draw(); } }, icon('restore'), 'Nulstil til standard'));
+  }
+  // ── the dock: how many apps, which ones and in which order ──
+  function dockSection() {
+    const u = store.get('user');
+    const cur = w();
+    const list = Array.isArray(cur.dock) && cur.dock.length ? [...cur.dock] : [...DOCK_DEFAULT];
+    const n = dockIds(cur).length;
+    const save = (patch) => { setWidgets(patch); draw(); };
+    const label = (id) => PLACES[id]?.[0] || appById(id)?.name || id;
+    const ic = (id) => PLACES[id]?.[1] || appById(id)?.icon || 'apps';
+    const hue = (id) => PLACES[id]?.[2] || appById(id)?.hue || 'var(--accent)';
+    const count = h('input', { type: 'range', class: 'tw-range', min: DOCK_MIN, max: Math.min(DOCK_MAX, Math.max(list.length, DOCK_MIN)), step: 1, value: Math.min(n, list.length), 'aria-label': 'Antal apps i docken' });
+    const out = h('b', { class: 'tw-count' }, String(Math.min(n, list.length)));
+    count.addEventListener('input', () => { out.textContent = count.value; });
+    count.addEventListener('change', () => save({ dockCount: Number(count.value), dock: list }));
+    const move = (i, d) => { const j = i + d; if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; save({ dock: list, dockCount: n }); };
+    const remove = (i) => { if (list.length <= DOCK_MIN) return; list.splice(i, 1); save({ dock: list, dockCount: Math.min(n, list.length) }); };
+    const choices = [['home', 'Hjem'], ['learn', 'Læring'], ['apps', 'Alle apps'],
+      ...APPS.filter(a => a.page && visible(a, u) && access(a, u).ok && !a.suite).map(a => [a.id, a.name]).sort((x, y) => x[1].localeCompare(y[1], 'da'))]
+      .filter(([id]) => !list.includes(id));
+    const add = h('select', { class: 'select tw-add', 'aria-label': 'Tilføj en app til docken' }, h('option', { value: '' }, 'Tilføj en app …'), choices.map(([id, name]) => h('option', { value: id }, name)));
+    add.addEventListener('change', () => { if (!add.value || list.length >= DOCK_MAX) return; list.splice(Math.min(n, list.length), 0, add.value); save({ dock: list, dockCount: Math.min(DOCK_MAX, n + 1) }); });   // shown right away: it goes in as the last visible app
+    return h('div', { class: 'tw-dock' },
+      h('h3', { class: 'tw-sec' }, 'Dock'),
+      h('div', { class: 'tw-dock-count' }, h('span', null, 'Antal apps i docken'), count, out),
+      h('ol', { class: 'tw-dock-list' }, list.map((id, i) => h('li', { class: ['tw-dock-item', i >= n && 'is-hidden'], style: { '--app': hue(id) } },
+        h('span', { class: 'tw-dock-ic' }, tileIcon(ic(id))), h('span', { class: 'tw-dock-name' }, label(id), i >= n ? h('small', { class: 'faint' }, ' – vises ikke') : null),
+        h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Flyt ${label(id)} op`, disabled: i === 0, onclick: () => move(i, -1) }, icon('chevronUp')),
+        h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Flyt ${label(id)} ned`, disabled: i === list.length - 1, onclick: () => move(i, 1) }, icon('chevronDown')),
+        h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Fjern ${label(id)} fra docken`, disabled: list.length <= DOCK_MIN, onclick: () => remove(i) }, icon('x'))))),
+      list.length < DOCK_MAX ? add : h('p', { class: 'faint' }, `Docken kan højst have ${DOCK_MAX} apps.`));
   }
   draw();
   const m = modal({ title: 'Tilpas topbar og forside', label: 'Widgets', size: 560, body,

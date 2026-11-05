@@ -346,3 +346,9 @@ code.inline { padding: 1px 6px; color: var(--text); }
 :root[data-theme="light"][data-style="orken"] .btn-primary { --btn-bg: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); --btn-fg: #fff; }
 :root[data-style="orken"] .switch input:checked + .switch-track { background: linear-gradient(135deg, #fb923c, #ea580c); }
 :root[data-style="orken"] .ai-fab { background: linear-gradient(135deg, #fbbf24, #f97316 55%, #c2410c); box-shadow: 0 14px 34px -10px rgba(249, 115, 22, .7), inset 0 1px 0 rgba(255, 255, 255, .3); color: #1c1206; }
+/* Gnist in empty states */
+.state-art.is-gnist { background: none; overflow: visible; }
+.state-art.is-gnist > .gnist-mark { width: 84px; height: 84px; border-radius: 26px; overflow: hidden; box-shadow: 0 14px 30px -12px rgba(249, 115, 22, .8); }
+.state-badge { position: absolute; right: -8px; bottom: -6px; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: #fff; border: 2px solid var(--bg, #141210);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--app, var(--accent)) 78%, #fff), var(--app, var(--accent)) 45%, color-mix(in srgb, var(--app, var(--accent)) 62%, #000)); }
+.state-badge svg { width: 17px !important; height: 17px !important; }

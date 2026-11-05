@@ -1,6 +1,6 @@
 /** Shared UI primitives: toasts, dialogs, states, loading buttons. */
 import { h, clear, $$ } from './dom.js';
-import { icon } from './icons.js';
+import { icon, gnist } from './icons.js';
 
 let toastHost;
 function host() {
@@ -101,7 +101,9 @@ export function confirmDialog({ title, text, confirmLabel = 'Bekræft', danger =
 /** Empty / error / pending / locked state block */
 export function stateBlock({ icon: ic = 'sparkles', title, text, actions = [], kind = '', app }) {
   return h('div', { class: ['state', kind && `is-${kind}`], style: app ? { '--app': app } : null },
-    h('div', { class: 'state-art' }, icon(ic)),
+    // Gnist, the mascot, keeps you company on empty pages (errors keep their plain icon)
+    kind === 'error' || kind === 'bad' ? h('div', { class: 'state-art' }, icon(ic))
+      : h('div', { class: 'state-art is-gnist' }, gnist(84, { mood: 'wave' }), h('span', { class: 'state-badge' }, icon(ic))),
     h('h3', null, title),
     text ? h('p', null, text) : null,
     actions.length ? h('div', { class: 'state-actions' }, actions) : null);

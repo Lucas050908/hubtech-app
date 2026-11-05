@@ -1,6 +1,6 @@
 /** Guides & Læring hub: the course, every learning app (Øvelseslab, Elværkstedet, Kodeskolen, Huskekort, Værktøjskasse) and the guide library. */
 import { h, clear, debounce } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, tileIcon } from '../core/icons.js';
 import { store } from '../core/store.js';
 import { appById, LEARN_APPS } from '../core/registry.js';
 import { isDue } from '../features/srs.js';
@@ -52,13 +52,14 @@ export default {
         electro: { stats: [[String((el?.xp || 0) + (cp?.xp || 0)), 'XP'], [String(el?.achievements?.length || 0), 'Badges']], action: el ? 'Fortsæt' : 'Start', art: { season: 'spring', time: 'day', focusX: 0.62 } },
         toolkit: { stats: [['11', 'Beregnere'], ['El + IT', 'Område']], action: 'Åbn', art: { season: 'winter', time: 'day', focusX: 0.4 } },
         labs: { stats: [['4', 'Laboratorier'], ['10', 'Servicesager']], action: 'Åbn laboratoriet', art: { season: 'summer', time: 'dusk', focusX: 0.55 } },
+        linux: { stats: [['6.8', 'Linux-kerne'], ['200+', 'Kommandoer']], action: 'Åbn terminalen', art: { season: 'autumn', time: 'dusk', focusX: 0.4 } },
       };
       appsSlot.replaceChildren(...LEARN_APPS.map(a => {
         const i = info[a.id] || { stats: [], action: 'Åbn' };
         const cv = h('canvas', { 'aria-hidden': 'true' });
         requestAnimationFrame(() => paintStill(cv, { ...(i.art || a.art), landscape: 'valley' }));
         return h('article', { class: 'learn-app glass', style: { '--app': a.hue } },
-          h('a', { class: 'learn-app-top', href: a.route, tabindex: '-1', 'aria-hidden': 'true' }, cv, h('span', { class: 'learn-app-icon' }, icon(a.icon))),
+          h('a', { class: 'learn-app-top', href: a.route, tabindex: '-1', 'aria-hidden': 'true' }, cv, h('span', { class: 'learn-app-icon' }, tileIcon(a.icon))),
           h('div', { class: 'learn-app-body' },
             h('h3', null, h('a', { href: a.route }, a.name)),
             h('p', { class: 'muted' }, a.tagline),

@@ -65,7 +65,11 @@ export default {
     function drawPanel(r) {
       clear(panelSlot);
       if (r.state === 'online') {
-        const frame = h('iframe', { class: 'site-frame', src: r.url + '/?ht=1', title: 'ByteForge-panel' });
+        // HUBTECH is cross-origin isolated (so the local AI can use several cores): a panel from another address must be
+        // a credentialless frame – browsers without that open it in a new window instead
+        const canFrame = !globalThis.crossOriginIsolated || 'credentialless' in HTMLIFrameElement.prototype;
+        const frame = canFrame ? h('iframe', { class: 'site-frame', src: r.url + '/?ht=1', title: 'ByteForge-panel', credentialless: '' })
+          : h('div', { class: 'empty', style: { padding: '40px 20px' } }, h('p', null, 'Din browser kan ikke vise ByteForge-panelet inde i HUBTECH.'), h('a', { class: 'btn btn-primary', href: r.url, target: '_blank', rel: 'noopener' }, icon('external'), 'Åbn ByteForge i et nyt vindue'));
         panelSlot.appendChild(h('section', { class: 'bf-panel glass' },
           h('div', { class: 'panel-head', style: { padding: '12px 16px', margin: 0 } },
             h('h2', { class: 'panel-title' }, icon('server'), 'ByteForge-panelet'),

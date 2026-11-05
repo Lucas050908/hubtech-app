@@ -1,6 +1,6 @@
 /** Reusable dashboard widgets shared by Home and Dashboard. */
 import { h, clear, timeAgo, animateNumber, rect, ava } from '../core/dom.js';
-import { icon, svg } from '../core/icons.js';
+import { icon, tileIcon, svg } from '../core/icons.js';
 import { store, setWorld, toggleFavorite, isFavorite, setPref } from '../core/store.js';
 import { APPS, appById, access } from '../core/registry.js';
 import { api } from '../core/api.js';
@@ -37,7 +37,7 @@ export function appCard(app, { compact = false } = {}) {
     style: { '--app': app.hue }, 'aria-label': acc.ok ? `${app.name} – ${app.tagline}` : `${app.name} – ${acc.reason}`,
     dataset: { app: app.id },
   },
-  h('div', { class: 'app-card-media' }, cv, h('div', { class: 'app-card-shade' }), h('span', { class: 'app-card-icon' }, icon(app.icon))),
+  h('div', { class: 'app-card-media' }, cv, h('div', { class: 'app-card-shade' }), h('span', { class: 'app-card-icon' }, tileIcon(app.icon))),
   h('div', { class: 'app-card-body' },
     h('h3', { class: 'app-card-name' }, app.name),
     h('p', { class: 'app-card-tag' }, app.tagline),

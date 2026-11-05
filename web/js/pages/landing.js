@@ -1,7 +1,7 @@
 /** Public landing page — presents the universe and the way in. */
 import { h } from '../core/dom.js';
 import { canConnectToFriend, connectToFriendDialog } from '../features/friendsetup.js';
-import { icon, logo } from '../core/icons.js';
+import { icon, tileIcon, logo } from '../core/icons.js';
 import { store, setWorld } from '../core/store.js';
 import { APPS } from '../core/registry.js';
 import { paintStill, describeWorld } from '../world/controller.js';
@@ -33,7 +33,7 @@ export default {
       const cv = h('canvas', { 'aria-hidden': 'true' });
       requestAnimationFrame(() => paintStill(cv, app.art));
       return h('article', { class: 'land-app glass', style: { '--app': app.hue } },
-        h('div', { class: 'land-app-art' }, cv, h('span', { class: 'app-card-icon' }, icon(app.icon))),
+        h('div', { class: 'land-app-art' }, cv, h('span', { class: 'app-card-icon' }, tileIcon(app.icon))),
         h('div', { class: 'land-app-body' }, h('h3', null, app.name), h('p', null, app.description)));
     });
 

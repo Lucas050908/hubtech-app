@@ -6,9 +6,18 @@ export const MODELS = [
     kvPerToken: 32768, note: 'God balance på nyere telefoner.' },
   { id: 'qwen15', name: 'Qwen 2.5 · 1,5B', size: 1117320736, params: 1.5, repo: 'Qwen/Qwen2.5-1.5B-Instruct-GGUF', file: 'qwen2.5-1.5b-instruct-q4_k_m.gguf',
     kvPerToken: 28672, note: 'Bedre til dansk og kode. Anbefalet på computere.' },
+  { id: 'qwen3_17', name: 'Qwen 3 · 1,7B', size: 1282439584, params: 1.7, repo: 'ggml-org/Qwen3-1.7B-GGUF', file: 'Qwen3-1.7B-Q4_K_M.gguf', think: true,
+    kvPerToken: 114688, note: 'Nyere og klogere – god til dansk, planlægning og forklaringer. Anbefalet på de fleste computere.' },
   { id: 'llama3b', name: 'Llama 3.2 · 3B', size: 1928200736, params: 3.2, repo: 'bartowski/Llama-3.2-3B-Instruct-GGUF', file: 'Llama-3.2-3B-Instruct-Q4_K_S.gguf',
-    kvPerToken: 114688, note: 'Klogest – kræver en computer med god plads i hukommelsen.' },
+    kvPerToken: 114688, note: 'Stor og grundig – kræver en computer med god plads i hukommelsen.' },
+  { id: 'qwen3_4', name: 'Qwen 3 · 4B', size: 2497281632, params: 4, repo: 'Qwen/Qwen3-4B-GGUF', file: 'Qwen3-4B-Q4_K_M.gguf', think: true,
+    kvPerToken: 147456, note: 'Klogest – det bedste svar på dansk og til kode. Kræver en computer med mindst 8 GB RAM.' },
 ];
+
+/** Qwen 3 can "think" before it answers: we ask it not to (faster), and hide any thinking it still writes. */
+export function stripThink(text) {
+  return String(text || '').replace(/<think>[\s\S]*?(<\/think>\s*|$)/g, '').replace(/^\s+/, '');
+}
 export const CTX_STEPS = [1024, 2048, 4096, 8192];
 const OVERHEAD = 180 * 1024 * 1024;   // runtime, buffers and the browser's own share
 

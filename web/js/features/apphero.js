@@ -6,7 +6,7 @@
  *   stats: [{ icon, label, value }]  – value can be a string or a node that updates itself
  */
 import { h } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, tileIcon } from '../core/icons.js';
 import { paintStill } from '../world/controller.js';
 
 export function appHero(app, { eyebrow, title, lead, actions = [], stats = [], compact = false, back = null } = {}) {
@@ -17,7 +17,7 @@ export function appHero(app, { eyebrow, title, lead, actions = [], stats = [], c
     h('span', { class: 'app-hero-shade', 'aria-hidden': 'true' }),
     h('div', { class: 'app-hero-body' },
       back ? h('a', { class: 'icon-btn app-hero-back', href: back.href, 'aria-label': back.label || 'Tilbage' }, icon('arrowLeft')) : null,
-      h('span', { class: 'app-card-icon app-hero-icon' }, icon(app.icon)),
+      h('span', { class: 'app-card-icon app-hero-icon' }, tileIcon(app.icon)),
       h('div', { class: 'app-hero-text' },
         eyebrow ? h('div', { class: 'app-hero-eyebrow' }, eyebrow) : null,
         h('h1', null, title || app.name),

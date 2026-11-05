@@ -2,6 +2,8 @@
  * The local language model, run with wllama (llama.cpp compiled to WebAssembly, web/vendor/wllama, MIT).
  * Everything runs in a worker on this device; only the model file itself is downloaded (once, then cached by the browser).
  */
+import { stripThink } from './models.js';
+
 const abs = (p) => new URL(p, location.origin).href;
 let W = null, loadedKey = null, loading = null, lib = null;
 const listeners = new Set();
@@ -139,12 +141,28 @@ export async function load({ model, ctx = 2048, file = null, url = null, gpu = t
     }
     loadedKey = key;
     const real = W.getLoadedContextInfo?.()?.n_ctx;   // llama.cpp caps the context at what the model was trained for
-    set({ status: 'ready', progress: 1, ctx: real || ctx });
+    let threads = 1; try { threads = W.getNumThreads?.() || 1; } catch { /* */ }
+    set({ status: 'ready', progress: 1, ctx: real || ctx, threads });
   })();
   try { await loading; } finally { loading = null; }
 }
 
+/** A big model in Ollama/LM Studio on this computer, reached through HUBTECH (nothing to download in the browser). */
+export async function loadExternal(name) {
+  await unload();
+  set({ status: 'loading', progress: 0.5, error: null, model: { id: 'ext:' + name, name, think: /qwen3|deepseek-r1|qwq/i.test(name), external: true }, ctx: 16384, noCache: false });
+  try {
+    const r = await fetch('/api/ai/external', { headers: { 'X-Requested-With': 'hubtech' } }).then(x => x.json());
+    if (!r.ok) throw new Error('Ollama/LM Studio svarer ikke. Start programmet på computeren, eller vælg en model i browseren.');
+    if (!r.models.some(m => m.id === name)) throw new Error(`Modellen ${name} er ikke hentet i Ollama endnu. Hent den under Store modeller.`);
+    external = name;
+    set({ status: 'ready', progress: 1, threads: 0 });
+  } catch (e) { external = null; set({ status: 'error', error: e.message }); throw e; }
+}
+let external = null;
+
 export async function unload() {
+  external = null;
   const w = W; W = null; loadedKey = null;
   if (w) { try { await w.exit(); } catch { /* */ } }
   if (state.status !== 'error') set({ status: 'idle', progress: 0 });
@@ -158,17 +176,26 @@ function reportError(where, e, extra) {
   } catch { /* */ }
 }
 
-export const isReady = () => !!W && state.status === 'ready';
+export const isReady = () => (!!W || !!external) && state.status === 'ready';
 
 /** Stream a chat answer. onToken(textSoFar). Returns the full text. */
-export async function chat(messages, { onToken, signal, maxTokens = 512, temperature = 0.4 } = {}) {
+export async function chat(messages, opts = {}) {
+  if (external) return chatExternal(messages, opts);
+  const { onToken, signal, temperature = 0.4 } = opts;
+  let { maxTokens = 512 } = opts;
   if (!W) throw new Error('Modellen er ikke indlæst.');
-  let text = '';
+  let text = '', raw = '';
+  // Qwen 3: answer straight away (no long "thinking" first) – faster on a small device
+  const think = !!state.model?.think || /qwen3/i.test(state.model?.name || '');
+  if (think) {
+    messages = messages.map((m, i) => (i === messages.length - 1 && m.role === 'user' ? { ...m, content: m.content + ' /no_think' } : m));
+    maxTokens += 40;
+  }
   set({ status: 'thinking' });
   try {
     await W.createChatCompletion({
       messages, max_tokens: maxTokens, temperature, top_p: 0.9, top_k: 40, penalty_repeat: 1.1, stream: true, abortSignal: signal,
-      onData: (chunk) => { const d = chunk?.choices?.[0]?.delta?.content; if (d) { text += d; onToken?.(text); } },
+      onData: (chunk) => { const d = chunk?.choices?.[0]?.delta?.content; if (d) { raw += d; const t = think ? stripThink(raw) : raw; if (t !== text) { text = t; onToken?.(text); } } },
     });
   } catch (e) {
     if (e?.name !== 'WllamaAbortError' && e?.name !== 'AbortError' && !signal?.aborted) {
@@ -178,6 +205,30 @@ export async function chat(messages, { onToken, signal, maxTokens = 512, tempera
       if (/crashed|RuntimeError|unreachable|JSPI/i.test(String(e?.message || e))) { try { await W?.exit(); } catch { /* */ } W = null; loadedKey = null; set({ status: 'idle' }); }
       throw new Error(niceError(e));
     }
+  }
+  set({ status: 'ready' });
+  return text;
+}
+
+async function chatExternal(messages, { onToken, signal, maxTokens = 1024, temperature = 0.4 } = {}) {
+  const think = !!state.model?.think;
+  if (think) messages = messages.map((m, i) => (i === messages.length - 1 && m.role === 'user' ? { ...m, content: m.content + ' /no_think' } : m));
+  set({ status: 'thinking' });
+  let raw = '', text = '';
+  try {
+    const res = await fetch('/api/ai/external/chat', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'hubtech' },
+      body: JSON.stringify({ model: external, messages, max_tokens: maxTokens + (think ? 60 : 0), temperature }) });
+    if (!res.ok) { let m = ''; try { m = (await res.json()).error; } catch { /* */ } throw new Error(m || `Fejl ${res.status}`); }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      raw += dec.decode(value, { stream: true });
+      const t = think ? stripThink(raw) : raw;
+      if (t !== text) { text = t; onToken?.(text); }
+    }
+  } catch (e) {
+    if (e?.name !== 'AbortError' && !signal?.aborted) { set({ status: 'ready' }); throw new Error(e.message || 'Den store model svarede ikke.'); }
   }
   set({ status: 'ready' });
   return text;

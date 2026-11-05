@@ -191,7 +191,7 @@ function worldTab() {
       img.onload = () => { const r = devicePixelRatio || 1; preview.width = preview.clientWidth * r; preview.height = preview.clientHeight * r; const c = preview.getContext('2d'); const k = Math.max(preview.width / img.width, preview.height / img.height); c.drawImage(img, (preview.width - img.width * k) / 2, (preview.height - img.height * k) / 2, img.width * k, img.height * k); };
       img.src = im; return;
     }
-    const d = describeWorld(); paintStill(preview, { season: d.season, time: d.time, landscape: d.landscape, weather: w().weather === 'auto' ? (d.season === 'winter' ? 'snow' : 'clear') : w().weather, focusX: 0.55 });
+    const d = describeWorld(); paintStill(preview, { keep: true, season: d.season, time: d.time, landscape: d.landscape, weather: w().weather === 'auto' ? (d.season === 'winter' ? 'snow' : 'clear') : w().weather, focusX: 0.55 });
   };
   const status = h('div', { class: 'faint', style: { fontSize: 'var(--fs-sm)' } });
   const drawStatus = () => { const d = describeWorld(); status.textContent = `Lige nu: ${d.seasonLabel} · ${d.timeLabel} · ${WEATHER_LABEL[w().weather]}`; };
@@ -220,7 +220,7 @@ function worldTab() {
       const cv = h('canvas', { 'aria-hidden': 'true' });
       const on = (w().source || 'landscape') === 'landscape' && (w().landscape || 'valley') === k;
       const b = h('button', { type: 'button', class: ['land-tile', on && 'is-on'], role: 'radio', 'aria-checked': String(on), onclick: () => { setWorld({ landscape: k, source: 'landscape' }); drawLands(); drawScenes(); drawSource(); refresh(); drawStyle(); } }, cv, h('span', null, label));
-      requestAnimationFrame(() => paintStill(cv, { season: d.season, time: d.time, landscape: k, focusX: 0.5, focusY: 0.4 }));
+      requestAnimationFrame(() => paintStill(cv, { keep: true, season: d.season, time: d.time, landscape: k, focusX: 0.5, focusY: 0.4 }));
       return b;
     }));
   };
@@ -704,7 +704,7 @@ function musicPanel() {
 function aiPanel() {
   const ai = () => import('../ai/panel.js');
   return h('section', { class: 'glass panel' },
-    h('h2', { class: 'panel-title' }, 'AI-assistent'),
+    h('h2', { class: 'panel-title' }, 'Gnist – AI-assistent'),
     h('p', { class: 'muted', style: { margin: '4px 0 6px' } }, 'Assistenten kører helt lokalt i browseren. Model, RAM-grænse og hvilke data den må læse, vælger du i dens egne indstillinger.'),
     row('Model, RAM og datakilder', null, h('button', { class: 'btn btn-sm', onclick: () => ai().then(m => m.openAssistantSettings()) }, icon('sparkles'), 'Åbn assistentens indstillinger')),
     row('Samtalen', 'Slet beskederne, som er gemt på denne enhed', h('button', { class: 'btn btn-sm', onclick: () => ai().then(m => { toast(m.clearAssistantChat() ? 'Samtalen er slettet' : 'Vent til assistenten er færdig med at svare', { type: 'ok' }); }) }, icon('trash'), 'Slet samtalen')));

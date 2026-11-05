@@ -90,3 +90,24 @@ export function extractFiles(text) {
   });
   return { text: out, files };
 }
+
+/** Split an answer into blocks – headings, bullet lists, numbered lists and paragraphs – so it reads like a tidy list. */
+export function answerBlocks(text) {
+  const blocks = [];
+  let cur = null;
+  const push = (type, item) => {
+    if (!cur || cur.type !== type) { cur = { type, items: [] }; blocks.push(cur); }
+    cur.items.push(item);
+  };
+  for (const raw of String(text || '').split('\n')) {
+    const line = raw.trimEnd();
+    let m;
+    if (!line.trim()) { cur = null; continue; }
+    if ((m = line.match(/^\s{0,3}#{1,4}\s+(.+)$/))) { blocks.push({ type: 'h', text: m[1].replace(/\*\*/g, '') }); cur = null; continue; }
+    if ((m = line.match(/^\s*[-*•]\s+(.+)$/))) { push('ul', m[1]); continue; }
+    if ((m = line.match(/^\s*(\d{1,2})[.)]\s+(.+)$/))) { push('ol', m[2]); continue; }
+    if (cur && (cur.type === 'ul' || cur.type === 'ol') && /^\s{2,}\S/.test(raw)) { cur.items[cur.items.length - 1] += ' ' + line.trim(); continue; }
+    push('p', line.trim());
+  }
+  return blocks;
+}

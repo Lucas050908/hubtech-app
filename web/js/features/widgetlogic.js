@@ -17,6 +17,15 @@ export const WIDGET_DEFAULTS = {
   city: '',
   home: Object.fromEntries(HOME_CARDS.map(([k]) => [k, HOME_ON.has(k)])),
 };
+/** The dock at the bottom: which places, in which order, and how many are shown. 'home', 'learn' and 'apps' are places; the rest are app ids. */
+export const DOCK_DEFAULT = ['home', 'hubtech', 'calendar', 'tasks', 'servicehelp', 'learn', 'gnist', 'apps'];
+export const DOCK_MIN = 2, DOCK_MAX = 12;
+export function dockIds(w = {}) {
+  const list = Array.isArray(w.dock) && w.dock.length ? w.dock.filter((x, i, a) => typeof x === 'string' && a.indexOf(x) === i) : DOCK_DEFAULT;
+  const n = Math.max(DOCK_MIN, Math.min(DOCK_MAX, Number(w.dockCount) || DOCK_DEFAULT.length));
+  return list.slice(0, n);
+}
+
 /** bumped when HUBTECH gets a new look: everyone moves to it once (and can choose otherwise after) */
 export const LOOK_VERSION = 2;
 
@@ -50,6 +59,26 @@ export function buildStats({ calendar, tasks, timesheet, summary }, now = Date.n
   const s = summary || { level: 1, xp: 0, levelXp: 0, levelSize: 1000 };
   const level = { label: `Level ${s.level}`, value: (s.xp || 0).toLocaleString('da-DK'), pct: Math.round((s.levelXp || 0) / (s.levelSize || 1000) * 100), href: '#/dashboard' };
   return { cases, appt, hours, level };
+}
+
+/** Gnist's tip of the day on Hjem (the same tip all day). */
+export const GNIST_TIPS = [
+  'Tryk Ctrl+K og skriv hvad som helst – apps, guides og kursuslektioner dukker op.',
+  'Spørg mig: "Hvad skal jeg nå i dag?" – så kigger jeg i din kalender og dine opgaver.',
+  'Under Tilpas kan du selv vælge, hvor mange apps der er i docken.',
+  'Linux-terminalen er en rigtig Linux. Prøv at skrive top – og q for at stoppe igen.',
+  'Øvelseslab har en lasersimulator, hvor du kan teste materialer uden at brænde noget.',
+  'Hold din streak i live: bare én lektion om dagen tæller.',
+  'Bed mig lave en aftale: "Tandlæge i morgen kl. 10" – du godkender selv.',
+  'Kodeskolen retter dine opgaver automatisk og giver XP.',
+  'Ctrl+J åbner mig overalt i appen – også midt i en opgave.',
+  'Tryk ↑ i mit skrivefelt for at hente dit sidste spørgsmål frem igen.',
+  'Elværkstedet har nye regneopgaver hver gang – perfekt til at øve Ohms lov.',
+  'Alle kurser kan søges i – også de enkelte lektioner.',
+];
+export function gnistTip(now = new Date()) {
+  const day = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 864e5);
+  return GNIST_TIPS[((day % GNIST_TIPS.length) + GNIST_TIPS.length) % GNIST_TIPS.length];
 }
 
 /** "God morgen, Lucas – 2 aftaler og 3 deadlines i dag" */

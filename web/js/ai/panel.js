@@ -3,15 +3,16 @@
  * when it helps (knowledge.js), proposes actions you confirm, and turns into a teacher in Kodeskolen.
  */
 import { h, clear, rect, uiZoom, viewW, viewH } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, gnist } from '../core/icons.js';
 import { toast, modal } from '../core/ui.js';
 import { navigate } from '../core/router.js';
 import { store } from '../core/store.js';
 import { fmtBody } from '../community/chat.js';
 import { getAiContext, onAiContext } from './context.js';
 import { MODELS, CTX_STEPS, ramFor, pickFor, gb, mb, deviceRam } from './models.js';
-import { SOURCES, collect, retrieve, isCalendarQuestion, systemPrompt, exerciseFacts, studioFacts, parseActions, describe, runAction, guardCode } from './knowledge.js';
-import { extractFiles } from './actions.js';
+import { SOURCES, collect, retrieve, isCalendarQuestion, systemPrompt, questionBlock, exerciseFacts, studioFacts, parseActions, describe, runAction, guardCode } from './knowledge.js';
+import { extractFiles, answerBlocks } from './actions.js';
+import { getState, saveState, flushState } from '../core/services.js';
 
 const KEY = 'hubtech.ai';
 const HIST = 'hubtech.ai.chat';
@@ -20,7 +21,7 @@ const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 
 function defaults() {
   const dev = deviceRam();
-  return { ram: Math.round(dev.suggest / 268435456) * 268435456 || 1073741824, model: 'auto', ctx: 'auto', url: '', gpu: true, temp: 0.4, use: { notes: true, tasks: true, calendar: true, snippets: true, customers: true } };
+  return { ram: Math.round(dev.suggest / 268435456) * 268435456 || 1073741824, model: 'auto', ctx: 'auto', url: '', gpu: true, temp: 0.4, style: 'points', use: { chats: true, guides: true, notes: true, tasks: true, calendar: true, snippets: true, customers: true } };
 }
 let cfg = { ...defaults(), ...read(KEY, {}) };
 cfg.use = { ...defaults().use, ...(cfg.use || {}) };
@@ -28,6 +29,7 @@ const saveCfg = () => write(KEY, cfg);
 
 /** Model + context the settings resolve to. */
 export function resolved() {
+  if (String(cfg.model).startsWith('ext:')) { const name = cfg.model.slice(4); return { model: { id: cfg.model, name, size: 0, external: true }, ctx: 16384, ram: null, external: name }; }
   const auto = pickFor(cfg.ram);
   const model = cfg.model === 'auto' ? auto.model : MODELS.find(m => m.id === cfg.model) || null;
   let ctx = cfg.ctx === 'auto' ? (cfg.model === 'auto' ? auto.ctx : model ? (CTX_STEPS.filter(c => ramFor(model, c) <= cfg.ram).pop() || 1024) : 2048) : Number(cfg.ctx);
@@ -41,12 +43,51 @@ const persistChat = () => write(HIST, messages.slice(-30));
 
 async function eng() { engine ||= await import('./engine.js'); return engine; }
 
+let pageHost = null;   // when Gnist is open as her own app (full screen), the window lives inside that page
+
+/** Gnist as an app: the same conversation, full screen inside the page. */
+export function mountAssistantPage(host) {
+  if (!panel) build();
+  pageHost = host;
+  host.appendChild(panel);
+  panel.hidden = false; panel.classList.add('is-page');
+  panel.style.left = panel.style.top = panel.style.right = panel.style.bottom = '';
+  document.body.classList.remove('ai-open'); document.body.classList.add('ai-page');
+  drawAll(); autoStart();
+  setTimeout(() => els.input?.focus(), 80);
+}
+export function unmountAssistantPage() {
+  if (!panel || !pageHost) return;
+  pageHost = null;
+  panel.classList.remove('is-page'); panel.hidden = true;
+  document.body.appendChild(panel);
+  document.body.classList.remove('ai-page');
+}
+
 export function toggleAssistant(open) {
   if (!panel) build();
+  if (pageHost) { els.input?.focus(); return; }   // already full screen: just go to the question field
   const show = open ?? panel.hidden;
   panel.hidden = !show;
   document.body.classList.toggle('ai-open', show);
-  if (show) { drawAll(); setTimeout(() => panel.querySelector('.ai-input')?.focus(), 60); }
+  if (show) { drawAll(); setTimeout(() => panel.querySelector('.ai-input')?.focus(), 60); autoStart(); }
+}
+
+/** Opening the assistant starts the model by itself when it is already downloaded – no extra click. */
+let autoTried = false;
+async function autoStart() {
+  if (autoTried || cfg.model === 'file') return;
+  autoTried = true;
+  try {
+    const e = await eng();
+    if (e.isReady() || e.state.status === 'loading' || e.supported()) return;
+    const r = resolved();
+    if (r.external) { start(); return; }
+    const want = cfg.model === 'url' ? cfg.url : r.model ? r.model.file : '';
+    if (!want) return;
+    const have = await e.downloaded();
+    if (have.some(m => String(m.url).includes(want.split('/').pop()))) start();
+  } catch { /* the start button still works */ }
 }
 
 /** Open the assistant and send a question (used by App-værkstedet's "Ret med AI" and new apps). */
@@ -65,7 +106,7 @@ export function clearAssistantChat() { if (busy) return false; messages = []; pe
 
 export function initAssistant() {
   if (document.querySelector('.ai-fab')) return;
-  const fab = h('button', { class: 'ai-fab', 'aria-label': 'Åbn AI-assistenten (Ctrl+J)', title: 'AI-assistent (Ctrl+J)', onclick: () => toggleAssistant() }, icon('sparkles'));
+  const fab = h('button', { class: 'ai-fab', dataset: { tour: 'gnist' }, 'aria-label': 'Spørg Gnist – din AI-assistent (Ctrl+J)', title: 'Gnist – din AI-assistent (Ctrl+J)', onclick: () => toggleAssistant() }, gnist(30));
   document.body.appendChild(fab);
   document.body.classList.add('has-ai-fab');
   addEventListener('keydown', (e) => {
@@ -84,27 +125,33 @@ function build() {
   const input = h('textarea', { class: 'ai-input', rows: 1, maxlength: 4000, placeholder: 'Spørg om noget …', 'aria-label': 'Besked til assistenten', enterkeyhint: 'send' });
   const send = h('button', { class: 'ai-send', 'aria-label': 'Send', title: 'Send (Enter)' }, icon('send'));
   const settingsBox = h('div', { class: 'ai-settings', hidden: true });
+  const histBox = h('div', { class: 'ai-history', hidden: true });
   const head = h('header', { class: 'ai-head' },
-    h('span', { class: 'ai-logo', 'aria-hidden': 'true' }, icon('sparkles')),
-    h('div', { class: 'ai-title' }, h('b', null, 'Assistent'), status), mode,
-    h('button', { class: 'icon-btn', 'aria-label': 'Ny samtale', title: 'Ny samtale', onclick: () => { if (busy) return; messages = []; persistChat(); drawMsgs(); } }, icon('plus')),
+    h('span', { class: 'ai-logo', 'aria-hidden': 'true' }, gnist(34)),
+    h('div', { class: 'ai-title' }, h('b', null, 'Gnist'), status), mode,
+    h('button', { class: 'icon-btn', 'aria-label': 'Ny samtale', title: 'Ny samtale', onclick: () => { if (busy) return; archiveChat(); messages = []; persistChat(); drawMsgs(); } }, icon('plus')),
+    h('button', { class: 'icon-btn ai-hist-btn', 'aria-label': 'Tidligere samtaler', title: 'Tidligere samtaler', 'aria-expanded': 'false', onclick: (e) => { histBox.hidden = !histBox.hidden; e.currentTarget.setAttribute('aria-expanded', String(!histBox.hidden)); drawHistory(); } }, icon('clock')),
     h('button', { class: 'icon-btn', 'aria-label': 'Indstillinger for assistenten', title: 'Indstillinger', 'aria-expanded': 'false', onclick: (e) => { settingsBox.hidden = !settingsBox.hidden; e.currentTarget.setAttribute('aria-expanded', String(!settingsBox.hidden)); drawSettings(); } }, icon('settings')),
-    h('button', { class: 'icon-btn', 'aria-label': 'Luk assistenten', title: 'Luk (Esc)', onclick: () => toggleAssistant(false) }, icon('x')));
-  panel = h('section', { class: 'ai-panel glass', role: 'dialog', 'aria-label': 'AI-assistent', hidden: true },
-    head, settingsBox, list,
+    h('a', { class: 'icon-btn ai-expand', href: '#/apps/gnist', 'aria-label': 'Åbn Gnist på fuld skærm', title: 'Fuld skærm', onclick: () => toggleAssistant(false) }, icon('maximize')),
+    h('button', { class: 'icon-btn ai-close', 'aria-label': 'Luk assistenten', title: 'Luk (Esc)', onclick: () => toggleAssistant(false) }, icon('x')));
+  panel = h('section', { class: 'ai-panel glass', role: 'dialog', 'aria-label': 'Gnist – AI-assistent', hidden: true },
+    head, settingsBox, histBox, list,
     h('div', { class: 'ai-compose' }, input, send),
     h('p', { class: 'ai-foot' }, icon('lock'), 'Kører på din enhed – dine data sendes ikke nogen steder hen.'));
   document.body.appendChild(panel);
-  els = { status, mode, list, input, send, settingsBox, head };
+  els = { status, mode, list, input, send, settingsBox, histBox, head };
 
   const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
   input.addEventListener('input', autosize);
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); ask(); } });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); ask(); }
+    else if (e.key === 'ArrowUp' && !input.value) { const last = [...messages].reverse().find(m => m.role === 'user'); if (last) { e.preventDefault(); input.value = last.content; autosize(); } }
+  });
   send.addEventListener('click', () => (busy ? stop() : ask()));
   // drag the window by its title bar (desktop)
   let drag = null;
   head.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button') || matchMedia('(max-width: 700px)').matches) return;
+    if (e.target.closest('button, a') || pageHost || matchMedia('(max-width: 700px)').matches) return;
     const r = rect(panel), z = uiZoom();
     drag = { dx: e.clientX / z - r.left, dy: e.clientY / z - r.top };
     head.setPointerCapture(e.pointerId);
@@ -125,6 +172,38 @@ const tutor = () => getAiContext()?.kind === 'exercise';
 const builder = () => getAiContext()?.kind === 'studio';
 
 function drawAll() { drawStatus(); drawMsgs(); }
+
+// ── earlier conversations: saved on the profile, can be opened again – and Gnist can look in them (knowledge.js) ──
+const chatTitle = (msgs) => (msgs.find(m => m.role === 'user')?.content || 'Samtale').replace(/\s+/g, ' ').slice(0, 70);
+async function archiveChat() {
+  const real = messages.filter(m => !m.error && !m.streaming && m.content);
+  if (!real.some(m => m.role === 'user')) return;
+  try {
+    const st = (await getState('gnist', { force: true })) || {}; st.chats ||= [];
+    const keep = real.slice(-40).map(m => ({ role: m.role, content: String(m.content).slice(0, 4000), sources: m.sources }));
+    const id = messages._id || Date.now().toString(36);
+    st.chats = [{ id, title: chatTitle(keep), at: Date.now(), model: engine?.state?.model?.name || '', messages: keep }, ...st.chats.filter(c => c.id !== id)].slice(0, 40);
+    saveState('gnist', st); flushState('gnist');
+  } catch { /* the conversation is still in this browser */ }
+}
+async function drawHistory() {
+  const box = els.histBox;
+  if (box.hidden) return;
+  h(clear(box), null, h('p', { class: 'faint' }, 'Henter …'));
+  let chats = [];
+  try { chats = ((await getState('gnist', { force: true })) || {}).chats || []; } catch { /* */ }
+  const del = async (id) => { const st = (await getState('gnist', { force: true })) || {}; st.chats = (st.chats || []).filter(c => c.id !== id); saveState('gnist', st); flushState('gnist'); drawHistory(); };
+  h(clear(box), null,
+    h('div', { class: 'ai-hist-h' }, h('b', null, 'Tidligere samtaler'), h('span', { class: 'faint' }, 'Gnist kan også slå op i dem, når du spørger')),
+    chats.length ? h('ul', { class: 'ai-hist-list' }, chats.map(c => h('li', null,
+      h('button', { type: 'button', class: 'ai-hist-item', onclick: async () => {
+        if (busy) return;
+        await archiveChat();
+        messages = c.messages.map(m => ({ ...m })); messages._id = c.id; persistChat();
+        box.hidden = true; els.head.querySelector('.ai-hist-btn')?.setAttribute('aria-expanded', 'false'); drawMsgs();
+      } }, h('span', { class: 'ai-hist-t' }, c.title), h('span', { class: 'faint' }, `${new Date(c.at).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })} · ${c.messages.length} beskeder${c.model ? ' · ' + c.model : ''}`)),
+      h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Slet samtalen "${c.title}"`, onclick: () => del(c.id) }, icon('trash'))))) : h('p', { class: 'faint' }, 'Ingen gemte samtaler endnu. Når du starter en ny samtale, gemmes den gamle her.'));
+}
 function drawStatus() {
   const st = engine?.state || { status: 'idle' };
   const r = resolved();
@@ -134,6 +213,7 @@ function drawStatus() {
   els.mode.hidden = !tutor() && !builder();
   if (!els.mode.hidden) h(clear(els.mode), null, icon(tutor() ? 'graduation' : 'code'), tutor() ? 'Lærer' : 'App-bygger');
   els.mode.classList.toggle('is-builder', builder());
+  panel?.classList.toggle('is-thinking', st.status === 'thinking' || st.status === 'loading');
   els.input.placeholder = tutor() ? 'Spørg læreren om et hint …' : builder() ? 'Beskriv, hvad appen skal kunne …' : 'Spørg om noget …';
   h(clear(els.send), null, icon(busy ? 'x' : 'send'));
   els.send.setAttribute('aria-label', busy ? 'Stop' : 'Send');
@@ -145,7 +225,7 @@ function drawStatus() {
 function suggestions() {
   const list = builder() ? ['Ret fejlen i konsollen', 'Gør designet pænere og mere moderne', 'Tilføj en knap der nulstiller alt', 'Forklar hvordan koden virker']
     : tutor() ? ['Giv mig et lille hint', 'Hvorfor virker min kode ikke?', 'Forklar opgaven med andre ord', 'Hvad betyder fejlbeskeden?']
-    : ['Hvad skal jeg nå i dag?', 'Hjælp mig med at planlægge min uge', 'Find min prompt i noterne', 'Lav en aftale i morgen kl. 10 med tandlægen'];
+    : ['Hvad skal jeg nå i dag?', 'Hjælp mig med at planlægge min uge', 'Hvordan finder jeg fokus på en CO2-laser?', 'Min printer er offline – hvad gør jeg?', 'Lav en aftale i morgen kl. 10 med tandlægen'];
   return h('div', { class: 'ai-sugg' }, list.map(t => h('button', { class: 'chip', onclick: () => { els.input.value = t; ask(); } }, t)));
 }
 
@@ -153,23 +233,23 @@ function startCard() {
   const unsupported = engine?.supported?.() ?? null;
   const r = resolved();
   const st = engine?.state || {};
-  if (st.status === 'loading') return h('div', { class: 'ai-card ai-load' }, h('b', null, 'Henter og starter modellen …'), h('div', { class: 'ai-bar' }, h('i', { style: { width: `${Math.round((st.progress || 0) * 100)}%` } })),
+  if (st.status === 'loading') return h('div', { class: 'ai-card ai-load' }, h('b', null, 'Gnist vågner … (henter og starter modellen)'), h('div', { class: 'ai-bar' }, h('i', { style: { width: `${Math.round((st.progress || 0) * 100)}%` } })),
     h('p', { class: 'faint' }, st.noCache ? 'Der er ikke plads til at gemme modellen i browseren, så den hentes direkte ind i hukommelsen – og hentes igen næste gang. Frigør plads på disken for at undgå det.'
       : 'Første gang hentes modellen fra Hugging Face og gemmes i browseren. Næste gang starter den uden download.'));
   const dev = deviceRam();
   return h('div', { class: 'ai-card' },
-    h('div', { class: 'ai-hello' }, icon('bot'), h('div', null, h('b', null, tutor() ? 'Din programmeringslærer' : builder() ? 'Din app-bygger' : 'Hej! Jeg er din lokale assistent'),
+    h('div', { class: 'ai-hello' }, h('span', { class: 'ai-hello-mark' }, gnist(52, { mood: 'wave' })), h('div', null, h('b', null, tutor() ? 'Gnist – din programmeringslærer' : builder() ? 'Gnist – din app-bygger' : `Hej${store.get('user')?.displayName ? ' ' + store.get('user').displayName.split(' ')[0] : ''}! Jeg hedder Gnist`),
       h('p', null, builder() ? 'Jeg kan se appens filer og fejlene i konsollen. Beskriv, hvad appen skal kunne, så skriver jeg koden – og du vælger selv, hvilke filer der skal bruges. Vælg gerne 4096 tokens hukommelse eller mere.'
         : tutor() ? 'Jeg kan se opgaven og din kode, og jeg hjælper dig videre med hints – men jeg giver dig ikke løsningen. Du lærer mest ved selv at skrive den.'
-        : 'Jeg kan læse dine noter, opgaver, aftaler, kodestumper og kunder og hjælpe med fx at planlægge kalenderen. Alt kører på din enhed.'))),
+        : 'Jeg er HUBTECHs egen AI – en lille gnist fra værkstedet. Jeg kender alle guides og kurser, kan læse dine noter, opgaver og aftaler, og hjælper gerne med at planlægge, forklare og fejlfinde. Jeg kører på din egen enhed, så alt bliver hos dig.'))),
     st.status === 'error' ? h('p', { class: 'field-error' }, st.error) : null,
     unsupported ? h('p', { class: 'field-error' }, unsupported) : null,
-    h('div', { class: 'ai-pick' }, icon('chip'), h('span', null, localFile ? `Fil: ${localFile.name} (${mb(localFile.size)})` : cfg.model === 'file' ? 'Vælg din .gguf-fil (den skal vælges igen, når siden er genindlæst)' : cfg.model === 'url' ? 'Egen model fra URL' : r.model ? `${r.model.name} · ${mb(r.model.size)} download · ca. ${gb(r.ram)} RAM` : 'Vælg en model'),
+    h('div', { class: 'ai-pick' }, icon('chip'), h('span', null, localFile ? `Fil: ${localFile.name} (${mb(localFile.size)})` : cfg.model === 'file' ? 'Vælg din .gguf-fil (den skal vælges igen, når siden er genindlæst)' : cfg.model === 'url' ? 'Egen model fra URL' : r.external ? `Stor model: ${r.external} (Ollama/LM Studio på computeren)` : r.model ? `${r.model.name} · ${mb(r.model.size)} download · ca. ${gb(r.ram)} RAM` : 'Vælg en model'),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { els.settingsBox.hidden = false; drawSettings(); } }, 'Skift')),
     r.tooSmall ? h('p', { class: 'faint' }, 'RAM-grænsen er meget lav – den mindste model bruges med kort hukommelse.') : null,
     dev.mobile ? h('p', { class: 'faint' }, 'På telefonen: brug Wi-Fi første gang, og hold appen åben, mens modellen hentes.') : null,
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
-      h('button', { class: 'btn btn-primary', disabled: !!unsupported, onclick: () => start(st.status === 'error') }, icon(st.status === 'error' ? 'refresh' : 'play'), st.status === 'error' ? 'Prøv igen' : 'Start assistenten'),
+      h('button', { class: 'btn btn-primary', disabled: !!unsupported, onclick: () => start(st.status === 'error') }, icon(st.status === 'error' ? 'refresh' : 'play'), st.status === 'error' ? 'Prøv igen' : 'Væk Gnist'),
       st.status === 'error' ? h('button', { class: 'btn btn-ghost', onclick: () => diagnose() }, icon('info'), 'Tjek min enhed') : null));
 }
 
@@ -180,6 +260,8 @@ async function diagnose() {
   const ok = (label, good, text) => rows.push(h('li', { class: good ? 'is-ok' : 'is-bad' }, icon(good ? 'check' : 'alert'), h('span', null, h('b', null, label), ' – ', text)));
   const bad = e.supported();
   ok('WebAssembly', !bad, bad || 'virker');
+  const cores = navigator.hardwareConcurrency || 1, iso = !!globalThis.crossOriginIsolated;
+  ok('Flere processorkerner', iso, iso ? `ja – ${e.state.threads > 1 ? `${e.state.threads} kerner i brug` : `op til ${Math.max(1, Math.floor(cores / 2))} af ${cores} kerner`}` : 'nej – siden er ikke isoleret, så assistenten bruger kun én kerne (det sker, når et ByteForge-panel fra en anden adresse er sat op)');
   ok('Hurtig motor (JSPI)', !!WebAssembly.Suspending, WebAssembly.Suspending ? 'tilgængelig' : 'ikke tilgængelig – den langsommere kompatible motor bruges (virker stadig)');
   let free = null;
   try { const est = await navigator.storage?.estimate?.(); if (est?.quota) free = est.quota - (est.usage || 0); } catch { /* */ }
@@ -193,7 +275,7 @@ async function diagnose() {
   const have = await e.downloaded();
   ok('Hentede modeller', true, have.length ? have.map(m => `${m.url.split('/').pop()} (${mb(m.size)})`).join(', ') : 'ingen endnu');
   const close = h('button', { class: 'btn btn-primary' }, 'Luk');
-  const m = modal({ title: 'Tjek af den lokale AI', label: 'AI-assistent', size: 520, body: h('ul', { class: 'ai-diag' }, rows), actions: [close] });
+  const m = modal({ title: 'Tjek af Gnist (den lokale AI)', label: 'Gnist', size: 520, body: h('ul', { class: 'ai-diag' }, rows), actions: [close] });
   close.addEventListener('click', () => m.close());
 }
 
@@ -218,7 +300,7 @@ function render(m, i) {
   };
   const parts = text.split(/\[\[(skjult-kode|fil)-(\d+)\]\]/);
   const body = h('div', { class: 'ai-text' }, parts.map((p, k) => {
-    if (k % 3 === 0) return p.trim() ? h('div', null, fmtBody(p.trim())) : null;
+    if (k % 3 === 0) return p.trim() ? h('div', { class: 'ai-md' }, richText(p.trim())) : null;
     if (k % 3 === 1) return null;
     if (parts[k - 1] === 'fil') return fileCard(files[Number(p)], Number(p));
     const x = hidden[Number(p)];
@@ -246,8 +328,23 @@ function render(m, i) {
             } }, d.label),
             h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { m.done = { ...(m.done || {}), [k]: 'no' }; persistChat(); drawMsgs(); } }, 'Nej tak')));
     }) : null,
-    m.error ? null : !m.streaming && m.content && i === messages.length - 1 ? h('div', { class: 'ai-msg-tools' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Kopiér svaret', title: 'Kopiér', onclick: () => navigator.clipboard?.writeText(parseActions(m.content).text).then(() => toast('Kopieret', { type: 'ok' })).catch(() => {}) }, icon('copy'))) : null);
+    !m.streaming && m.sources?.length ? h('div', { class: 'ai-sources' }, h('span', { class: 'faint' }, 'Kilder:'),
+      m.sources.map(s => s.href ? h('a', { class: 'chip ai-source', href: s.href, title: `${s.label}: ${s.title}`, onclick: () => { if (matchMedia('(max-width: 700px)').matches) toggleAssistant(false); } }, icon(s.kind === 'lesson' || s.kind === 'guide' ? 'book' : 'file'), h('span', null, s.title))
+        : h('span', { class: 'chip ai-source' }, s.title))) : null,
+    !m.streaming && m.content && i === messages.length - 1 ? h('div', { class: 'ai-msg-tools' },
+      m.error ? null : h('button', { class: 'icon-btn', 'aria-label': 'Kopiér svaret', title: 'Kopiér', onclick: () => navigator.clipboard?.writeText(parseActions(m.content).text).then(() => toast('Kopieret', { type: 'ok' })).catch(() => {}) }, icon('copy')),
+      messages[i - 1]?.role === 'user' ? h('button', { class: 'icon-btn', 'aria-label': 'Prøv igen med et nyt svar', title: 'Prøv igen', onclick: () => retry() }, icon('refresh')) : null) : null);
+}
+
+/** An answer as headings, lists and paragraphs (code blocks are kept whole). */
+function richText(text) {
+  return text.split(/(```[\s\S]*?(?:```|$))/).map((part) => {
+    if (part.startsWith('```')) return h('div', null, fmtBody(part));
+    return answerBlocks(part).map(b => b.type === 'h' ? h('h4', { class: 'ai-h' }, fmtBody(b.text))
+      : b.type === 'ul' ? h('ul', { class: 'ai-ul' }, b.items.map(x => h('li', null, fmtBody(x))))
+        : b.type === 'ol' ? h('ol', { class: 'ai-ol' }, b.items.map(x => h('li', null, fmtBody(x))))
+          : b.items.map(x => h('p', { class: 'ai-p' }, fmtBody(x))));
+  });
 }
 
 function drawMsgs() {
@@ -275,6 +372,8 @@ function drawSettings() {
   const modelSel = h('select', { class: 'select', 'aria-label': 'Model' },
     h('option', { value: 'auto', selected: cfg.model === 'auto' }, 'Automatisk ud fra RAM-grænsen'),
     MODELS.map(m => h('option', { value: m.id, selected: cfg.model === m.id }, `${m.name} – ${mb(m.size)}${ramFor(m, 2048) > cfg.ram ? ' (over grænsen)' : ''}`)),
+    extInfo?.ok && extInfo.models.length ? h('optgroup', { label: 'Store modeller (Ollama/LM Studio på computeren)' }, extInfo.models.map(m => h('option', { value: 'ext:' + m.id, selected: cfg.model === 'ext:' + m.id }, `${m.id}${m.size ? ' – ' + gb(m.size) : ''}`))) : null,
+    String(cfg.model).startsWith('ext:') && !extInfo?.models?.some(m => 'ext:' + m.id === cfg.model) ? h('option', { value: cfg.model, selected: true }, cfg.model.slice(4) + ' (stor model)') : null,
     h('option', { value: 'url', selected: cfg.model === 'url' }, 'Egen .gguf fra en URL'),
     h('option', { value: 'file', selected: cfg.model === 'file' }, 'Fil fra denne enhed (.gguf)'));
   const urlIn = h('input', { class: 'input', type: 'url', value: cfg.url || '', placeholder: 'https://huggingface.co/…/resolve/main/model.gguf', 'aria-label': 'Model-URL', hidden: cfg.model !== 'url' });
@@ -288,6 +387,8 @@ function drawSettings() {
   ctxSel.addEventListener('change', () => { cfg.ctx = ctxSel.value; saveCfg(); drawSettings(); });
   const gpu = h('input', { type: 'checkbox', checked: cfg.gpu });
   gpu.addEventListener('change', () => { cfg.gpu = gpu.checked; saveCfg(); });
+  const style = h('select', { class: 'select', 'aria-label': 'Svarform' }, [['points', 'Korte punkter'], ['text', 'Almindelig tekst']].map(([v, l]) => h('option', { value: v, selected: (cfg.style || 'points') === v }, l)));
+  style.addEventListener('change', () => { cfg.style = style.value; saveCfg(); });
   const temp = h('select', { class: 'select', 'aria-label': 'Stil' }, [[0.2, 'Præcis'], [0.4, 'Balanceret'], [0.8, 'Kreativ']].map(([v, l]) => h('option', { value: v, selected: Number(cfg.temp) === v }, l)));
   temp.addEventListener('change', () => { cfg.temp = Number(temp.value); saveCfg(); });
   const srcs = h('div', { class: 'ai-srcs' }, Object.entries(SOURCES).map(([k, l]) => {
@@ -295,21 +396,67 @@ function drawSettings() {
     return h('label', { class: 'cal-pcheck' }, cb, h('span', null, l));
   }));
   const st = engine?.state?.status;
+  const extBox = h('div', { class: 'ai-ext' });
+  drawExternal(extBox);
   h(clear(box), null,
     h('div', { class: 'ai-set-row' }, h('span', { class: 'field-label' }, 'Maks. RAM'), ramOut),
     ramIn,
     h('div', { class: 'ai-set-hint' }, pickOut, dev.gb ? h('span', { class: 'faint' }, ` · enheden har ca. ${dev.gb} GB`) : null),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Model'), modelSel), urlIn, fileBtn, fileIn,
     MODELS.find(m => m.id === (cfg.model === 'auto' ? r.model?.id : cfg.model)) ? h('p', { class: 'faint ai-note' }, MODELS.find(m => m.id === (cfg.model === 'auto' ? r.model?.id : cfg.model)).note) : null,
+    extBox,
     h('div', { class: 'grid-2' }, h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Hukommelse'), ctxSel), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Stil'), temp)),
+    h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Svarform'), style),
     h('label', { class: 'cal-pcheck' }, gpu, h('span', null, 'Brug grafikkortet (WebGPU), når det findes')),
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Må læse'), srcs),
     h('div', { class: 'ai-set-btns' },
-      st === 'ready' ? h('button', { class: 'btn btn-sm', onclick: async () => { await (await eng()).unload(); drawAll(); toast('Assistenten er stoppet', { text: 'Hukommelsen er frigivet.' }); } }, icon('power'), 'Stop og frigiv RAM') : null,
+      st === 'ready' ? h('button', { class: 'btn btn-sm', onclick: async () => { await (await eng()).unload(); drawAll(); toast('Gnist sover nu', { text: 'Hukommelsen er frigivet.' }); } }, icon('power'), 'Stop og frigiv RAM') : null,
       h('button', { class: 'btn btn-sm', onclick: () => start(true) }, icon('refresh'), st === 'ready' ? 'Genstart med valget' : 'Start med valget'),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: () => diagnose() }, icon('info'), 'Tjek min enhed'),
       h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { try { const e = await eng(); await e.unload(); await e.clearDownloads(); toast('Hentede modeller er slettet', { type: 'ok', text: 'Pladsen i browseren er frigivet.' }); drawAll(); } catch (x) { toast('Kunne ikke slette', { type: 'bad', text: x.message }); } } }, icon('trash'), 'Slet hentede modeller')),
-    h('p', { class: 'faint ai-note' }, 'Modellerne er open source (Qwen 2.5: Apache 2.0, Llama 3.2: Llama Community License) og hentes fra Hugging Face første gang.'));
+    h('p', { class: 'faint ai-note' }, 'Modellerne er open source (Qwen 2.5 og Qwen 3: Apache 2.0, Llama 3.2: Llama Community License) og hentes fra Hugging Face første gang.'));
+}
+
+// ── big models: Ollama or LM Studio on this computer (4, 8, 16, 32 GB …) ──
+let extInfo = null;
+async function drawExternal(box) {
+  const first = !extInfo;
+  if (first) h(clear(box), null, h('p', { class: 'faint' }, 'Leder efter Ollama/LM Studio …'));
+  try { extInfo = await fetch('/api/ai/external', { headers: { 'X-Requested-With': 'hubtech' } }).then(r => r.json()); } catch { extInfo = { ok: false, models: [], tiers: [] }; }
+  if (first && extInfo.ok && extInfo.models.length) drawSettings();   // the model list now includes the big models
+  const have = new Set((extInfo.models || []).map(m => m.id));
+  const use = (id) => { cfg.model = 'ext:' + id; saveCfg(); drawSettings(); start(true); };
+  const pull = async (id, btn, bar) => {
+    btn.disabled = true; bar.hidden = false;
+    try {
+      const res = await fetch('/api/ai/external/pull', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'hubtech' }, body: JSON.stringify({ model: id }) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Fejl ${res.status}`);
+      const rd = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+      for (;;) {
+        const { done, value } = await rd.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let k; while ((k = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, k); buf = buf.slice(k + 1); try { const j = JSON.parse(line); if (j.error) throw new Error(j.error); if (j.total) bar.querySelector('i').style.width = `${Math.round(j.completed / j.total * 100)}%`; btn.textContent = j.total ? `${Math.round(j.completed / j.total * 100)} %` : (j.status || '…'); } catch (x) { if (x.message && !/JSON/.test(x.message)) throw x; } }
+      }
+      toast(`${id} er hentet`, { type: 'ok', text: 'Gnist kan nu bruge den store model.' });
+      use(id);
+    } catch (x) { toast('Kunne ikke hente modellen', { type: 'bad', text: x.message }); btn.disabled = false; btn.textContent = 'Prøv igen'; }
+  };
+  const urlIn = h('input', { class: 'input', value: extInfo.url || '', 'aria-label': 'Adresse til Ollama eller LM Studio', placeholder: 'http://127.0.0.1:11434' });
+  h(clear(box), null,
+    h('div', { class: 'ai-ext-h' }, h('b', null, 'Store modeller (4–32 GB)'),
+      h('span', { class: ['chip', extInfo.ok ? 'chip-ok' : ''] }, extInfo.ok ? `${extInfo.kind === 'ollama' ? 'Ollama' : 'Server'} fundet · ${extInfo.models.length} modeller` : 'Ikke fundet')),
+    h('p', { class: 'faint ai-note' }, extInfo.ok ? 'Store modeller kører i Ollama eller LM Studio på computeren med grafikkortet – meget klogere end modellerne i browseren. Samtalen følger med, når du skifter.'
+      : 'Store modeller kræver det gratis program Ollama (ollama.com) eller LM Studio på den computer, HUBTECH kører på. Installér det, start det, og åbn indstillingerne igen.'),
+    extInfo.ok ? h('ul', { class: 'ai-tiers' }, (extInfo.tiers || []).map(t => {
+      const btn = h('button', { type: 'button', class: ['btn', 'btn-sm', have.has(t.model) ? 'btn-primary' : ''] }, have.has(t.model) ? (cfg.model === 'ext:' + t.model ? 'I brug' : 'Brug') : `Hent (${String(t.size).replace('.', ',')} GB)`);
+      const bar = h('div', { class: 'ai-bar', hidden: true }, h('i'));
+      btn.onclick = () => (have.has(t.model) ? use(t.model) : pull(t.model, btn, bar));
+      if (!have.has(t.model) && !extInfo.canEdit) btn.disabled = true;
+      return h('li', { class: 'ai-tier' }, h('span', { class: 'ai-tier-ram' }, `${t.ram} GB`), h('span', { class: 'ai-tier-t' }, h('b', null, t.model), h('small', { class: 'faint' }, t.note)), btn, bar);
+    })) : null,
+    extInfo.canEdit ? h('div', { class: 'ai-ext-url' }, urlIn, h('button', { class: 'btn btn-sm', onclick: async () => {
+      try { await fetch('/api/ai/external', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'hubtech' }, body: JSON.stringify({ url: urlIn.value }) }); extInfo = null; drawExternal(box); } catch { /* */ }
+    } }, 'Gem adresse')) : null);
 }
 
 // ── running ──
@@ -321,6 +468,12 @@ async function start(force) {
   const opts = { ctx: r.ctx || 2048, gpu: cfg.gpu };
   if (cfg.model === 'file') { if (!localFile) { els.settingsBox.hidden = false; drawSettings(); toast('Vælg en .gguf-fil først', { type: 'warn' }); return false; } opts.file = localFile; }
   else if (cfg.model === 'url') { if (!/^https:\/\/.+\.gguf(\?.*)?$/i.test(cfg.url || '')) { els.settingsBox.hidden = false; drawSettings(); toast('Skriv en https-adresse til en .gguf-fil', { type: 'warn' }); return false; } opts.url = cfg.url; }
+  else if (r.external) {
+    if (force) await e.unload();
+    drawMsgs();
+    try { await e.loadExternal(r.external); els.settingsBox.hidden = true; drawMsgs(); return true; }
+    catch (x) { drawMsgs(); toast('Den store model er ikke klar', { type: 'bad', text: x.message }); return false; }
+  }
   else opts.model = r.model;
   if (force) await e.unload();
   const un = e.onEngine(() => { drawStatus(); if (e.state.status !== 'loading') un(); });
@@ -331,10 +484,20 @@ async function start(force) {
     els.settingsBox.hidden = true;
     drawMsgs();
     return true;
-  } catch (x) { drawMsgs(); toast('Assistenten kunne ikke starte', { type: 'bad', text: x.message }); return false; }
+  } catch (x) { drawMsgs(); toast('Gnist kunne ikke starte', { type: 'bad', text: x.message }); return false; }
 }
 
 function stop() { abort?.abort(); }
+
+/** Ask the last question again (a fresh answer). */
+function retry() {
+  if (busy) return;
+  const last = messages[messages.length - 1], q = messages[messages.length - 2];
+  if (last?.role !== 'assistant' || q?.role !== 'user') return;
+  messages.splice(-2, 2);
+  els.input.value = q.content;
+  ask();
+}
 
 async function ask() {
   const q = els.input.value.trim();
@@ -350,19 +513,22 @@ async function ask() {
   drawMsgs();
   const build = async (factor) => {
     const ctxTokens = e.state.ctx || 2048;
-    const maxTokens = isBuilder ? Math.min(2000, Math.floor(ctxTokens * 0.45)) : Math.min(700, Math.floor(ctxTokens * 0.3));
+    const big = !!engine?.state?.model?.external;
+    const maxTokens = isBuilder ? Math.min(big ? 4000 : 2000, Math.floor(ctxTokens * 0.45)) : Math.min(big ? 1400 : 700, Math.floor(ctxTokens * 0.3));
     const budgetChars = Math.floor((ctxTokens - maxTokens) * 2.4 * factor);
-    let sys;
+    let sys, lastUser = null;
     if (isBuilder) sys = systemPrompt({ mode: 'builder', context: getAiContext(), facts: [], userName: store.get('user')?.displayName }) + '\n\n' + studioFacts(getAiContext(), Math.floor(budgetChars * 0.6));
     else if (isTutor) sys = systemPrompt({ mode: 'tutor', context: getAiContext(), facts: [], userName: store.get('user')?.displayName }) + '\n\n' + exerciseFacts(getAiContext());
     else {
       const items = await collect(cfg.use);
-      const facts = retrieve(items, q + ' ' + messages.slice(-4, -2).map(m => m.content).join(' '), Math.floor(budgetChars * 0.4), { calendarish: isCalendarQuestion(q) });
-      sys = systemPrompt({ mode: 'normal', facts, userName: store.get('user')?.displayName });
+      const facts = retrieve(items, q + ' ' + messages.slice(-4, -2).map(m => m.content).join(' '), Math.floor(budgetChars * 0.45), { calendarish: isCalendarQuestion(q) });
+      bot.sources = (facts.sources || []).slice(0, 4);
+      sys = systemPrompt({ mode: 'normal', facts: null, userName: store.get('user')?.displayName, style: cfg.style });
+      lastUser = questionBlock(q, facts, { page: document.title.replace(/\s*·\s*HUBTECH$/, '') });
     }
     // history that fits next to the system prompt
     const hist = [];
-    let used = sys.length;
+    let used = sys.length + (lastUser ? lastUser.length : 0);
     for (let i = messages.length - 2; i >= 0 && hist.length < 12; i--) {
       const m = messages[i];
       if (m.error) continue;
@@ -370,6 +536,7 @@ async function ask() {
       if (used + c.length > budgetChars && hist.length) break;
       used += c.length; hist.unshift({ role: m.role, content: c });
     }
+    if (lastUser && hist.length && hist[hist.length - 1].role === 'user') hist[hist.length - 1] = { role: 'user', content: lastUser };
     return { msgs: [{ role: 'system', content: sys }, ...hist], maxTokens };
   };
   try {

@@ -174,7 +174,29 @@ function pump() {
   idle(step, { timeout: 300 });
 }
 
+// the desert design: every picture (app cards, heroes, learning tiles) shows the same desert – one look across the app.
+// Settings previews of the other landscapes pass keep: true.
+let cityMod = null;
+const desertLook = () => { const w = store.get('prefs')?.world; return w?.source === 'scene' && w?.scene === 'desert'; };
+function desertStill(canvas, opts) {
+  const run = () => {
+    cityMod.paintScene(canvas, 'desert-full', { time: opts.time, light: document.documentElement.dataset.theme === 'light' });
+    if (opts.tint) {   // a soft wash of the app's own colour keeps the cards apart
+      const c = canvas.getContext('2d'), g = c.createLinearGradient(0, 0, canvas.width, canvas.height);
+      g.addColorStop(0, opts.tint + '55'); g.addColorStop(0.6, opts.tint + '00');
+      c.globalCompositeOperation = 'soft-light'; c.fillStyle = g; c.fillRect(0, 0, canvas.width, canvas.height); c.globalCompositeOperation = 'source-over';
+    }
+  };
+  if (cityMod) return run();
+  import('./cityscape.js').then(m => { cityMod = m; if (canvas.isConnected) run(); });
+}
+
 export function paintStill(canvas, opts) {
+  if (desertLook() && !opts?.keep) {
+    const tint = /^#[0-9a-f]{6}$/i.test(opts?.tint || '') ? opts.tint : null;
+    const t = ['day', 'dusk', 'night', 'dawn'].includes(opts?.time) ? opts.time : 'dusk';
+    opts = { desert: true, time: t, tint };
+  }
   const w = canvas.clientWidth | 0, hgt = canvas.clientHeight | 0;
   if (!w || !hgt) { requestAnimationFrame(() => { if (canvas.isConnected && canvas.clientWidth) paintStill(canvas, opts); }); return; }
   const key = JSON.stringify(opts) + `@${w}x${hgt}`;
@@ -193,7 +215,10 @@ export function paintStill(canvas, opts) {
     run: () => {
       const done = memCache.get(key);
       if (done) { drawImageTo(canvas, done); return; }
-      World.renderStill(canvas, opts);
+      if (opts.desert) {
+        if (!cityMod) { import('./cityscape.js').then(m => { cityMod = m; queue.push({ canvas, run: () => paintStill(canvas, opts) }); pump(); }); return; }
+        desertStill(canvas, opts);
+      } else World.renderStill(canvas, opts);
       const copy = document.createElement('canvas');
       copy.width = canvas.width; copy.height = canvas.height;
       copy.getContext('2d').drawImage(canvas, 0, 0);

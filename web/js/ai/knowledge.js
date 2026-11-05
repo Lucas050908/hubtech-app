@@ -15,21 +15,42 @@ const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const STOP = new Set('og i jeg det at en den til er som på de med han af for ikke der var mig sig men et har om vi min havde ham hun nu over da fra du ud sin dem os op man hans hvor eller hvad skal selv her alle vil blev kunne ind når være dog noget ville jo deres efter ned skulle denne end dette mit også under have dig anden hende mine alt meget sit sine vor mod disse hvis din nogle hos blive mange ad bliver hendes været thi jer sådan kan hvordan hvornår hvem hjælp hjælpe lav lave mine min mit gerne lidt please'.split(' '));
 
-export const SOURCES = { notes: 'Noter', tasks: 'Opgaver', calendar: 'Kalender', snippets: 'Kodestumper', customers: 'Kunder' };
+export const SOURCES = { chats: 'Tidligere samtaler med Gnist', guides: 'HUBTECHs guides og kurser', notes: 'Noter', tasks: 'Opgaver', calendar: 'Kalender', snippets: 'Kodestumper', customers: 'Kunder' };
+const KIND = { chat: 'Tidligere samtale', note: 'Note', task: 'Opgave', event: 'Aftale', snippet: 'Kodestump', customer: 'Kunde', guide: 'Guide', lesson: 'Lektion' };
+const HREF = { chat: '#/apps/gnist', note: '#/apps/notes', task: '#/apps/tasks', event: '#/apps/calendar', snippet: '#/apps/snippets', customer: '#/apps/customers' };
+
+/** HUBTECH's own material – every guide and every course lesson – as small text items (built once). */
+let library = null;
+export function libraryItems() {
+  library ||= (async () => {
+    const [{ GUIDES }, C] = await Promise.all([import('../data/guides.js'), import('../data/courses.js')]);
+    const { courses } = await C.loadAllCourses();
+    const items = [];
+    for (const g of GUIDES) items.push({ kind: 'guide', title: g.title, text: strip([g.summary, ...(g.sections || []).map(s => [s.h, s.p, ...(s.list || s.ul || [])].filter(Boolean).join(': '))].join(' ')).slice(0, 3000), href: `#/learn/guide/${g.id}` });
+    for (const c of [C.START_COURSE, ...courses]) {
+      (c.days || []).forEach((d, i) => items.push({ kind: 'lesson', title: `${c.short || c.title}: ${d.t}`, text: strip([d.g, C.pointsText(d.l), (d.q || []).map(q => q.join(' ')).join(' ')].join(' ')).slice(0, 2500), href: `#/learn/course/${c.id}/day/${i + 1}` }));
+    }
+    return items;
+  })().catch(() => []);
+  return library;
+}
 const strip = (s) => String(s || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
 /** Everything the assistant may read, as small text items. */
 export async function collect(use) {
   const want = (k) => use?.[k] !== false;
-  const [notes, tasks, cal, snips, cust, shared] = await Promise.all([
+  const [notes, tasks, cal, snips, cust, shared, gn] = await Promise.all([
     want('notes') ? getState('notes', { force: true }).catch(() => null) : null,
     want('tasks') ? getState('tasks', { force: true }).catch(() => null) : null,
     want('calendar') ? getState('calendar', { force: true }).catch(() => null) : null,
     want('snippets') ? getState('snippets', { force: true }).catch(() => null) : null,
     want('customers') ? getState('customers', { force: true }).catch(() => null) : null,
     want('calendar') ? api.get('/api/calendars/events').catch(() => null) : null,
+    want('chats') ? getState('gnist', { force: true }).catch(() => null) : null,
   ]);
-  const items = [];
+  const items = want('guides') ? [...await libraryItems()] : [];
+  // earlier conversations – with any model, small or big – so Gnist remembers what you talked about
+  for (const c of gn?.chats || []) items.push({ kind: 'chat', title: c.title, at: c.at, text: c.messages.map(m => `${m.role === 'user' ? 'Brugeren' : 'Gnist'}: ${strip(m.content).slice(0, 600)}`).join(' | ').slice(0, 3000) });
   for (const n of notes?.notes || []) items.push({ kind: 'note', title: n.title || 'Note uden titel', text: strip(n.body).slice(0, 4000), pinned: !!n.pinned, at: n.updated || 0 });
   for (const t of tasks?.tasks || []) items.push({ kind: 'task', title: t.title, text: `${t.status === 'done' ? 'færdig' : t.status === 'doing' ? 'i gang' : 'ikke startet'}${t.due ? `, frist ${t.due}` : ''}${t.prio ? `, prioritet ${t.prio}` : ''}${t.notes ? '. ' + strip(t.notes) : ''}`, due: t.due, done: t.status === 'done', at: t.updated || 0 });
   const ev = (e, cal) => ({ kind: 'event', title: e.title, date: e.date, text: `${e.repeat?.freq ? `gentages (${{ day: 'hver dag', weekday: 'hverdage', week: 'hver uge', '2week': 'hver anden uge', month: 'hver måned', year: 'hvert år' }[e.repeat.freq]}${e.repeat.until ? ' til ' + e.repeat.until : ''}) fra ` : ''}${e.date}${e.endDate ? ' til ' + e.endDate : ''}${e.allDay ? ' hele dagen' : e.start ? ` kl. ${e.start}${e.end ? '-' + e.end : ''}` : ''}${e.location ? `, sted: ${e.location}` : ''}${cal ? `, delt kalender` : ''}${e.notes ? '. ' + strip(e.notes) : ''}` });
@@ -58,17 +79,22 @@ export function retrieve(items, question, budget, { calendarish = false } = {}) 
     if (calendarish && it.kind === 'task' && !it.done && it.due && it.due <= soon) s += 2;
     if (/prompt/i.test(it.title) && q.some(w => w.startsWith('prompt'))) s += 6;
     if (it.pinned) s += 0.5;
+    // HUBTECH's own guides need a clear match (two words), so they don't crowd out the user's own data
+    if ((it.kind === 'guide' || it.kind === 'lesson') && s < 6) s = 0;
     return { it, s };
   }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   const out = []; let used = 0;
+  out.sources = [];
   for (const { it } of scored) {
-    const line = `- [${{ note: 'Note', task: 'Opgave', event: 'Aftale', snippet: 'Kodestump', customer: 'Kunde' }[it.kind]}] ${it.title}: ${it.text}`;
+    const line = `- [${KIND[it.kind]}] ${it.title}: ${it.text}`;
     const cut = line.length > 1200 ? line.slice(0, 1200) + ' …' : line;
-    if (used + cut.length > budget) { if (out.length) break; else { out.push(cut.slice(0, budget)); break; } }
-    out.push(cut); used += cut.length;
+    if (used + cut.length > budget) { if (out.length) break; else { out.push(cut.slice(0, budget)); out.sources.push(source(it)); break; } }
+    out.push(cut); used += cut.length; out.sources.push(source(it));
   }
   return out;
 }
+
+const source = (it) => ({ kind: it.kind, label: KIND[it.kind], title: it.title, href: it.href || HREF[it.kind] || '' });
 
 export function isCalendarQuestion(q) { return /kalender|aftale|møde|i morgen|i dag|uge|weekend|planl|tid |tidspunkt|hvornår|mandag|tirsdag|onsdag|torsdag|fredag|lørdag|søndag|dato|deadline|frist|opgave/i.test(q); }
 
@@ -82,10 +108,14 @@ function dateHelp() {
 }
 
 /** System prompt for normal use or for teacher mode (Kodeskolen). */
-export function systemPrompt({ mode, context, facts, userName }) {
+export function systemPrompt({ mode, context, facts, userName, style = 'points' }) {
   const now = new Date();
-  const base = `Du er HUBTECH-assistenten. Du kører lokalt på ${userName ? userName + 's' : 'brugerens'} egen enhed, så ingen data forlader enheden. Svar altid på dansk, venligt, kort og konkret. Opfind aldrig fakta om brugerens data – hvis du ikke kan se det i uddragene, så sig det.
-I dag er ${DAYS[now.getDay()]} ${iso(now)}, klokken er ${pad(now.getHours())}:${pad(now.getMinutes())}. Datoer: ${dateHelp()}.`;
+  // facts === null: the date, time and excerpts come with the question instead (questionBlock), so this prompt stays the
+  // same between questions and the engine can reuse what it has already read – the answer starts much sooner
+  const stable = facts === null;
+  const base = `Du hedder Gnist og er HUBTECHs egen AI-assistent – "en lille gnist fra værkstedet". Du kører lokalt på ${userName ? userName + 's' : 'brugerens'} egen enhed, så ingen data forlader enheden.
+Din personlighed: varm, nysgerrig og ligefrem – som en hjælpsom makker på værkstedet. Du er positiv uden at overdrive, siger tingene, som de er, og har en tør, venlig humor (højst én lille bemærkning, og aldrig når noget er alvorligt eller farligt). Du roser, når brugeren gør noget godt, og du siger "vi", når I løser noget sammen. Du bruger sjældent emojis (højst én ⚡ en gang imellem). ${userName ? `Brugeren hedder ${userName.split(' ')[0]} – brug navnet en gang imellem, ikke i hvert svar.` : ''}
+Svar altid på dansk, kort og konkret. Opfind aldrig fakta om brugerens data – hvis du ikke kan se det i uddragene, så sig det. Spørger nogen, hvem du er, så fortæl, at du hedder Gnist, er HUBTECHs AI og kører på deres egen enhed.${stable ? '\nDato, klokkeslæt, den side brugeren er på og uddrag af brugerens data står sammen med hvert spørgsmål.' : `\nI dag er ${DAYS[now.getDay()]} ${iso(now)}, klokken er ${pad(now.getHours())}:${pad(now.getMinutes())}. Datoer: ${dateHelp()}.`}`;
   if (mode === 'builder') {
     const c = context || {};
     return `${base}
@@ -113,13 +143,27 @@ VIGTIGE REGLER:
 4. Ros det, eleven gør rigtigt.`;
   }
   return `${base}
-Du kan hjælpe med at planlægge kalenderen, skrive tekster, forklare teknik og bruge brugerens egne noter, opgaver, aftaler, kodestumper og kunder (uddrag herunder). Hvis brugeren henviser til en "prompt" i sine noter, så følg den.
+Du kan hjælpe med at planlægge kalenderen, skrive tekster, forklare teknik (IT, netværk, printere, lasere, 3D-print, elektronik, kode) og bruge brugerens egne noter, opgaver, aftaler, kodestumper og kunder samt HUBTECHs egne guides og kurser (uddrag herunder). Hvis brugeren henviser til en "prompt" i sine noter, så følg den.
+Sådan svarer du godt:
+${style === 'text' ? '- Svar i korte, klare afsnit.' : `- Start med selve svaret i én kort sætning. Skriv resten som korte punkter, der starter med "- ", og fremhæv nøgleord med **fed**. Er det en fremgangsmåde, så brug nummererede trin (1. 2. 3.). Del længere svar op med en kort overskrift ("## ..."). Hold hvert punkt på én linje.`}
+- Bygger dit svar på en guide eller lektion, så nævn dens titel, så brugeren kan læse videre.
+- Er spørgsmålet uklart, så stil ét kort opklarende spørgsmål i stedet for at gætte.
+- Ved du det ikke, så sig det ærligt – gæt aldrig på tal, priser, datoer eller indstillinger.
 Når brugeren beder dig OPRETTE eller FLYTTE noget, så skriv kort hvad du foreslår, og afslut med én eller flere handlinger i præcis dette format (én pr. linje):
 <handling>{"type":"aftale","titel":"...","dato":"ÅÅÅÅ-MM-DD","start":"TT:MM","slut":"TT:MM","sted":"","noter":""}</handling>
 <handling>{"type":"opgave","titel":"...","frist":"ÅÅÅÅ-MM-DD","noter":""}</handling>
 <handling>{"type":"note","titel":"...","tekst":"..."}</handling>
 <handling>{"type":"åbn","side":"kalender|noter|opgaver|kodestumper|kunder|fællesskab|kodeskolen|indstillinger"}</handling>
-Brugeren skal selv godkende handlingerne. Brug kun handlinger, når brugeren beder om det.${facts.length ? `\n\nUddrag af brugerens data:\n${facts.join('\n')}` : '\n\n(Ingen af brugerens data passede til spørgsmålet.)'}`;
+Brugeren skal selv godkende handlingerne. Brug kun handlinger, når brugeren beder om det.${stable ? '' : facts.length ? `\n\nUddrag af brugerens data:\n${facts.join('\n')}` : '\n\n(Ingen af brugerens data passede til spørgsmålet.)'}`;
+}
+
+/** What goes with each question when the system prompt is stable: date and time, the page, the excerpts – and the question. */
+export function questionBlock(question, facts, { page = '' } = {}) {
+  const now = new Date();
+  return `[I dag er ${DAYS[now.getDay()]} ${iso(now)} kl. ${pad(now.getHours())}:${pad(now.getMinutes())}. Datoer: ${dateHelp()}.${page ? ` Brugeren er på siden: ${page}.` : ''}]
+${facts.length ? `[Uddrag af brugerens data og HUBTECHs guides:\n${facts.join('\n')}]` : '[Ingen af brugerens data eller guides passede til spørgsmålet.]'}
+
+${question}`;
 }
 
 /** The app being built in App-værkstedet: the open file in full, the others shortened to fit the budget. */

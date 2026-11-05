@@ -1373,3 +1373,65 @@ console.log('apps ok');
   assert.equal(W.LOOK_VERSION, 2);
   console.log('widgets ok');
 }
+
+// AI-assistenten: Qwen 3 uden "tænkning" i svaret, og viden fra HUBTECHs guides og kurser
+{
+  const M = await import('../web/js/ai/models.js');
+  assert.equal(M.stripThink('<think>\n\n</think>\n\nHej Lucas'), 'Hej Lucas');
+  assert.equal(M.stripThink('<think>regner lidt'), '', 'tænkning, der stadig skrives, vises ikke');
+  assert.equal(M.pickFor(2 * 1073741824).model.id, 'qwen3_17', '2 GB: Qwen 3 1,7B');
+  assert.equal(M.pickFor(4 * 1073741824).model.id, 'qwen3_4', '4 GB: Qwen 3 4B');
+  assert.ok(M.MODELS.filter(m => m.think).every(m => /\.gguf$/.test(m.file) && m.repo.includes('/')));
+  Object.assign(globalThis, { addEventListener: globalThis.addEventListener || (() => {}), localStorage: globalThis.localStorage || { getItem: () => null, setItem() {}, removeItem() {} } });
+  globalThis.document ||= { documentElement: { dataset: {} }, addEventListener() {}, visibilityState: 'visible' };
+  globalThis.location ||= { hash: '', origin: 'http://localhost' };
+  globalThis.matchMedia ||= () => ({ matches: false, addEventListener() {} });
+  const K = await import('../web/js/ai/knowledge.js');
+  const lib = await K.libraryItems();
+  assert.ok(lib.length > 150 && lib.every(x => x.href.startsWith('#/learn/')), 'alle guides og lektioner, med link');
+  const r = K.retrieve(lib, 'hvordan finder jeg fokus på en CO2 laser', 4000);
+  assert.ok(r.sources.length && r.sources.some(s => /laser/i.test(s.title)), r.sources.map(s => s.title));
+  assert.ok(K.retrieve(lib, 'printeren er offline', 4000).sources.some(s => /printer/i.test(s.title)));
+  assert.equal(K.retrieve(lib, 'hvad skal jeg nå i dag', 4000).sources.length, 0, 'guides fylder ikke, når de ikke passer');
+  assert.ok(K.systemPrompt({ mode: 'normal', facts: [] }).includes('guides og kurser'));
+  console.log('ai ok');
+}
+
+// AI: svar i punkter og Linux-terminalens taster
+{
+  const A = await import('../web/js/ai/actions.js');
+  const b = A.answerBlocks('Kort svar.\n\n## Trin\n1. Tænd\n2. Sluk\n   og vent\n- **Vigtigt** ok\n- b');
+  assert.deepEqual(b.map(x => x.type), ['p', 'h', 'ol', 'ul']);
+  assert.deepEqual(b[2].items, ['Tænd', 'Sluk og vent']);
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.ok(K.systemPrompt({ mode: 'normal', facts: [] }).includes('korte punkter'), 'punkter er standard');
+  assert.ok(!K.systemPrompt({ mode: 'normal', facts: [], style: 'text' }).includes('korte punkter'));
+  const T = await import('../web/js/features/termkeys.js');
+  assert.equal(T.ctrl('c'), '\x03'); assert.equal(T.ctrl('D'), '\x04'); assert.equal(T.ctrl('['), '\x1b');
+  assert.equal(T.keySeq('up'), '\x1b[A'); assert.equal(T.keySeq('c', { ctrl: true }), '\x03'); assert.equal(T.keySeq('x', { alt: true }), '\x1bx');
+  assert.ok(T.EXTRA_KEYS.length === 14 && T.TRY.every(([c, d]) => c && d));
+  console.log('ai-punkter og terminal ok');
+}
+
+// AI: systemprompten er den samme fra spørgsmål til spørgsmål (motoren genbruger den), dato og uddrag følger spørgsmålet
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  const a = K.systemPrompt({ mode: 'normal', facts: null, userName: 'Lucas' }), b = K.systemPrompt({ mode: 'normal', facts: null, userName: 'Lucas' });
+  assert.equal(a, b); assert.ok(!/klokken er \d/.test(a), 'intet klokkeslæt i den faste prompt');
+  const q = K.questionBlock('Hvad nu?', ['- [Note] Indkøb: mælk'], { page: 'Noter' });
+  assert.ok(q.endsWith('Hvad nu?') && q.includes('Indkøb: mælk') && q.includes('siden: Noter') && /kl\. \d\d:\d\d/.test(q));
+  assert.ok(K.questionBlock('x', []).includes('Ingen af brugerens data'));
+  console.log('ai-cache ok');
+}
+
+// Dock og Gnist-tip
+{
+  const W = await import('../web/js/features/widgetlogic.js');
+  assert.deepEqual(W.dockIds({}), W.DOCK_DEFAULT, 'standard-dock');
+  assert.ok(W.DOCK_DEFAULT.includes('gnist') && W.DOCK_DEFAULT.at(-1) === 'apps');
+  assert.deepEqual(W.dockIds({ dock: ['home', 'tasks', 'tasks', 'linux', 'apps'], dockCount: 3 }), ['home', 'tasks', 'linux'], 'antal og ingen dubletter');
+  assert.equal(W.dockIds({ dockCount: 1 }).length, W.DOCK_MIN); assert.equal(W.dockIds({ dock: Array.from({ length: 20 }, (_, i) => 'a' + i), dockCount: 99 }).length, W.DOCK_MAX);
+  assert.equal(W.gnistTip(new Date(2026, 10, 5, 8)), W.gnistTip(new Date(2026, 10, 5, 22)), 'samme tip hele dagen');
+  assert.notEqual(W.gnistTip(new Date(2026, 10, 5)), W.gnistTip(new Date(2026, 10, 6)));
+  console.log('dock og tip ok');
+}

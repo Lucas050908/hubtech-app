@@ -1,12 +1,13 @@
 /** Hjem — the personal start screen (logged in). */
 import { h, clear } from '../core/dom.js';
 import { api } from '../core/api.js';
-import { icon } from '../core/icons.js';
+import { icon, tileIcon } from '../core/icons.js';
 import { store, refreshSummary } from '../core/store.js';
 import { appById, isLearnApp, entryApps, access, visible } from '../core/registry.js';
 import { todayPanel, buildToday } from '../features/today.js';
 import { getState } from '../core/services.js';
-import { buildStats, greeting } from '../features/widgetlogic.js';
+import { buildStats, greeting, gnistTip } from '../features/widgetlogic.js';
+import { gnist } from '../core/icons.js';
 import { widgetPrefs, openCustomize, onWeather } from '../features/topwidgets.js';
 import { appCard, profileCard, activityPanel, shortcutsPanel, worldQuickPanel, seasonStrip, projectsPreview, learningPreview, panel } from '../features/widgets.js';
 
@@ -39,7 +40,9 @@ export default {
       wx.title = x.city; wx.setAttribute('aria-label', `Vejret i ${x.city}: ${x.temp} grader, ${x.text.toLowerCase()}`);
     }));
     const greet = h('h1', { id: 'hero-title', class: 'home-title home-greet' }, greeting(first, []));
-    const hero = h('section', { class: 'home-hero home-clockrow', 'aria-labelledby': 'hero-title' }, h('div', { class: 'home-clockline' }, clock, wx), greet);
+    const tip = h('button', { type: 'button', class: 'home-tip', title: 'Spørg Gnist', onclick: () => import('../ai/panel.js').then(m => m.toggleAssistant(true)) },
+      h('span', { class: 'home-tip-mark' }, gnist(30)), h('span', null, h('b', null, 'Tip fra Gnist: '), gnistTip()));
+    const hero = h('section', { class: 'home-hero home-clockrow', 'aria-labelledby': 'hero-title', dataset: { tour: 'clock' } }, h('div', { class: 'home-clockline' }, clock, wx), greet, tip);
 
     const stat = (cls) => h('a', { class: ['glass', 'home-stat', cls] }, h('span', { class: 'home-stat-label' }), h('b', { class: 'home-stat-value' }, '–'), h('span', { class: 'home-stat-sub' }));
     const st = { cases: stat('is-cases'), appt: stat('is-appt'), hours: stat('is-hours'), level: stat('is-level') };
@@ -56,7 +59,7 @@ export default {
         el.classList.toggle('is-warn', !!v.warn); el.classList.toggle('is-hot', !!v.hot);
       }
     };
-    const stats = h('section', { class: 'home-stats', 'aria-label': 'Nøgletal' }, st.cases, st.appt, st.hours, st.level);
+    const stats = h('section', { class: 'home-stats', 'aria-label': 'Nøgletal', dataset: { tour: 'stats' } }, st.cases, st.appt, st.hours, st.level);
     let states = {};
     const refreshStats = () => drawStats(buildStats({ ...states, summary: store.get('summary') }));
     Promise.all(['calendar', 'tasks', 'timesheet', 'flashcards'].map(k => getState(k).catch(() => null))).then(([calendar, tasks, timesheet, flashcards]) => {
@@ -74,7 +77,7 @@ export default {
     const resumeList = recentApps.length ? recentApps : starters;
     const resume = panel('Fortsæt hvor du slap', { icon: 'clock' },
       h('div', { class: 'home-resume' }, resumeList.map(a => h('a', { class: 'home-resume-item', href: a.route, style: { '--app': a.hue } },
-        h('span', { class: 'lx-ico' }, icon(a.icon)), h('span', null, h('b', null, a.name), h('small', null, recentApps.length ? 'Senest brugt' : a.tagline))))));
+        h('span', { class: 'lx-ico' }, tileIcon(a.icon)), h('span', null, h('b', null, a.name), h('small', null, recentApps.length ? 'Senest brugt' : a.tagline))))));
 
     const welcome = h('section', { class: 'home-welcome' },
       h('p', { class: 'home-lead' }, 'Dit digitale univers – samlet ét sted.'),
@@ -90,7 +93,7 @@ export default {
     let recent = [];
     try { recent = JSON.parse(localStorage.getItem('hubtech.recentApps') || '[]').map(appById).filter(a => a && a.page && visible(a, u) && access(a, u).ok).slice(0, 6); } catch { /* */ }
     const recentRow = recent.length ? h('div', { class: 'home-recent' }, h('span', { class: 'faint' }, icon('clock'), ' Senest brugt'),
-      h('div', { class: 'home-recent-row' }, recent.map(a => h('a', { class: 'home-recent-app', href: a.route, style: { '--app': a.hue } }, h('span', { class: 'lx-ico' }, icon(a.icon)), h('span', null, a.name))))) : null;
+      h('div', { class: 'home-recent-row' }, recent.map(a => h('a', { class: 'home-recent-app', href: a.route, style: { '--app': a.hue } }, h('span', { class: 'lx-ico' }, tileIcon(a.icon)), h('span', null, a.name))))) : null;
     if (recentRow) apps.append(recentRow);
 
     // together with others: visit connected HUBTECHs, invite friends

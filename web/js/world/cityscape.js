@@ -133,10 +133,11 @@ function pyramid(b, cx, base, w, h, lit, shade, edge) {
   for (let i = 1; i < 9; i++) { const yy = base - h * i / 9, half = (w / 2) * (1 - i / 9); b.beginPath(); b.moveTo(cx - half, yy); b.lineTo(cx + half * 0.24 + w * 0.12 * (1 - i / 9) * 0, yy); b.stroke(); }
   b.globalAlpha = 1;
 }
-function desert(S, b, r, s, W, Hfull, time, light) {
+function desert(S, b, r, s, W, Hfull, time, light, full = false) {
   const P = DESERT[light && time === 'night' ? 'dusk' : time] || DESERT.night;
-  // the desert is a band at the top (like the design), the rest is warm dark stone with the circuit at the bottom
-  const H = Math.max(Hfull * 0.42, Math.min(Hfull, 300 * s));
+  // the desert is a band at the top (like the design), the rest is warm dark stone with the circuit at the bottom;
+  // full: the whole picture is desert (cards and heroes)
+  const H = full ? Hfull * 1.02 : Math.max(Hfull * 0.42, Math.min(Hfull, 300 * s));
   b.fillStyle = '#141210'; b.fillRect(0, 0, W, Hfull);
   b.fillStyle = vgrad(b, 0, H, P.sky); b.fillRect(0, 0, W, H);
   for (let i = 0; i < 160 * P.stars; i++) { b.fillStyle = `rgba(255,240,220,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.55, z * s, z * s); }
@@ -150,6 +151,7 @@ function desert(S, b, r, s, W, Hfull, time, light) {
   dune(b, W, hz + H * 0.07, H * 0.03, 2.2, 2.1, P.mid);
   S.anim.push({ type: 'camel', y: hz + H * 0.085, s: 0.9 * s, sp: 0.012, color: light && time === 'day' ? '#4a2e1a' : '#140c08' });
   dune(b, W, hz + H * 0.16, H * 0.035, 1.6, 4.2, P.near);
+  if (full) { S.anim.push({ type: 'dust', n: Math.round(20 * s), light }); return; }
   // the band fades into the stone below
   const f0 = H * 0.84, f1 = H * 1.02;
   b.fillStyle = vgrad(b, f0, f1, [[0, 'rgba(20,18,16,0)'], [1, '#141210']]); b.fillRect(0, f0, W, f1 - f0);
@@ -187,7 +189,7 @@ function drawCamel(ctx, x, y, s, t, color) {
 
 // ── scenes ──
 function buildScene(name, W, H, time, light) {
-  const r = mulberry({ desert: 97, tokyo: 11, neon: 23, shanghai: 37, future: 41, kyoto: 53, harbor: 67, minimal: 71, silk: 83 }[name] || 1);
+  const r = mulberry({ desert: 97, 'desert-full': 97, tokyo: 11, neon: 23, shanghai: 37, future: 41, kyoto: 53, harbor: 67, minimal: 71, silk: 83 }[name] || 1);
   const P = palette(name, time);
   const bg = layer(W, H), b = bg.getContext('2d');
   const S = { name, W, H, bg, time, anim: [], P, horizon: H * 0.68 };
@@ -196,7 +198,7 @@ function buildScene(name, W, H, time, light) {
   const stars = () => { for (let i = 0; i < 260 * P.stars; i++) { b.fillStyle = `rgba(255,255,255,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.55, z * s, z * s); } };
   const glowBand = (y, color, h, a) => { const g = b.createLinearGradient(0, y - h, 0, y + h); g.addColorStop(0, hexA(color, 0)); g.addColorStop(0.5, hexA(color, a)); g.addColorStop(1, hexA(color, 0)); b.fillStyle = g; b.fillRect(0, y - h, W, h * 2); };
 
-  if (name === 'desert') { desert(S, b, r, s, W, H, time, light); }
+  if (name === 'desert' || name === 'desert-full') { desert(S, b, r, s, W, H, time, light, name === 'desert-full'); }
 
   if (name === 'tokyo') {
     stars();
