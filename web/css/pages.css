@@ -266,6 +266,8 @@ a.project-card:hover { transform: translateY(-2px); border-color: var(--line-2);
 .guide-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 36px 0 12px; flex-wrap: wrap; }
 .guide-head h2 { font-size: var(--fs-2xl); }
 .guide-head .pt-search { max-width: 380px; }
+.guide-head h2 svg { width: 24px; height: 24px; color: var(--accent); vertical-align: -3px; margin-right: 8px; }
+.maker-courses .guide-cat { margin-top: 18px; }
 .guide-sections { display: grid; gap: 26px; margin-top: 18px; }
 .guide-cat { display: flex; align-items: center; gap: 10px; font-size: var(--fs-lg); margin-bottom: 12px; }
 .guide-cat svg { width: 18px; height: 18px; color: var(--accent); }

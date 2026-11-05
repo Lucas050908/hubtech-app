@@ -129,6 +129,7 @@ export function hostedGame(opts) {
   // ── online ──
   function openRoom(r) {
     if (dead) return;   // an answer that arrives after the page was left must not touch the address or listen again
+    if (!location.hash.startsWith(`#/apps/${page}`)) return;   // the user has already gone to another page (its render may not have begun yet)
     offs.forEach(f => f()); offs = [];
     room = r; ctl = null;
     if (!r) { history.replaceState(null, '', `#/apps/${page}/online`); return drawOnline(); }
