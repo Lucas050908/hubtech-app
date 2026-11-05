@@ -10,7 +10,10 @@
 }
 :root[data-theme="light"] .sidebar { background: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .66)); }
 .brand { display: flex; align-items: center; gap: 12px; padding: 4px 8px 16px; border-radius: var(--r-md); }
-.brand-mark { width: 36px; height: 36px; flex: none; filter: drop-shadow(0 0 12px rgba(76, 194, 255, .45)); }
+.brand-mark { width: 36px; height: 36px; flex: none; border-radius: 9px; filter: drop-shadow(0 0 12px rgba(249, 115, 22, .35)); }
+.brand-mark .brand-cursor { animation: brandBlink 1.2s steps(1) infinite; }
+.brand:hover .brand-mark .brand-cursor, .brand:focus-visible .brand-mark .brand-cursor { animation-duration: .5s; }
+@keyframes brandBlink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: .15; } }
 .brand-name { font: 600 1.3rem/1 var(--font-display); letter-spacing: .06em; }
 .brand-name b { font-weight: 600; }
 

@@ -210,8 +210,12 @@ function bootDone() {
   if (booted) return;
   booted = true;
   const b = document.getElementById('boot');
-  b?.classList.add('gone');
-  setTimeout(() => b?.remove(), 700);
+  // the first start in a session shows the logo animation to the end (≈1.6 s); reloads and reduced motion go straight in
+  let seen = true;
+  try { seen = sessionStorage.getItem('hubtech.booted') === '1'; sessionStorage.setItem('hubtech.booted', '1'); } catch { seen = true; }
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wait = seen || reduced ? 0 : Math.max(0, 1650 - performance.now());
+  setTimeout(() => { b?.classList.add('gone'); setTimeout(() => b?.remove(), 700); }, wait);
 }
 
 // ── session expiry ─────────────────────────────────────────────────────

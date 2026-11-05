@@ -117,7 +117,7 @@ const P = {
   circuit: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M6 8v3l6 5M18 8v3l-6 5"/>',
   anvil: '<path d="M4 7.5h13.5c0 2.4 1.6 3.5 3 3.5v1.5H15a3 3 0 0 0-2 2.5V17h2.5v3h-9v-3H9v-2c0-1.4-1.2-2.5-3-2.5-1.6 0-2-1.6-2-3z"/><path d="M8 4.5 6.5 3M12 4.5V2.5M16 4.5 17.5 3"/>',
   cube: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>',
-  hubtech: '<path d="M3 19 9 9l3 5 3-5 6 10"/><circle cx="9" cy="9" r="1.6"/><circle cx="15" cy="9" r="1.6"/><path d="M12 14V4.5"/><circle cx="12" cy="3.6" r="1.4"/>',
+  hubtech: '<rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M6 9.5l2.5 2.5L6 14.5"/><path d="M12 9v6M17 9v6M12 12h5"/>',
   play: '<path d="M7 4.5v15l12.5-7.5z"/>',
   pause: '<rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/>',
   sparkles: '<path d="M12 3.5 13.6 8.4 18.5 10l-4.9 1.6L12 16.5l-1.6-4.9L5.5 10l4.9-1.6z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
@@ -179,16 +179,14 @@ export function svg(name, cls = '') {
 export function icon(name, cls) { return raw(svg(name, cls)); }
 
 /** The HUBTECH mark: three peaks drawn as a circuit — landscape meets technology. */
+/** The HUBTECH logo: a terminal with a prompt, an H and a blinking cursor (logo 5). */
 export function logoSvg(size = 36) {
-  return `<svg class="brand-mark" width="${size}" height="${size}" viewBox="0 0 48 48" aria-hidden="true">
-    <defs>
-      <linearGradient id="lg-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fe0ff"/><stop offset=".55" stop-color="#3a9bff"/><stop offset="1" stop-color="#7d6bff"/></linearGradient>
-    </defs>
-    <path d="M6 38 17 18l7 11 7-11 11 20" fill="none" stroke="url(#lg-a)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M24 29V9" stroke="url(#lg-a)" stroke-width="3.6" stroke-linecap="round"/>
-    <circle cx="24" cy="7.5" r="3.6" fill="#bff0ff"/>
-    <circle cx="17" cy="18" r="2.6" fill="#0a1422" stroke="#7fe0ff" stroke-width="2"/>
-    <circle cx="31" cy="18" r="2.6" fill="#0a1422" stroke="#9a8bff" stroke-width="2"/>
+  return `<svg class="brand-mark" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
+    <rect width="64" height="64" rx="15" fill="#1f130a"/>
+    <rect x="8" y="12" width="48" height="40" rx="6" fill="none" stroke="#57534e" stroke-width="2.5"/>
+    <path d="M15 24 L22 31 L15 38" fill="none" stroke="#f97316" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <g stroke="#f5f5f4" stroke-width="3.5" stroke-linecap="round"><path d="M30 22 V40"/><path d="M44 22 V40"/><path d="M30 31 H44"/></g>
+    <rect class="brand-cursor" x="30" y="44" width="14" height="3" rx="1.5" fill="#f97316"/>
   </svg>`;
 }
 export const logo = (s) => raw(logoSvg(s));

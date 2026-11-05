@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>HUBTECH — dit digitale univers</title>
   <meta name="description" content="HUBTECH samler dine apps, Cursor-projekter, læringsforløb og læringsapps i ét levende, personligt arbejdsrum.">
-  <meta name="theme-color" content="#0a1422">
+  <meta name="theme-color" content="#141210">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icons/app-32.png" sizes="32x32" type="image/png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -29,10 +29,20 @@
   <canvas id="world" aria-hidden="true"></canvas>
   <div id="world-scrim" aria-hidden="true"></div>
   <div id="root"></div>
-  <div class="boot" id="boot" role="status" aria-live="polite">
-    <div>
-      <svg class="boot-mark" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="bg-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fe0ff"/><stop offset=".55" stop-color="#3a9bff"/><stop offset="1" stop-color="#7d6bff"/></linearGradient></defs><path d="M6 38 17 18l7 11 7-11 11 20" fill="none" stroke="url(#bg-a)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 29V9" stroke="url(#bg-a)" stroke-width="3.6" stroke-linecap="round"/><circle cx="24" cy="7.5" r="3.6" fill="#bff0ff"/></svg>
-      <div class="boot-label">HUBTECH</div>
+  <div class="boot" id="boot" role="status" aria-live="polite" aria-label="HUBTECH starter">
+    <div class="boot-inner">
+      <svg class="boot-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <rect class="bm-tile" width="64" height="64" rx="15"/>
+        <rect class="bm-frame" x="8" y="12" width="48" height="40" rx="6" pathLength="100"/>
+        <path class="bm-prompt" d="M15 24 L22 31 L15 38" pathLength="100"/>
+        <path class="bm-h bm-h1" d="M30 22 V40" pathLength="100"/>
+        <path class="bm-h bm-h2" d="M44 22 V40" pathLength="100"/>
+        <path class="bm-h bm-h3" d="M30 31 H44" pathLength="100"/>
+        <rect class="bm-cursor" x="30" y="44" width="14" height="3" rx="1.5"/>
+      </svg>
+      <div class="boot-word" aria-hidden="true"><span>HUBTECH</span></div>
+      <div class="boot-bar" aria-hidden="true"><i></i></div>
+      <div class="boot-label">Starter dit værksted</div>
     </div>
   </div>
   <noscript><p style="position:fixed;inset:0;display:grid;place-items:center;color:#fff;background:#050b14;font-family:sans-serif">HUBTECH kræver JavaScript.</p></noscript>

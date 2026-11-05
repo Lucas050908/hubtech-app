@@ -58,8 +58,10 @@ export function hostedGame(opts) {
     const r = room, blob = room.state.blob;
     syncT = setTimeout(() => api.post(`/api/games/rooms/${r.id}/sync`, { blob }).catch(() => {}), 50);
   }
-  let lastProgress = Date.now(), aiStuck = 0;
-  function after() { lastProgress = Date.now(); try { draw(); } finally { scheduleAi(); } }
+  let lastProgress = Date.now(), aiStuck = 0, afters = 0, fires = 0, applied = 0;
+  const created = Date.now();
+  window.__hgInstances = (window.__hgInstances || 0) + 1;
+  function after() { afters++; lastProgress = Date.now(); try { draw(); } finally { scheduleAi(); } }
 
   // the computer plays its seats (locally, or on the host's device online)
   // safety net: if it is a computer's turn and nothing is planned (a lost timer, a redraw that failed), plan it again
@@ -94,13 +96,13 @@ export function hostedGame(opts) {
       const delay = opts.aiDelay ? opts.aiDelay(s, seat, mv) : 700;
       aiDue = Date.now() + delay;
       aiT = setTimeout(() => {
-        aiDue = 0;
+        aiDue = 0; fires++;
         if (dead) return;
         const cur = mode === 'online' ? room?.state?.blob : st.game;
         if (!cur || cur.phase === 'over') return;
         // the game may have been reloaded meanwhile (fx synced from another device): then think again on that one
         const m2 = cur === s ? mv : opts.aiMove(cur, seat);
-        if (m2 && opts.apply(cur, seat, m2.name, m2.args || [])) { if (mode === 'online') push(); else store.save(); after(); }
+        if (m2 && opts.apply(cur, seat, m2.name, m2.args || [])) { applied++; if (mode === 'online') push(); else store.save(); after(); }
         else { if (m2) console.warn('[hostedgame] computerens træk blev afvist', m2.name); try { draw(); } finally { setTimeout(scheduleAi, 200); } }
       }, delay);
       return;
@@ -236,6 +238,6 @@ export function hostedGame(opts) {
   } else if (st.game) { ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
 
   h(root, null, h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), board);
-  root.__hg = () => { const g0 = mode === 'online' ? room?.state?.blob : st.game; return { dead, mode, ctl: !!ctl, aiDue, now: Date.now(), idle: Date.now() - lastProgress, aiStuck, turn: g0?.turn, phase: g0?.phase, ai: g0?.players?.map(p => !!p.ai), same: g0 === ctl?.s, log: (g0?.log || []).slice(0, 3), die: g0?.die, last: g0?.last, boardKids: board.childElementCount, boardInRoot: root.contains(board) }; };   // for tests and bug reports
+  root.__hg = () => { const g0 = mode === 'online' ? room?.state?.blob : st.game; return { dead, mode, ctl: !!ctl, aiDue, now: Date.now(), idle: Date.now() - lastProgress, aiStuck, turn: g0?.turn, phase: g0?.phase, ai: g0?.players?.map(p => !!p.ai), same: g0 === ctl?.s, log: (g0?.log || []).slice(0, 3), die: g0?.die, last: g0?.last, boardKids: board.childElementCount, boardInRoot: root.contains(board), age: Date.now() - created, afters, fires, applied, instances: window.__hgInstances }; };   // for tests and bug reports
   return { el: root, controls, redraw: () => draw(), destroy() { dead = true; clearTimeout(aiT); clearInterval(watchdog); clearTimeout(syncT); offs.forEach(f => f()); offs = []; } };
 }
