@@ -58,7 +58,8 @@ export function hostedGame(opts) {
     const r = room, blob = room.state.blob;
     syncT = setTimeout(() => api.post(`/api/games/rooms/${r.id}/sync`, { blob }).catch(() => {}), 50);
   }
-  function after() { try { draw(); } finally { scheduleAi(); } }
+  let lastProgress = Date.now(), aiStuck = 0;
+  function after() { lastProgress = Date.now(); try { draw(); } finally { scheduleAi(); } }
 
   // the computer plays its seats (locally, or on the host's device online)
   // safety net: if it is a computer's turn and nothing is planned (a lost timer, a redraw that failed), plan it again
@@ -67,8 +68,19 @@ export function hostedGame(opts) {
     if (dead) { clearInterval(watchdog); return; }
     const s = mode === 'online' ? room?.state?.blob : st.game;
     if (!s || s.phase === 'over' || (mode === 'online' && room?.host !== me())) return;
+    const seat = s.players.findIndex((p, k) => p.ai && opts.aiMove(s, k));
+    if (seat < 0) return;
+    // nothing has happened for a long time although a computer can move: make the move here and now
+    if (Date.now() - lastProgress > 6000) {
+      const mv = opts.aiMove(s, seat);
+      console.warn('[hostedgame] computerens træk blev gennemtvunget');
+      aiStuck++;
+      if (opts.apply(s, seat, mv.name, mv.args || [])) { if (mode === 'online') push(); else store.save(); after(); }
+      else lastProgress = Date.now();
+      return;
+    }
     if (aiDue && Date.now() - aiDue < 3000) return;
-    if (s.players.some((p, seat) => p.ai && opts.aiMove(s, seat))) { console.warn('[hostedgame] computerens træk blev sat i gang igen'); try { draw(); } catch (e) { console.error(e); } scheduleAi(); }
+    console.warn('[hostedgame] computerens træk blev sat i gang igen'); try { draw(); } catch (e) { console.error(e); } scheduleAi();
   }, 2500);
   function scheduleAi() {
     clearTimeout(aiT);
@@ -85,9 +97,11 @@ export function hostedGame(opts) {
         aiDue = 0;
         if (dead) return;
         const cur = mode === 'online' ? room?.state?.blob : st.game;
-        if (cur !== s) { if (cur) { draw(); scheduleAi(); } return; }   // the game was reloaded meanwhile (fx synced from another device): carry on with that one
-        if (opts.apply(s, seat, mv.name, mv.args || [])) { if (mode === 'online') push(); else store.save(); after(); }
-        else scheduleAi();
+        if (!cur || cur.phase === 'over') return;
+        // the game may have been reloaded meanwhile (fx synced from another device): then think again on that one
+        const m2 = cur === s ? mv : opts.aiMove(cur, seat);
+        if (m2 && opts.apply(cur, seat, m2.name, m2.args || [])) { if (mode === 'online') push(); else store.save(); after(); }
+        else { if (m2) console.warn('[hostedgame] computerens træk blev afvist', m2.name); try { draw(); } finally { setTimeout(scheduleAi, 200); } }
       }, delay);
       return;
     }
@@ -222,6 +236,6 @@ export function hostedGame(opts) {
   } else if (st.game) { ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
 
   h(root, null, h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), board);
-  root.__hg = () => { const g0 = mode === 'online' ? room?.state?.blob : st.game; return { dead, mode, ctl: !!ctl, aiDue, turn: g0?.turn, phase: g0?.phase, ai: g0?.players?.map(p => !!p.ai), same: g0 === ctl?.s }; };   // for tests and bug reports
+  root.__hg = () => { const g0 = mode === 'online' ? room?.state?.blob : st.game; return { dead, mode, ctl: !!ctl, aiDue, now: Date.now(), idle: Date.now() - lastProgress, aiStuck, turn: g0?.turn, phase: g0?.phase, ai: g0?.players?.map(p => !!p.ai), same: g0 === ctl?.s }; };   // for tests and bug reports
   return { el: root, controls, redraw: () => draw(), destroy() { dead = true; clearTimeout(aiT); clearInterval(watchdog); clearTimeout(syncT); offs.forEach(f => f()); offs = []; } };
 }
