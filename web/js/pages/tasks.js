@@ -310,7 +310,8 @@ export default {
           } }, 'Gem'),
         ],
       });
-      setTimeout(() => ti.focus(), 50);
+      // put the cursor in the title – unless the user has already clicked into another field in the meantime
+      setTimeout(() => { const a = document.activeElement; if (!(a && a !== ti && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && ti.closest('.modal')?.contains(a))) ti.focus(); }, 50);
     }
 
     draw();

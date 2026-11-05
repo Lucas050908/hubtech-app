@@ -2502,7 +2502,7 @@ async def main():
         letters = "".join([await t.inner_text() for t in await p1.locator(".ar-tile").all()]).lower()
         word = await p1.evaluate("""async (l) => { const { WORDS } = await import('/js/data/words5.js'); const s = (w) => [...w].sort().join(''); return WORDS.find(w => s(w) === s(l)); }""", letters)
         for ch in word:
-            await p1.keyboard.press(ch)
+            await (p1.keyboard.press(ch) if ch.isascii() else p1.keyboard.type(ch))
         await p1.wait_for_timeout(300)
         check("ordrul: ordet findes og giver point", "1" in await p1.inner_text(".l3-score span >> nth=1"))
         await p1.screenshot(path=f"{OUT}/app-anagram.png")
