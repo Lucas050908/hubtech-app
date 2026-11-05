@@ -51,6 +51,7 @@ export default {
         flashcards: { stats: [[String(fcDue), 'Klar i dag'], [String(cards.length), 'Kort']], action: fcDue ? `Gennemgå ${fcDue}` : 'Åbn', href: fcDue ? '#/learn/flashcards/study/all' : null, art: { season: 'autumn', time: 'night', focusX: 0.55 } },
         circuitpilot: { stats: [[String(cp?.xp || 0), 'XP'], [String(cp?.achievements?.length || 0), 'Badges']], action: cp ? 'Fortsæt' : 'Start', art: { season: 'spring', time: 'day', focusX: 0.62 } },
         toolkit: { stats: [['11', 'Beregnere'], ['El + IT', 'Område']], action: 'Åbn', art: { season: 'winter', time: 'day', focusX: 0.4 } },
+        labs: { stats: [['4', 'Laboratorier'], ['10', 'Servicesager']], action: 'Åbn laboratoriet', art: { season: 'summer', time: 'dusk', focusX: 0.55 } },
       };
       appsSlot.replaceChildren(...LEARN_APPS.map(a => {
         const i = info[a.id] || { stats: [], action: 'Åbn' };

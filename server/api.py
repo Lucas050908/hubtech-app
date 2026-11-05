@@ -453,7 +453,7 @@ def _num(v):
 
 
 def _learning_xp(uid):
-    """Quiz, IT-ordbog, Phishing-træner and Tastaturtræner."""
+    """Quiz, IT-ordbog, Phishing-træner, Tastaturtræner and Øvelseslab."""
     xp = 0
     q = _state(uid, "quiz") or {}
     if isinstance(q, dict) and isinstance(q.get("best"), dict):
@@ -467,6 +467,13 @@ def _learning_xp(uid):
     ty = _state(uid, "typing") or {}
     if isinstance(ty, dict) and isinstance(ty.get("runs"), list):
         xp += 5 * min(len(ty["runs"]), 100)
+    lab = _state(uid, "labs") or {}
+    if isinstance(lab, dict):
+        cases = (lab.get("cases") or {}).get("done") if isinstance(lab.get("cases"), dict) else None
+        if isinstance(cases, dict):
+            xp += sum(min(_num(v), 100) for v in list(cases.values())[:50]) // 2     # a solved service case: up to 50 XP
+        net = lab.get("net") if isinstance(lab.get("net"), dict) else {}
+        xp += 15 * min(_num(net.get("right")), 40)                                 # a network fault found: 15 XP
     return xp
 
 

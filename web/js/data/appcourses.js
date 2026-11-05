@@ -192,8 +192,79 @@ const hubtech = {
   ],
 };
 
+
+// ── more IT material ──
+const network = {
+  id: 'netvaerk', title: 'Netværk fra bunden', short: 'Netværk', icon: 'globe', group: 'it', app: 'labs',
+  intro: 'IP-adresser, DHCP, DNS, router, Wi-Fi og fejlfinding trin for trin – med øvelser i Netværkslabbet.',
+  days: [
+    { t: 'IP-adresser, subnet og gateway', g: 'Du kan læse en IP-opsætning og forklare den.', r: [['Øv i Netværkslabbet', '#/learn/labs/network'], ['Netværksberegner i Værktøjskassen', '#/learn/toolkit']],
+      l: ['En IP-adresse (fx 192.168.1.42) er enhedens adresse på netværket. Fire tal fra 0 til 255.', 'Undernetmasken (fx 255.255.255.0 = /24) fortæller, hvilke adresser der er på samme lokale net.', 'Standardgatewayen er routeren – vejen ud af det lokale net (typisk .1).', 'Private adresser (192.168.x.x, 10.x.x.x, 172.16–31.x.x) bruges hjemme og på kontoret; routeren oversætter til én offentlig adresse (NAT).', 'ipconfig (Windows) eller ip a (Linux) viser adresse, maske og gateway.'],
+      d: ['Kør ipconfig på din egen computer, og forklar hver linje.', 'Brug Netværksberegneren til at finde antallet af adresser i et /24 og et /26.', 'Find routerens adresse på dit eget netværk.'],
+      q: [['Hvad er standardgatewayen?', 'Routeren – vejen ud af det lokale netværk.'], ['Hvor mange brugbare adresser har et /24?', '254.']] },
+    { t: 'DHCP og DNS', g: 'Du kan forklare DHCP og DNS og genkende fejl i dem.', r: [['Øv i Netværkslabbet', '#/learn/labs/network']],
+      l: ['DHCP giver automatisk enheder en adresse, maske, gateway og DNS – typisk fra routeren.', 'Får en Windows-pc ingen adresse fra DHCP, giver den sig selv en nødadresse, der starter med 169.254.', 'DNS oversætter navne (google.com) til IP-adresser – som en telefonbog.', 'Virker ping 8.8.8.8, men ikke ping google.com, er det DNS, der fejler.', 'ipconfig /renew henter en ny adresse; ipconfig /flushdns tømmer DNS-cachen.'],
+      d: ['Find en fejl i Netværkslabbet, hvor computeren har en 169.254-adresse.', 'Find en DNS-fejl i Netværkslabbet.', 'Forklar en kunde forskellen på DHCP og DNS med en sammenligning fra hverdagen.'],
+      q: [['Hvad betyder en adresse, der starter med 169.254?', 'Computeren har ikke fået en adresse fra DHCP.'], ['Ping 8.8.8.8 virker, ping google.com gør ikke. Hvad er galt?', 'Navneopslag (DNS).']] },
+    { t: 'Router, switch og Wi-Fi', g: 'Du kender netværkets dele og typiske Wi-Fi-problemer.', r: [['IT-ordbog: netværk', '#/learn/course/it-ordbog/day/2']],
+      l: ['Routeren forbinder dit net med internettet og laver typisk DHCP, NAT og Wi-Fi.', 'En switch forbinder flere kablede enheder på samme net.', 'Wi-Fi på 2,4 GHz når længere og gennem vægge; 5 GHz er hurtigere, men kortere. Mange smarte enheder og printere kan kun 2,4 GHz.', 'Svagt Wi-Fi: flyt routeren højt og frit, brug et mesh-system eller kabel til faste enheder.', 'Skift standardkoden til routerens administration, og brug WPA2/WPA3.'],
+      d: ['Tegn dit eget netværk: internet, router, switch, enheder.', 'Find ud af, om dit Wi-Fi sender på 2,4 og 5 GHz.', 'Lav en tjekliste til “Wi-Fi er langsomt”.'],
+      q: [['Hvorfor kan en printer ofte ikke finde et 5 GHz-netværk?', 'Mange printere og smarte enheder understøtter kun 2,4 GHz.'], ['Hvad gør en switch?', 'Forbinder flere kablede enheder på samme net.']] },
+    { t: 'Fejlfinding trin for trin', g: 'Du har en fast metode til netværksfejl.', r: [['Øv i Netværkslabbet', '#/learn/labs/network'], ['Kommandoer: netværk', '#/learn/course/kommandoer/day/1']],
+      l: ['1. Fysisk: er kablet sat i, lyser porten, er Wi-Fi tændt? “Medie afbrudt” = ingen forbindelse.', '2. Adresse: har computeren en rigtig adresse og gateway (ipconfig)?', '3. Router: svarer gatewayen på ping?', '4. Internet: svarer 8.8.8.8? Hvis nej, men routeren svarer: problem hos udbyderen.', '5. DNS: svarer google.com? Hvis nej, men 8.8.8.8 svarer: DNS-problem. tracert viser, hvor det stopper.'],
+      d: ['Løs fem sager i Netværkslabbet.', 'Lav din egen lommekort-tjekliste med de fem trin.', 'Forklar en kollega, hvorfor man tester gatewayen før internettet.'],
+      q: [['Routeren svarer, men 8.8.8.8 gør ikke. Hvor er fejlen?', 'Hos internetudbyderen eller i routerens internetforbindelse.'], ['Hvad er første trin i netværksfejlfinding?', 'Det fysiske: kabel, porte, Wi-Fi.']] },
+  ],
+};
+
+const printers = {
+  id: 'printer-support', title: 'Printer-support: laser og blæk', short: 'Printer-support', icon: 'printer', group: 'it', app: 'printerdoctor',
+  intro: 'Sådan virker laser- og blækprintere, de typiske fejl og hvordan du løser dem – også netværksprintere og udskriftskøen.',
+  days: [
+    { t: 'Sådan virker en laserprinter', g: 'Du kender laserprinterens dele og deres fejl.', r: [['Printer-doktor', '#/apps/printerdoctor']],
+      l: ['En laser tegner billedet som elektrisk ladning på tromlen; toner sætter sig der, hvor der skal være sort.', 'Toneren overføres til papiret og smeltes fast i fikseringsenheden (fuseren), som er meget varm.', 'Toner, der kan tørres af: fuseren smelter ikke nok (forkert papirtype i driveren eller slidt fuser).', 'Gentagne prikker med fast afstand: en ridse eller plet på tromlen eller en valse – afstanden fortæller hvilken.', 'Lyse striber på langs: lidt toner tilbage, eller snavs på laservinduet.'],
+      d: ['Find tromle og toner i en laserprinter (eller i manualen).', 'Forklar fuserens opgave på to linjer.', 'Find i manualen, hvad afstanden mellem gentagne prikker betyder.'],
+      q: [['Hvad smelter toneren fast?', 'Fikseringsenheden (fuseren).'], ['Toneren kan tørres af. Hvad tjekker du?', 'Papirtypen i driveren – ellers fuseren.']] },
+    { t: 'Blækprintere og dyser', g: 'Du kan fejlsøge striber og farvefejl på blækprintere.', r: [['Fejlfindingslab', '#/learn/labs/cases']],
+      l: ['Blæk sprøjtes gennem små dyser i printhovedet. Tørrer de ind, kommer der striber.', 'Kør altid en dysetest først: mangler der linjer, så kør rens – og test igen.', 'Mange rensninger bruger meget blæk; vent lidt mellem dem.', 'Printere, der står ubrugt længe, tørrer ind. Print lidt farve en gang om ugen.', 'Uoriginal blæk kan virke, men tjek garantien og vær opmærksom på farveforskelle.'],
+      d: ['Kør (eller find vejledningen til) en dysetest på en blækprinter.', 'Løs sagen om striber i Fejlfindingslabbet.', 'Skriv en kundeguide: “Mine print har striber”.'],
+      q: [['Hvad laver du først ved striber på en blækprinter?', 'En dysetest.'], ['Hvorfor tørrer blækprintere ind?', 'Blækket i dyserne tørrer, når printeren ikke bruges.']] },
+    { t: 'Netværksprintere', g: 'Du kan sætte en printer stabilt op på netværket.', r: [['Netværk fra bunden', '#/learn/course/netvaerk/day/2']],
+      l: ['Giv printeren en fast adresse med en DHCP-reservation i routeren – så forsvinder den ikke efter en genstart.', 'Port 9100 (RAW) og IPP bruges til udskrivning over netværket.', 'Mange printere viser deres IP-adresse på skærmen eller på en konfigurationsside.', 'Wi-Fi-printere kan ofte kun 2,4 GHz. Efter routerskift skal printeren forbindes til det nye netværk.', 'Tilføj printeren via IP-adresse, hvis den ikke dukker op automatisk.'],
+      d: ['Print en konfigurationsside, og find IP-adressen.', 'Find, hvor man laver en DHCP-reservation i en router.', 'Løs sagen om printeren, der forsvinder hver mandag, i Fejlfindingslabbet.'],
+      q: [['Hvordan undgår man, at printeren får ny IP-adresse?', 'Med en DHCP-reservation (fast adresse) i routeren.'], ['Hvilken port bruges typisk til rå udskrivning?', '9100.']] },
+    { t: 'Udskriftskøen og drivere', g: 'Du kan løse en hængende udskriftskø og driverfejl.', r: [['Kommandoer: printer', '#/learn/course/kommandoer/day/2']],
+      l: ['Hænger køen, så genstart Print Spooler-tjenesten (net stop spooler / net start spooler som administrator).', 'Ryd køen, hvis et job er gået i stå – ét fastlåst job kan blokere alle de andre.', 'Brug producentens driver eller Windows’ indbyggede; undgå drivere fra tilfældige sider.', 'Forkert papirstørrelse (Letter i stedet for A4) giver “ilæg papir”-fejl.', 'Test med en testside fra printeren selv: virker den, er fejlen på computeren.'],
+      d: ['Genstart udskriftskøen på din egen computer (som administrator).', 'Find printerens driverversion i Windows.', 'Lav en fejlfindingsliste til “Intet sker, når jeg trykker Udskriv”.'],
+      q: [['Hvordan genstarter man udskriftskøen?', 'net stop spooler og net start spooler som administrator (eller via Tjenester).'], ['Printerens egen testside virker. Hvor er fejlen?', 'På computeren (driver, kø eller forbindelse).']] },
+  ],
+};
+
+const windows = {
+  id: 'windows-support', title: 'Windows-support i praksis', short: 'Windows-support', icon: 'monitor', group: 'it', app: 'labs',
+  intro: 'De opgaver, du møder oftest: langsom computer, opdateringer, konti og adgangskoder, backup og malware.',
+  days: [
+    { t: 'Langsom computer', g: 'Du kan finde årsagen til en langsom computer.', r: [['Fejlfindingslab', '#/learn/labs/cases'], ['Hardwaretest', '#/apps/hwtest']],
+      l: ['Åbn Jobliste (Ctrl+Shift+Esc): hvad bruger CPU, hukommelse og disk?', 'Mange programmer ved opstart gør computeren langsom – slå unødvendige fra under Start.', 'Næsten fuld disk gør Windows langsom. Ryd op med Diskoprydning eller Lagerplads.', 'En gammel harddisk (HDD) er den største bremse – en SSD gør en stor forskel.', 'En ukendt proces med højt forbrug kan være malware.'],
+      d: ['Åbn Jobliste og find de tre programmer, der bruger mest hukommelse.', 'Se, hvilke programmer der starter med Windows på din computer.', 'Løs sagen “Computeren er blevet meget langsom” i Fejlfindingslabbet.'],
+      q: [['Hvilken genvej åbner Jobliste?', 'Ctrl+Shift+Esc.'], ['Hvad giver den største hastighedsforbedring på en gammel pc?', 'At skifte harddisken (HDD) til en SSD.']] },
+    { t: 'Opdateringer og drivere', g: 'Du holder Windows og drivere opdateret uden problemer.', r: [['Guide: sikkerhed', '#/learn']],
+      l: ['Windows Update bør være slået til – sikkerhedsopdateringer lukker huller, som angribere bruger.', 'Store opdateringer kan tage tid: tilslut strøm, og sluk ikke undervejs.', 'Drivere hentes bedst via Windows Update eller producentens side.', 'Går noget galt efter en opdatering: brug “Afinstaller opdateringer” eller Systemgendannelse.', 'Tag backup før store ændringer.'],
+      d: ['Tjek, hvornår din computer sidst blev opdateret.', 'Find, hvor man afinstallerer en opdatering.', 'Lav en tjekliste før en stor opdatering hos en kunde.'],
+      q: [['Hvorfor er sikkerhedsopdateringer vigtige?', 'De lukker huller, som angribere ellers kan bruge.'], ['Hvad gør du, hvis en opdatering skaber problemer?', 'Afinstallerer opdateringen eller bruger Systemgendannelse.']] },
+    { t: 'Konti, adgangskoder og totrin', g: 'Du kan hjælpe med konti og sikre logins.', r: [['Kodeord-appen', '#/apps/passwords'], ['Spot phishing', '#/learn/course/phishing']],
+      l: ['Brug lange adgangskoder (fx fire tilfældige ord) – og aldrig den samme flere steder.', 'En adgangskodemanager husker koderne, så kunden kun skal huske én.', 'Totrinsbekræftelse (fx en kode i en app) stopper de fleste kontoovertagelser.', 'Glemt kode til en Microsoft-konto nulstilles via Microsofts gendannelsesside – med mail eller telefon.', 'Bed aldrig kunden om at sige sin kode højt – lad kunden selv taste den.'],
+      d: ['Lav en stærk adgangskode med Kodeord-appen.', 'Slå totrinsbekræftelse til på en af dine egne konti.', 'Forklar en kunde, hvorfor man ikke bør genbruge koder.'],
+      q: [['Hvad stopper de fleste kontoovertagelser?', 'Totrinsbekræftelse.'], ['Hvorfor ikke genbruge adgangskoder?', 'Lækkes én tjeneste, kan angriberen logge ind på alle de andre.']] },
+    { t: 'Backup og malware', g: 'Du kan sætte backup op og håndtere malware.', r: [['Fejlfindingslab', '#/learn/labs/cases']],
+      l: ['3-2-1-reglen: tre kopier, på to forskellige medier, én uden for huset (fx i skyen).', 'Test, at backuppen kan gendannes – en backup, der ikke virker, er ingen backup.', 'Ved mistanke om malware: afbryd netværket, scan med Windows Sikkerhed, og skift koder fra en ren enhed.', 'Ransomware krypterer filer – den bedste beskyttelse er en backup, der ikke altid er forbundet.', 'Installer kun programmer fra kendte kilder.'],
+      d: ['Lav en backup-plan efter 3-2-1-reglen til en lille virksomhed.', 'Kør en hurtig scanning i Windows Sikkerhed.', 'Skriv en handleplan: “Jeg tror, min computer har virus”.'],
+      q: [['Hvad er 3-2-1-reglen?', 'Tre kopier, to forskellige medier, én uden for huset.'], ['Hvad er første skridt ved mistanke om malware?', 'Afbryd netværket.']] },
+  ],
+};
+
 const HUES = { start: '#3b82f6', it: '#06b6d4', code: '#8b5cf6', electro: '#22c55e' };
-export const APP_COURSES = [hubtech, digital, glossary, quiz, phishing, commands, electronics, ...code]
+export const APP_COURSES = [hubtech, digital, network, printers, windows, glossary, quiz, phishing, commands, electronics, ...code]
   .map(c => ({ ...c, stateId: `course-${c.id}`, unit: 'Lektion', hue: c.hue || HUES[c.group],
     note: 'Bygget på indholdet i læringsappene. Øvelserne i appen giver også deres egne point.' }));
 export const APP_GROUPS = [['start', 'HUBTECH'], ['it', 'IT og support'], ['code', 'Programmering'], ['electro', 'Elektronik']];

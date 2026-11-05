@@ -188,6 +188,13 @@ export const APPS = [
     keywords: ['tastatur', 'skrive', 'touch', 'ti fingre', 'hastighed', 'wpm', 'typing'],
   },
   {
+    id: 'labs', name: 'Øvelseslab', tagline: 'Simulatorer og fejlfinding.',
+    description: 'Lasersimulator med materialetest, netværkslab med terminal, rigtige servicesager og et 3D-print-lab – øv dig uden at ødelægge noget.',
+    icon: 'target', hue: '#f59e0b', route: '#/learn/labs', category: 'learning', status: 'available',
+    art: { season: 'summer', time: 'dusk', focusX: 0.55, tint: '#f59e0b' }, page: () => import('../pages/labs.js'),
+    keywords: ['simulator', 'lab', 'laboratorium', 'laser', 'netværk', 'ping', 'fejlfinding', 'service', '3d-print', 'øvelse', 'test'],
+  },
+  {
     id: 'bits', name: 'Bit-spil', tagline: 'Lær det binære talsystem.',
     description: 'Tænd de rigtige bits, til tallet passer – på tid. Tre niveauer: 4 bit, 8 bit og hex.',
     icon: 'chip', hue: 'var(--hue-bits)', route: '#/learn/bits', category: 'learning', status: 'available',
@@ -1312,7 +1319,7 @@ export const APPS = [
 export const appById = (id) => APPS.find(a => a.id === id);
 /** Learning apps live inside Guides & Læring (#/learn/<id>) instead of the app launcher and sidebar. */
 export const isLearnApp = (a) => !!a && a.category === 'learning' && a.id !== 'learning';
-const LEARN_ORDER = ['codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'circuitpilot', 'toolkit'];
+const LEARN_ORDER = ['labs', 'codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'circuitpilot', 'toolkit'];
 export const LEARN_APPS = APPS.filter(isLearnApp).sort((a, b) => (LEARN_ORDER.indexOf(a.id) + 1 || 99) - (LEARN_ORDER.indexOf(b.id) + 1 || 99));
 
 /** Is the app usable by this user? Returns { ok, reason } */

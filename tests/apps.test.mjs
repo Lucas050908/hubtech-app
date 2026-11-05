@@ -1264,7 +1264,7 @@ console.log('apps ok');
     assert.ok(groups.has(c.group) && c.hue && c.title && c.short && c.intro && c.days.length >= 3, c.id);
     for (const d of c.days) {
       assert.ok(d.t && d.g && d.l.length >= 3 && d.d.length >= 2 && d.q.length >= 1, `${c.id}: ${d.t}`);
-      for (const [label, url] of d.r) assert.ok(label && /^https:\/\//.test(url), `${c.id}: ${url}`);
+      for (const [label, url] of d.r) assert.ok(label && /^(https:\/\/|#\/)/.test(url), `${c.id}: ${url}`);
       for (const q of d.q) assert.ok(q.length === 2 && q[0].length > 8 && q[1].length > 2, `${c.id}: ${q[0]}`);
     }
   }
@@ -1281,9 +1281,37 @@ console.log('apps ok');
     assert.ok(groups.has(c.group) && c.hue && c.days.length >= 2, c.id);
     for (const d of c.days) assert.ok(d.t && d.g && d.l.length && d.d.length && d.q.length && d.r.length, `${c.id}: ${d.t}`);
   }
-  for (const want of ['hubtech', 'it-ordbog', 'it-viden', 'phishing', 'kommandoer', 'elektronik', 'digitale-grundfaerdigheder', 'kode-python', 'kode-arduino']) assert.ok(ids.has(want), want);
+  for (const want of ['netvaerk', 'printer-support', 'windows-support', 'hubtech', 'it-ordbog', 'it-viden', 'phishing', 'kommandoer', 'elektronik', 'digitale-grundfaerdigheder', 'kode-python', 'kode-arduino']) assert.ok(ids.has(want), want);
   assert.deepEqual(htmlToPoints('<p>Hej <b>du</b></p><ul><li>a &lt; b</li><li>to</li></ul>'), ['Hej du', 'a < b', 'to']);
   const { MAKER_COURSES } = await import('../web/js/data/makercourses.js');
   for (const c of MAKER_COURSES) assert.ok(!ids.has(c.id), 'dobbelt id ' + c.id);
   console.log('appcourses ok');
+}
+
+{
+  const L = await import('../web/js/features/labs.js');
+  assert.equal(L.laserRun('co2_40', 'ply3', { mode: 'cut', power: 100, speed: 10 }).level, 'cut');
+  assert.equal(L.laserRun('diode10', 'acrClear', { mode: 'cut', power: 100, speed: 1 }).level, 'none');      // blue light goes through clear acrylic
+  assert.equal(L.laserRun('co2_80', 'pvc', {}).level, 'banned');
+  assert.equal(L.laserRun('co2_40', 'steel', { mode: 'engrave', power: 100, speed: 5 }).level, 'none');      // CO2 reflects off bare metal
+  assert.equal(L.laserRun('fiber30', 'steel', { mode: 'engrave', power: 50, speed: 100 }).level, 'mark');
+  assert.ok(['partial', 'score'].includes(L.laserRun('diode10', 'ply6', { mode: 'cut', power: 100, speed: 4 }).level));
+  assert.equal(L.laserGrid('co2_40', 'ply3', 'cut').length, 5);
+  // network: every fault gives the tell-tale answer
+  const S = (f) => L.netScenario(Math.random, f);
+  assert.ok(L.netCommand(S('cable'), 'ipconfig').join(' ').includes('Medie afbrudt'));
+  assert.ok(L.netCommand(S('dhcp'), 'ipconfig').join(' ').includes('169.254.'));
+  let s = S('dns'); assert.ok(L.netCommand(s, 'ping 8.8.8.8').join(' ').includes('Modtaget = 4')); assert.ok(L.netCommand(s, 'ping google.com')[0].includes('kunne ikke finde'));
+  s = S('gateway'); assert.ok(L.netCommand(s, 'ping 192.168.1.254').join(' ').includes('Modtaget = 0')); assert.ok(L.netCommand(s, 'ping 192.168.1.1').join(' ').includes('Modtaget = 4'));
+  s = S('isp'); assert.ok(L.netCommand(s, 'ping 192.168.1.1').join(' ').includes('Modtaget = 4')); assert.ok(L.netCommand(s, 'ping 8.8.8.8').join(' ').includes('Modtaget = 0'));
+  s = S('ok'); for (const c of ['ping 192.168.1.1', 'ping 8.8.8.8', 'ping google.com']) assert.ok(L.netCommand(s, c).join(' ').includes('Modtaget = 4'), c);
+  assert.ok(L.netCommand(s, 'dir')[0].includes('genkendes ikke'));
+  // cases and 3D print
+  for (const c of L.CASES) assert.ok(c.options[c.a] && c.tests.length >= 3 && c.why, c.id);
+  assert.equal(L.caseScore(true, 2), 100); assert.equal(L.caseScore(true, 4), 80); assert.equal(L.caseScore(false, 1), 0);
+  const a = L.printEstimate({ layer: 0.28, supports: true }), b = L.printEstimate({ layer: 0.12, supports: true });
+  assert.ok(a.minutes < b.minutes && a.quality < b.quality && !a.warnings.length);
+  assert.ok(L.printEstimate({ walls: 5, supports: true }).strength > L.printEstimate({ walls: 2, supports: true }).strength);
+  assert.ok(L.printEstimate({ filament: 'tpu', speed: 150, temp: 225, supports: true }).warnings.length >= 2);
+  console.log('labs ok');
 }

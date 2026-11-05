@@ -4499,3 +4499,44 @@ html.is-widget #world-scrim { opacity: .9; }
 .launcher-item { content-visibility: auto; contain-intrinsic-size: auto 300px; }
 .cal-clash { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--warn, #f59e0b); } .cal-clash:empty { display: none; } .cal-clash svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
 .kb-quickdue { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .kb-quickdue .chip { cursor: pointer; height: 26px; font-size: 12px; }
+
+/* ── Øvelseslab ── */
+.lab-cols { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .lab-cols { grid-template-columns: 1fr; } }
+.lab-page .field { display: grid; gap: 6px; margin-bottom: 12px; }
+.lab-range { width: 100%; accent-color: var(--app, var(--accent)); }
+.lab-vals { display: flex; flex-wrap: wrap; gap: 6px; }
+.lab-vals span { font-size: var(--fs-xs); padding: 3px 8px; border-radius: 999px; background: var(--glass-strong); color: var(--text-2); }
+.lab-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.lab-result { padding: 14px 16px; border-radius: var(--r-md, 12px); border: 1px solid var(--border); background: var(--glass); display: grid; gap: 6px; }
+.lab-result b { font-size: var(--fs-lg); }
+.lab-result p { margin: 0; color: var(--text-2); }
+.lab-result.is-ok { border-color: #22c55e; background: color-mix(in srgb, #22c55e 14%, var(--glass)); }
+.lab-result.is-warn { border-color: #eab308; background: color-mix(in srgb, #eab308 14%, var(--glass)); }
+.lab-result.is-bad { border-color: #ef4444; background: color-mix(in srgb, #ef4444 16%, var(--glass)); }
+.lab-meta { font-size: var(--fs-xs); }
+.lab-grid { display: grid; grid-template-columns: auto repeat(var(--cols), 1fr); gap: 4px; margin-top: 12px; }
+.lab-gh { font-size: var(--fs-xs); color: var(--text-3, var(--text-2)); display: grid; place-items: center; padding: 2px; }
+.lab-cell { border: 0; border-radius: 6px; min-height: 40px; font-size: 11px; line-height: 1.1; font-weight: 600; color: #fff; cursor: pointer; background: #64748b; padding: 2px; }
+.lab-cell.is-ok { background: #16a34a; } .lab-cell.is-warn { background: #ca8a04; } .lab-cell.is-bad { background: #dc2626; } .lab-cell.is-none { background: #475569; color: #cbd5e1; }
+.lab-cell:hover, .lab-cell:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+.lab-term { background: #0b1020; color: #d1d5db; font-family: var(--font-mono, ui-monospace, monospace); font-size: 13px; line-height: 1.45; border-radius: 10px; padding: 12px; height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lab-term-cmd { color: #67e8f9; }
+.lab-term-in { width: 100%; margin: 8px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #0b1020; color: #fff; font-size: 14px; }
+.lab-answers { display: grid; gap: 8px; margin: 10px 0; }
+.lab-answer { justify-content: flex-start; text-align: left; white-space: normal; height: auto; padding: 10px 14px; }
+.lab-answer.is-right { border-color: #22c55e; background: color-mix(in srgb, #22c55e 22%, var(--glass)); }
+.lab-answer.is-wrong { border-color: #ef4444; background: color-mix(in srgb, #ef4444 22%, var(--glass)); }
+.lab-tests { display: grid; gap: 8px; }
+.lab-test { justify-content: flex-start; text-align: left; white-space: normal; height: auto; padding: 10px 14px; }
+.lab-finding { padding: 12px 14px; border-radius: 10px; }
+.lab-finding p { margin: 4px 0 0; color: var(--text-2); }
+.lab-case { text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.lab-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.lab-stat { padding: 12px; border-radius: 10px; background: var(--glass-strong); display: grid; gap: 2px; }
+.lab-stat b { font-size: var(--fs-xl, 1.4rem); }
+.lab-bar { grid-column: 1 / -1; display: grid; gap: 4px; }
+.lab-bar-row { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-sm); }
+.lab-bar-track { height: 10px; border-radius: 999px; background: var(--glass-strong); overflow: hidden; }
+.lab-bar-track span { display: block; height: 100%; background: var(--app, var(--accent)); border-radius: inherit; transition: width .25s; }
+@media (max-width: 520px) { .lab-stats { grid-template-columns: 1fr 1fr; } .lab-term { height: 300px; font-size: 12px; } }
