@@ -75,6 +75,7 @@ export function apply(s, seat, name, args = [], rnd = Math.random) {
     const was = s.pieces[seat][i];
     s.pieces[seat][i] = to;
     for (const [o, k] of hits) { s.pieces[o][k] = -1; say(s, `${who} sendte ${s.players[o].name} hjem!`); }
+    if (was < 0 && !hits.length) say(s, `${who} slog ${s.die} og satte en brik ud`);   // the first move out is worth telling
     s.last = { ...s.last, move: [seat, i, was, to], hits };
     if (to === GOAL) {
       say(s, `${who} fik en brik i mål`);
