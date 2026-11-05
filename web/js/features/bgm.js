@@ -11,6 +11,8 @@ function draw() {
   btn.classList.toggle('is-on', on);
   btn.setAttribute('aria-pressed', String(on));
   btn.title = on ? 'Klavermusik spiller – klik for at styre den' : 'Baggrundsmusik (klaver)';
+  const t = btn.querySelector('.bgm-title');
+  if (t) t.textContent = on ? (piano.MOODS[piano.getMood()]?.name || 'Klaver') : 'Musik';
   if (pop) fill();
 }
 
@@ -30,7 +32,7 @@ function close() { pop?.remove(); pop = null; document.removeEventListener('poin
 function outside(e) { if (pop && !pop.contains(e.target) && !btn.contains(e.target)) close(); }
 
 export function bgmButton() {
-  btn = h('button', { class: 'icon-btn bgm-btn', 'aria-label': 'Baggrundsmusik', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-pressed': 'false' }, icon('music'));
+  btn = h('button', { class: 'icon-btn bgm-btn', 'aria-label': 'Baggrundsmusik', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-pressed': 'false' }, icon('music'), h('span', { class: 'bgm-title', 'aria-hidden': 'true' }, 'Musik'));
   btn.addEventListener('click', () => {
     if (pop) { close(); return; }
     pop = h('div', { class: 'menu glass glass-strong bgm-pop', role: 'dialog', 'aria-label': 'Baggrundsmusik' });

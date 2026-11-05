@@ -1230,13 +1230,7 @@ export const APPS = [
     art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#60a5fa' }, page: () => import('../pages/solitaire.js'),
     keywords: ['spil', 'kabale', 'kort', 'kortspil', 'solitaire', 'klondike'],
   },
-  {
-    id: 'casino', name: 'Kasino', tagline: 'Blackjack, roulette og tyveknægt – kun for sjov.',
-    description: 'Spil om point – aldrig rigtige penge, og intet kan købes. Løber du tør, får du gratis point hver time. Din højeste bunke kommer på toplisten.',
-    icon: 'star', hue: 'var(--hue-boards)', route: '#/apps/casino', category: 'workspace', status: 'available',
-    art: { season: 'summer', time: 'night', focusX: 0.5, tint: '#60a5fa' }, page: () => import('../pages/casino.js'),
-    keywords: ['spil', 'kasino', 'blackjack', '21', 'roulette', 'tyveknægt', 'slots', 'kort'],
-  },
+
   {
     id: 'hwtest', name: 'Hardwaretest', tagline: 'Test tastatur, skærm, lyd og kamera.',
     description: 'Tjek alle taster, døde pixels, højttalere venstre/højre, mikrofon, kamera, mus og touch – og få en rapport, du kan kopiere eller gemme som servicenote.',
@@ -1350,7 +1344,7 @@ export const SUITES = [
   { id: 'plan', name: 'Planlæg', tagline: 'Kalender, opgaver, madplan, fokus-timer, vaner og træning.', icon: 'calendar', hue: 'var(--hue-calendar)', members: ['calendar', 'tasks', 'mealplan', 'focus', 'habits', 'workout'] },
   { id: 'service', name: 'Service', tagline: 'Servicehjælp, kunder, lager og timer.', icon: 'tool', hue: 'var(--hue-service)', members: ['servicehelp', 'customers', 'inventory', 'timesheet'] },
   { id: 'games', name: 'Spilhal', tagline: 'Snake, Fart-tast, Aim, flag, 2048, sudoku og flere – med toplister.', icon: 'gamepad', hue: 'var(--hue-games)', members: ['arcade', 'ordjagt', 'huegame', 'blocks', 'breakout', 'nim', 'kim', 'emojiquiz', 'jigsaw', 'digitspan', 'gems', 'invaders', 'sokoban', 'jumper', 'reaction', 'anagram', 'labyrinth', 'lightsout', 'nonogram', 'animals', 'minigolf', 'flappy', 'pong', 'asteroids', 'mastermind', 'slide', 'simon', 'wordsearch', 'snake', 'typerace', 'aim', 'flags', 'game2048', 'sudoku', 'mines', 'memory', 'hangman'] },
-  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'ludo', 'otter', 'battleship', 'checkers', 'kalaha', 'reversi', 'dots', 'mill', 'hearts', 'meyer', 'ladders', 'gomoku', 'triktrak', 'tenk', 'oldmaid', 'banko', 'freecell', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire', 'casino'] },
+  { id: 'boards', name: 'Brætspil og kort', tagline: 'Spil sammen med de andre på HUBTECH.', icon: 'users', hue: 'var(--hue-boards)', members: ['property', 'chess', 'yatzy', 'ludo', 'otter', 'battleship', 'checkers', 'kalaha', 'reversi', 'dots', 'mill', 'hearts', 'meyer', 'ladders', 'gomoku', 'triktrak', 'tenk', 'oldmaid', 'banko', 'freecell', 'quizboard', 'drawguess', 'connect4', 'tictactoe', 'solitaire'] },
   { id: 'support', name: 'IT-support', tagline: 'Printer-doktor, netværk, hardwaretest, kommandoer, kodeord, QR og svar.', icon: 'printer', hue: 'var(--hue-printer)', members: ['printerdoctor', 'netcalc', 'hwtest', 'commands', 'checklists', 'passwords', 'qrtool', 'replies'] },
 ];
 export const suiteOf = (id) => SUITES.find(s => s.members.includes(id)) || null;

@@ -1,4 +1,4 @@
-/** Playing cards for Kabale and Kasino: deck, values and how a card looks. */
+/** Playing cards for Kabale: deck, values and how a card looks. */
 import { h } from '../core/dom.js';
 
 export const SUITS = ['♠', '♥', '♦', '♣'];
@@ -25,12 +25,4 @@ export function cardEl(c, { up = true, cls: cls0, ...props } = {}) {
     h('span', { class: 'pc-c tl' }, h('b', null, c.r), h('i', null, c.s)),
     h('span', { class: 'pc-mid' }, c.s),
     h('span', { class: 'pc-c br' }, h('b', null, c.r), h('i', null, c.s)));
-}
-
-/** Blackjack value: { total, soft } */
-export function bjValue(cards) {
-  let t = 0, aces = 0;
-  for (const c of cards) { if (c.r === 'A') { aces++; t += 11; } else t += ['J', 'Q', 'K'].includes(c.r) ? 10 : Number(c.r); }
-  while (t > 21 && aces) { t -= 10; aces--; }
-  return { total: t, soft: aces > 0 };
 }

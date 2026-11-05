@@ -5,6 +5,7 @@ import { icon } from '../core/icons.js';
 import { store, refreshSummary } from '../core/store.js';
 import { appById, isLearnApp, entryApps, access, visible } from '../core/registry.js';
 import { todayPanel } from '../features/today.js';
+import { widgetPrefs, openCustomize } from '../features/topwidgets.js';
 import { appCard, profileCard, activityPanel, shortcutsPanel, worldQuickPanel, seasonStrip, projectsPreview, learningPreview, panel } from '../features/widgets.js';
 
 let unsub = [];
@@ -23,12 +24,20 @@ export default {
     unsub.push(store.on('summary', renderProfile));
     refreshSummary();
 
+    // a big clock like on a desk – the desert design's calm overview
+    const clock = h('div', { class: 'home-clock', 'aria-hidden': 'true' });
+    const tick = () => { const d = new Date(); clock.textContent = d.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' }); };
+    tick();
+    const clockTimer = setInterval(() => { if (!clock.isConnected) { clearInterval(clockTimer); return; } tick(); }, 15000);
+    unsub.push(() => clearInterval(clockTimer));
     const hero = h('section', { class: 'home-hero', 'aria-labelledby': 'hero-title' },
+      clock,
       h('h1', { id: 'hero-title', class: 'home-title' }, `${u.onboarding?.done ? 'Velkommen tilbage' : 'Velkommen'}, ${first}`),
       h('p', { class: 'home-lead' }, 'Dit digitale univers – samlet ét sted.'),
       h('p', { class: 'home-sub' }, 'Her finder du dine projekter, apps, læringsforløb og alt det, der hjælper dig med at udvikle dine idéer og færdigheder.'),
       h('div', { class: 'home-cta' },
-        h('a', { class: 'btn btn-primary btn-glow', href: '#/dashboard' }, 'Gå til dashboard', icon('arrowRight'))));
+        h('a', { class: 'btn btn-primary btn-glow', href: '#/dashboard' }, 'Gå til dashboard', icon('arrowRight')),
+        h('button', { type: 'button', class: 'btn btn-ghost home-customize', onclick: () => openCustomize() }, icon('sliders'), 'Tilpas forsiden')));
 
     const apps = panel('Dine apps', { link: { href: '#/apps', label: 'Se alle apps' }, tour: 'home-apps' },
       h('div', { class: 'app-grid' }, pinned.map(a => appCard(a))));
@@ -52,19 +61,25 @@ export default {
       h(together, null, panel('Sammen med andre', { link: { href: '#/hubs', label: 'Forbindelser' } }, h('div', { class: 'stack', style: { gap: '10px' } }, body)));
     }).catch(() => {});
 
-    return h('div', { class: 'page home' },
-      h('div', { class: 'with-rail' },
-        h('div', { class: 'stack' },
-          hero,
-          todayPanel(),
-          apps,
-          together,
-          h('div', { class: 'home-row' }, projectsPreview(), learningPreview()),
-          seasonStrip()),
-        h('aside', { class: 'rail', 'aria-label': 'Overblik' },
-          profileSlot,
-          activityPanel({ limit: 4 }),
-          shortcutsPanel(),
-          worldQuickPanel())));
+    // every card can be switched off under "Tilpas" (prefs.widgets.home)
+    const cards = {
+      hero, today: todayPanel(), apps, together, previews: h('div', { class: 'home-row' }, projectsPreview(), learningPreview()), seasons: seasonStrip(),
+      profile: profileSlot, activity: activityPanel({ limit: 4 }), shortcuts: shortcutsPanel(), world: worldQuickPanel(),
+    };
+    const hiddenNote = h('p', { class: 'faint home-empty on-world', hidden: true }, 'Alle kort er slået fra. ', h('button', { type: 'button', class: 'btn btn-sm', onclick: () => openCustomize() }, icon('sliders'), 'Vælg kort'));
+    const rail = h('aside', { class: 'rail', 'aria-label': 'Overblik' }, cards.profile, cards.activity, cards.shortcuts, cards.world);
+    const applyCards = () => {
+      const show = widgetPrefs().home;
+      for (const [k, el] of Object.entries(cards)) el.hidden = !show[k];
+      rail.hidden = !['profile', 'activity', 'shortcuts', 'world'].some(k => show[k]);
+      layout.classList.toggle('no-rail', rail.hidden);
+      hiddenNote.hidden = Object.keys(cards).some(k => show[k]);
+    };
+    const layout = h('div', { class: 'with-rail' },
+      h('div', { class: 'stack' }, cards.hero, cards.today, cards.apps, cards.together, cards.previews, cards.seasons),
+      rail);
+    unsub.push(store.on('prefs', applyCards));
+    applyCards();
+    return h('div', { class: 'page home' }, hiddenNote, layout);
   },
 };

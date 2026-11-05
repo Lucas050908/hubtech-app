@@ -20,7 +20,7 @@ Den person, der har installeret HUBTECH på sin computer ("ejeren"), kan se list
 - **Opkald** går direkte mellem jeres enheder (WebRTC). For at finde vej mellem to netværk spørger appen offentlige STUN-servere (fra Google og Cloudflare) om din offentlige IP-adresse. Lyd og billede går ikke gennem dem. Har ejeren sat en TURN-server op, kan opkaldet blive sendt krypteret gennem den.
 - **Mikrofon og kamera** bruges kun, mens du er i et opkald, tager et billede eller selv starter en test. Intet optages eller gemmes.
 - **Spil sammen og toplister:** Spiller du online (fx Fire på stribe, Skak, Yatzy, Quizbrættet, Tegn og gæt eller Fart-tast), ser de andre i spillet dit navn, dit profilbillede, dine træk, dine tegninger og dine gæt. Andre på samme HUBTECH kan se med i spil, der er i gang. Spil gemmes kun, mens de står på; de slettes, når de er slut. På toplisterne kan alle på samme HUBTECH se dit navn og dit bedste resultat.
-- **Kasino** spilles kun om point. Der kan aldrig bruges, vindes eller købes rigtige penge.
+- **Ingen gamblingspil:** HUBTECH har ingen kasino- eller pengespil.
 - **"Venner på andre netværk"** bruger tjenesten Tailscale, hvis ejeren selv slår det til. Så går trafikken til ejerens HUBTECH krypteret gennem Tailscale. Se Tailscales privatlivspolitik: https://tailscale.com/privacy-policy
 
 ## Tjenester, appen kan kontakte
@@ -35,6 +35,7 @@ HUBTECH kontakter kun andre tjenester, når det er nødvendigt for en funktion, 
 | Microsoft Store | Opdateringer af Windows-appen | Håndteres af Windows |
 | Push-tjenester (Google, Mozilla, Apple, Microsoft) | Hvis du slår notifikationer på mobilen til | En tom besked om, at der er nyt – indholdet hentes fra din egen HUBTECH |
 | Din egen mailserver | Hvis ejeren har sat mail op | Mails med notifikationer til de brugere, der har slået det til |
+| Open-Meteo | Når vejret vises i topbaren (kan slås fra under Tilpas) | Navnet på den by, du har valgt. Det sendes fra din HUBTECH-server, ikke fra din browser |
 | Tailscale | Hvis ejeren slår "Venner på andre netværk" til | Trafik til ejerens HUBTECH, krypteret |
 
 De indbyggede klassiske websider kan hente skrifttyper fra Google Fonts.

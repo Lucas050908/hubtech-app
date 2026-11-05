@@ -55,7 +55,6 @@ BOARDS = {
     "typing": ("Fart-tast", True, 250),
     "aim": ("Aim-træner", True, 2000),
     "flags": ("Gæt flaget", True, 300),
-    "casino": ("Kasino – højeste bunke", True, 1_000_000_000),
     "yatzy": ("Yatzy", True, 374),
     "snake": ("Snake", True, 400),
     "game2048": ("2048", True, 1_000_000),

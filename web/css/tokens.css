@@ -179,6 +179,12 @@
 :root[data-theme="light"] :is(.on-world, .page > .page-head, .guide-head, .home-hero) .input { background: rgba(8, 16, 28, .5); color: #fff; }
 
 /* ── styles: colours and shapes that go with the theme scenes (Indstillinger → Verden & udseende → Stil) ── */
+/* Ørken (standard): varm sten og orange – professionelt og roligt at se på */
+:root[data-style="orken"] { --accent: #f97316; --accent-2: #fbbf24; --accent-glow: rgba(249, 115, 22, .45); --accent-soft: rgba(249, 115, 22, .15); }
+:root[data-theme="dark"][data-style="orken"] { --glass: rgba(28, 25, 23, .66); --glass-strong: rgba(24, 21, 19, .84); --line: rgba(255, 228, 200, .11); --line-2: rgba(255, 228, 200, .2); }
+:root[data-theme="light"][data-style="orken"] { --accent: #c2410c; --accent-soft: rgba(194, 65, 12, .12); }
+:root[data-style="orken"] .topbar .user-chip-role { color: #fdba74; }
+:root[data-style="orken"] .topbar.is-scrolled { background: rgba(20, 18, 16, .66); }
 :root[data-style="neon"] { --accent: #ff4fa8; --accent-2: #3df2ff; --accent-glow: rgba(255, 79, 168, .5); --accent-soft: rgba(255, 79, 168, .16); }
 :root[data-theme="dark"][data-style="neon"] { --glass: rgba(16, 8, 30, .64); --glass-strong: rgba(14, 7, 26, .82); --line: rgba(255, 120, 210, .13); --line-2: rgba(255, 120, 210, .24); }
 :root[data-style="futuristisk"] { --accent: #47e7ff; --accent-2: #ff6bd6; --accent-glow: rgba(71, 231, 255, .5); --accent-soft: rgba(71, 231, 255, .14); --r-md: 10px; --r-lg: 10px; --r-xl: 16px; }

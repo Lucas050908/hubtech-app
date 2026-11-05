@@ -113,9 +113,74 @@ function neonSign(r, h, color, vertical = true) {
 
 const NEON = ['#ff3d9a', '#3df2ff', '#ffcf3d', '#a36bff', '#ff5a3d', '#3dff9e', '#ff6bd6'];
 
+
+// ── Ørken: pyramider, klitter, en kamel med rytter og et svagt glødende kredsløb i bunden ──
+const DESERT = {
+  night: { sky: [[0, '#0b0910'], [0.55, '#1c1420'], [1, '#3a2418']], sun: '#f5e6c8', sunA: 0.9, glow: '#d08a4a', far: '#3b2a20', pyr: ['#6b4a2e', '#3e2a1a'], mid: '#2e2018', near: '#1f150f', stars: 1 },
+  dusk: { sky: [[0, '#2a1626'], [0.45, '#7a3a2a'], [0.78, '#e0783a'], [1, '#f6b066']], sun: '#ffb25a', sunA: 1, glow: '#ff8a3a', far: '#8a4a2a', pyr: ['#d08a4e', '#7a4424'], mid: '#6a3a22', near: '#3e2316', stars: 0.15 },
+  dawn: { sky: [[0, '#3a2a40'], [0.5, '#9a6a6a'], [0.8, '#f0a878'], [1, '#ffd6a8']], sun: '#ffd09a', sunA: 0.95, glow: '#ffb070', far: '#a06a48', pyr: ['#e0aa74', '#946040'], mid: '#7e5034', near: '#4a2e1e', stars: 0.05 },
+  day: { sky: [[0, '#4f86c4'], [0.6, '#a9c9de'], [1, '#f2dcb8']], sun: '#fff4d6', sunA: 1, glow: '#ffe0a0', far: '#c99a66', pyr: ['#ecc58e', '#b08250'], mid: '#b98a58', near: '#8a5e36', stars: 0 },
+};
+function dune(b, W, y, amp, waves, ph, color) {
+  b.fillStyle = color; b.beginPath(); b.moveTo(0, b.canvas.height);
+  for (let x = 0; x <= W; x += 8) b.lineTo(x, y - Math.sin(x / W * Math.PI * waves + ph) * amp - Math.sin(x / W * Math.PI * waves * 2.3 + ph * 1.7) * amp * 0.3);
+  b.lineTo(W, b.canvas.height); b.closePath(); b.fill();
+}
+function pyramid(b, cx, base, w, h, lit, shade, edge) {
+  b.fillStyle = lit; b.beginPath(); b.moveTo(cx - w / 2, base); b.lineTo(cx, base - h); b.lineTo(cx + w * 0.12, base); b.closePath(); b.fill();
+  b.fillStyle = shade; b.beginPath(); b.moveTo(cx, base - h); b.lineTo(cx + w / 2, base); b.lineTo(cx + w * 0.12, base); b.closePath(); b.fill();
+  b.strokeStyle = edge; b.lineWidth = 1; b.globalAlpha = 0.25;
+  for (let i = 1; i < 9; i++) { const yy = base - h * i / 9, half = (w / 2) * (1 - i / 9); b.beginPath(); b.moveTo(cx - half, yy); b.lineTo(cx + half * 0.24 + w * 0.12 * (1 - i / 9) * 0, yy); b.stroke(); }
+  b.globalAlpha = 1;
+}
+function desert(S, b, r, s, W, H, time, light) {
+  const P = DESERT[light && time === 'night' ? 'dusk' : time] || DESERT.night;
+  b.fillStyle = vgrad(b, 0, H, P.sky); b.fillRect(0, 0, W, H);
+  for (let i = 0; i < 240 * P.stars; i++) { b.fillStyle = `rgba(255,240,220,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.5, z * s, z * s); }
+  const hz = H * 0.66, sx = W * 0.72, sy = H * (time === 'day' ? 0.2 : 0.42), sr = 34 * s;
+  const g = b.createRadialGradient(sx, sy, 0, sx, sy, sr * 7); g.addColorStop(0, hexA(P.glow, 0.45)); g.addColorStop(1, hexA(P.glow, 0)); b.fillStyle = g; b.fillRect(0, 0, W, H);
+  b.globalAlpha = P.sunA; b.fillStyle = P.sun; b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill(); b.globalAlpha = 1;
+  dune(b, W, hz, H * 0.025, 3, 0.6, P.far);
+  pyramid(b, W * 0.3, hz + H * 0.01, W * 0.24, H * 0.24, P.pyr[0], P.pyr[1], P.near);
+  pyramid(b, W * 0.47, hz + H * 0.015, W * 0.17, H * 0.16, P.pyr[0], P.pyr[1], P.near);
+  pyramid(b, W * 0.15, hz + H * 0.02, W * 0.09, H * 0.08, P.pyr[0], P.pyr[1], P.near);
+  dune(b, W, hz + H * 0.07, H * 0.03, 2.2, 2.1, P.mid);
+  S.anim.push({ type: 'camel', y: hz + H * 0.085, s: 0.9 * s, sp: 0.012, color: light && time === 'day' ? '#4a2e1a' : '#140c08' });
+  dune(b, W, hz + H * 0.16, H * 0.035, 1.6, 4.2, P.near);
+  // the circuit: thin traces rising from the bottom edge, with a few pulses travelling up them
+  const paths = [], base = H, top = H * 0.86;
+  for (let x = 20 * s; x < W; x += (46 + r() * 70) * s) {
+    const pts = [[x, base + 2]]; let cx = x, cy = base;
+    const steps = 2 + Math.floor(r() * 3);
+    for (let k = 0; k < steps; k++) { cy -= (base - top) / steps * (0.5 + r() * 0.6); pts.push([cx, cy]); if (r() < 0.6) { const dx = (r() < 0.5 ? -1 : 1) * (10 + r() * 22) * s; cx += dx; cy -= Math.abs(dx); pts.push([cx, cy]); } }
+    paths.push(pts);
+  }
+  b.save(); b.strokeStyle = hexA('#f97316', light ? 0.16 : 0.13); b.lineWidth = 1.4 * s; b.lineJoin = 'round';
+  for (const p of paths) { b.beginPath(); p.forEach(([x, y], i) => i ? b.lineTo(x, y) : b.moveTo(x, y)); b.stroke(); const [ex, ey] = p[p.length - 1]; b.fillStyle = hexA('#f97316', 0.3); b.beginPath(); b.arc(ex, ey, 2.4 * s, 0, TAU); b.fill(); }
+  b.restore();
+  const fade = b.createLinearGradient(0, top - 20 * s, 0, H); fade.addColorStop(0, hexA('#f97316', 0)); fade.addColorStop(1, hexA('#f97316', 0.07)); b.fillStyle = fade; b.fillRect(0, top - 20 * s, W, H - top + 20 * s);
+  S.anim.push({ type: 'pcb', paths: paths.filter((_, i) => i % 3 === 0), s });
+  S.anim.push({ type: 'dust', n: Math.round(40 * s), light });
+}
+function drawCamel(ctx, x, y, s, t, color) {
+  const step = Math.sin(t * 5), bob = Math.abs(Math.sin(t * 5)) * 1.6 * s;
+  ctx.save(); ctx.translate(x, y - bob); ctx.scale(s, s); ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineCap = 'round';
+  ctx.lineWidth = 3.2;
+  for (const [lx, ph] of [[-14, 0], [-9, Math.PI], [10, Math.PI], [15, 0]]) { const a = Math.sin(t * 5 + ph) * 0.35; ctx.beginPath(); ctx.moveTo(lx, -2); ctx.lineTo(lx + Math.sin(a) * 16, 22); ctx.stroke(); }
+  ctx.beginPath(); ctx.ellipse(0, -6, 21, 9, 0, 0, TAU); ctx.fill();                                 // body
+  ctx.beginPath(); ctx.ellipse(-2, -15, 10, 8, 0, Math.PI, 0); ctx.fill();                            // hump
+  ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(18, -8); ctx.quadraticCurveTo(28, -14, 27, -26); ctx.stroke();   // neck
+  ctx.beginPath(); ctx.ellipse(31, -27, 6, 3.4, 0.2, 0, TAU); ctx.fill();                             // head
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-20, -6); ctx.quadraticCurveTo(-26, 0 + step, -24, 6); ctx.stroke();  // tail
+  ctx.beginPath(); ctx.ellipse(-2, -28, 4.5, 7, 0, 0, TAU); ctx.fill();                               // rider
+  ctx.beginPath(); ctx.arc(-1.5, -38, 3.6, 0, TAU); ctx.fill();                                       // head
+  ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-3, -26); ctx.lineTo(6, -20 + step * 0.6); ctx.stroke();       // arm on the reins
+  ctx.restore();
+}
+
 // ── scenes ──
 function buildScene(name, W, H, time, light) {
-  const r = mulberry({ tokyo: 11, neon: 23, shanghai: 37, future: 41, kyoto: 53, harbor: 67, minimal: 71, silk: 83 }[name] || 1);
+  const r = mulberry({ desert: 97, tokyo: 11, neon: 23, shanghai: 37, future: 41, kyoto: 53, harbor: 67, minimal: 71, silk: 83 }[name] || 1);
   const P = palette(name, time);
   const bg = layer(W, H), b = bg.getContext('2d');
   const S = { name, W, H, bg, time, anim: [], P, horizon: H * 0.68 };
@@ -123,6 +188,8 @@ function buildScene(name, W, H, time, light) {
   b.fillStyle = vgrad(b, 0, H, P.sky); b.fillRect(0, 0, W, H);
   const stars = () => { for (let i = 0; i < 260 * P.stars; i++) { b.fillStyle = `rgba(255,255,255,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.55, z * s, z * s); } };
   const glowBand = (y, color, h, a) => { const g = b.createLinearGradient(0, y - h, 0, y + h); g.addColorStop(0, hexA(color, 0)); g.addColorStop(0.5, hexA(color, a)); g.addColorStop(1, hexA(color, 0)); b.fillStyle = g; b.fillRect(0, y - h, W, h * 2); };
+
+  if (name === 'desert') { desert(S, b, r, s, W, H, time, light); }
 
   if (name === 'tokyo') {
     stars();
@@ -471,6 +538,23 @@ export class CityScene {
           ctx.beginPath();
           for (let x = -40; x <= W + 40; x += 24) { const y = a.y + Math.sin(x / W * 4 + t * a.sp * 6 + a.ph) * a.amp + Math.sin(x / W * 9 - t * a.sp * 3) * a.amp * 0.3; x < 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
           ctx.stroke(); ctx.restore(); break;
+        }
+        case 'camel': {
+          const span = W + 240 * a.s, x = ((t * a.sp * W) % span) - 120 * a.s;
+          drawCamel(ctx, x, a.y, a.s, t, a.color); break;
+        }
+        case 'pcb': {
+          ctx.save(); ctx.lineWidth = 2 * a.s; ctx.lineCap = 'round'; ctx.shadowColor = '#f97316'; ctx.shadowBlur = 8 * a.s;
+          a.paths.forEach((p, i) => {
+            const segs = []; let len = 0;
+            for (let j = 1; j < p.length; j++) { const l = Math.hypot(p[j][0] - p[j - 1][0], p[j][1] - p[j - 1][1]); segs.push([p[j - 1], p[j], len, l]); len += l; }
+            const pos = (((t * 0.22 + i * 0.37) % 1.6) / 1.6) * len * 1.25;
+            if (pos > len) return;
+            const seg = segs.find(sg => pos >= sg[2] && pos <= sg[2] + sg[3]) || segs[segs.length - 1];
+            const f = (pos - seg[2]) / seg[3], px = seg[0][0] + (seg[1][0] - seg[0][0]) * f, py = seg[0][1] + (seg[1][1] - seg[0][1]) * f;
+            ctx.fillStyle = 'rgba(253,186,116,.55)'; ctx.beginPath(); ctx.arc(px, py, 2.2 * a.s, 0, TAU); ctx.fill();
+          });
+          ctx.restore(); break;
         }
         default: break;
       }

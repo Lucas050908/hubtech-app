@@ -1635,6 +1635,51 @@ def system_shutdown(req, _):
     return 202, {"ok": True}
 
 
+
+# ── Vejret til topbaren: Open-Meteo (gratis, ingen nøgle), hentet med standardbiblioteket og gemt i 15 minutter ──
+_WEATHER_CACHE = {}
+_WMO = [((0,), "Klart", "sun"), ((1,), "Mest klart", "sun"), ((2,), "Let skyet", "cloud"), ((3,), "Overskyet", "cloud"),
+        ((45, 48), "Tåge", "cloud"), ((51, 53, 55, 56, 57), "Støvregn", "rain"), ((61, 63, 80, 81), "Regn", "rain"),
+        ((65, 82, 66, 67), "Kraftig regn", "rain"), ((71, 77, 85), "Let sne", "snow"), ((73, 75, 86), "Sne", "snow"),
+        ((95, 96, 99), "Torden", "rain")]
+
+
+def weather_text(code):
+    for codes, label, ic in _WMO:
+        if code in codes:
+            return label, ic
+    return "Skiftende", "cloud"
+
+
+def _fetch_json(url):
+    r = urllib.request.Request(url, headers={"User-Agent": "HUBTECH-vejr"})
+    with urllib.request.urlopen(r, timeout=6) as resp:
+        return json.loads(resp.read(200_000).decode("utf-8"))
+
+
+def weather(req, _):
+    require_user(req)
+    city = ((req.query.get("city") or [""])[0].strip() or "København")[:60]
+    key = city.lower()
+    hit = _WEATHER_CACHE.get(key)
+    if hit and time.time() - hit[0] < 900:
+        return 200, hit[1]
+    from urllib.parse import quote
+    try:
+        geo = _fetch_json("https://geocoding-api.open-meteo.com/v1/search?count=1&language=da&format=json&name=" + quote(city))
+        place = (geo.get("results") or [None])[0]
+        if not place:
+            return 200, {"ok": False, "city": city, "error": f"Kunne ikke finde byen “{city}”."}
+        cur = _fetch_json(f"https://api.open-meteo.com/v1/forecast?latitude={place['latitude']}&longitude={place['longitude']}"
+                          "&current=temperature_2m,weather_code&timezone=auto").get("current") or {}
+        label, ic = weather_text(int(cur.get("weather_code", -1)))
+        out = {"ok": True, "city": place.get("name") or city, "temp": round(float(cur.get("temperature_2m"))), "text": label, "icon": ic}
+    except (urllib.error.URLError, OSError, ValueError, TypeError, KeyError):
+        # an answer, not an error: no network is normal on some PCs – the widget just shows a dash
+        return 200, {"ok": False, "city": city, "error": "Vejret kunne ikke hentes lige nu."}
+    _WEATHER_CACHE[key] = (time.time(), out)
+    return 200, out
+
 ROUTES = [
     ("GET", r"/api/health", health),
     ("GET", r"/api/app/precache", app_precache),
@@ -1681,6 +1726,7 @@ ROUTES = [
     ("POST", r"/api/me/onboarding", onboarding),
     ("GET", r"/api/me/summary", summary),
     ("GET", r"/api/chess/ratings", chess_ratings),
+    ("GET", r"/api/weather", weather),
     ("GET", r"/api/state/(?P<app>[^/]+)", get_state),
     ("PUT", r"/api/state/(?P<app>[^/]+)", put_state),
     ("GET", r"/api/states/(?P<prefix>[a-z0-9-]{2,20})", get_states_prefix),

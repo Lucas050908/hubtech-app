@@ -11,6 +11,7 @@ const openPalette = (...a) => import('../features/palette.js').then(m => m.openP
 const startOnboarding = (...a) => import('../features/onboarding.js').then(m => m.startOnboarding(...a));
 import { logout } from '../features/auth.js';
 import { bgmButton, initBgm } from '../features/bgm.js';
+import { topWidgets, customizeButton, openCustomize } from '../features/topwidgets.js';
 import { modal, toast } from './ui.js';
 import { onOfflineChange, offlineStatus, replay } from './offline.js';
 
@@ -168,11 +169,12 @@ function buildTopbar() {
   };
   onOfflineChange(drawNet);
   drawNet(offlineStatus());
+  const music = bgmButton();
   return h('header', { class: 'topbar' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Åbn menu', 'aria-controls': 'sidebar', onclick: () => shellEl.classList.toggle('nav-open') }, icon('menu')),
     h('button', { class: 'search-trigger', dataset: { tour: 'search' }, 'aria-label': 'Søg i platformen (Ctrl+K)', onclick: () => openPalette() },
       icon('search'), h('span', null, 'Søg i platformen, projekter, guides og mere...'), h('kbd', null, navigator.platform?.includes('Mac') ? '⌘ + K' : 'Ctrl + K')),
-    h('div', { class: 'top-actions' }, net, aiBtn, bgmButton(), themeBtn, bellWrap, h('div', { class: 'top-sep' }), userChipWrap));
+    h('div', { class: 'top-actions' }, net, topWidgets(music), aiBtn, music, customizeButton(), themeBtn, bellWrap, h('div', { class: 'top-sep' }), userChipWrap));
 }
 
 function renderThemeBtn() {
@@ -205,6 +207,7 @@ function toggleUserMenu(anchor) {
   openMenu = h('div', { class: 'menu glass glass-strong', role: 'menu' },
     item('user', 'Profil', () => { location.hash = '#/settings/profile'; }),
     item('settings', 'Indstillinger', () => { location.hash = '#/settings'; }),
+    item('sliders', 'Tilpas topbar og forside', () => openCustomize()),
     store.get('user')?.guestOf ? item('home', `Tilbage til ${store.get('user').guestOf.name}`, () => import('../pages/hubs.js').then(m => m.visit({ id: store.get('user').guestOf.id, name: store.get('user').guestOf.name }))) : item('link', 'Forbundne HUBTECH’er', () => { location.hash = '#/hubs'; }),
     item('sparkles', 'Start introduktion igen', () => { location.hash = '#/'; setTimeout(() => startOnboarding({ restart: true }), 350); }),
     item('help', 'Tastaturgenveje', showShortcuts),

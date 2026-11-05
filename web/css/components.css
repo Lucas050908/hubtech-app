@@ -340,3 +340,9 @@ code.inline { padding: 1px 6px; color: var(--text); }
   60% { opacity: 1; }
   100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 140px)) rotate(var(--r)); }
 }
+
+/* Ørken-stilen: orange knapper med mørk tekst (kontrast over 7:1) */
+:root[data-style="orken"] .btn-primary { --btn-bg: linear-gradient(135deg, #fdba74 0%, #fb923c 45%, #f97316 100%); --btn-fg: #1c1206; --btn-bd: rgba(255, 237, 213, .35); }
+:root[data-theme="light"][data-style="orken"] .btn-primary { --btn-bg: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); --btn-fg: #fff; }
+:root[data-style="orken"] .switch input:checked + .switch-track { background: linear-gradient(135deg, #fb923c, #ea580c); }
+:root[data-style="orken"] .ai-fab { background: linear-gradient(135deg, #fbbf24, #f97316 55%, #c2410c); box-shadow: 0 14px 34px -10px rgba(249, 115, 22, .7), inset 0 1px 0 rgba(255, 255, 255, .3); color: #1c1206; }

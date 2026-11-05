@@ -104,6 +104,7 @@ async function onRoute({ path, route: r, params }) {
     return navigate(`/login?next=${encodeURIComponent(path)}`, { replace: true });
   }
   if (r.appRoute) {
+    if (params.app === 'casino') return navigate('/apps', { replace: true });                     // Kasinoet er fjernet – ingen gamblingspil
     if (params.app === 'circuitpilot') return navigate('/learn/electro', { replace: true });     // CircuitPilot was replaced by Elværkstedet
     const app = appById(params.app);
     // learning apps moved into Guides & Læring – keep old /apps/… links and bookmarks working

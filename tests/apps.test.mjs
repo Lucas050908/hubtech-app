@@ -1346,3 +1346,17 @@ console.log('apps ok');
   E.touchDay(d, '2026-11-08'); assert.equal(d.stats.streakDays, 1);
   console.log('electro ok');
 }
+
+// Widgets i topbaren: streak-tælling og standardvalg
+{
+  const W = await import('../web/js/features/widgetlogic.js');
+  const now = new Date(2026, 10, 5, 12), day = (n, h = 10) => new Date(2026, 10, 5 - n, h).getTime() / 1000;
+  assert.equal(W.dayStreak([day(0), day(1), day(1, 20), day(2), day(4)], now), 3, 'tre dage i træk');
+  assert.equal(W.dayStreak([day(1), day(2)], now), 2, 'i går tæller stadig, når man ikke har været her i dag');
+  assert.equal(W.dayStreak([day(2)], now), 0);
+  assert.equal(W.winStreak([{ d: 8 }, { d: -5 }, { d: 6 }, { d: 3 }]), 2);
+  assert.equal(W.winStreak([]), 0);
+  assert.ok(W.HOME_CARDS.every(([k]) => W.WIDGET_DEFAULTS.home[k] === true));
+  assert.deepEqual(['weather', 'streak', 'online', 'music'].map(k => W.WIDGET_DEFAULTS[k]), [true, true, true, true]);
+  console.log('widgets ok');
+}

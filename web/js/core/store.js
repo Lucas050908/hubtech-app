@@ -18,7 +18,7 @@ export const DEFAULT_WORLD = {
   motion: 'system',        // system | full | reduced
   clarity: 'system',       // system | normal | solid – solid = less see-through panels and stronger contrast (easier to read)
   parallax: true,
-  scene: 'tokyo',          // theme scene when source = 'scene' (world/scenes.js)
+  scene: 'desert',         // theme scene when source = 'scene' (world/scenes.js) – the desert is HUBTECH's own look
   style: 'auto',           // look of buttons and colours: auto (follows the theme) | standard | neon | futuristisk | zen | elegant | minimal
   meteors: 'auto',         // auto (night and dusk) | on | off – shooting stars
   cloudShadows: true,      // shadows of clouds drifting over the land
@@ -26,7 +26,7 @@ export const DEFAULT_WORLD = {
   lat: null,
   landscape: 'valley',     // valley | highlands | fjord | alps | hills | coast | lakes
   quality: 'normal',       // normal | high (sharper on big / high-dpi screens)
-  source: 'landscape',     // landscape | scene (a theme: Tokyo, neon …) | image (your own picture as the background)
+  source: 'scene',         // landscape | scene (a theme: Tokyo, neon …) | image (your own picture as the background)
   image: null,             // { url, name } – uploaded to /api/office/files
 };
 

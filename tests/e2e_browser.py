@@ -94,6 +94,39 @@ async def main():
         summ = await api(page, "GET", "/api/me/summary")
         check("XP aggregated (onboarding 50 + course 95)", summ["data"]["xp"] == 145, summ["data"])
 
+        # ── Widgets i topbaren og Tilpas: vælg widgets, hvad de viser, og hvilke kort Hjem har ──
+        await page.goto(BASE + "/#/"); await page.wait_for_selector(".home .home-hero")
+        await page.wait_for_selector(".top-widgets .tw-streak")
+        look = await page.evaluate("({ style: document.documentElement.dataset.style, src: document.documentElement.dataset.worldSource, scene: !!document.getElementById('world-scene') && !document.getElementById('world-scene').hidden })")
+        check("ørken-designet er standard: ørkenscene og varm stil", look == {"style": "orken", "src": "scene", "scene": True}, look)
+        await page.screenshot(path=f"{OUT}/design-orken.png")
+        check("widgets: streak, online og vejr i topbaren", await page.locator(".top-widgets .tw-chip").count() == 3, await page.inner_text(".top-widgets"))
+        await page.screenshot(path=f"{OUT}/widgets-topbar.png")
+        await page.click(".tw-customize"); await page.wait_for_selector(".tw-dialog")
+        await page.screenshot(path=f"{OUT}/widgets-tilpas.png")
+        await page.locator(".tw-row-head:has-text('Streak') .switch").click()
+        await page.wait_for_timeout(150)
+        check("widgets: streak kan slås fra", await page.locator(".top-widgets .tw-streak").count() == 0)
+        await page.locator(".tw-row-head:has-text('Online') .switch").click(); await page.wait_for_timeout(100)
+        await page.locator(".tw-row-head:has-text('Online') .switch").click(); await page.wait_for_timeout(100)
+        await page.click(".tw-dialog .segmented button:has-text('Kun antal')"); await page.wait_for_timeout(150)
+        check("widgets: online viser kun antal", await page.locator(".tw-online .tw-faces").count() == 0 and await page.locator(".tw-online .tw-dot").count() == 1)
+        await page.click(".tw-dialog .segmented button:has-text('Knap og stemning')"); await page.wait_for_timeout(100)
+        check("widgets: musik med titel", await page.locator(".top-actions .with-title .bgm-title").is_visible())
+        await page.locator(".tw-card:has-text('Dine apps') .switch").click(); await page.wait_for_timeout(150)
+        check("widgets: kort på Hjem kan slås fra", await page.locator("[data-tour='home-apps']").is_hidden())
+        await page.click(".modal-actions button:has-text('Færdig')")
+        await page.wait_for_timeout(900)
+        pr = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"].get("widgets", {})
+        check("widgets: valgene gemmes på profilen", pr.get("streak") is False and pr.get("onlineMode") == "count" and pr.get("musicMode") == "title" and pr.get("home", {}).get("apps") is False, pr)
+        await page.reload(); await page.wait_for_selector(".home .home-hero")
+        check("widgets: valgene huskes efter genindlæsning", await page.locator(".top-widgets .tw-streak").count() == 0 and await page.locator("[data-tour='home-apps']").is_hidden())
+        await page.click(".tw-customize"); await page.click(".tw-reset"); await page.click(".modal-actions button:has-text('Færdig')")
+        await page.wait_for_selector(".top-widgets .tw-streak")
+        check("widgets: nulstil giver standardvalgene", await page.locator("[data-tour='home-apps']").is_visible())
+        await page.goto(BASE + "/#/apps/casino"); await page.wait_for_timeout(600)
+        check("kasinoet er fjernet: gamle links går til Apps", page.url.endswith("#/apps") and await page.locator(".cs-table").count() == 0, page.url)
+
         # ── Elværkstedet (replaced CircuitPilot): old links redirect, simulator, calculations and fault finding save XP ──
         await page.goto(BASE + "/#/learn/circuitpilot"); await page.wait_for_selector(".el-page", timeout=10000)
         check("elværkstedet: gamle CircuitPilot-links sendes videre", "/learn/electro" in page.url, page.url)
@@ -733,7 +766,7 @@ async def main():
         await page.click(".land-tile:has-text('Kysten')")
         await page.wait_for_timeout(1400)
         prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
-        check("baggrund: 7 landskaber + 8 temaer, valget gemmes", await page.locator(".land-tile").count() == 15 and prefs["world"]["landscape"] == "coast" and prefs["world"]["source"] == "landscape", prefs["world"])
+        check("baggrund: 7 landskaber + 9 temaer, valget gemmes", await page.locator(".land-tile").count() == 16 and prefs["world"]["landscape"] == "coast" and prefs["world"]["source"] == "landscape", prefs["world"])
         await page.click(".land-tile:has-text('Tokyo')")
         await page.wait_for_timeout(1400)
         prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
@@ -1306,22 +1339,11 @@ async def main():
         net = [i for i in bd["items"] if i["text"] == "Løn (efter skat)"]
         # 30000 − 99 ATP = 29901; AM 2392,08 → 27508,92; A-skat 37 % af (27508,92 − 4500) = 8513,30 → 18996
         check("budget: udbetalt løn regnet rigtigt (18.996 kr.)", net and net[0]["amount"] == 18996, net)
-        # ── Kabale og Kasino ──
+        # ── Kabale ──
         await go("apps/solitaire", ".sol-board .pc")
         await page.click(".sol-stock"); await page.wait_for_timeout(200)
         check("kabale: bunken vendes", await page.locator(".sol-waste .pc").count() >= 1)
         await page.screenshot(path=f"{OUT}/app-solitaire.png")
-        await go("apps/casino", ".cs-table")
-        before = int((await page.inner_text(".cs-bar b")).replace(".", ""))
-        await page.click(".cs-actions button:has-text('Giv kort')"); await page.wait_for_timeout(300)
-        if await page.locator(".cs-actions button:has-text('Stå')").count(): await page.click(".cs-actions button:has-text('Stå')")
-        await page.wait_for_selector(".cs-msg", timeout=8000); await page.wait_for_timeout(2500)
-        after = int((await page.inner_text(".cs-bar b")).replace(".", ""))
-        check("kasino: blackjack-runde afregnes", after != before or "Uafgjort" in await page.inner_text(".cs-table"), (before, after))
-        await page.screenshot(path=f"{OUT}/app-casino.png")
-        await page.click(".cs-page .segmented button:has-text('Tyveknægt')"); await page.click("button:has-text('Træk i armen')")
-        await page.wait_for_timeout(2500)
-        check("kasino: tyveknægt giver et resultat", (await page.inner_text(".sl-machine + .cs-msg")).strip() != "")
         # ── Ejendomskongen ──
         await go("apps/property", ".pg-setup-list")
         await page.click("button:has-text('Start spillet')"); await page.wait_for_selector(".pg-board")
@@ -1733,7 +1755,7 @@ async def main():
         await p2.wait_for_selector(".ty-result", timeout=15000)
         check("fart-tast alene: resultat og topliste", await p2.locator(".lb-row.is-me").count() == 1, await p2.inner_text(".ty-result"))
         await p2.goto(BASE + "/#/apps/typerace/top"); await p2.wait_for_selector(".lb-grid .panel")
-        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 27)
+        check("toplister: alle spil vises", await p2.locator(".lb-grid .panel").count() == 26)   # Kasinoet er fjernet
         await p2.screenshot(path=f"{OUT}/toplister-phone.png", full_page=True)
         # ── Sammen: Afstemninger, Arrangementer og Formularer (delt mellem to, og et link uden konto) ──
         await p1.goto(BASE + "/#/apps/polls"); await p1.wait_for_selector(".pl-page .sh-top")
