@@ -496,8 +496,10 @@ def _games_xp(uid):
 def summary(req, _):
     u = require_user(req)
     uid = u["id"]
-    cp = _state(uid, "circuitpilot") or {}
-    cp_xp = int(cp.get("xp", 0) or 0) if isinstance(cp, dict) else 0
+    # Elværkstedet (electronics) – plus the XP people earned in CircuitPilot before it was replaced, so nobody loses it
+    cp = _state(uid, "electro") or {}
+    old_cp = _state(uid, "circuitpilot") or {}
+    cp_xp = (_num(cp.get("xp")) if isinstance(cp, dict) else 0) + (_num(old_cp.get("xp")) if isinstance(old_cp, dict) else 0)
     tasks_done = 0
     days_done = 0
     started_courses = 0
@@ -546,7 +548,7 @@ def summary(req, _):
     favs = db.one("SELECT COUNT(*) AS n FROM favorites WHERE user_id = ?", (uid,))["n"]
     return 200, {
         "xp": total, "level": level, "levelXp": total % LEVEL_XP, "levelSize": LEVEL_XP,
-        "breakdown": {"circuitpilot": cp_xp, "courses": course_xp, "onboarding": onboarding_xp, "codeschool": code_xp, "flashcards": fc_xp, "learning": learn_xp, "games": games_xp},
+        "breakdown": {"electro": cp_xp, "circuitpilot": cp_xp, "courses": course_xp, "onboarding": onboarding_xp, "codeschool": code_xp, "flashcards": fc_xp, "learning": learn_xp, "games": games_xp},
         "badges": badges, "streak": streak, "organizedProjects": projects, "favorites": favs, "coursesActive": courses_active,
         "courseTasksDone": tasks_done, "courseDaysDone": days_done,
     }
@@ -555,15 +557,15 @@ def summary(req, _):
 def leaderboard(req, _):
     require_user(req)
     rows = db.all_rows("SELECT u.id, u.display_name, u.avatar, s.data FROM users u "
-                       "LEFT JOIN app_state s ON s.user_id = u.id AND s.app_id = 'circuitpilot'")
+                       "LEFT JOIN app_state s ON s.user_id = u.id AND s.app_id = 'electro'")
     out = []
     for r in rows:
         try:
             d = json.loads(r["data"]) if r["data"] else {}
         except ValueError:
             d = {}
-        out.append({"u": r["display_name"], "av": r["avatar"], "xp": int(d.get("xp", 0) or 0),
-                    "race": int(((d.get("stats") or {}).get("raceH", 0)) or 0), "me": r["id"] == req.user["id"]})
+        out.append({"u": r["display_name"], "av": r["avatar"], "xp": _num(d.get("xp")) if isinstance(d, dict) else 0,
+                    "race": 0, "me": r["id"] == req.user["id"]})
     return 200, {"entries": out}
 
 
@@ -1698,7 +1700,7 @@ ROUTES = [
     ("POST", r"/api/favorites", toggle_favorite),
     ("GET", r"/api/activity", get_activity),
     ("POST", r"/api/activity", post_activity),
-    ("GET", r"/api/circuitpilot/leaderboard", leaderboard),
+    ("GET", r"/api/electro/leaderboard", leaderboard),
     ("GET", r"/api/projects", projects_list),
     ("GET", r"/api/projects/(?P<pid>[^/]+)", project_get),
     ("POST", r"/api/projects/(?P<pid>[^/]+)/open", project_open),

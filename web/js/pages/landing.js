@@ -17,7 +17,7 @@ export default {
     const status = store.get('authStatus') || {};
     const first = status.firstRun;
     const cur = describeWorld();
-    const showcase = APPS.filter(a => ['hubtech', 'byteforge', 'circuitpilot', 'cursor'].includes(a.id));
+    const showcase = APPS.filter(a => ['hubtech', 'byteforge', 'electro', 'cursor'].includes(a.id));
 
     const seasonBtns = h('div', { class: 'landing-seasons', role: 'radiogroup', 'aria-label': 'Prøv årstiderne' },
       SEASONS.map(s => {
@@ -39,7 +39,7 @@ export default {
 
     const features = [
       ['cube', 'Rigtige projekter', 'Læser dine faktiske Cursor-projekter og git-status lokalt og åbner dem i Cursor med ét klik. Ingen demo-data forklædt som dine.'],
-      ['graduation', 'Læring der huskes', 'Opstartskurset og CircuitPilot gemmer fremdrift, noter og resultater på din konto – og samler XP i ét level.'],
+      ['graduation', 'Læring der huskes', 'Kurserne og Elværkstedet gemmer fremdrift, noter og resultater på din konto – og samler XP i ét level.'],
       ['mountain', 'En levende verden', 'Fire årstider, tid på dagen og vejr i et håndmalet landskab, der aldrig står i vejen for arbejdet.'],
       ['shield', 'Dine data, din maskine', 'Kører på din egen computer med krypterede adgangskoder, sikre sessioner og ingen cloud.'],
     ];
@@ -55,7 +55,7 @@ export default {
           h('a', { class: 'btn btn-primary', href: first ? '#/signup' : status.signupAllowed ? '#/signup' : '#/login' }, first ? 'Opsæt platformen' : 'Kom i gang', icon('arrowRight')))),
       h('section', { class: 'landing-hero' },
         h('div', { class: 'landing-hero-inner' },
-          h('div', { class: 'eyebrow' }, 'HUBTECH · ByteForge · CircuitPilot · Cursor'),
+          h('div', { class: 'eyebrow' }, 'HUBTECH · ByteForge · Elværkstedet · Cursor'),
           h('h1', { class: 'landing-title' }, 'Ét univers til alt, du ', h('span', { class: 'grad-text' }, 'bygger'), ', lærer og udforsker.'),
           h('p', { class: 'landing-lead' }, 'Dine apps, Cursor-projekter, kurser og elektronik-lab samlet i ét personligt arbejdsrum – på din egen maskine.'),
           h('div', { class: 'landing-cta' },

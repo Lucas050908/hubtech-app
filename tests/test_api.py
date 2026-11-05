@@ -168,6 +168,18 @@ class ApiTest(unittest.TestCase):
         st, body, _ = self.owner.req("GET", "/api/me/summary")
         self.assertGreaterEqual(body["xp"], 1234)
 
+    def test_electro_xp_and_old_circuitpilot_xp(self):
+        o = self.owner
+        o.req("PUT", "/api/state/circuitpilot", {"state": {"xp": 300}})
+        o.req("PUT", "/api/state/electro", {"state": {"xp": 120, "achievements": ["first-circuit", "calc10"], "stats": {"streakDays": 4}}})
+        st, body, _ = o.req("GET", "/api/me/summary")
+        self.assertEqual(body["breakdown"]["electro"], 420, "XP from the old CircuitPilot still counts")
+        self.assertEqual(body["badges"], 2)
+        self.assertEqual(body["streak"], 4)
+        st, body, _ = o.req("GET", "/api/electro/leaderboard")
+        self.assertEqual(st, 200)
+        self.assertTrue(any(e["me"] and e["xp"] == 120 for e in body["entries"]))
+
     def test_summary_learning_xp(self):
         o = self.owner
         o.req("PUT", "/api/state/codeschool", {"state": {"done": {"py1": {"at": 1}, "py2": {"at": 2}}, "quiz": {"py1": {"0": True, "1": False}}}})

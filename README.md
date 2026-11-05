@@ -1,6 +1,6 @@
 # HUBTECH — dit digitale univers
 
-HUBTECH samler **HUBTECH**, **ByteForge**, **CircuitPilot**, dine **Cursor-projekter** og **opstartskurset for servicetekniker** i én platform med fælles login, profil, søgning, guides og en levende, animeret verden med fire årstider.
+HUBTECH samler **HUBTECH**, **ByteForge**, **Elværkstedet**, dine **Cursor-projekter** og **opstartskurset for servicetekniker** i én platform med fælles login, profil, søgning, guides og en levende, animeret verden med fire årstider.
 
 Platformen kører på din egen computer. Ingen cloud, ingen tredjeparts-scripts, ingen eksterne skrifttyper.
 
@@ -104,7 +104,7 @@ Genvejen peger på mappen, hvor den ligger. Flytter du mappen, skal du køre `In
 | **Dashboard** | Samlet XP og level med kilder, “Kom godt i gang”-tjekliste der følger dine faktiske handlinger, favoritter, reel status for integrationer, historik pr. dag |
 | **Apps** (launcher) | Alle apps fra app-registret med status, krav og fastgørelse til menuen |
 | **Projekter** | Dine rigtige Cursor-projekter: søgning, filtre, favoritter, status, samlinger, tags, noter, git-info, sprog, filer, “Åbn i Cursor”, “Vis mappe” |
-| **CircuitPilot** | Den oprindelige app med alle funktioner, nu koblet til din konto (XP, badges, streaks og resultater gemmes på serveren) |
+| **Elværkstedet** | HUBTECHs eget elektronikværksted på dansk: simulator, regneopgaver, fejlfinding med voltmeter, komponenter, XP og badges |
 | **Guides & Læring** | 12-dages kurset med fremdrift, noter og repetition, plus 16 søgbare guides (heraf 6 fra ByteForge-guiden) med “Vis mig”-markering |
 | **ByteForge** | Din egen ByteForge-server følger med, startes automatisk sammen med HUBTECH, og panelet kører direkte i appen. Den oprindelige ByteForge-guide er også med |
 | **HUBTECH Office** | Kontorprogram: **Dokumenter** (tekstbehandling med typografier, farver, lister, tjeklister, tabeller, billeder og links), **Regneark** (formler med danske og engelske navne, flere ark, formatering, autosum, sortering, kopiér/indsæt fra Excel) og **Præsentationer** (layouts, temaer – også med det levende landskab – præsentationstilstand og talernoter). Skabeloner, søgning, stjerner og papirkurv. **Åbner** .docx, .xlsx, .xls, .ods, .csv, .txt, .md og .html. **Gemmer** som Word (.doc), Excel (.xlsx med formler og .xls), CSV, PowerPoint (.pptx), HTML, tekst og PDF |
@@ -193,11 +193,10 @@ hubtech/
 │  │  ├─ world/                landscape.js (renderer), palettes.js (årstider × tid), controller.js
 │  │  ├─ features/             auth, onboarding, palette (Ctrl+K), widgets
 │  │  ├─ pages/                landing, home, dashboard, launcher, projects, learn, guide, course,
-│  │  │                        circuitpilot, byteforge, hubtech, settings
+│  │  │                        electro, byteforge, hubtech, settings
 │  │  └─ data/                 course-servicetekniker.js (originalt indhold), guides.js
-│  └─ apps/circuitpilot/       Genereret CircuitPilot + cp-bridge.js + cp-theme.css
 ├─ sources/                    Dine originale filer (uændrede)
-├─ tools/                      build_circuitpilot.py · reset_password.py
+├─ tools/                      reset_password.py
 ├─ tests/                      test_api.py (API) · e2e_browser.py (Playwright)
 ├─ start.sh · start.bat · start.command · .env.example
 ```
@@ -250,7 +249,7 @@ Alt gemmes i **SQLite** i `~/.hubtech/hubtech.db` (kan flyttes med `HUBTECH_DATA
 | `users` | Brugernavn, navn, e-mail, scrypt-hash, rolle, avatar, onboarding-status |
 | `sessions` | SHA-256 af sessions-token (selve tokenet gemmes aldrig), udløb, user-agent |
 | `prefs` | Tema, verden, fastgjorte apps, gemte guides |
-| `app_state` | JSON pr. bruger og app, fx `circuitpilot` og `course-servicetekniker` |
+| `app_state` | JSON pr. bruger og app, fx `electro` og `course-servicetekniker` |
 | `favorites` | Favorit-apps, guides og projekter |
 | `project_meta` | Din organisering af projekter: favorit, status, samling, tags, note, skjult |
 | `activity` | Historik (højst 500 pr. bruger) |
@@ -301,7 +300,7 @@ I browserens `localStorage` ligger kun verdens-udseendet før login, valg af lis
   - Regnearket er et ARIA-grid med aktiv celle.
   - Opgavekortene kan flyttes med tastaturet (Alt + piletaster).
 - **Roller:** ejeren (første konto) har adgang til lokale projekter og integrationer, og serveren håndhæver det. Medlemmer får `403`.
-- **CSP:** `script-src 'self'` overalt undtagen CircuitPilot-siden, som beholder sine oprindelige inline-handlers. Platformen må desuden køre WebAssembly (`'wasm-unsafe-eval'`) og en `blob:`-worker til AI-assistenten og hente sprogmodeller fra `huggingface.co`/`*.hf.co` – ellers ingen eksterne domæner.
+- **CSP:** `script-src 'self'` overalt undtagen Servicehjælp-siden, som beholder sine oprindelige inline-handlers. Platformen må desuden køre WebAssembly (`'wasm-unsafe-eval'`) og en `blob:`-worker til AI-assistenten og hente sprogmodeller fra `huggingface.co`/`*.hf.co` – ellers ingen eksterne domæner.
 - **Fællesskab:** brugere skal bekræfte en alder på mindst 13 år (kun at grænsen er nået gemmes). Uploads tjekkes på indholdet (billeder: PNG/JPEG/GIF/WebP, lyd: MP3/M4A/OGG/WAV/FLAC/WebM), serveres med `sandbox`-CSP, og hver bruger har 500 MB. Beskeder har ekstra spam-bremse (8 pr. 10 sekunder). Regler og privatlivspolitik ligger i `web/legal/`.
 - **Tilmelding:** `HUBTECH_SIGNUP=first` (standard) betyder, at kun ejeren opretter sig selv. Ejeren opretter andre under Indstillinger → Brugere. Mulighederne er `open`, `first` og `closed`.
 - Serveren lytter som standard kun på `127.0.0.1`. Skal den kunne nås fra netværket, så kør den bag en reverse proxy med HTTPS.
@@ -348,24 +347,15 @@ Sider under `web/sites/` får deres egen, lempeligere sikkerhedspolitik (de brug
 
 ---
 
-## 9. CircuitPilot
+## 9. Elværkstedet
 
-`web/apps/circuitpilot/index.html` genereres fra din original i `sources/cercuitpilot.html`:
+Elværkstedet (`web/js/pages/electro.js` og `web/js/features/electro.js`) er HUBTECHs eget elektronikværksted og har erstattet CircuitPilot:
 
-```bash
-python3 tools/build_circuitpilot.py
-```
-
-Alt læringsindhold, quizzer, flashcards, eksamen, labs, sandbox, wire challenges, fault hunter, reparationer, projekter, samling og badges er **uændret**. Kun disse dele er udskiftet:
-
-- Kontosystemet i browseren (`localStorage`) er erstattet af din HUBTECH-konto via `cp-bridge.js`. Gemning sker debounced og afsluttes også, når du forlader siden.
-- Ranglister kommer fra serveren, og navnene escapes.
-- Overlays til “Opret konto” og “Skift konto” er fjernet, fordi login sker i HUBTECH.
-- Udseendet er tilpasset platformen via `cp-theme.css`. CircuitPilots grønne identitet er bevaret.
-
-CircuitPilots indhold er stadig på **engelsk**, som i originalen. Har du gammelt fremskridt i en browser på *samme adresse*, tilbydes en engangs-import.
-
----
+- **Simulator**: batteri, op til tre modstande (serie, parallel eller blandet), LED og kontakt – med diagram, strøm, spændinger, effekt og advarsler (kortslutning, LED uden formodstand, for varme modstande).
+- **Regneopgaver**: Ohms lov, effekt, strøm på 230 V, LED-formodstand, serie, parallel, spændingsdeler, RC-tidskonstant og batteritid – nye tal hver gang, med hint og udregning.
+- **Fejlfinding**: mål med voltmeteret og find fejlen (afbrudt ledning, sprunget pære, defekt kontakt, flade batterier, omvendt LED, afbrudt/kortsluttet modstand, sprunget sikring).
+- **Komponenter**: hvad de gør, hvad de bruges til, hvordan du tester dem, og hvad du skal passe på.
+- **XP, levels og badges** gemmes i `electro` og tæller med i den samlede profil. XP fra den gamle CircuitPilot tæller stadig med. Gamle links til `#/learn/circuitpilot` sendes videre til Elværkstedet.
 
 ## 10. Miljøvariabler
 
@@ -400,7 +390,7 @@ python3 tests/e2e_browser.py http://127.0.0.1:8193 /tmp/shots
 
 Testen af AI-assistenten bruger en lille, tilfældig GGUF-model (sæt `HUBTECH_TEST_GGUF` til stien). Den kan laves med `gguf`-pakken – se `tests/make_tiny_gguf.py`.
 
-`e2e_browser.py` dækker oprettelse af ejerkonto, introduktionen, kursusfremdrift, at CircuitPilot gemmer, projekter fra Cursors data, søgning, “Åbn i Cursor”, organisering, Ctrl+K, favoritter, log ud og log ind, rettigheder, mobilvisning og manglende session. Derudover dækker den Office: autosave, formler, import, eksport, diagrammer, betinget formatering, frysning, versionshistorik og søgning. Endelig dækker den programtilstand og sikkerhedskopier.
+`e2e_browser.py` dækker oprettelse af ejerkonto, introduktionen, kursusfremdrift, at Elværkstedet gemmer, projekter fra Cursors data, søgning, “Åbn i Cursor”, organisering, Ctrl+K, favoritter, log ud og log ind, rettigheder, mobilvisning og manglende session. Derudover dækker den Office: autosave, formler, import, eksport, diagrammer, betinget formatering, frysning, versionshistorik og søgning. Endelig dækker den programtilstand og sikkerhedskopier.
 
 ---
 
@@ -411,8 +401,7 @@ Testen af AI-assistenten bruger en lille, tilfældig GGUF-model (sæt `HUBTECH_T
 - **ByteForges "Now playing"** (`nowplaying.py`) virker kun på Linux. Resten af ByteForge kører på Windows, macOS og Linux.
 - **Landskabet** tegnes af kode i browseren, ikke ud fra et foto. Layout, farver og stemning følger mockuppen, men det er en illustration og ikke et fotorealistisk maleri.
 - **Lys tilstand** gør paneler, menu og kort lyse. Tekst, der står direkte på landskabet (overskrifter og velkomst), forbliver lys med skygge, så den kan læses i alle årstider og tider på døgnet.
-- **CircuitPilot** er på engelsk.
-- **Gammel fremdrift** fra den oprindelige kursusfil og CircuitPilot (gemt i en browsers `localStorage` på en anden adresse) kan ikke læses af browseren og flyttes derfor ikke automatisk.
+- **Gammel fremdrift** fra den oprindelige kursusfil og den gamle CircuitPilot (gemt i en browsers `localStorage` på en anden adresse) kan ikke læses af browseren og flyttes derfor ikke automatisk.
 - **AI-assistenten** kræver en nyere browser (WebAssembly SIMD). Chrome/Edge 137+ kører den hurtige udgave; Safari (iPhone) og Firefox bruger en langsommere kompatibilitetsudgave. På telefoner bør RAM-grænsen være lav (0,5–1,25 GB) – iPhone giver en fane omkring 1–1,5 GB. Første start kræver internet for at hente modellen (0,5–1,9 GB). Små modeller kan tage fejl – handlingerne skal derfor altid godkendes.
 - **Snaps** kan ikke forhindre skærmbilleder. Kameraet kræver HTTPS (eller `localhost`).
 - **Musikrum** synkroniserer på ca. 1,5 sekund, og browseren kræver ét klik på “Lyt med”, før der må spilles lyd.

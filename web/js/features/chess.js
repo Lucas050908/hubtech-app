@@ -314,8 +314,8 @@ export function rate(r, opp, score, games = 0) {
   return Math.max(100, Math.round(r + k * (score - expected(r, opp))));
 }
 export const RANKS = [
-  { min: 0, name: 'Bonde', icon: '♟' }, { min: 600, name: 'Springer', icon: '♞' }, { min: 900, name: 'Løber', icon: '♝' },
-  { min: 1200, name: 'Tårn', icon: '♜' }, { min: 1500, name: 'Dronning', icon: '♛' }, { min: 1800, name: 'Konge', icon: '♚' }, { min: 2100, name: 'Skakmester', icon: '🏆' },
+  { min: 0, name: 'Bonde', icon: '♟\uFE0E' }, { min: 600, name: 'Springer', icon: '♞\uFE0E' }, { min: 900, name: 'Løber', icon: '♝\uFE0E' },
+  { min: 1200, name: 'Tårn', icon: '♜\uFE0E' }, { min: 1500, name: 'Dronning', icon: '♛\uFE0E' }, { min: 1800, name: 'Konge', icon: '♚\uFE0E' }, { min: 2100, name: 'Skakmester', icon: '🏆' },
 ];
 export function rankOf(r) {
   let i = 0;

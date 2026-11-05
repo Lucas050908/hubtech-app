@@ -1,4 +1,4 @@
-/** Guides & Læring hub: the course, every learning app (Kodeskolen, Huskekort, CircuitPilot, Værktøjskasse) and the guide library. */
+/** Guides & Læring hub: the course, every learning app (Øvelseslab, Elværkstedet, Kodeskolen, Huskekort, Værktøjskasse) and the guide library. */
 import { h, clear, debounce } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { store } from '../core/store.js';
@@ -29,7 +29,7 @@ export default {
   render() {
     const courseSlot = h('div', { class: 'skel', style: { height: '200px', borderRadius: 'var(--r-lg)' } });
     const appsSlot = h('div', { class: 'learn-apps' }, LEARN_APPS.map(() => h('div', { class: 'skel', style: { height: '230px', borderRadius: 'var(--r-lg)' } })));
-    Promise.all([getState(COURSE.stateId), getState('circuitpilot'), getState('codeschool'), getState('flashcards')].map(p => p.catch(() => null))).then(([cs, cp, code, fc]) => {
+    Promise.all([getState(COURSE.stateId), getState('circuitpilot'), getState('codeschool'), getState('flashcards'), getState('electro')].map(p => p.catch(() => null))).then(([cs, cp, code, fc, el]) => {
       const pr = courseProgress(cs);
       const art1 = h('canvas', { 'aria-hidden': 'true' });
       requestAnimationFrame(() => paintStill(art1, { season: 'autumn', time: 'day', focusX: 0.3 }));
@@ -49,7 +49,7 @@ export default {
       const info = {
         codeschool: { stats: [[`${codeDone}`, 'Lektioner'], [String(csXp(code)), 'XP']], action: codeDone ? 'Fortsæt' : 'Start', art: { season: 'summer', time: 'night', focusX: 0.45 } },
         flashcards: { stats: [[String(fcDue), 'Klar i dag'], [String(cards.length), 'Kort']], action: fcDue ? `Gennemgå ${fcDue}` : 'Åbn', href: fcDue ? '#/learn/flashcards/study/all' : null, art: { season: 'autumn', time: 'night', focusX: 0.55 } },
-        circuitpilot: { stats: [[String(cp?.xp || 0), 'XP'], [String(cp?.achievements?.length || 0), 'Badges']], action: cp ? 'Fortsæt' : 'Start', art: { season: 'spring', time: 'day', focusX: 0.62 } },
+        electro: { stats: [[String((el?.xp || 0) + (cp?.xp || 0)), 'XP'], [String(el?.achievements?.length || 0), 'Badges']], action: el ? 'Fortsæt' : 'Start', art: { season: 'spring', time: 'day', focusX: 0.62 } },
         toolkit: { stats: [['11', 'Beregnere'], ['El + IT', 'Område']], action: 'Åbn', art: { season: 'winter', time: 'day', focusX: 0.4 } },
         labs: { stats: [['4', 'Laboratorier'], ['10', 'Servicesager']], action: 'Åbn laboratoriet', art: { season: 'summer', time: 'dusk', focusX: 0.55 } },
       };
@@ -138,7 +138,7 @@ export default {
     drawCats(); drawGuides();
 
     return h('div', { class: 'page' },
-      h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Guides & Læring'), h('h1', null, 'Lær, øv og find hjælp'), h('p', null, 'Al din læring samlet ét sted: kurserne, Kodeskolen, Huskekort, CircuitPilot og Værktøjskassen – og en søgbar guide til alt på platformen.'))),
+      h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Guides & Læring'), h('h1', null, 'Lær, øv og find hjælp'), h('p', null, 'Al din læring samlet ét sted: kurserne, Kodeskolen, Huskekort, Elværkstedet og Værktøjskassen – og en søgbar guide til alt på platformen.'))),
       courseSlot,
       makerSlot,
       h('h2', { class: 'guide-cat learn-apps-head' }, icon('sparkles'), 'Læringsapps'),

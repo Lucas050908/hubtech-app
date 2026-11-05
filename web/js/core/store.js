@@ -16,6 +16,7 @@ export const DEFAULT_WORLD = {
   brightness: 0.85,        // 0.4..1.1 background brightness
   weather: 'auto',         // auto | clear | rain | snow | fog
   motion: 'system',        // system | full | reduced
+  clarity: 'system',       // system | normal | solid – solid = less see-through panels and stronger contrast (easier to read)
   parallax: true,
   scene: 'tokyo',          // theme scene when source = 'scene' (world/scenes.js)
   style: 'auto',           // look of buttons and colours: auto (follows the theme) | standard | neon | futuristisk | zen | elegant | minimal

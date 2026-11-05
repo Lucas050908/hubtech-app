@@ -21,7 +21,7 @@ export const GUIDES = [
     title: 'Velkommen til HUBTECH',
     summary: 'Hvad platformen er, og hvordan dens dele hænger sammen.',
     sections: [
-      { h: 'Ét univers, flere apps', p: 'HUBTECH samler dine værktøjer, projekter og læringsforløb i ét personligt arbejdsrum. Apps som CircuitPilot, ByteForge og Cursor Projekter deler login, profil, søgning og design – men har hver deres formål og farve.' },
+      { h: 'Ét univers, flere apps', p: 'HUBTECH samler dine værktøjer, projekter og læringsforløb i ét personligt arbejdsrum. Apps som Elværkstedet, ByteForge og Cursor Projekter deler login, profil, søgning og design – men har hver deres formål og farve.' },
       { h: 'Det vigtigste på 30 sekunder', list: [
         'Hjem viser dine apps, seneste projekter, læring og aktivitet.',
         'Dashboard samler din fremdrift, favoritter og status for integrationer.',
@@ -38,8 +38,8 @@ export const GUIDES = [
     summary: 'Fremdrift, favoritter, integrationer og historik ét sted.',
     sections: [
       { h: 'Hvad du ser', steps: [
-        { t: 'Level og XP', d: 'Din samlede XP kommer fra CircuitPilot, gennemførte kursusopgaver og introduktionen. Hver 1.000 XP giver et nyt level.' },
-        { t: 'Kom godt i gang', d: 'En tjekliste, der automatisk krydser af, når du faktisk har gjort tingene – fx åbnet CircuitPilot eller forbundet Cursor.' },
+        { t: 'Level og XP', d: 'Din samlede XP kommer fra Elværkstedet, kurserne, læringsapps og introduktionen. Hver 1.000 XP giver et nyt level.' },
+        { t: 'Kom godt i gang', d: 'En tjekliste, der automatisk krydser af, når du faktisk har gjort tingene – fx prøvet Elværkstedet eller forbundet Cursor.' },
         { t: 'Integrationer', d: 'Viser den reelle status for Cursor, ByteForge og HUBTECH-sitet. Er noget ikke forbundet, får du et link til opsætningen.' },
         { t: 'Favoritter', d: 'Stjernemarkér apps, guides og projekter for at samle dem her.' },
       ] },
@@ -105,20 +105,19 @@ export const GUIDES = [
     actions: [{ label: 'Åbn Projekter', href: '#/projects' }],
   },
   {
-    id: 'circuitpilot', category: 'learning', app: 'circuitpilot', icon: 'circuit', minutes: 3,
-    title: 'CircuitPilot – kom i gang',
-    summary: 'Elektronik-akademiet: Learn, Train, Lab, Career og Profile.',
+    id: 'electro', category: 'learning', app: 'electro', icon: 'circuit', minutes: 3,
+    title: 'Elværkstedet – kom i gang',
+    summary: 'HUBTECHs eget elektronikværksted: simulator, regneopgaver, fejlfinding og komponenter.',
     sections: [
-      { h: 'Fem områder', table: [
-        ['Learn', 'Slides (15 emner), Skill Tree med 5 kapitler, Blueprint-analyse'],
-        ['Train', 'Quiz (Easy→Hard), flashcards, Race, eksamen med dansk karakterskala, Hardcore, beregninger'],
-        ['Lab', 'Ohms lov, LED-formodstand, RC-kurve, logiske gates, kredsløbs-sandbox, wire challenges, fejlfinding'],
-        ['Career', 'Projekter trin for trin, reparationsopgaver og komponent-samling'],
-        ['Profile', 'Statistik, badges, ranglister og sværhedsgrad'],
+      { h: 'Fire værksteder', table: [
+        ['Simulator', 'Byg et kredsløb med batteri, op til tre modstande (serie, parallel eller blandet), LED og kontakt. Se strøm, spændinger og effekt – og hvad der sker, hvis LED’en mangler formodstand.'],
+        ['Regneopgaver', 'Ohms lov, effekt, LED-formodstand, serie, parallel, spændingsdeler, RC og batteritid. Nye tal hver gang, med hint og udregning.'],
+        ['Fejlfinding', 'Mål med voltmeteret på udvalgte punkter og find fejlen med så få målinger som muligt.'],
+        ['Komponenter', 'Hvad komponenterne gør, hvad de bruges til, og hvordan du tester dem med et multimeter.'],
       ] },
-      { h: 'Din fremdrift', p: 'CircuitPilot bruger nu din HUBTECH-konto. XP, badges, streaks og resultater gemmes på serveren og tæller med i dit samlede level.' },
+      { h: 'Din fremdrift', p: 'XP, levels, badges og dage i træk gemmes på din konto og tæller med i dit samlede level. XP fra den tidligere CircuitPilot tæller stadig med.' },
     ],
-    actions: [{ label: 'Åbn CircuitPilot', href: '#/learn/circuitpilot' }],
+    actions: [{ label: 'Åbn Elværkstedet', href: '#/learn/electro' }],
   },
   {
     id: 'courses', category: 'learning', app: 'learning', icon: 'graduation', minutes: 2,

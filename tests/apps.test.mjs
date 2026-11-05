@@ -1325,3 +1325,24 @@ console.log('apps ok');
   assert.ok(L.printEstimate({ filament: 'tpu', speed: 150, temp: 225, supports: true }).warnings.length >= 2);
   console.log('labs ok');
 }
+
+{
+  const E = await import('../web/js/features/electro.js');
+  let r = E.solveCircuit({ v: 9, rs: [330], led: 'red', closed: true });
+  assert.ok(Math.abs(r.i - 0.0212) < 0.0005 && r.ledState === 'on');
+  assert.equal(E.solveCircuit({ v: 9, rs: [], led: 'red' }).ledState, 'burnt');
+  assert.equal(E.solveCircuit({ v: 9, rs: [330], led: 'red', closed: false }).i, 0);
+  assert.equal(E.solveCircuit({ v: 2, rs: [100], led: 'blue' }).ledState, 'off');                   // below the forward voltage
+  r = E.solveCircuit({ v: 12, rs: [100, 100], mode: 'parallel' }); assert.equal(r.req, 50); assert.ok(Math.abs(r.parts[0].i - 0.12) < 1e-9 && r.parts[0].hot);
+  r = E.solveCircuit({ v: 12, rs: [100, 220, 330], mode: 'mixed' }); assert.ok(Math.abs(r.req - (100 + 132)) < 1e-9 && Math.abs(r.parts[1].v - r.parts[2].v) < 1e-9);
+  for (const k of E.PROBLEM_KINDS) for (let n = 0; n < 20; n++) { const p = E.makeProblem(k); assert.ok(Number.isFinite(p.answer) && p.answer > 0 && E.checkAnswer(p, String(p.answer).replace('.', ',')) && !E.checkAnswer(p, String(p.answer * 1.2)), k); }
+  assert.deepEqual(['46,8 mA', '1.150 Ω', '0.468', '1.150,5'].map(E.parseAnswer), [46.8, 1150, 0.468, 1150.5]);
+  assert.equal(E.fmt(0.0468, 'A'), '46,8 mA'); assert.equal(E.fmt(4700, 'Ω'), '4,7 kΩ');
+  for (const f of E.FAULTS) assert.ok(f.options[f.a] && f.points.length >= 3 && f.why, f.id);
+  assert.equal(E.levelOf(0).level, 1); assert.equal(E.levelOf(600).name, 'Kredsløbsbygger');
+  const st = { stats: { sims: 1, right: 10 }, achievements: [] };
+  assert.deepEqual(E.awardBadges(st).map(b => b.id), ['first-circuit', 'calc10']); assert.equal(E.awardBadges(st).length, 0);
+  const d = { stats: {} }; E.touchDay(d, '2026-11-04'); E.touchDay(d, '2026-11-05'); E.touchDay(d, '2026-11-05'); assert.equal(d.stats.streakDays, 2);
+  E.touchDay(d, '2026-11-08'); assert.equal(d.stats.streakDays, 1);
+  console.log('electro ok');
+}

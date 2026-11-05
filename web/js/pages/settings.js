@@ -210,6 +210,7 @@ function worldTab() {
     return r;
   };
   const motion = segmented([{ value: 'system', label: 'Følg system' }, { value: 'full', label: 'Fuld' }, { value: 'reduced', label: 'Reduceret' }], w().motion, (v) => setWorld({ motion: v }), { label: 'Bevægelse' });
+  const clarity = segmented([{ value: 'system', label: 'Følg system' }, { value: 'normal', label: 'Glas' }, { value: 'solid', label: 'Tydelig' }], w().clarity || 'system', (v) => setWorld({ clarity: v }), { label: 'Læsbarhed' });
   // ── background: one of the landscapes, or your own picture ──
   const LANDS = [['valley', 'Dalen'], ['highlands', 'Højlandet'], ['fjord', 'Fjorden'], ['alps', 'Alperne'], ['hills', 'Bakkerne'], ['coast', 'Kysten'], ['lakes', 'Søerne']];
   const landGrid = h('div', { class: 'land-grid', role: 'radiogroup', 'aria-label': 'Landskab' });
@@ -337,6 +338,7 @@ function worldTab() {
       row('Stjerneskud', 'Meteorer, der flyver over himlen – også små stjerneskudsregn', segmented([{ value: 'auto', label: 'Om aftenen og natten' }, { value: 'on', label: 'Altid' }, { value: 'off', label: 'Fra' }], w().meteors || 'auto', (v) => setWorld({ meteors: v }), { label: 'Stjerneskud' })),
       row('Skyernes skygger', 'Bløde skygger, der driver hen over landskabet på klare dage', switchControl({ checked: w().cloudShadows !== false, label: 'Skyernes skygger', onChange: (v) => setWorld({ cloudShadows: v }) })),
       row('Bevægelse', 'Reduceret viser et stillbillede og slår overgange fra', motion),
+      row('Læsbarhed', 'Tydelig giver faste paneler og stærkere kontrast – godt i skarpt lys eller ved nedsat syn', clarity),
       row('Ydeevne', 'Telefoner og langsomme computere starter i let tilstand, og verdenen skruer selv ned (til sidst et stillbillede), hvis den bliver for tung.', perfControl())));
 }
 
@@ -1273,7 +1275,7 @@ function aboutTab() {
         h('dt', null, 'Version'), h('dd', null, '1.2.0'),
         h('dt', null, 'Server'), h('dd', null, 'Python (kun standardbiblioteket) · SQLite'),
         h('dt', null, 'Data'), h('dd', null, 'Lokal database (standard: ~/.hubtech/hubtech.db)'),
-        h('dt', null, 'Apps'), h('dd', null, 'HUBTECH Office, Servicehjælp, ByteForge, CircuitPilot, Cursor Projekter, Opgaver, Noter, Fokus, Værktøjskasse, Guides & Læring'),
+        h('dt', null, 'Apps'), h('dd', null, 'HUBTECH Office, Servicehjælp, ByteForge, Elværkstedet, Cursor Projekter, Opgaver, Noter, Fokus, Værktøjskasse, Guides & Læring'),
         h('dt', null, 'Skrifttyper'), h('dd', null, 'Sora, Manrope og JetBrains Mono – lokalt hostet (SIL OFL)')),
       h('div', { style: { display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap' } },
         h('a', { class: 'btn', href: '#/learn/guide/privacy' }, icon('shield'), 'Data & privatliv'),

@@ -33,6 +33,20 @@ export function h(tag, props, ...children) {
   return el;
 }
 
+/** Like h(), but for SVG elements (diagrams, sparklines). Attributes are set as they are; children may be nodes or text. */
+const SVGNS = 'http://www.w3.org/2000/svg';
+export function svgEl(tag, attrs, ...children) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') el.setAttribute('class', Array.isArray(v) ? v.filter(Boolean).join(' ') : v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k, String(v));
+  }
+  for (const c of children.flat(Infinity)) if (c !== null && c !== undefined && c !== false) el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return el;
+}
+
 export function append(el, children) {
   for (const c of children.flat(Infinity)) {
     if (c === undefined || c === null || c === false || c === true) continue;

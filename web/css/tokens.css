@@ -7,8 +7,8 @@
   color-scheme: dark;
 
   /* type */
-  --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Sora", "Segoe UI", system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  --font-body: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
   --fs-xs: .72rem; --fs-sm: .8125rem; --fs-md: .875rem; --fs-lg: 1rem;
@@ -174,6 +174,8 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 18px rgba(0, 0, 0, .35);
 }
 .on-world .btn, .page > .page-head .btn, .home-hero .btn, .guide-head .input, .course-top .day-pill, .public-nav .btn { text-shadow: none; }
+/* light theme over bright scenes (winter, midday): a deeper halo keeps small white text readable on snow and pale sky */
+:root[data-theme="light"] :is(.on-world, .page > .page-head, .home-hero, .guide-cat, .guide-head, .course-top, .section-head) { text-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 0 10px rgba(0, 0, 0, .38), 0 2px 26px rgba(0, 0, 0, .4); }
 :root[data-theme="light"] :is(.on-world, .page > .page-head, .guide-head, .home-hero) .input { background: rgba(8, 16, 28, .5); color: #fff; }
 
 /* ── styles: colours and shapes that go with the theme scenes (Indstillinger → Verden & udseende → Stil) ── */
@@ -191,3 +193,26 @@
 :root[data-theme="light"][data-style="neon"] { --accent: #d6187a; --accent-soft: rgba(214, 24, 122, .12); }
 :root[data-theme="light"][data-style="futuristisk"] { --accent: #0a8fb3; --accent-soft: rgba(10, 143, 179, .12); }
 :root[data-theme="light"][data-style="zen"] { --accent: #c0507a; --accent-soft: rgba(192, 80, 122, .12); }
+
+
+/* ── readability: "Tydelig" (Indstillinger), or the system asks for less transparency / more contrast ──
+   Same layout and colours, but the panels are solid and the soft text is stronger. */
+:root[data-clarity="solid"] {
+  --glass: rgba(9, 17, 30, .94); --glass-strong: rgba(9, 17, 29, .97); --glass-soft: rgba(255, 255, 255, .08); --glass-hover: rgba(255, 255, 255, .12);
+  --text-2: #d3deea; --text-3: #a9b8ca; --blur: 0px;
+}
+:root[data-clarity="solid"][data-theme="light"] {
+  --glass: rgba(255, 255, 255, .97); --glass-strong: #ffffff; --glass-soft: rgba(12, 26, 43, .06); --glass-hover: rgba(12, 26, 43, .1);
+  --text-2: #24384e; --text-3: #44566c;
+}
+:root[data-clarity="solid"] :is(.on-world, .page > .page-head, .home-hero, .guide-cat, .guide-head, .course-top, .section-head) { --text-3: rgba(240, 246, 252, .92); text-shadow: 0 1px 2px rgba(0, 0, 0, .7), 0 0 14px rgba(0, 0, 0, .55); }
+:root[data-clarity="solid"] *, :root[data-clarity="solid"] *::before { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+/* Windows high contrast ("kontrasttemaer") and other forced colours: let the system colours win, keep edges visible */
+@media (forced-colors: active) {
+  * { backdrop-filter: none !important; text-shadow: none !important; }
+  .glass, .panel, .btn, .chip, .input, .select, .textarea, .modal, .guide-card, .ch-bot, .lab-cell { border: 1px solid CanvasText !important; }
+  .btn-primary, .chip-app, [aria-pressed="true"], [aria-checked="true"], .is-on { forced-color-adjust: none; background: Highlight !important; color: HighlightText !important; }
+  :focus-visible { outline: 3px solid Highlight !important; }
+  #world, #world-image { display: none; }
+}

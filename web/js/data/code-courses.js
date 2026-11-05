@@ -662,7 +662,7 @@ sudo apt install -y htop git curl`),
   // ───────────────────────────────────────── Arduino / C++ ─────────────────────────────────────────
   {
     id: 'arduino', title: 'Arduino og C++', lang: 'cpp', icon: 'chip', hue: '#14b8a6', level: 'Let øvet',
-    intro: 'Programmér mikrocontrollere – fra blinkende LED til sensorer. Passer til CircuitPilot og Værktøjskassen.',
+    intro: 'Programmér mikrocontrollere – fra blinkende LED til sensorer. Passer til Elværkstedet og Værktøjskassen.',
     lessons: [
       { id: 'ard1', title: 'setup() og loop()', minutes: 10,
         body: `<p>Et Arduino-program (en <i>sketch</i>) har to funktioner: <code>setup()</code> kører én gang ved start, <code>loop()</code> kører igen og igen for evigt.</p>

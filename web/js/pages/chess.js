@@ -4,7 +4,7 @@
  * The engine thinks in a worker, so the board never freezes.
  * Online the host's browser checks the moves, the server keeps the position and passes the other player's moves on.
  */
-import { h, clear } from '../core/dom.js';
+import { h, clear, svgEl } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, confirmDialog, segmented, modal } from '../core/ui.js';
@@ -184,7 +184,7 @@ export default {
       if (hist.length > 1) {
         const vs = hist.map(x => x.r), lo = Math.min(...vs) - 10, hi = Math.max(...vs) + 10, W = 220, H = 48;
         const pts = vs.map((v, i) => `${(i / (vs.length - 1) * W).toFixed(1)},${(H - (v - lo) / (hi - lo) * H).toFixed(1)}`).join(' ');
-        spark = h('svg', { class: 'ch-spark', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Rating over de sidste ${hist.length} partier` }, h('polyline', { points: pts, fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linejoin': 'round' }));
+        spark = svgEl('svg', { class: 'ch-spark', viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none', role: 'img', 'aria-label': `Rating over de sidste ${hist.length} partier` }, svgEl('polyline', { points: pts, fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linejoin': 'round', 'vector-effect': 'non-scaling-stroke' }));
       }
       return panel('Din rating', 'trophy',
         h('div', { class: 'ch-rating' }, h('span', { class: 'ch-rank-icon', 'aria-hidden': 'true' }, k.icon),

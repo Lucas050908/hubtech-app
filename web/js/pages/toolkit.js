@@ -304,13 +304,13 @@ export default {
     return h('div', { class: 'page toolkit-page', style: { '--app': app.hue } },
       appHero(app, {
         eyebrow: 'Læring · værksted', title: 'Værktøjskasse',
-        lead: 'Hurtige beregnere til elektronik, el og netværk – samme formler som i CircuitPilot og servicetekniker-kurset. Skriv værdier med præfiks som 4k7, 20m eller 2,2M.',
+        lead: 'Hurtige beregnere til elektronik, el og netværk – samme formler som i Elværkstedet og servicetekniker-kurset. Skriv værdier med præfiks som 4k7, 20m eller 2,2M.',
         actions: [jump('ohm', 'Ohms lov'), jump('color', 'Farvekode'), jump('subnet', 'Subnet'), jump('bases', 'Hex/binær')],
         stats: [
           { icon: 'calculator', label: 'Beregnere', value: String(tools.length + itTools.length) },
           { icon: 'layers', label: 'Standardværdier', value: 'E12' },
           { icon: 'tag', label: 'Præfikser', value: 'p n µ m k M' },
-          { icon: 'graduation', label: 'Passer til', value: 'CircuitPilot' }],
+          { icon: 'graduation', label: 'Passer til', value: 'Elværkstedet' }],
       }),
       h('h2', { class: 'tk-group on-world' }, icon('circuit'), 'Elektronik og el'),
       h('div', { class: 'tk-layout' }, tools),

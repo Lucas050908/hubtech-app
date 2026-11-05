@@ -75,7 +75,7 @@ export function courseProgress(state, days = COURSE.days) {
 }
 
 export function cpLevel(xp = 0) {
-  const LEVELS = [0, 200, 500, 1000, 2000, 3500, 5500, 8000, 12000, 18000]; // = CircuitPilot LEVELS
+  const LEVELS = [0, 200, 500, 1000, 2000, 3500, 5500, 8000, 12000, 18000]; // = Elværkstedet's LEVELS
   let l = 1;
   LEVELS.forEach((x, i) => { if (xp >= x) l = i + 1; });
   return l;

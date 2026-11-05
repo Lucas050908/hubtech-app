@@ -84,8 +84,8 @@ export function profileCard(summary) {
     h('div', { class: 'grid-4 profile-stats' },
       stat('folder', 'Projekter', s.organizedProjects ?? 0, '#/projects'),
       stat('graduation', 'Kurser', s.coursesActive ?? 0, '#/learn'),
-      stat('badge', 'Badges', s.badges ?? 0, '#/learn/circuitpilot'),
-      stat('flame', 'Dage i træk', s.streak ?? 0, '#/learn/circuitpilot')));
+      stat('badge', 'Badges', s.badges ?? 0, '#/learn/electro'),
+      stat('flame', 'Dage i træk', s.streak ?? 0, '#/learn/electro')));
   requestAnimationFrame(() => animateNumber(xp, s.levelXp));
   return card;
 }
@@ -234,7 +234,7 @@ function projectMenu(anchor, pr) {
 export function learningPreview() {
   const list = h('div', { class: 'list' }, skeletonRows(2));
   const p = panel('Læringsforløb', { link: { href: '#/learn', label: 'Se alle' }, tour: 'learning-preview' }, list);
-  Promise.all([getState(COURSE.stateId).catch(() => null), getState('circuitpilot').catch(() => null)]).then(([cs, cp]) => {
+  Promise.all([getState(COURSE.stateId).catch(() => null), getState('electro').catch(() => null)]).then(([cs, el]) => {
     clear(list);
     const pr = courseProgress(cs);
     const chipFor = (done, total, started) => done >= total ? ['Gennemført', 'chip-ok'] : started ? ['I gang', 'chip-info'] : ['Klar til start', 'chip-warn'];
@@ -243,15 +243,15 @@ export function learningPreview() {
       sub: `${pr.daysDone} / ${pr.totalDays} lektioner`, pct: pr.daysDone / pr.totalDays * 100 || pr.pct,
       chip: chipFor(pr.daysDone, pr.totalDays, pr.started), hue: 'var(--hue-course)',
     }));
-    const slides = Math.min(15, cp?.stats?.slideSeen || 0);
+    const right = Math.min(50, el?.stats?.right || 0);
     list.appendChild(learnRow({
-      href: '#/learn/circuitpilot', title: 'Elektronik grundkursus', art: { season: 'summer', time: 'dusk', focusX: 0.62 },
-      sub: `${slides} / 15 lektioner`, pct: slides / 15 * 100, chip: chipFor(slides, 15, slides > 0), hue: 'var(--hue-circuitpilot)',
+      href: '#/learn/electro/calc', title: 'Elværkstedet – regneopgaver', art: { season: 'summer', time: 'dusk', focusX: 0.62 },
+      sub: `${right} / 50 rigtige`, pct: right / 50 * 100, chip: chipFor(right, 50, right > 0), hue: 'var(--hue-circuitpilot)',
     }));
-    const fh = Math.min(8, cp?.stats?.fhDone || 0);
+    const fh = Object.keys(el?.faults || {}).length;
     list.appendChild(learnRow({
-      href: '#/learn/circuitpilot', title: 'Fejlfinding i kredsløb', art: { season: 'winter', time: 'night', focusX: 0.4 },
-      sub: `${fh} / 8 scenarier`, pct: fh / 8 * 100, chip: chipFor(fh, 8, fh > 0), hue: 'var(--hue-circuitpilot)',
+      href: '#/learn/electro/faults', title: 'Fejlfinding i kredsløb', art: { season: 'winter', time: 'night', focusX: 0.4 },
+      sub: `${fh} / 8 fejl fundet`, pct: fh / 8 * 100, chip: chipFor(fh, 8, fh > 0), hue: 'var(--hue-circuitpilot)',
     }));
   }).catch(() => { clear(list).appendChild(h('p', { class: 'faint' }, 'Læring kunne ikke hentes.')); });
   return p;

@@ -10,12 +10,12 @@ import { currentPath } from '../core/router.js';
 import { toast } from '../core/ui.js';
 
 const STEPS = [
-  { id: 'intro', title: 'Velkommen til HUBTECH', text: 'HUBTECH samler apps, spil, kurser og CircuitPilot ét sted. Denne korte rundvisning tager under et minut.', icon: 'sparkles' },
-  { id: 'progress', target: 'progress', title: 'Din profil og fremdrift', text: 'Dit level samler XP fra CircuitPilot, kurser og introduktionen. Under Dashboard i menuen finder du hele overblikket: fremdrift, favoritter og integrationer.' },
+  { id: 'intro', title: 'Velkommen til HUBTECH', text: 'HUBTECH samler apps, spil, kurser og læring ét sted. Denne korte rundvisning tager under et minut.', icon: 'sparkles' },
+  { id: 'progress', target: 'progress', title: 'Din profil og fremdrift', text: 'Dit level samler XP fra Elværkstedet, kurser og introduktionen. Under Dashboard i menuen finder du hele overblikket: fremdrift, favoritter og integrationer.' },
   { id: 'launcher', target: 'launcher', title: 'App-launcheren', text: 'Dine fastgjorte apps ligger her. “Flere apps” åbner launcheren, hvor du kan fastgøre og stjernemarkere apps.' },
   { id: 'apps', target: 'home-apps', title: 'Én platform, mange apps', text: 'Alle apps deler login, design og data – men har hver deres formål. Det du laver, gemmes på din konto.' },
   { id: 'projects', target: 'projects-preview', owner: true, title: 'Dine rigtige projekter', text: 'Projektoversigten læser dine Cursor-projekter direkte fra computeren, HUBTECH kører på. Er Cursor ikke forbundet, viser den præcis hvad der mangler.' },
-  { id: 'learning', target: 'learning-preview', title: 'CircuitPilot og læring', text: 'Fortsæt opstartskurset eller elektronik-akademiet, præcis hvor du slap. Fremdriften gemmes på din konto.' },
+  { id: 'learning', target: 'learning-preview', title: 'Læring', text: 'Fortsæt et kursus eller Elværkstedet, præcis hvor du slap. Fremdriften gemmes på din konto.' },
   { id: 'search', target: 'search', title: 'Søgning og guides', text: 'Tryk Ctrl+K for at finde apps, guides, kursusdage og projekter – eller køre kommandoer. Alle guides ligger under Guides & Læring.' },
   { id: 'profile', target: 'profile', title: 'Personlige indstillinger', text: 'Her finder du profil, sikkerhed, tema og notifikationer – og kan starte denne introduktion igen.' },
   { id: 'world', target: 'seasons', title: 'Verdenen og årstiderne', text: 'Baggrunden følger årstiden og tiden på dagen. Vælg en årstid her, eller finjustér vejr, bevægelse og lysstyrke under Indstillinger → Verden.' },

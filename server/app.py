@@ -54,7 +54,7 @@ mimetypes.add_type("font/woff2", ".woff2")
 CSP_BASE = ("default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; "
             "img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'self'; "
             "base-uri 'self'; form-action 'self'; object-src 'none'")
-# CircuitPilot keeps its original inline event handlers, so its page is allowed inline script.
+# Servicehjælp keeps its original inline event handlers, so its page is allowed inline script.
 CSP_LEGACY_APP = CSP_BASE + "; frame-src 'self'; script-src 'self' 'unsafe-inline'"
 # The original websites (web/sites/*) run unchanged: they use inline scripts, Google Fonts,
 # the Google sign-in script and a weather widget. They are sandboxed to this looser policy.
@@ -450,7 +450,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         data = body
         if posix.startswith("sites/"):
             csp = CSP_SITES
-        elif posix.startswith("apps/circuitpilot/") or posix.startswith("apps/servicehelp/"):
+        elif posix.startswith("apps/servicehelp/"):
             csp = CSP_LEGACY_APP
         else:
             csp = shell_csp()

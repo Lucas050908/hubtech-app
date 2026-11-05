@@ -94,25 +94,28 @@ async def main():
         summ = await api(page, "GET", "/api/me/summary")
         check("XP aggregated (onboarding 50 + course 95)", summ["data"]["xp"] == 145, summ["data"])
 
-        # ── CircuitPilot saves through the bridge ──
-        await page.goto(BASE + "/#/learn/circuitpilot")
-        frame_el = await page.wait_for_selector("iframe.cp-frame")
-        frame = await frame_el.content_frame()
-        await frame.wait_for_selector("#nav-train", timeout=8000)
-        await frame.click("#nav-train")
-        await frame.wait_for_selector("#q-opts .opt, #q-opts button", timeout=5000)
-        await frame.locator("#q-opts > *").first.click()
-        await page.wait_for_timeout(1600)
-        cp = await api(page, "GET", "/api/state/circuitpilot")
-        cps = cp["data"]["state"] or {}
-        check("CircuitPilot progress stored on server", cps.get("stats", {}).get("qT", 0) >= 1 and cps.get("username") == "Oliver Jensen", cps.get("stats"))
-        await frame.click("#nav-lab")
-        await page.wait_for_timeout(400)
-        await frame.click("#ohm-done")
-        await page.wait_for_timeout(1500)
-        cp = await api(page, "GET", "/api/state/circuitpilot")
-        check("CircuitPilot lab completion stored", "ohm" in (cp["data"]["state"]["stats"].get("labsDone") or []))
-        await page.screenshot(path=f"{OUT}/e2e_circuitpilot.png")
+        # ── Elværkstedet (replaced CircuitPilot): old links redirect, simulator, calculations and fault finding save XP ──
+        await page.goto(BASE + "/#/learn/circuitpilot"); await page.wait_for_selector(".el-page", timeout=10000)
+        check("elværkstedet: gamle CircuitPilot-links sendes videre", "/learn/electro" in page.url, page.url)
+        await page.goto(BASE + "/#/learn/electro/sim"); await page.wait_for_selector(".el-schematic")
+        await page.select_option("select[aria-label='Modstand R1']", "0"); await page.wait_for_timeout(200)
+        check("elværkstedet: LED uden formodstand brænder af", "Brændt af" in await page.inner_text(".lab-stats") and "formodstand" in await page.inner_text(".lab-result"))
+        await page.select_option("select[aria-label='Modstand R1']", "330"); await page.wait_for_timeout(300)
+        check("elværkstedet: med 330 Ω lyser LED’en", "Lyser" in await page.inner_text(".lab-stats"))
+        await page.screenshot(path=f"{OUT}/app-electro-sim.png")
+        await page.goto(BASE + "/#/learn/electro/calc"); await page.wait_for_selector(".el-q")
+        await page.select_option("select[aria-label='Opgavetype']", "series"); await page.wait_for_timeout(200)
+        import re as _re
+        nums = [int(x) for x in _re.findall(r"(\d+) Ω", await page.inner_text(".el-q"))]
+        await page.fill(".el-ans", str(sum(nums))); await page.press(".el-ans", "Enter"); await page.wait_for_selector(".lab-result.is-ok")
+        check("elværkstedet: en rigtig udregning godkendes", "Rigtigt" in await page.inner_text(".lab-result"))
+        await page.goto(BASE + "/#/learn/electro/faults"); await page.click(".lab-case[data-fault='lamp-wire']")
+        await page.click(".lab-test >> nth=0"); await page.click(".lab-test >> nth=2"); await page.wait_for_selector(".lab-finding")
+        await page.click(".lab-answer:has-text('Afbrydelse')"); await page.wait_for_selector(".lab-result.is-ok")
+        await page.wait_for_timeout(900)
+        el = (await api(page, "GET", "/api/state/electro"))["data"]["state"] or {}
+        check("elværkstedet: XP, fejl og badges gemmes på kontoen", el.get("xp", 0) >= 25 + 15 + 60 and el.get("faults", {}).get("lamp-wire") == 60 and "first-circuit" in (el.get("achievements") or []), el)
+        await page.screenshot(path=f"{OUT}/app-electro-fault.png")
 
         # ── projects ──
         await page.goto(BASE + "/#/projects")
@@ -640,7 +643,7 @@ async def main():
         names = await page.locator(".launcher-item .app-card-name").all_text_contents()
         side = await page.locator(".nav-item").all_text_contents()
         check("læring: læringsapps samlet på læringssiden, ikke i launcher og menu",
-              tiles == ["Øvelseslab", "Kodeskolen", "Kodestumper", "Huskekort", "Quiz", "Phishing-træner", "IT-ordbog", "Tastaturtræner", "Bit-spil", "CircuitPilot", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
+              tiles == ["Øvelseslab", "Kodeskolen", "Kodestumper", "Huskekort", "Quiz", "Phishing-træner", "IT-ordbog", "Tastaturtræner", "Bit-spil", "Elværkstedet", "Værktøjskasse"] and not set(tiles) & set(names) and not set(tiles) & {x.strip() for x in side}, (tiles, names))
 
         # ── Værktøjskasse: IT tools ──
         await page.goto(BASE + "/#/learn/toolkit")

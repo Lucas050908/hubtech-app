@@ -33,11 +33,11 @@ export const APPS = [
     keywords: ['homelab', 'server', 'docker', 'nas', 'raid', 'minecraft', 'guide'],
   },
   {
-    id: 'circuitpilot', name: 'CircuitPilot', tagline: 'Elektronik, simuleringer og kurser.',
-    description: 'Lær elektronik med slides, skill tree, quiz, flashcards, eksamen, kredsløbs-sandbox, fejlfinding og reparationsopgaver. Din XP tæller med i din samlede profil.',
-    icon: 'circuit', hue: 'var(--hue-circuitpilot)', route: '#/learn/circuitpilot', category: 'learning', status: 'available',
-    art: { season: 'summer', time: 'day', focusX: 0.62, tint: '#00b894' }, page: () => import('../pages/circuitpilot.js'),
-    keywords: ['elektronik', 'ohm', 'quiz', 'flashcards', 'kredsløb', 'lab', 'eksamen'],
+    id: 'electro', name: 'Elværkstedet', tagline: 'Byg, regn og fejlfind på kredsløb.',
+    description: 'HUBTECHs eget elektronikværksted på dansk: kredsløbssimulator med diagram, regneopgaver med nye tal hver gang, fejlfinding med voltmeter, komponenter, XP, levels og badges.',
+    icon: 'circuit', hue: 'var(--hue-circuitpilot)', route: '#/learn/electro', category: 'learning', status: 'available',
+    art: { season: 'summer', time: 'day', focusX: 0.62, tint: '#00b894' }, page: () => import('../pages/electro.js'),
+    keywords: ['elektronik', 'ohm', 'kredsløb', 'simulator', 'modstand', 'led', 'fejlfinding', 'voltmeter', 'multimeter', 'circuitpilot'],
   },
   {
     id: 'codeschool', name: 'Kodeskolen', tagline: 'Lær at programmere – trin for trin.',
@@ -105,7 +105,7 @@ export const APPS = [
   },
   {
     id: 'toolkit', name: 'Værktøjskasse', tagline: 'Beregnere til elektronik, el og netværk.',
-    description: 'Ohms lov, modstandens farvekode, spændingsdeler, formodstand til LED, serie/parallel og kondensator-koder. Passer til CircuitPilot og servicetekniker-kurset.',
+    description: 'Ohms lov, modstandens farvekode, spændingsdeler, formodstand til LED, serie/parallel og kondensator-koder. Passer til Elværkstedet og servicetekniker-kurset.',
     icon: 'calculator', hue: 'var(--hue-toolkit)', route: '#/learn/toolkit', category: 'learning', status: 'available',
     art: { season: 'winter', time: 'dawn', focusX: 0.5, tint: '#00b8d9' }, page: () => import('../pages/toolkit.js'),
     keywords: ['ohm', 'modstand', 'farvekode', 'led', 'spændingsdeler', 'beregner', 'elektronik', 'kondensator'],
@@ -1319,7 +1319,7 @@ export const APPS = [
 export const appById = (id) => APPS.find(a => a.id === id);
 /** Learning apps live inside Guides & Læring (#/learn/<id>) instead of the app launcher and sidebar. */
 export const isLearnApp = (a) => !!a && a.category === 'learning' && a.id !== 'learning';
-const LEARN_ORDER = ['labs', 'codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'circuitpilot', 'toolkit'];
+const LEARN_ORDER = ['labs', 'codeschool', 'snippets', 'flashcards', 'quiz', 'phishing', 'glossary', 'typing', 'bits', 'electro', 'toolkit'];
 export const LEARN_APPS = APPS.filter(isLearnApp).sort((a, b) => (LEARN_ORDER.indexOf(a.id) + 1 || 99) - (LEARN_ORDER.indexOf(b.id) + 1 || 99));
 
 /** Is the app usable by this user? Returns { ok, reason } */

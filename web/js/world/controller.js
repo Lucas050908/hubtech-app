@@ -30,6 +30,9 @@ function apply() {
   const r = resolved(w);
   const reduced = reducedMotion(w);
   document.documentElement.dataset.motion = reduced ? 'reduced' : 'full';
+  // clarity: solid panels and stronger contrast – by choice, or when the system asks for less transparency / more contrast
+  const sysClear = matchMedia('(prefers-reduced-transparency: reduce)').matches || matchMedia('(prefers-contrast: more)').matches;
+  document.documentElement.dataset.clarity = w.clarity === 'solid' || (w.clarity !== 'normal' && sysClear) ? 'solid' : 'normal';
   document.documentElement.dataset.season = r.season;
   document.documentElement.dataset.time = r.time;
   const useImage = w.source === 'image' && w.image?.url;
@@ -103,7 +106,7 @@ export function initWorld(canvas) {
   window.__hubtechWorld = world; // handy for debugging performance in devtools
   apply();
   store.on('prefs', apply);
-  matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', apply);
+  for (const q of ['(prefers-reduced-motion: reduce)', '(prefers-reduced-transparency: reduce)', '(prefers-contrast: more)']) matchMedia(q).addEventListener?.('change', apply);
   // auto season/time re-evaluated every 5 minutes
   clearInterval(clockTimer);
   clockTimer = setInterval(() => {

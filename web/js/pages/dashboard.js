@@ -17,8 +17,8 @@ function progressPanel(s) {
   const pct = Math.round(s.levelXp / s.levelSize * 100);
   const total = h('span', { class: 'big-num' }, '0');
   const b = s.breakdown;
-  const max = Math.max(1, b.circuitpilot, b.courses, b.onboarding, b.codeschool || 0, b.flashcards || 0, b.learning || 0, b.games || 0);
-  const src = [['CircuitPilot', b.circuitpilot, 'var(--hue-circuitpilot)', 'circuit'], ['Kurser', b.courses, 'var(--hue-course)', 'graduation'], ['Kodeskolen', b.codeschool || 0, 'var(--hue-codeschool)', 'code'], ['Huskekort', b.flashcards || 0, 'var(--hue-flashcards)', 'layers'], ['Quiz og træning', b.learning || 0, 'var(--hue-quiz)', 'graduation'], ['Spil', b.games || 0, 'var(--hue-games)', 'gamepad'], ['Introduktion', b.onboarding, 'var(--accent)', 'sparkles']];
+  const max = Math.max(1, b.electro ?? b.circuitpilot ?? 0, b.courses, b.onboarding, b.codeschool || 0, b.flashcards || 0, b.learning || 0, b.games || 0);
+  const src = [['Elværkstedet', b.electro ?? b.circuitpilot ?? 0, 'var(--hue-circuitpilot)', 'circuit'], ['Kurser', b.courses, 'var(--hue-course)', 'graduation'], ['Kodeskolen', b.codeschool || 0, 'var(--hue-codeschool)', 'code'], ['Huskekort', b.flashcards || 0, 'var(--hue-flashcards)', 'layers'], ['Quiz og træning', b.learning || 0, 'var(--hue-quiz)', 'graduation'], ['Spil', b.games || 0, 'var(--hue-games)', 'gamepad'], ['Introduktion', b.onboarding, 'var(--accent)', 'sparkles']];
   const p = h('section', { class: 'glass panel progress-panel', dataset: { tour: 'progress' } },
     h('div', { class: 'pp-ring' },
       h('div', { class: 'ring-progress', style: { '--v': pct, '--size': '132px' } }, h('div', { style: { textAlign: 'center' } }, h('div', { class: 'faint', style: { fontSize: '.7rem', fontWeight: 800, letterSpacing: '.12em' } }, 'LEVEL'), h('div', { style: { font: '700 2.2rem/1 var(--font-display)' } }, String(s.level))))),
@@ -61,7 +61,7 @@ export default {
     const actList = h('div', { class: 'timeline' }, skeletonRows(4));
 
     Promise.all([
-      getState('circuitpilot').catch(() => null),
+      getState('electro').catch(() => null),
       getState(COURSE.stateId).catch(() => null),
       owner ? getProjects().catch(() => null) : Promise.resolve(null),
     ]).then(([cp, cs, pd]) => {
@@ -72,7 +72,7 @@ export default {
       const items = [
         { t: 'Gennemfør introduktionen', s: 'En kort rundvisning af platformen', done: user.onboarding.done, href: '#/settings/profile' },
         { t: 'Start opstartskurset', s: 'Kryds din første øvelse af', done: pr.done > 0, href: `#/learn/course/${COURSE.id}/day/1` },
-        { t: 'Prøv CircuitPilot', s: 'Svar på et quizspørgsmål eller lav et lab', done: !!cp && ((cp.stats?.qT || 0) > 0 || (cp.stats?.labsDone || []).length > 0 || cp.xp > 0), href: '#/learn/circuitpilot' },
+        { t: 'Prøv Elværkstedet', s: 'Byg et kredsløb eller regn en opgave', done: !!cp && ((cp.xp || 0) > 0 || (cp.stats?.sims || 0) > 0), href: '#/learn/electro' },
         owner ? { t: 'Forbind dine projekter', s: 'Cursor eller en projektmappe', done: !!pd && pd.projects?.length > 0, href: '#/projects' } : null,
         { t: 'Gør verdenen til din egen', s: 'Vælg årstid, vejr eller lysstyrke', done: personalised, href: '#/settings/world' },
         { t: 'Markér en favorit', s: 'Stjernemarkér en app eller et projekt', done: favs.length > 0 || !!pd?.projects?.some(p => p.meta?.favorite), href: '#/apps' },
