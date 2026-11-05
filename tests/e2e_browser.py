@@ -2076,7 +2076,12 @@ async def main():
         await p1.screenshot(path=f"{OUT}/app-checkers.png")
         await p1.click(".dm-side button:has-text('Forlad')"); await p1.click(".modal button:has-text('Forlad')")
         # Ludo against the computer
-        await p1.goto(BASE + "/#/apps/ludo"); await p1.wait_for_selector(".pg-setup-list")
+        await p1.goto(BASE + "/#/apps/ludo"); await p1.wait_for_selector(".pg-setup-list, .ld-board")
+        if await p1.locator(".ld-board").count():   # a saved game is picked up again – start a fresh one
+            check("ludo: et gemt spil fortsætter, når man kommer tilbage", True)
+            await p1.click(".dm-side button:has-text('Nyt spil')")
+            if await p1.locator(".modal button:has-text('Nyt spil')").count(): await p1.click(".modal button:has-text('Nyt spil')")
+            await p1.wait_for_selector(".pg-setup-list")
         await p1.click(".pg-setup-list button:has-text('Tilføj spiller')"); await p1.click(".dm-page button:has-text('Start')")
         await p1.wait_for_selector(".ld-board")
         check("ludo: brættet med 3 spillere og 12 brikker", await p1.locator(".ld-piece").count() == 12)

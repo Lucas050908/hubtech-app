@@ -417,7 +417,7 @@ export default {
     const pill = (e, d) => h('button', { type: 'button', class: ['cal-pill', e.allDay && 'is-allday'], style: { '--c': e.color || 'var(--app)' }, title: movable(e) ? `${e.title} – træk for at flytte` : e.title, draggable: movable(e) ? 'true' : null,
       ondragstart: movable(e) ? (x) => { x.dataTransfer.setData('text/x-hubtech-event', e.id); x.dataTransfer.effectAllowed = 'move'; } : null,
       onclick: (x) => { x.stopPropagation(); edit(e); } },
-      e.series ? h('span', { class: 'cal-rep', 'aria-label': 'Gentages' }, '↻') : null,
+      e.series && !e.bday ? h('span', { class: 'cal-rep', 'aria-label': 'Gentages' }, '↻') : null,
       !e.allDay && e.start && d === e.date ? h('span', { class: 'cal-time' }, e.start) : null, e.title);
     function moveTo(id, d) {
       const e = st.events.find(x => x.id === id);

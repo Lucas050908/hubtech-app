@@ -204,7 +204,7 @@ export function hostedGame(opts) {
     else if (id) roomApi.get(id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r)))
       .catch(() => roomApi.watch(id).then(openRoom).catch(() => openRoom(null)));
     else openRoom(null);
-  } else if (st.game) { ctl = localCtl(); after(); } else setup();
+  } else if (st.game) { ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
 
   h(root, null, h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), board);
   return { el: root, controls, redraw: () => draw(), destroy() { dead = true; clearTimeout(aiT); clearTimeout(syncT); offs.forEach(f => f()); offs = []; } };
