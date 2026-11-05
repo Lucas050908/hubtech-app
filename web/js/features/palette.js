@@ -5,6 +5,7 @@ import { store, setWorld, setPref } from '../core/store.js';
 import { APPS, access, isLearnApp, visible } from '../core/registry.js';
 import { GUIDES } from '../data/guides.js';
 import { COURSE } from '../data/course-servicetekniker.js';
+import { MAKER_COURSES } from '../data/makercourses.js';
 import { getProjects } from '../core/services.js';
 import { api } from '../core/api.js';
 import { SEASONS, SEASON_LABEL, SEASON_ICON } from '../world/palettes.js';
@@ -38,6 +39,10 @@ function staticItems() {
     .forEach(([t, href, ic]) => items.push({ group: 'Gå til', title: t, icon: ic, href, base: 4 }));
   for (const g of GUIDES) items.push({ group: 'Guides', title: g.title, sub: g.summary, icon: g.icon, href: `#/learn/guide/${g.id}`, keywords: g.category, base: 2 });
   COURSE.days.forEach((d, i) => items.push({ group: 'Kursus', title: `Dag ${i + 1}: ${d.t}`, sub: d.g, icon: 'graduation', hue: 'var(--hue-course)', href: `#/learn/course/${COURSE.id}/day/${i + 1}`, keywords: d.l.join(' ') + ' ' + d.d.join(' '), base: 1 }));
+  for (const c of MAKER_COURSES) {
+    items.push({ group: 'Kurser', title: c.title, sub: c.intro, icon: c.icon, hue: c.hue, href: `#/learn/course/${c.id}`, keywords: `kursus ${c.short} ${c.group}`, base: 2 });
+    c.days.forEach((d, i) => items.push({ group: 'Kurser', title: `${c.short} · ${i + 1}: ${d.t}`, sub: d.g, icon: c.icon, hue: c.hue, href: `#/learn/course/${c.id}/day/${i + 1}`, keywords: d.l.join(' '), base: 0 }));
+  }
   for (const s of SEASONS) items.push({ group: 'Kommandoer', title: `Skift til ${SEASON_LABEL[s].toLowerCase()}`, icon: SEASON_ICON[s], run: () => setWorld({ seasonMode: 'manual', season: s }), keywords: 'årstid season baggrund', base: 1 });
   items.push({ group: 'Kommandoer', title: 'Automatisk årstid', icon: 'calendar', run: () => setWorld({ seasonMode: 'auto' }), keywords: 'årstid auto', base: 1 });
   items.push({ group: 'Kommandoer', title: 'Skift lys/mørk tilstand', icon: 'sun', run: () => setPref('theme', document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'), keywords: 'tema theme dark light', base: 1 });

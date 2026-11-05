@@ -61,8 +61,7 @@ export function clearCaches() { projectsCache = null; stateCache.clear(); change
 
 // ── derived learning progress ──
 import { COURSE } from '../data/course-servicetekniker.js';
-export function courseProgress(state) {
-  const days = COURSE.days;
+export function courseProgress(state, days = COURSE.days) {
   let tasks = 0, done = 0, daysDone = 0;
   days.forEach((d, i) => {
     const s = state?.days?.[i];

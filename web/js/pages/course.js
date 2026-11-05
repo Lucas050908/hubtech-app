@@ -1,17 +1,18 @@
 /**
- * Course player for "Servicetekniker: de første 12 dage".
- * Content is the original course, unchanged. Progress, notes and "unsure" marks are stored per user.
+ * Course player for every course: the start course "Servicetekniker: de første 12 dage" and the machine courses
+ * (LightBurn, xTool, Bambu Lab, VersaWorks …). Progress, notes and "unsure" marks are stored per user and course.
  */
 import { h, clear, debounce } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { logActivity, refreshSummary } from '../core/store.js';
 import { getState, saveState, flushState, courseProgress } from '../core/services.js';
-import { COURSE } from '../data/course-servicetekniker.js';
+import { findCourse } from '../data/courses.js';
 import { toast, progressBar, stateBlock, confirmDialog } from '../core/ui.js';
 import { navigate } from '../core/router.js';
 
-const ID = COURSE.stateId;
+let COURSE = null, ID = '', U = 'Dag';
 let state = null;
+const hue = () => COURSE.hue || 'var(--hue-course)';
 
 function ensure(i) {
   state.days = state.days || {};
@@ -33,20 +34,20 @@ function dayStatus(i) {
 }
 
 function overview(root) {
-  const pr = courseProgress(state);
+  const pr = courseProgress(state, COURSE.days);
   const next = Math.min(COURSE.days.length, pr.lastDay + 1);
   const unsure = [];
   COURSE.days.forEach((d, i) => (state.days?.[i]?.unsure || []).forEach((u, j) => { if (u) unsure.push({ day: i, q: d.q[j] }); }));
   root.append(
     h('div', { class: 'page-head' },
       h('div', null,
-        h('div', { class: 'crumbs' }, h('a', { href: '#/learn' }, 'Guides & Læring'), icon('chevronRight'), h('span', null, 'Kursus')),
+        h('div', { class: 'crumbs' }, h('a', { href: '#/learn' }, 'Guides & Læring'), icon('chevronRight'), h('span', null, COURSE.short)),
         h('h1', null, COURSE.title), h('p', null, COURSE.intro)),
       h('div', { class: 'page-head-actions' },
-        h('a', { class: 'btn btn-primary btn-lg', href: `#/learn/course/${COURSE.id}/day/${next}` }, icon(pr.started ? 'play' : 'arrowRight'), pr.started ? `Fortsæt · dag ${next}` : 'Start dag 1'))),
+        h('a', { class: 'btn btn-primary btn-lg', href: `#/learn/course/${COURSE.id}/day/${next}` }, icon(pr.started ? 'play' : 'arrowRight'), pr.started ? `Fortsæt · ${U.toLowerCase()} ${next}` : `Start ${U.toLowerCase()} 1`))),
     h('div', { class: 'with-rail' },
       h('section', { class: 'glass panel' },
-        h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title' }, 'De 12 dage')),
+        h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title' }, `${COURSE.days.length} ${U === 'Dag' ? 'dage' : 'lektioner'}`)),
         h('ol', { class: 'day-grid' }, COURSE.days.map((d, i) => {
           const st = dayStatus(i);
           const n = (state.days?.[i]?.tasks || []).filter(Boolean).length;
@@ -56,14 +57,14 @@ function overview(root) {
             h('span', { class: 'day-count mono faint' }, `${n}/${d.d.length}`)));
         }))),
       h('aside', { class: 'rail' },
-        h('section', { class: 'glass panel', style: { '--app': 'var(--hue-course)' } },
+        h('section', { class: 'glass panel', style: { '--app': hue() } },
           h('div', { class: 'course-ring' },
-            h('div', { class: 'ring-progress', style: { '--v': pr.pct, '--size': '110px', '--app': 'var(--hue-course)' } }, h('span', { style: { fontSize: '1.3rem' } }, `${pr.pct}%`)),
-            h('div', null, h('b', null, `${pr.daysDone} af ${pr.totalDays} dage`), h('div', { class: 'faint' }, `${pr.done} af ${pr.tasks} øvelser`), h('div', { class: 'faint' }, `${pr.done * 15 + pr.daysDone * 50} XP optjent`)))),
+            h('div', { class: 'ring-progress', style: { '--v': pr.pct, '--size': '110px', '--app': hue() } }, h('span', { style: { fontSize: '1.3rem' } }, `${pr.pct}%`)),
+            h('div', null, h('b', null, `${pr.daysDone} af ${pr.totalDays} ${U === 'Dag' ? 'dage' : 'lektioner'}`), h('div', { class: 'faint' }, `${pr.done} af ${pr.tasks} øvelser`), h('div', { class: 'faint' }, `${pr.done * 15 + pr.daysDone * 50} XP optjent`)))),
         h('section', { class: 'glass panel' },
           h('div', { class: 'panel-head' }, h('h2', { class: 'panel-title' }, icon('target'), 'Til repetition')),
-          unsure.length ? h('ul', { class: 'g-list' }, unsure.slice(0, 8).map(u => h('li', null, h('a', { href: `#/learn/course/${COURSE.id}/day/${u.day + 1}` }, `Dag ${u.day + 1}: `, u.q[0]))))
-            : h('p', { class: 'faint' }, 'Markér spørgsmål i “Tjek dig selv”, som du var usikker på – så samles de her til dag 12.')),
+          unsure.length ? h('ul', { class: 'g-list' }, unsure.slice(0, 8).map(u => h('li', null, h('a', { href: `#/learn/course/${COURSE.id}/day/${u.day + 1}` }, `${U} ${u.day + 1}: `, u.q[0]))))
+            : h('p', { class: 'faint' }, 'Markér spørgsmål i “Tjek dig selv”, som du var usikker på – så samles de her til repetition.')),
         h('section', { class: 'glass panel' },
           h('p', { class: 'faint', style: { fontSize: 'var(--fs-sm)' } }, COURSE.note),
           h('button', { class: 'btn btn-sm btn-danger', style: { marginTop: '12px' }, onclick: async () => {
@@ -81,12 +82,12 @@ function dayView(root, idx) {
   persist();
   const total = COURSE.days.length;
 
-  const nav = h('nav', { class: 'day-nav', 'aria-label': 'Kursusdage' }, COURSE.days.map((x, i) => h('a', {
-    class: ['day-pill', `is-${dayStatus(i)}`], href: `#/learn/course/${COURSE.id}/day/${i + 1}`, 'aria-current': i === idx ? 'page' : null, 'aria-label': `Dag ${i + 1}: ${x.t}`,
+  const nav = h('nav', { class: 'day-nav', 'aria-label': U === 'Dag' ? 'Kursusdage' : 'Lektioner' }, COURSE.days.map((x, i) => h('a', {
+    class: ['day-pill', `is-${dayStatus(i)}`], href: `#/learn/course/${COURSE.id}/day/${i + 1}`, 'aria-current': i === idx ? 'page' : null, 'aria-label': `${U} ${i + 1}: ${x.t}`,
   }, String(i + 1))));
 
   const bar = h('div');
-  const drawBar = () => { const pr = courseProgress(state); bar.replaceChildren(h('div', { class: 'ch-row' }, h('span', { class: 'faint' }, 'Kursets fremdrift'), h('span', { class: 'mono faint' }, `${pr.pct} %`)), progressBar(pr.pct, { app: 'var(--hue-course)' })); };
+  const drawBar = () => { const pr = courseProgress(state, COURSE.days); bar.replaceChildren(h('div', { class: 'ch-row' }, h('span', { class: 'faint' }, 'Kursets fremdrift'), h('span', { class: 'mono faint' }, `${pr.pct} %`)), progressBar(pr.pct, { app: hue() })); };
   drawBar();
 
   const tasks = h('ul', { class: 'tasks' }, d.d.map((t, j) => {
@@ -101,8 +102,8 @@ function dayView(root, idx) {
       nav.querySelectorAll('.day-pill')[idx].className = `day-pill is-${dayStatus(idx)}`;
       if (cb.checked) toast('+15 XP', { type: 'xp', text: 'Øvelse klaret', ms: 1400 });
       if (all && !wasComplete) {
-        toast(`Dag ${idx + 1} gennemført`, { type: 'xp', text: '+50 XP – godt arbejde!' });
-        logActivity('learning', 'course-day', `Kursus – Dag ${idx + 1}`, `${d.t} gennemført`, `${COURSE.id}:${idx + 1}`);
+        toast(`${U} ${idx + 1} gennemført`, { type: 'xp', text: '+50 XP – godt arbejde!' });
+        logActivity('learning', 'course-day', `${COURSE.short} – ${U} ${idx + 1}`, `${d.t} gennemført`, `${COURSE.id}:${idx + 1}`);
         flushState(ID);
         setTimeout(refreshSummary, 600);
       } else setTimeout(refreshSummary, 800);
@@ -123,20 +124,20 @@ function dayView(root, idx) {
     return h('details', { class: 'faq-item' }, h('summary', null, q, icon('chevronDown')), h('div', { class: 'faq-a' }, h('p', null, a), unsure));
   }));
 
-  const notes = h('textarea', { class: 'textarea', rows: 4, placeholder: 'Dine noter til dagen – gemmes automatisk på din konto.', 'aria-label': `Noter til dag ${idx + 1}` });
+  const notes = h('textarea', { class: 'textarea', rows: 4, placeholder: 'Dine noter – gemmes automatisk på din konto.', 'aria-label': `Noter til ${U.toLowerCase()} ${idx + 1}` });
   notes.value = s.notes || '';
   const noteState = h('span', { class: 'faint', style: { fontSize: 'var(--fs-xs)' } });
   notes.addEventListener('input', debounce(() => { s.notes = notes.value.slice(0, 5000); persist(); noteState.textContent = 'Gemt ✓'; }, 500));
 
-  logActivity('learning', 'course', `Kursus – Dag ${idx + 1}`, d.t, `${COURSE.id}:${idx + 1}`);
+  logActivity('learning', 'course', `${COURSE.short} – ${U} ${idx + 1}`, d.t, `${COURSE.id}:${idx + 1}`);
 
   root.append(
     h('div', { class: 'course-top' },
-      h('div', { class: 'crumbs' }, h('a', { href: '#/learn' }, 'Guides & Læring'), icon('chevronRight'), h('a', { href: `#/learn/course/${COURSE.id}` }, COURSE.short), icon('chevronRight'), h('span', null, `Dag ${idx + 1}`)),
+      h('div', { class: 'crumbs' }, h('a', { href: '#/learn' }, 'Guides & Læring'), icon('chevronRight'), h('a', { href: `#/learn/course/${COURSE.id}` }, COURSE.short), icon('chevronRight'), h('span', null, `${U} ${idx + 1}`)),
       nav, bar),
-    h('article', { class: 'glass panel day-card', style: { '--app': 'var(--hue-course)' } },
+    h('article', { class: 'glass panel day-card', style: { '--app': hue() } },
       h('div', { class: 'day-head' },
-        h('span', { class: 'chip chip-app' }, `Dag ${idx + 1} af ${total}`),
+        h('span', { class: 'chip chip-app' }, `${U} ${idx + 1} af ${total}`),
         s.complete ? h('span', { class: 'chip chip-ok' }, icon('check'), 'Gennemført') : null),
       h('h1', { class: 'day-title' }, d.t),
       h('p', { class: 'day-goal' }, icon('target'), d.g),
@@ -154,26 +155,30 @@ function dayView(root, idx) {
           h('h2', { class: 'g-h', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' } }, 'Noter', noteState),
           notes)),
       h('div', { class: 'day-pager' },
-        h('a', { class: ['btn', idx === 0 && 'is-hidden'], href: `#/learn/course/${COURSE.id}/day/${idx}`, 'aria-disabled': idx === 0 ? 'true' : null }, icon('arrowLeft'), 'Forrige dag'),
-        idx < total - 1 ? h('a', { class: 'btn btn-primary', href: `#/learn/course/${COURSE.id}/day/${idx + 2}` }, 'Næste dag', icon('arrowRight'))
+        h('a', { class: ['btn', idx === 0 && 'is-hidden'], href: `#/learn/course/${COURSE.id}/day/${idx}`, 'aria-disabled': idx === 0 ? 'true' : null }, icon('arrowLeft'), U === 'Dag' ? 'Forrige dag' : 'Forrige lektion'),
+        idx < total - 1 ? h('a', { class: 'btn btn-primary', href: `#/learn/course/${COURSE.id}/day/${idx + 2}` }, U === 'Dag' ? 'Næste dag' : 'Næste lektion', icon('arrowRight'))
           : h('a', { class: 'btn btn-primary', href: `#/learn/course/${COURSE.id}` }, 'Til kursusoversigten', icon('check')))));
 }
 
 export default {
   title: 'Kursus',
-  destroy() { flushState(ID); },
+  destroy() { if (ID) flushState(ID); },
   async render(ctx) {
     const root = h('div', { class: 'page course-page' });
-    if (ctx.params.id !== COURSE.id) {
+    if (ID) flushState(ID);
+    const found = await findCourse(ctx.params.id).catch(() => null);
+    if (!found) {
       root.appendChild(stateBlock({ icon: 'book', title: 'Kurset findes ikke', actions: [h('a', { class: 'btn btn-primary', href: '#/learn' }, 'Til læring')] }));
       return root;
     }
+    COURSE = found; ID = found.stateId; U = found.unit || 'Dag';
+    root.style.setProperty('--hue-course', hue());
     try { state = (await getState(ID)) || { days: {}, lastDay: 0 }; }
     catch (e) { root.appendChild(stateBlock({ kind: 'error', icon: 'alert', title: 'Fremdriften kunne ikke hentes', text: e.message })); return root; }
     if (ctx.params.day) {
       const idx = Number(ctx.params.day) - 1;
-      if (!(idx >= 0 && idx < COURSE.days.length)) { root.appendChild(stateBlock({ icon: 'compass', title: 'Den dag findes ikke', actions: [h('a', { class: 'btn btn-primary', href: `#/learn/course/${COURSE.id}` }, 'Kursusoversigt')] })); return root; }
-      this.title = `Dag ${idx + 1} · ${COURSE.short}`;
+      if (!(idx >= 0 && idx < COURSE.days.length)) { root.appendChild(stateBlock({ icon: 'compass', title: U === 'Dag' ? 'Den dag findes ikke' : 'Den lektion findes ikke', actions: [h('a', { class: 'btn btn-primary', href: `#/learn/course/${COURSE.id}` }, 'Kursusoversigt')] })); return root; }
+      this.title = `${U} ${idx + 1} · ${COURSE.short}`;
       dayView(root, idx);
     } else {
       this.title = COURSE.title;

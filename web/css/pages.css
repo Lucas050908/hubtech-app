@@ -4491,5 +4491,6 @@ html.is-widget #world-scrim { opacity: .9; }
 @media (max-width: 520px) { .wgset-qr { flex-direction: column; align-items: flex-start; } }
 
 /* long lists: let the browser skip drawing what is far off screen (faster scrolling, less work) */
-.launcher-item, .lx-tile, .kb-card, .note-item { content-visibility: auto; contain-intrinsic-size: auto 120px; }
-.launcher-item { contain-intrinsic-size: auto 300px; }
+.launcher-item { content-visibility: auto; contain-intrinsic-size: auto 300px; }
+.cal-clash { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--warn, #f59e0b); } .cal-clash:empty { display: none; } .cal-clash svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.kb-quickdue { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .kb-quickdue .chip { cursor: pointer; height: 26px; font-size: 12px; }

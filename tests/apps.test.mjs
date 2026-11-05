@@ -1253,3 +1253,21 @@ console.log('apps ok');
   assert.equal(r.B1.v, '=SUM(A1:A1)');
   console.log('sheetfill ok');
 }
+
+{
+  const { MAKER_COURSES, MAKER_GROUPS } = await import('../web/js/data/makercourses.js');
+  const ids = new Set();
+  const groups = new Set(MAKER_GROUPS.map(g => g[0]));
+  for (const c of MAKER_COURSES) {
+    assert.ok(/^[a-z0-9-]{2,30}$/.test(c.id) && !ids.has(c.id), c.id); ids.add(c.id);
+    assert.equal(c.stateId, `course-${c.id}`);
+    assert.ok(groups.has(c.group) && c.hue && c.title && c.short && c.intro && c.days.length >= 3, c.id);
+    for (const d of c.days) {
+      assert.ok(d.t && d.g && d.l.length >= 3 && d.d.length >= 2 && d.q.length >= 1, `${c.id}: ${d.t}`);
+      for (const [label, url] of d.r) assert.ok(label && /^https:\/\//.test(url), `${c.id}: ${url}`);
+      for (const q of d.q) assert.ok(q.length === 2 && q[0].length > 8 && q[1].length > 2, `${c.id}: ${q[0]}`);
+    }
+  }
+  for (const want of ['lasertyper', 'lightburn', 'xcs', 'falcon', 'bambu', 'creality', 'canvasworkspace', 'scal', 'versaworks', 'rolandconnect', 'service-maskiner']) assert.ok(ids.has(want), want);
+  console.log('makercourses ok');
+}

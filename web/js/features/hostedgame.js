@@ -221,5 +221,6 @@ export function hostedGame(opts) {
   } else if (st.game) { ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
 
   h(root, null, h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), board);
+  root.__hg = () => { const g0 = mode === 'online' ? room?.state?.blob : st.game; return { dead, mode, ctl: !!ctl, aiDue, turn: g0?.turn, phase: g0?.phase, ai: g0?.players?.map(p => !!p.ai), same: g0 === ctl?.s }; };   // for tests and bug reports
   return { el: root, controls, redraw: () => draw(), destroy() { dead = true; clearTimeout(aiT); clearInterval(watchdog); clearTimeout(syncT); offs.forEach(f => f()); offs = []; } };
 }

@@ -187,7 +187,24 @@ export default {
       const times = h('div', { class: 'grid-2', hidden: !!e.allDay },
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Start'), s1),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Slut'), s2));
-      ad.addEventListener('change', () => { times.hidden = ad.checked; });
+      ad.addEventListener('change', () => { times.hidden = ad.checked; checkClash(); });
+      // moving the start keeps the length, like in other calendars
+      let lastStart = s1.value;
+      s1.addEventListener('change', () => {
+        if (lastStart && s1.value && s2.value) { const len = toMin(s2.value) - toMin(lastStart); if (len > 0) s2.value = toHm(Math.min(23 * 60 + 59, toMin(s1.value) + len)); }
+        lastStart = s1.value; checkClash();
+      });
+      // a gentle warning when it overlaps something else that day
+      const clash = h('div', { class: 'cal-clash', 'aria-live': 'polite' });
+      function checkClash() {
+        clear(clash);
+        if (ad.checked || !s1.value || !da.value) return;
+        const a = toMin(s1.value), b = s2.value ? toMin(s2.value) : a + 60;
+        const hits = onDay(da.value).filter(x => !x.allDay && x.start && x.id !== e.id && x.series !== e.id && !x.bday && toMin(x.start) < b && (x.end ? toMin(x.end) : toMin(x.start) + 60) > a);
+        if (hits.length) clash.append(icon('alert'), h('span', null, `Overlapper med ${hits.slice(0, 2).map(x => `“${x.title}” (${x.start}${x.end ? '–' + x.end : ''})`).join(' og ')}${hits.length > 2 ? ` og ${hits.length - 2} mere` : ''}.`));
+      }
+      s2.addEventListener('change', checkClash); da.addEventListener('change', checkClash);
+      checkClash();
       const err = h('div', { class: 'field-error' });
       const cals = editable();
       const calSel = cals.length ? h('select', { class: 'select', 'aria-label': 'Kalender' },
@@ -264,7 +281,7 @@ export default {
           h('div', { class: 'grid-2' }, h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Dato'), da), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Til og med (valgfri)'), de)),
           e.repeat && occ ? h('div', { class: 'cal-series-note' }, icon('refresh'), `${repeatShort(e.repeat)} – ændringer gælder alle gange.`) : null,
           h('label', { class: 'cal-check' }, ad, 'Hele dagen'),
-          times,
+          times, clash,
           repeatRow,
           h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Sted'), lo),
           h('div', { class: 'grid-2' }, remindField, h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Farve'), sw)),
@@ -756,6 +773,19 @@ export default {
     drawCals(); loadShared();
     try { const sv = localStorage.getItem('hubtech.cal.view'); if (['month', 'week', 'agenda'].includes(sv)) view = sv; } catch { /* */ }
     const viewSel = segmented([{ value: 'month', label: 'Måned', icon: 'grid' }, { value: 'week', label: 'Uge', icon: 'calendar' }, { value: 'agenda', label: 'Liste', icon: 'list' }], view, (x) => { view = x; try { localStorage.setItem('hubtech.cal.view', x); } catch { /* */ } draw(); }, { label: 'Visning' });
+    // keyboard: T i dag · M/U/L visning · N ny aftale · / søg (not while typing or with a dialog open)
+    const onKeys = (k) => {
+      if (!searchIn.isConnected) { document.removeEventListener('keydown', onKeys); return; }
+      if (k.ctrlKey || k.metaKey || k.altKey || document.querySelector('.modal-backdrop') || k.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      const key = k.key.toLowerCase();
+      const setView = (v) => { const b = viewSel.querySelectorAll('button')[['month', 'week', 'agenda'].indexOf(v)]; b?.click(); };
+      if (key === 't') { selected = iso(today); cursor = new Date(today.getFullYear(), today.getMonth(), 1); draw(); }
+      else if (key === 'm') setView('month'); else if (key === 'u') setView('week'); else if (key === 'l') setView('agenda');
+      else if (key === 'n') { k.preventDefault(); edit(null, selected); }
+      else if (key === '/') { k.preventDefault(); searchIn.focus(); }
+      else return;
+    };
+    document.addEventListener('keydown', onKeys);
     draw();
     return h('div', { class: 'page calendar-page', style: { '--app': app.hue } },
       appHero(app, {
@@ -768,7 +798,7 @@ export default {
           { icon: 'kanban', label: 'Deadlines denne uge', value: v.dl }],
       }),
       quickBox,
-      h('div', { class: 'cal-bar on-world' }, viewSel, searchIn, h('span', { class: 'faint kb-keys' }, 'Træk en aftale til en anden dag · piletaster flytter dagen · Enter opretter')),
+      h('div', { class: 'cal-bar on-world' }, viewSel, searchIn, h('span', { class: 'faint kb-keys' }, 'Træk en aftale til en anden dag · T i dag · M/U/L visning · N ny aftale · / søg')),
       calsBox, monthWrap, weekBox, results, agenda);
   },
 };

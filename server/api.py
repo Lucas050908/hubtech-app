@@ -490,15 +490,26 @@ def summary(req, _):
     u = require_user(req)
     uid = u["id"]
     cp = _state(uid, "circuitpilot") or {}
-    course = _state(uid, "course-servicetekniker") or {}
     cp_xp = int(cp.get("xp", 0) or 0) if isinstance(cp, dict) else 0
     tasks_done = 0
     days_done = 0
-    for day in (course.get("days") or {}).values() if isinstance(course, dict) else []:
-        t = [bool(x) for x in (day.get("tasks") or [])]
-        tasks_done += sum(t)
-        if day.get("complete"):
-            days_done += 1
+    started_courses = 0
+    # every course (the start course and the machine courses) gives 15 XP per exercise and 50 XP per finished day/lesson
+    for row in db.all_rows("SELECT data FROM app_state WHERE user_id = ? AND substr(app_id, 1, 7) = 'course-'", (uid,)):
+        try:
+            course = json.loads(row["data"])
+        except ValueError:
+            continue
+        days = course.get("days") if isinstance(course, dict) else None
+        before = tasks_done
+        for day in (days.values() if isinstance(days, dict) else []):
+            if not isinstance(day, dict):
+                continue
+            tasks_done += sum(1 for x in (day.get("tasks") or []) if x)
+            if day.get("complete"):
+                days_done += 1
+        if tasks_done > before or (isinstance(course, dict) and course.get("startedAt")):
+            started_courses += 1
     course_xp = tasks_done * 15 + days_done * 50
     onboarding_xp = 50 if u["onboarding_done"] else 0
     cs = _state(uid, "codeschool") or {}
@@ -524,7 +535,7 @@ def summary(req, _):
     if isinstance(cp, dict):
         streak = int((cp.get("stats") or {}).get("streakDays", 0) or 0)
     projects = db.one("SELECT COUNT(*) AS n FROM project_meta WHERE user_id = ?", (uid,))["n"]
-    courses_active = (1 if (tasks_done or (isinstance(course, dict) and course.get("startedAt"))) else 0) + (1 if cp else 0) + (1 if isinstance(cs, dict) and cs.get("done") else 0)
+    courses_active = started_courses + (1 if cp else 0) + (1 if isinstance(cs, dict) and cs.get("done") else 0)
     favs = db.one("SELECT COUNT(*) AS n FROM favorites WHERE user_id = ?", (uid,))["n"]
     return 200, {
         "xp": total, "level": level, "levelXp": total % LEVEL_XP, "levelSize": LEVEL_XP,

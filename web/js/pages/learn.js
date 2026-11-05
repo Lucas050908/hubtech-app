@@ -6,8 +6,9 @@ import { appById, LEARN_APPS } from '../core/registry.js';
 import { isDue } from '../features/srs.js';
 const csXp = (s) => Object.keys(s?.done || {}).length * 20 + Object.values(s?.quiz || {}).reduce((a, q) => a + Object.values(q).filter(v => v === true).length, 0) * 5;
 import { getState, courseProgress } from '../core/services.js';
+import { api } from '../core/api.js';
 import { GUIDES, GUIDE_CATEGORIES } from '../data/guides.js';
-import { COURSE } from '../data/course-servicetekniker.js';
+import { START_COURSE as COURSE, loadMakerCourses } from '../data/courses.js';
 import { paintStill } from '../world/controller.js';
 import { progressBar, stateBlock } from '../core/ui.js';
 
@@ -65,6 +66,32 @@ export default {
       }));
     });
 
+    // machine and software courses: LightBurn, xTool, Bambu Lab, VersaWorks …
+    const makerSlot = h('section', { class: 'maker-courses' }, h('div', { class: 'skel', style: { height: '160px', borderRadius: 'var(--r-lg)' } }));
+    loadMakerCourses().then(async ({ MAKER_COURSES, MAKER_GROUPS }) => {
+      const all = (await api.get('/api/states/course-').catch(() => null))?.states || {};   // one request for every course
+      const states = MAKER_COURSES.map(c => all[c.stateId] || null);
+      const card = (c, i) => {
+        const pr = courseProgress(states[i], c.days);
+        const next = Math.min(c.days.length, pr.lastDay + 1);
+        return h('a', { class: 'guide-card glass', href: pr.started ? `#/learn/course/${c.id}/day/${next}` : `#/learn/course/${c.id}`, style: { '--app': c.hue }, 'data-course': c.id },
+          h('span', { class: 'row-icon' }, icon(c.icon)),
+          h('div', { class: 'gc-main' },
+            h('h3', null, c.title),
+            h('p', { class: 'muted' }, c.intro),
+            h('div', { class: 'gc-meta' },
+              h('span', { class: 'chip' }, icon('book'), `${c.days.length} lektioner`),
+              pr.done ? h('span', { class: ['chip', pr.pct === 100 ? 'chip-ok' : 'chip-app'] }, pr.pct === 100 ? icon('check') : null, `${pr.pct} %`) : null)),
+          icon('arrowRight'));
+      };
+      makerSlot.replaceChildren(
+        h('div', { class: 'guide-head' }, h('h2', null, icon('graduation'), 'Kurser i maskiner og software'), h('span', { class: 'faint' }, `${MAKER_COURSES.length} kurser · laser, 3D-print, skæreplottere, storformatprint og service`)),
+        ...MAKER_GROUPS.map(([g, label]) => {
+          const list = MAKER_COURSES.map((c, i) => [c, i]).filter(([c]) => c.group === g);
+          return h('div', null, h('h3', { class: 'guide-cat' }, label), h('div', { class: 'guide-grid' }, list.map(([c, i]) => card(c, i))));
+        }));
+    }).catch(() => makerSlot.replaceChildren());
+
     let q = '', cat = 'all';
     const search = h('input', { class: 'input', type: 'search', placeholder: 'Søg i guides…', 'aria-label': 'Søg i guides' });
     const catBar = h('div', { class: 'filter-chips', role: 'group', 'aria-label': 'Kategori' });
@@ -97,8 +124,9 @@ export default {
     drawCats(); drawGuides();
 
     return h('div', { class: 'page' },
-      h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Guides & Læring'), h('h1', null, 'Lær, øv og find hjælp'), h('p', null, 'Al din læring samlet ét sted: kurset, Kodeskolen, Huskekort, CircuitPilot og Værktøjskassen – og en søgbar guide til alt på platformen.'))),
+      h('div', { class: 'page-head' }, h('div', null, h('div', { class: 'eyebrow' }, 'Guides & Læring'), h('h1', null, 'Lær, øv og find hjælp'), h('p', null, 'Al din læring samlet ét sted: kurserne, Kodeskolen, Huskekort, CircuitPilot og Værktøjskassen – og en søgbar guide til alt på platformen.'))),
       courseSlot,
+      makerSlot,
       h('h2', { class: 'guide-cat learn-apps-head' }, icon('sparkles'), 'Læringsapps'),
       appsSlot,
       h('div', { class: 'guide-head' }, h('h2', null, 'Guides'), h('div', { class: 'pt-search' }, icon('search'), search)),

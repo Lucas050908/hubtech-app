@@ -8,7 +8,7 @@ import { toast, confirmDialog, stateBlock, modal, segmented } from '../core/ui.j
 import { saveBlob } from '../core/files.js';
 import { appById } from '../core/registry.js';
 import { appHero, heroBtn, heroGhost } from '../features/apphero.js';
-import { tagsOf, toggleLine, continueList } from '../features/notetext.js';
+import { tagsOf, toggleLine, continueList, checklist } from '../features/notetext.js';
 const TRASH_DAYS = 30;
 
 const COLORS = [
@@ -192,6 +192,19 @@ export default {
         body.setRangeText('[ ] ', ls, ls, 'end'); body.focus(); body.dispatchEvent(new Event('input'));
       };
       const view = rendered(n, () => { touch(); drawList(); drawEditor(); });
+      // unticked checklist points → tasks in Opgaver (with a link back to the note in the notes field)
+      const open = checklist(n.body).filter(c => !c.done && c.text.trim());
+      const toTasks = open.length ? h('button', { class: 'icon-btn', 'aria-label': `Send ${open.length} punkter til Opgaver`, title: `Send ${open.length} ${open.length === 1 ? 'punkt' : 'punkter'} til Opgaver`, onclick: async () => {
+        try {
+          const st = (await getState('tasks', { force: true })) || { tasks: [] };
+          st.tasks = Array.isArray(st.tasks) ? st.tasks : [];
+          const now = Date.now(), have = new Set(st.tasks.filter(t => t.status !== 'done').map(t => t.title.toLowerCase()));
+          const add = open.filter(c => !have.has(c.text.trim().toLowerCase()));
+          add.forEach((c, i) => st.tasks.unshift({ id: now.toString(36) + i + Math.random().toString(36).slice(2, 6), title: c.text.trim().slice(0, 200), notes: `Fra noten “${n.title || 'Uden titel'}”`, status: 'todo', prio: 'med', due: null, project: null, remind: 'none', created: now, updated: now }));
+          saveState('tasks', st); flushState('tasks');
+          toast(add.length ? `${add.length} ${add.length === 1 ? 'opgave' : 'opgaver'} lagt i Opgaver` : 'De står allerede i Opgaver', { type: 'ok', action: { label: 'Åbn Opgaver', onClick: () => { location.hash = '#/apps/tasks'; } } });
+        } catch (x) { toast('Det mislykkedes', { type: 'bad', text: x.message }); }
+      } }, icon('kanban')) : null;
       const modeSeg = segmented([{ value: 'write', label: 'Skriv', icon: 'edit' }, { value: 'read', label: 'Vis', icon: 'eye' }], mode, (x) => { mode = x; drawEditor(); }, { label: 'Visning' });
       const pin = h('button', { class: 'icon-btn', 'aria-pressed': String(!!n.pinned), 'aria-label': n.pinned ? 'Frigør' : 'Fastgør', title: n.pinned ? 'Frigør' : 'Fastgør øverst', html: svg(n.pinned ? 'starFill' : 'star'), style: { color: n.pinned ? 'var(--warn)' : null } });
       pin.addEventListener('click', () => { n.pinned = !n.pinned; touch(); drawList(); drawEditor(); });
@@ -208,7 +221,7 @@ export default {
       copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText((n.title ? n.title + '\n\n' : '') + n.body); toast('Kopieret', { type: 'ok', ms: 1200 }); } catch { toast('Kunne ikke kopiere', { type: 'bad' }); } });
       editor.style.setProperty('--note', n.color || 'var(--app)');
       editor.append(
-        h('div', { class: 'note-toolbar' }, swatches, h('span', { style: { flex: 1 } }), modeSeg,
+        h('div', { class: 'note-toolbar' }, swatches, h('span', { style: { flex: 1 } }), modeSeg, toTasks,
           h('button', { class: 'icon-btn', 'aria-label': 'Tjekliste-punkt', title: 'Tjekliste-punkt ([ ])', onclick: insertCheck }, icon('checkCircle')), pin, copy,
           h('button', { class: 'icon-btn', 'aria-label': 'Del noten i Fællesskab', title: 'Del i en chat', onclick: () => import('../features/sharechat.js').then(x => x.shareToChat({ kind: 'note', title: n.title || 'Note', body: String(n.body || '').slice(0, 3000) })), html: svg('share') }),
           h('button', { class: 'icon-btn', 'aria-label': 'Print eller hent som PDF', title: 'Print / PDF', onclick: () => printDialog(n), html: svg('file') }), del),
