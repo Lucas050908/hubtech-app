@@ -1,7 +1,7 @@
 # Tredjepartskomponenter
 
 HUBTECH har ingen afhængigheder på serveren ud over Pythons standardbibliotek. Disse biblioteker ligger lokalt i
-`web/vendor/` (og `web/apps/servicehelp/vendor/`, `web/fonts/`, `tests/vendor/`) med deres egne licenser:
+`web/vendor/` (og `web/fonts/`, `tests/vendor/`) med deres egne licenser:
 
 | Komponent | Bruges til | Licens | Licensfil |
 |---|---|---|---|

@@ -445,31 +445,54 @@ async def main():
         check("office: version history dialog opens", await page.locator(".vh-item.is-current").count() == 1)
         await page.keyboard.press("Escape")
 
-        # ── Servicehjælp saves to the account ──
+        # ── Servicehjælp: a part of HUBTECH – report with photo, saved on the account, PDF, customer into Kunder ──
         await page.goto(BASE + "/#/apps/servicehelp")
-        fr = page.frame_locator("iframe.cp-frame")
-        await fr.locator("#tabs").wait_for()
-        try:
-            await fr.locator("#wgo").click(timeout=2500)
-        except Exception:
-            pass
-        await fr.locator("#tabs button[data-t=kunder]").click()
-        await fr.locator("#kunder summary").click()
-        await fr.locator("#cun").fill("Jensen A/S")
-        await fr.locator("#cuadd").click()
-        await page.wait_for_timeout(1500)
-        svc = (await api(page, "GET", "/api/states/svc-"))["data"]["states"]
-        check("servicehjælp: customer stored on the HUBTECH account", "Jensen A/S" in (svc.get("svc-cust") or {}).get("v", ""), list(svc))
+        await page.wait_for_selector(".sv-tabs")
+        check("servicehjælp: en almindelig HUBTECH-app (ingen gammel app i en ramme)", await page.locator("iframe").count() == 0 and await page.locator(".sv-page .app-hero").count() == 1)
+        await page.click(".sv-tab[data-view=new]")
+        await page.fill("[data-f=r1]", "Testværksted ApS")
+        await page.fill("[data-f=r2]", "Brother HL-L2350")
+        await page.fill("[data-f=r12]", "SN-12345")
+        await page.fill("[data-f=r3]", "Papirstop hver morgen")
+        await page.fill("[data-f=r5]", "Renset valser og skiftet separationspude")
+        await page.fill("[data-f=r6]", "Separationspude | 1 | LY3058 | 129")
+        await page.check(".sv-check:has-text('Testkørt') input")
         png = await page.evaluate("""() => { const c = document.createElement('canvas'); c.width = 900; c.height = 600; const x = c.getContext('2d');
             for (let i = 0; i < 300; i++) { x.fillStyle = `hsl(${i * 7 % 360},70%,50%)`; x.fillRect(Math.random() * 900, Math.random() * 600, 60, 60); } return c.toDataURL('image/png').split(',')[1]; }""")
         import base64 as _b64
         photo = f"{OUT}/svc-photo.png"
         open(photo, "wb").write(_b64.b64decode(png))
-        await fr.locator("#pf").set_input_files(photo)
-        await page.wait_for_timeout(2500)
+        await page.set_input_files(".sv-photo-add input[type=file]", photo)
+        await page.wait_for_selector(".sv-photo img", timeout=10000)
+        await page.click(".sv-save")
+        await page.wait_for_timeout(1500)
         svc = (await api(page, "GET", "/api/states/svc-"))["data"]["states"]
-        dp = json.dumps(svc.get("svc-draftp") or {})
-        check("servicehjælp: photos are stored as image files, not inside the data", "/api/office/files/" in dp and "data:image" not in dp, dp[:120])
+        log = json.loads((svc.get("svc-log") or {}).get("v", "[]"))
+        rep = next((r for r in log if r.get("k") == "Testværksted ApS"), None)
+        check("servicehjælp: rapporten er gemt på kontoen", rep is not None and rep["s"] == "SN-12345" and "Papirstop" in rep.get("t", ""), log[:1])
+        dp = json.dumps(rep or {})
+        check("servicehjælp: fotos gemmes som billedfiler, ikke inde i data", "/api/office/files/" in dp and "data:image" not in dp, dp[:160])
+        cust = (await api(page, "GET", "/api/state/customers"))["data"]["state"] or {}
+        check("servicehjælp: en ny kunde kommer i Kunder", any(c["name"] == "Testværksted ApS" for c in cust.get("customers", [])), cust)
+        async with page.expect_download(timeout=20000) as dl:
+            await page.click(".sv-actions button:has-text('Hent PDF')")
+        d = await dl.value
+        check("servicehjælp: rapporten kan hentes som PDF", d.suggested_filename.endswith(".pdf") and "Testv" in d.suggested_filename, d.suggested_filename)
+        await page.screenshot(path=f"{OUT}/servicehjaelp-rapport.png")
+        await page.click(".sv-tab[data-view=reports]")
+        await page.wait_for_selector(".sv-item:has-text('Testværksted ApS')")
+        check("servicehjælp: rapporten står i listen med resultat", "Fejl udbedt" in await page.inner_text(".sv-item:has-text('Testværksted ApS')"))
+        await page.click(".sv-tab[data-view=drv]")
+        await page.fill(".sv-grid aside input[placeholder=Fra]", "Vejle"); await page.fill(".sv-grid aside input[placeholder=Til]", "Kolding")
+        await page.fill(".sv-grid aside input[placeholder=km]", "32,5")
+        await page.click(".sv-grid aside button:has-text('Gem tur')")
+        await page.wait_for_selector(".sv-item:has-text('Vejle')")
+        check("servicehjælp: kørebogen regner km", "32,5 km" in await page.inner_text(".sv-kpis"), await page.inner_text(".sv-kpis"))
+        await page.click(".sv-tab[data-view=stats]"); await page.wait_for_selector(".sv-chart svg")
+        check("servicehjælp: statistik med grafer", await page.locator(".sv-chart svg").count() >= 3)
+        await page.screenshot(path=f"{OUT}/servicehjaelp-statistik.png")
+        # clean up, so the Kunder test below starts from nothing
+        await page.evaluate("""() => Promise.all(['customers', 'svc-log', 'svc-drv'].map(k => fetch('/api/state/' + k, { method: 'PUT', headers: { 'X-Requested-With': 'hubtech', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: k === 'customers' ? { customers: [], invoices: [], company: {}, nextNo: 1 } : { v: '[]' } }) })))""")
 
         # ── installable desktop app ──
         await page.goto(BASE + "/?source=app#/settings/about")
@@ -995,18 +1018,22 @@ async def main():
         check("delt kalender: den andens aftale vises i min kalender", await page.locator(".cal-pill:has-text('Farmors fødselsdag')").count() >= 1)
         await page.wait_for_timeout(800)
         await page.screenshot(path=f"{OUT}/e2e_cal_shared.png")
-        # Servicehjælp writes into the same calendar
-        await page.evaluate("""async () => { const s = (await (await fetch('/api/state/calendar')).json()).state; s.events.push({ id: 'svc1', title: 'Service hos Jensen', date: '2026-10-26', allDay: false, start: '08:00', color: '#f07a1b', svcCat: 0 }); await fetch('/api/state/calendar', { method: 'PUT', headers: { 'X-Requested-With': 'hubtech', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: s }) }); }""")
+        # Servicehjælp uses the same calendar: it shows what is coming, and a follow-up goes into Kalender
+        await page.evaluate("""async () => { const s = (await (await fetch('/api/state/calendar')).json()).state; const d = new Date(Date.now() + 3 * 864e5), p = n => String(n).padStart(2, '0'); s.events.push({ id: 'svc1', title: 'Service hos Jensen', date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, allDay: false, start: '08:00' }); await fetch('/api/state/calendar', { method: 'PUT', headers: { 'X-Requested-With': 'hubtech', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: s }) }); }""")
         await page.goto(BASE + "/#/apps/servicehelp")
-        sh = page.frame_locator("iframe.sh-frame, iframe")
-        await page.wait_for_timeout(3500)
-        cal_in_svc = await page.evaluate("""() => { const f = [...document.querySelectorAll('iframe')].find(x => x.src.includes('servicehelp')); try { return f.contentWindow.localStorage.getItem('cal'); } catch (e) { return 'ERR ' + e; } }""")
-        check("én kalender: Servicehjælp ser HUBTECH-kalenderens aftaler", "Service hos Jensen" in (cal_in_svc or "") and "Serverdag" in (cal_in_svc or ""), (cal_in_svc or "")[:200])
-        await page.evaluate("""() => { const f = [...document.querySelectorAll('iframe')].find(x => x.src.includes('servicehelp')); const w = f.contentWindow; const all = JSON.parse(w.localStorage.getItem('cal')); all.push({ id: 'c' + Date.now(), d: '2026-10-27', t: '09:30', x: 'Akut opgave\\nKundens adresse', c: 1, s: 0 }); w.localStorage.setItem('cal', JSON.stringify(all)); }""")
-        await page.wait_for_timeout(2000)
+        await page.wait_for_selector(".sv-mini, .sv-tabs")
+        check("én kalender: Servicehjælp viser kalenderens kommende aftaler", "Service hos Jensen" in await page.inner_text(".sv-page"))
+        await page.click(".sv-tab[data-view=new]")
+        await page.fill("[data-f=r1]", "Akut kunde")
+        await page.fill("[data-f=r9]", "Kundens adresse")
+        await page.click(".sv-actions button:has-text('Planlæg opfølgning')")
+        await page.fill(".modal input[type=time]", "09:30")
+        await page.click(".modal button:has-text('Læg i Kalender')")
+        await page.wait_for_timeout(1500)
         evs = (await api(page, "GET", "/api/state/calendar"))["data"]["state"]["events"]
-        new = [e for e in evs if e["title"] == "Akut opgave"]
-        check("én kalender: aftaler fra Servicehjælp lander i Kalender", len(new) == 1 and new[0]["start"] == "09:30" and new[0]["notes"] == "Kundens adresse", new)
+        new = [e for e in evs if e["title"].startswith("Opfølgning: Akut kunde")]
+        check("én kalender: en opfølgning fra Servicehjælp lander i Kalender", len(new) == 1 and new[0]["start"] == "09:30" and "Kundens adresse" in new[0]["notes"], new)
+        await page.evaluate("""() => fetch('/api/state/svc-draft', { method: 'PUT', headers: { 'X-Requested-With': 'hubtech', 'Content-Type': 'application/json' }, body: JSON.stringify({ state: { v: 'null' } }) })""")
 
         # ── local AI assistant: pop-up, own model file, answer, actions, teacher mode ──
         tiny = os.environ.get("HUBTECH_TEST_GGUF", "/tmp/claude-0/fixture/tiny.gguf")

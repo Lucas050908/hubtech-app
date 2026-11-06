@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HUBTECH</string>
-    <string name="starting">Starter HUBTECH …</string>
+    <string name="starting">Starter dit værksted …</string>
     <string name="first_start">Første start: HUBTECH pakkes ud på telefonen. Det tager op til et halvt minut – kun denne gang.</string>
     <string name="start_failed">HUBTECH kunne ikke starte</string>
     <string name="saved_to">Gemt i Overførsler: %1$s</string>

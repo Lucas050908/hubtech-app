@@ -1701,3 +1701,35 @@ console.log('apps ok');
   assert.ok(top('der kommer ingen lyd ud af højtalerne').some(t => /lyd/.test(t)), 'lyd – også med stavefejl');
   console.log('gnist hjælp ok');
 }
+
+// Servicehjælp – en del af HUBTECH (data i de samme tilstande som før)
+{
+  const SV = await import('../web/js/features/service.js');
+  assert.deepEqual(SV.unwrap({ v: '[1,2]' }), [1, 2]); assert.deepEqual(SV.unwrap(null), []); assert.equal(SV.unwrap({ v: 'Brother' }, ''), 'Brother');
+  assert.deepEqual(SV.unwrap({ v: 'ødelagt' }), [], 'en ødelagt tilstand giver en tom liste');
+  assert.deepEqual(SV.wrap([1]), { v: '[1]' });
+  const o = SV.emptyReport('Lucas');
+  assert.equal(o.f.r14, 'Lucas'); assert.equal(o.f.r11, 'Printer'); assert.equal(o.q.length, SV.CHECKS.length);
+  Object.assign(o.f, { r1: 'Jensen A/S', r2: 'HL-L2350', r12: 'SN1', r3: 'Papirstop', r6: 'Toner | 2 | TN-2420 | 549,50\nSkrue' });
+  o.q[1] = true;
+  const p = SV.parseParts(o.f.r6);
+  assert.equal(p.rows.length, 2); assert.equal(p.total, 1099); assert.equal(p.rows[1].qty, 1);
+  const rec = SV.makeRecord(o, { date: '6.11.2026' });
+  assert.deepEqual([rec.k, rec.e, rec.s, rec.d], ['Jensen A/S', 'HL-L2350', 'SN1', '6.11.2026']);
+  assert.match(rec.t, /SERVICERAPPORT – 6\.11\.2026/); assert.match(rec.t, /Tjekket: Testkørt/); assert.match(rec.t, /I alt: 1\.099,00 kr\./);
+  assert.equal(SV.parseDate('6.11.2026').getMonth(), 10); assert.equal(SV.parseDate('2026-11-06').getDate(), 6);
+  const old = { d: '8.10.2026', k: 'Bager Hansen', e: 'Printer', t: 'Ny rulle' };   // a report from the old Servicehjælp
+  assert.deepEqual(SV.searchReports([rec, old], 'rulle'), [old]); assert.deepEqual(SV.searchReports([rec, old], 'sn1'), [rec]);
+  assert.equal(SV.tripKm(1000, 1032, 0), 32); assert.equal(SV.tripKm(0, 0, 12.5), 12.5);
+  const m = SV.tripMonth([{ d: '2026-11-02', km: 30, ty: 'Erhverv' }, { d: '2026-11-03', km: 10, ty: 'Privat' }, { d: '2026-10-30', km: 99 }], '2026-11', '3,79');
+  assert.deepEqual([m.work, m.priv, m.amount, m.trips.length], [30, 10, 113.7, 2]);
+  const now = new Date(2026, 10, 6);
+  assert.equal(SV.warrantyStatus({ d: '2026-01-10', mo: 12 }, now).state, 'aktiv');
+  assert.equal(SV.warrantyStatus({ d: '2025-11-20', mo: 12 }, now).state, 'snart');
+  assert.equal(SV.warrantyStatus({ d: '2024-01-01', mo: 12 }, now).state, 'udløbet');
+  const st = SV.stats([rec, old], [{ d: '2026-11-02', km: 30 }], [{ d: '2026-11-01', a: 50 }], now);
+  assert.equal(st.months.length, 12); assert.equal(st.months[11].reports, 1); assert.equal(st.months[10].reports, 1);
+  assert.equal(st.months[11].km, 30); assert.equal(st.months[11].exp, 50); assert.equal(st.total, 2);
+  assert.ok(SV.searchKb([{ t: 'Fejlkode', ti: 'E-04', c: 'Papirstop i bakke 2' }], 'bakke').length === 1);
+  console.log('servicehjælp ok');
+}

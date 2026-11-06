@@ -90,8 +90,8 @@ export const APPS = [
     keywords: ['cyberdeck', 'raspberry', 'pi', '3d-print', 'archive'],
   },
   {
-    id: 'servicehelp', name: 'Servicehjælp', tagline: 'Rapporter, kalender og kunder.',
-    description: 'Din arbejdsdag som servicetekniker: servicerapporter som PDF, kalender, kunder, log, fejlsøgning, vidensbank, udgifter, kørebog og garantier. Alt gemmes på din HUBTECH-konto.',
+    id: 'servicehelp', name: 'Servicehjælp', tagline: 'Servicerapporter, kørebog og garantier.',
+    description: 'Din arbejdsdag som servicetekniker: servicerapporter med fotos, reservedele og PDF, kørebog, udgifter, garantier, vidensbank og statistik. Kunder og opfølgninger ligger i HUBTECHs Kunder og Kalender.',
     icon: 'tool', hue: 'var(--hue-service)', route: '#/apps/servicehelp', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#ff7a1a' }, page: () => import('../pages/servicehelp.js'),
     keywords: ['service', 'rapport', 'servicerapport', 'kunde', 'kørebog', 'udgift', 'garanti', 'fejlsøgning', 'tekniker', 'pdf'],

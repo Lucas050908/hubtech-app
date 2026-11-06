@@ -9,7 +9,7 @@
     <TextView android:id="@+id/w_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:text="@string/widget_title" android:textColor="#F4F8FC" android:textSize="17sp" android:textStyle="bold" />
     <TextView android:id="@+id/w_sub" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="@string/widget_empty" android:textColor="#8FB3D9" android:textSize="12sp" android:layout_marginBottom="6dp" />
+        android:text="@string/widget_empty" android:textColor="#A8A29E" android:textSize="12sp" android:layout_marginBottom="6dp" />
     <TextView android:id="@+id/w_line1" style="@style/WidgetLine" />
     <TextView android:id="@+id/w_line2" style="@style/WidgetLine" />
     <TextView android:id="@+id/w_line3" style="@style/WidgetLine" />

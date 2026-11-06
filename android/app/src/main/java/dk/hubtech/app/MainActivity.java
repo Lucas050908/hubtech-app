@@ -104,9 +104,9 @@ public class MainActivity extends AppCompatActivity {
         NotifyJob.sync(this);
         Reminders.ensureChannel(this);
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.parseColor("#0A1422"));
+        root.setBackgroundColor(Color.parseColor("#141210"));
         web = new WebView(this);
-        web.setBackgroundColor(Color.parseColor("#0A1422"));
+        web.setBackgroundColor(Color.parseColor("#141210"));
         web.setVisibility(View.INVISIBLE);
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         splash = buildSplash();
@@ -174,26 +174,38 @@ public class MainActivity extends AppCompatActivity {
 
     // ── splash / first start ──
     private View buildSplash() {
+        // the same look as HUBTECH itself: warm dark stone, an orange glow, the logo and an orange bar
+        float dp = getResources().getDisplayMetrics().density;
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setBackgroundColor(Color.parseColor("#0A1422"));
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[] { Color.parseColor("#1C1410"), Color.parseColor("#141210"), Color.parseColor("#141210") });
+        box.setBackground(bg);
+        android.widget.ImageView logo = new android.widget.ImageView(this);
+        logo.setImageResource(R.mipmap.ic_launcher);
+        logo.setContentDescription("HUBTECH");
+        box.addView(logo, new LinearLayout.LayoutParams((int) (88 * dp), (int) (88 * dp)));
         TextView title = new TextView(this);
         title.setText("HUBTECH");
-        title.setTextColor(Color.parseColor("#F4F8FC"));
-        title.setTextSize(30);
+        title.setTextColor(Color.parseColor("#F5F0E8"));
+        title.setTextSize(26);
+        title.setLetterSpacing(0.18f);
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        title.setPadding(0, (int) (18 * dp), 0, 0);
         box.addView(title);
-        ProgressBar spinner = new ProgressBar(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = 40;
-        box.addView(spinner, lp);
+        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setIndeterminate(true);
+        bar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F97316")));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams((int) (180 * dp), ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = (int) (26 * dp);
+        box.addView(bar, lp);
         splashText = new TextView(this);
         // the first start after installing / updating unpacks the server and web app – say so
         boolean first = prefs.getLong("startedVersion", -1) != versionCode();
         splashText.setText(first ? R.string.first_start : R.string.starting);
-        splashText.setTextColor(Color.parseColor("#8FB3D9"));
-        splashText.setPadding(48, 32, 48, 0);
+        splashText.setTextColor(Color.parseColor("#A8A29E"));
+        splashText.setPadding((int) (32 * dp), (int) (18 * dp), (int) (32 * dp), 0);
         splashText.setGravity(Gravity.CENTER);
         box.addView(splashText);
         return box;
@@ -466,17 +478,17 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setBackgroundColor(Color.parseColor("#0A1422"));
+        box.setBackgroundColor(Color.parseColor("#141210"));
         box.setClickable(true);
         TextView t = new TextView(this);
         t.setText(R.string.lock_title);
-        t.setTextColor(Color.parseColor("#F4F8FC"));
+        t.setTextColor(Color.parseColor("#F5F0E8"));
         t.setTextSize(22);
         t.setTypeface(t.getTypeface(), android.graphics.Typeface.BOLD);
         box.addView(t);
         TextView s = new TextView(this);
         s.setText(R.string.lock_sub);
-        s.setTextColor(Color.parseColor("#8FB3D9"));
+        s.setTextColor(Color.parseColor("#A8A29E"));
         s.setPadding(48, 16, 48, 32);
         s.setGravity(Gravity.CENTER);
         box.addView(s);

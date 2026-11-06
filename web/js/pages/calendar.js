@@ -789,7 +789,7 @@ export default {
     draw();
     return h('div', { class: 'page calendar-page', style: { '--app': app.hue } },
       appHero(app, {
-        eyebrow: 'Arbejdsrum', title: 'Kalender', lead: 'Dine aftaler, Servicehjælps aftaler, delte kalendere med andre, helligdage og deadlines fra Opgaver – samlet ét sted.',
+        eyebrow: 'Arbejdsrum', title: 'Kalender', lead: 'Dine aftaler, opfølgninger fra Servicehjælp, delte kalendere med andre, helligdage og deadlines fra Opgaver – samlet ét sted.',
         actions: [heroBtn('Ny aftale', 'plus', { onclick: () => edit(null, selected) }), heroGhost('Print / PDF', 'file', { onclick: printDialog }), heroGhost('I telefonen', 'smartphone', { onclick: subscribe }), heroGhost('Hent .ics', 'download', { onclick: exportIcs }), heroGhost('Importér', 'upload', { onclick: importIcs })],
         stats: [
           { icon: 'calendar', label: 'Aftaler i dag', value: v.today },
