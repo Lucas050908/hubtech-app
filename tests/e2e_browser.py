@@ -143,6 +143,7 @@ async def main():
         check("Hjem: dagens tip fra Gnist", "Tip fra Gnist" in await page.inner_text(".home-tip"))
         await page.click(".dock .dock-item[data-id='gnist']"); await page.wait_for_selector(".gn-page .ai-panel.is-page")
         check("Gnist: egen app på fuld skærm", await page.locator(".gn-page .ai-panel.is-page").is_visible() and await page.locator(".ai-fab").is_hidden())
+        await page.wait_for_timeout(700)   # let the page finish fading in
         await page.screenshot(path=f"{OUT}/gnist-app.png")
         await page.click(".dock .dock-item[data-id='home']"); await page.wait_for_selector(".home .home-hero")
         check("Gnist: vinduet er tilbage som lille pop-up, når appen forlades", await page.locator("body > .ai-panel").count() == 1 and await page.locator(".ai-fab").is_visible())
@@ -540,6 +541,11 @@ async def main():
             await m.locator(".tour-card .btn-ghost", has_text="Spring over").click()
             await m.wait_for_timeout(400)
         await m.screenshot(path=f"{OUT}/e2e_mobile_home.png", full_page=False)
+        sb = await m.locator(".search-trigger").bounding_box()
+        check("mobil: søgning er en rund knap med ikon", sb and sb["width"] >= 36, sb)
+        vis = await m.evaluate("() => [...document.querySelectorAll('.dock .dock-item')].filter(e => e.getClientRects().length).map(e => e.dataset.id)")
+        check("mobil: docken viser højst 6 apps, altid med Alle apps", 2 <= len(vis) <= 6 and "apps" in vis, vis)
+
         await m.click(".menu-btn")
         await m.wait_for_timeout(400)
         await m.screenshot(path=f"{OUT}/e2e_mobile_nav.png")
@@ -816,7 +822,7 @@ async def main():
         await page.click(".land-tile:has-text('Kysten')")
         await page.wait_for_timeout(1400)
         prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
-        check("baggrund: 7 landskaber + 9 temaer, valget gemmes", await page.locator(".land-tile").count() == 16 and prefs["world"]["landscape"] == "coast" and prefs["world"]["source"] == "landscape", prefs["world"])
+        check("baggrund: 7 landskaber + 10 temaer, valget gemmes", await page.locator(".land-tile").count() == 17 and prefs["world"]["landscape"] == "coast" and prefs["world"]["source"] == "landscape", prefs["world"])
         await page.click(".land-tile:has-text('Tokyo')")
         await page.wait_for_timeout(1400)
         prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
@@ -1440,7 +1446,7 @@ async def main():
                 if await bt.count() and await bt.first.is_enabled(): await bt.first.click(); break
             await page.wait_for_timeout(1300)
         pg = (await api(page, "GET", "/api/state/property"))["data"]["state"]["game"]
-        check("ejendomskongen: computerspillerne spiller selv, og spillet gemmes", pg["turn"] == 0 and pg["round"] >= 2 and any("Computer" in l for l in pg["log"]), pg["log"][:3])
+        check("ejendomskongen: computerspillerne spiller selv, og spillet gemmes", pg["turn"] == 0 and pg["round"] >= 2 and any("Gnist" in l for l in pg["log"]), pg["log"][:3])
         await page.screenshot(path=f"{OUT}/app-property.png")
         # trade with the computer: a silly offer is refused
         pg = (await api(page, "GET", "/api/state/property"))["data"]["state"]["game"]
@@ -1470,6 +1476,7 @@ async def main():
         await page.click(".ch-page button:has-text('Start partiet')"); await page.wait_for_selector(".ch-board")
         await page.click(".ch-sq[data-sq='e2']")
         check("skak: lovlige træk vises", await page.locator(".ch-sq.is-target").count() == 2)
+        check("skak: Gnist forklarer kun, hvis man vælger det", await page.locator(".ch-coach").count() == 0)
         await page.click(".ch-sq[data-sq='e4']")
         await page.wait_for_selector(".ch-moves li span:nth-child(3):not(:empty)", timeout=15000)
         await page.wait_for_timeout(1800)
@@ -1502,7 +1509,7 @@ async def main():
             await page.click(".modal button:has-text('Nyt parti')")
         await page.wait_for_selector(".ch-setup-row")
         await page.click(".ch-setup-row button:has-text('Mod en bot')"); await page.wait_for_selector(".ch-bot")
-        check("skak: syv bots med rating", await page.locator(".ch-bot").count() == 7)
+        check("skak: Gnist og syv bots med rating", await page.locator(".ch-bot").count() == 8 and await page.locator(".ch-bot[data-bot='gnist']").count() == 1)
         await page.click(".ch-bot[data-bot='tanja']"); await page.click(".ch-setup-row button:has-text('Med rating')"); await page.click(".ch-setup-row button:has-text('Hvid')")
         await page.screenshot(path=f"{OUT}/app-chess-bots.png")
         await page.click(".ch-page button:has-text('Start partiet')"); await page.wait_for_selector(".ch-board")
@@ -1516,6 +1523,23 @@ async def main():
         check("skak: ranglisten viser din rating", any(e["me"] and e["r"] == rt.get("r") for e in lad), lad)
         await page.click(".ch-page button:has-text('Nyt parti')"); await page.wait_for_selector(".ch-rating")
         check("skak: rang og rating vises", str(rt.get("r")) in await page.inner_text(".ch-rating") and "Springer" in await page.inner_text(".ch-rating"))
+        # Gnist teaches chess: lessons with a board, then a game where she explains the moves
+        check("skak: lektionerne er kun et tilbud – de er foldet sammen", await page.locator(".chl-board").count() == 0)
+        await page.click(".chl button:has-text('Start lektionerne')")
+        check("skak: Gnist har lektioner med et bræt", await page.locator(".chl-board .chl-sq").count() == 64)
+        await page.click(".chl button:has-text('Næste')")
+        check("skak: lektionen om tårnet viser, hvor det kan gå", "Tårnet" in await page.inner_text(".chl-title") and await page.locator(".chl-sq.is-dot").count() == 14)
+        await page.screenshot(path=f"{OUT}/chess-gnist-lesson.png")
+        await page.click(".chl button:has-text('Spil og lær mod Gnist')"); await page.wait_for_selector(".ch-board")
+        check("skak: Gnist byder velkommen som træner", "Hint" in await page.inner_text(".ch-coach"))
+        await page.click(".ch-sq[data-sq='e2']"); await page.click(".ch-sq[data-sq='e4']")
+        await page.wait_for_selector(".ch-moves li span:nth-child(3):not(:empty)", timeout=15000); await page.wait_for_timeout(400)
+        coach_txt = await page.inner_text(".ch-coach")
+        check("skak: Gnist forklarer dit træk og sit eget", "midten" in coach_txt and "Jeg flyttede" in coach_txt, coach_txt)
+        await page.screenshot(path=f"{OUT}/chess-gnist-coach.png")
+        await page.click(".ch-page button:has-text('Hint')")
+        await page.wait_for_function("() => (document.querySelector('.ch-coach')?.innerText || '').includes('Hint:')", timeout=10000)
+        check("skak: hintet kommer med en forklaring", "Hint:" in await page.inner_text(".ch-coach"))
         # ── Quizbrættet ──
         await go("apps/quizboard", ".qb-chips")
         await page.click(".qb-page button:has-text('Start spillet')"); await page.wait_for_selector(".qb-board")
@@ -1934,6 +1958,7 @@ async def main():
         await p2.click(".wl-post:has-text('Første dag') .wl-act:has-text('Kommentér')")
         await p2.fill(".wl-post:has-text('Første dag') textarea[aria-label='Kommentar']", "Velkommen!")
         await p2.click(".wl-post:has-text('Første dag') .sh-comment-new button:has-text('Send')")
+        await p2.wait_for_selector(".wl-post:has-text('Første dag') .wl-act:has-text('1 kommentar')", timeout=10000)   # saved on the server before we look on the other screen
         try:
             await p1.wait_for_selector(".wl-post:has-text('Første dag') .wl-act:has-text('1 kommentar')", timeout=12000)
         except Exception:
@@ -2214,6 +2239,7 @@ async def main():
         await p1.click(".pg-setup-list button:has-text('Tilføj spiller')"); await p1.click(".dm-page button:has-text('Start')")
         await p1.wait_for_selector(".ld-board")
         check("ludo: brættet med 3 spillere og 12 brikker", await p1.locator(".ld-piece").count() == 12)
+        check("ludo: Gnist er modstanderen og snakker over brættet", await p1.locator(".gn-play .gnist-mark").count() == 1 and "Gnist" in await p1.inner_text(".dm-side"), await p1.inner_text(".dm-side"))
         for _ in range(40):
             if await p1.locator(".ld-roll").count():
                 try:
@@ -2227,10 +2253,15 @@ async def main():
                 except Exception:
                     pass            # the board was redrawn in between – try again next round
                 await p1.wait_for_timeout(300)
-            if await p1.locator(".ld-piece:not([style*='grid-row: 3']):not([style*='grid-row: 4']):not([style*='grid-row: 12']):not([style*='grid-row: 13'])").count():
+            if await p1.evaluate("() => [...document.querySelectorAll('.ld-piece')].some(e => ![3, 4, 12, 13].includes(parseInt(e.style.gridRowStart)))"):   # a piece has left its yard
                 break
             await p1.wait_for_timeout(300)
+        try:   # a computer may have the first turn – give it time to roll before checking the log
+            await p1.wait_for_function("() => (document.querySelector('.dm-log')?.innerText || '').includes('slog')", timeout=8000)   # the page's CSP blocks plain expressions
+        except Exception:
+            pass
         await p1.screenshot(path=f"{OUT}/app-ludo.png")
+        await p1.screenshot(path=f"{OUT}/gnist-modstander.png")
         dbg = await p1.evaluate("(() => { const r = document.querySelector('.cmd-filters')?.parentElement; return { hg: r?.__hg?.(), hash: location.hash, pages: document.querySelectorAll('.ld-board').length, logs: document.querySelectorAll('.dm-log').length, status: document.querySelector('.dm-status')?.innerText, filters: document.querySelectorAll('.cmd-filters').length, inDom: !!r?.isConnected, turnText: document.querySelector('.ld-turn')?.innerText, warns: (window.__warns || []).slice(-5) }; })()"); dbg['errs'] = p1_errs[-8:]
         check("ludo: man kan slå og flytte, og computerne spiller med", await p1.locator(".dm-log").count() == 1 and "slog" in await p1.inner_text(".dm-log"), str(dbg))
         # Otter against the computer
@@ -2772,7 +2803,7 @@ async def main():
         await p1.goto(BASE + "/#/apps/nim"); await p1.wait_for_selector(".nm-match")
         await p1.click(".nm-row >> nth=3 >> .nm-match >> nth=4"); await p1.click(".nim-page button:has-text('Tag 3')")
         await p1.wait_for_selector(".dm-status.is-mine", timeout=8000)
-        check("tændstikker: man tager, og computeren tager bagefter", "Computeren tog" in await p1.inner_text(".dm-log") and await p1.locator(".nm-match").count() < 13)
+        check("tændstikker: man tager, og computeren tager bagefter", "Gnist tog" in await p1.inner_text(".dm-log") and await p1.locator(".nm-match").count() < 13)
         await p1.screenshot(path=f"{OUT}/app-nim.png")
         await p1.goto(BASE + "/#/apps/noise"); await p1.wait_for_selector(".nz-face")
         check("støjmåler: åbner med ansigt og grænse", await p1.locator("input[aria-label='Grænse']").count() == 1)

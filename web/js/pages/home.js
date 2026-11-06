@@ -54,7 +54,7 @@ export default {
         el.querySelector('.home-stat-label').textContent = k === 'level' ? v.label : LABEL[k];
         el.querySelector('.home-stat-value').textContent = v.value;
         const sub = el.querySelector('.home-stat-sub');
-        if (k === 'level') h(clear(sub), null, h('span', { class: 'home-stat-bar' }, h('i', { style: { width: `${v.pct}%` } })));
+        if (k === 'level') h(clear(sub), null, h('span', { class: 'home-stat-bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(v.pct), 'aria-label': v.sub }, h('i', { style: { width: `${v.pct}%` } })), h('span', { class: 'home-stat-next' }, v.sub));
         else sub.textContent = v.sub;
         el.classList.toggle('is-warn', !!v.warn); el.classList.toggle('is-hot', !!v.hot);
       }

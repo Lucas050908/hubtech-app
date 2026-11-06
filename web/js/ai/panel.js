@@ -333,7 +333,9 @@ function render(m, i) {
         : h('span', { class: 'chip ai-source' }, s.title))) : null,
     !m.streaming && m.content && i === messages.length - 1 ? h('div', { class: 'ai-msg-tools' },
       m.error ? null : h('button', { class: 'icon-btn', 'aria-label': 'Kopiér svaret', title: 'Kopiér', onclick: () => navigator.clipboard?.writeText(parseActions(m.content).text).then(() => toast('Kopieret', { type: 'ok' })).catch(() => {}) }, icon('copy')),
-      messages[i - 1]?.role === 'user' ? h('button', { class: 'icon-btn', 'aria-label': 'Prøv igen med et nyt svar', title: 'Prøv igen', onclick: () => retry() }, icon('refresh')) : null) : null);
+      messages[i - 1]?.role === 'user' ? h('button', { class: 'icon-btn', 'aria-label': 'Prøv igen med et nyt svar', title: 'Prøv igen', onclick: () => retry() }, icon('refresh')) : null) : null,
+    !m.streaming && !m.error && m.content && i === messages.length - 1 && messages[i - 1]?.role === 'user' && !tutor() && !builder()
+      ? h('div', { class: 'ai-follow', role: 'group', 'aria-label': 'Spørg videre' }, FOLLOW.map(([label, ask2]) => h('button', { type: 'button', class: 'chip ai-follow-chip', onclick: () => { if (busy) return; els.input.value = ask2; ask(); } }, label))) : null);
 }
 
 /** An answer as headings, lists and paragraphs (code blocks are kept whole). */
@@ -489,6 +491,14 @@ async function start(force) {
 
 function stop() { abort?.abort(); }
 
+// quick follow-ups under the last answer – one click asks Gnist to rework what she just said
+const FOLLOW = [
+  ['Forklar enklere', 'Forklar dit sidste svar enklere, som til en nybegynder.'],
+  ['Kortere', 'Gør dit sidste svar kortere – kun det vigtigste.'],
+  ['Lav en tjekliste', 'Lav dit sidste svar om til en tjekliste med nummererede trin.'],
+  ['Giv et eksempel', 'Giv et konkret eksempel på det, du lige forklarede.'],
+];
+
 /** Ask the last question again (a fresh answer). */
 function retry() {
   if (busy) return;
@@ -514,22 +524,24 @@ async function ask() {
   const build = async (factor) => {
     const ctxTokens = e.state.ctx || 2048;
     const big = !!engine?.state?.model?.external;
-    const maxTokens = isBuilder ? Math.min(big ? 4000 : 2000, Math.floor(ctxTokens * 0.45)) : Math.min(big ? 1400 : 700, Math.floor(ctxTokens * 0.3));
+    const maxTokens = Math.floor((isBuilder ? Math.min(big ? 4000 : 2000, Math.floor(ctxTokens * 0.45)) : Math.min(big ? 1400 : 700, Math.floor(ctxTokens * 0.3))) * (factor < 1 ? 0.75 : 1));
     const budgetChars = Math.floor((ctxTokens - maxTokens) * 2.4 * factor);
     let sys, lastUser = null;
     if (isBuilder) sys = systemPrompt({ mode: 'builder', context: getAiContext(), facts: [], userName: store.get('user')?.displayName }) + '\n\n' + studioFacts(getAiContext(), Math.floor(budgetChars * 0.6));
     else if (isTutor) sys = systemPrompt({ mode: 'tutor', context: getAiContext(), facts: [], userName: store.get('user')?.displayName }) + '\n\n' + exerciseFacts(getAiContext());
     else {
       const items = await collect(cfg.use);
-      const facts = retrieve(items, q + ' ' + messages.slice(-4, -2).map(m => m.content).join(' '), Math.floor(budgetChars * 0.45), { calendarish: isCalendarQuestion(q) });
+      const facts = retrieve(items, q + ' ' + messages.slice(-4, -2).map(m => m.content).join(' '), Math.floor(budgetChars * 0.45), { calendarish: isCalendarQuestion(q), page: location.hash });
       bot.sources = (facts.sources || []).slice(0, 4);
-      sys = systemPrompt({ mode: 'normal', facts: null, userName: store.get('user')?.displayName, style: cfg.style });
+      // a small model (or a retry because it didn't fit): the short prompt without the example answer
+      sys = systemPrompt({ mode: 'normal', facts: null, userName: store.get('user')?.displayName, style: cfg.style, compact: factor < 1 || ctxTokens < 3000 });
       lastUser = questionBlock(q, facts, { page: document.title.replace(/\s*·\s*HUBTECH$/, '') });
     }
     // history that fits next to the system prompt
     const hist = [];
     let used = sys.length + (lastUser ? lastUser.length : 0);
-    for (let i = messages.length - 2; i >= 0 && hist.length < 12; i--) {
+    const keep = factor <= 0.25 ? 1 : 12;   // last try: only the question itself
+    for (let i = messages.length - 2; i >= 0 && hist.length < keep; i--) {
       const m = messages[i];
       if (m.error) continue;
       const c = m.role === 'assistant' ? parseActions(m.content).text : m.content;

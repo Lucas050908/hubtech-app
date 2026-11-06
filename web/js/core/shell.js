@@ -1,6 +1,6 @@
 /** The logged-in workspace frame: sidebar, topbar, content outlet. Built once, updated reactively. */
 import { h, clear, timeAgo, ava } from './dom.js';
-import { icon, tileIcon, logo, svg } from './icons.js';
+import { icon, tileIcon, gnist, logo, svg } from './icons.js';
 import { store, setPref, setWorld } from './store.js';
 import { APPS, appById, access, isLearnApp, visible, entryApps, suiteOf } from './registry.js';
 import { api } from './api.js';
@@ -192,7 +192,7 @@ function buildTopbar() {
   });
   renderThemeBtn();
   bellWrap = h('div', { class: 'pop-anchor' });
-  const aiBtn = h('button', { class: 'icon-btn ai-top', 'aria-label': 'Gnist – AI-assistent (Ctrl+J)', title: 'Gnist – AI-assistent (Ctrl+J)', onclick: () => import('../ai/panel.js').then(m => m.toggleAssistant()) }, icon('sparkles'));
+  const aiBtn = h('button', { class: 'icon-btn ai-top', 'aria-label': 'Gnist – AI-assistent (Ctrl+J)', title: 'Gnist – AI-assistent (Ctrl+J)', onclick: () => import('../ai/panel.js').then(m => m.toggleAssistant()) }, gnist(26));
   const bell = h('button', { class: 'icon-btn', 'aria-label': 'Aktivitet og notifikationer', 'aria-haspopup': 'true' }, icon('bell'), h('span', { class: 'dot', hidden: true }));
   api.get('/api/activity?limit=1').then(({ activity }) => {
     const seen = Number(store.device('seenActivity') || 0);

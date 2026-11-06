@@ -115,7 +115,7 @@ export const oldmaid = {
   destroy() { this._g?.destroy(); },
   async render() {
     let store;
-    try { store = await appState('oldmaid', { game: null, setup: { players: [{ name: 'Dig', ai: false }, { name: 'Computer 1', ai: true }, { name: 'Computer 2', ai: true }] }, wins: 0, played: 0 }); } catch (e) { return loadError('Sorteper', e); }
+    try { store = await appState('oldmaid', { game: null, setup: { players: [{ name: 'Dig', ai: false }, { name: 'Gnist', ai: true }, { name: 'Gnist 2', ai: true }] }, wins: 0, played: 0 }); } catch (e) { return loadError('Sorteper', e); }
     const st = store.data;
     const g = this._g = hostedGame({
       page: 'oldmaid', game: 'oldmaid', title: 'Sorteper', store, minPlayers: 2, maxPlayers: 6,

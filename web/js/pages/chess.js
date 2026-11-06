@@ -5,7 +5,7 @@
  * Online the host's browser checks the moves, the server keeps the position and passes the other player's moves on.
  */
 import { h, clear, svgEl } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, gnist } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, confirmDialog, segmented, modal } from '../core/ui.js';
 import { onLive } from '../core/live.js';
@@ -14,6 +14,7 @@ import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 import { lobbyPanel, roomApi, watchRoom, person, me, isWatcher } from '../features/gameroom.js';
 import * as C from '../features/chess.js';
+import * as K from '../features/chesscoach.js';
 
 const COLOR = { w: 'Hvid', b: 'Sort' };
 
@@ -51,7 +52,9 @@ export default {
     const st = store.data, self = this;
     const root = h('div');
     let mode = ctx?.params?.sub === 'online' ? 'online' : 'local';
-    let room = null, ctl = null, sel = -1, syncT = 0, hint = null;
+    let room = null, ctl = null, sel = -1, syncT = 0, hint = null, coach = null, lesson = 0;
+    // Gnist explains the moves only when you have chosen it ("Gnist forklarer") – it is off from the start
+    const coachOn = (G) => !!G && G.vs === 'ai' && !!st.coach;
     let recvAt = Date.now();      // when the guest last got the host's position (the clock counts from there)
 
     // A controller hides the difference between one screen and online.
@@ -63,7 +66,10 @@ export default {
         bottom: G.vs === 'ai' ? G.color : (st.flip ? 'b' : 'w'),
         canMove: () => !G.s.result && (G.vs !== 'ai' || G.s.turn === G.color),
         name: (c) => (G.vs === 'ai' ? (c === G.color ? `Dig${st.rating?.games ? ` (${st.rating.r})` : ''}` : `${botOf(G).avatar} ${botOf(G).name} (${botOf(G).rating})`) : COLOR[c]),
-        move(f, t, pr) { if (C.play(G.s, f, t, pr)) { G.line.push([f, t, pr]); finishLocal(); store.save(); draw(); } },
+        move(f, t, pr) {
+          const before = coachOn(G) ? JSON.parse(JSON.stringify(G.s)) : null;
+          if (C.play(G.s, f, t, pr)) { G.line.push([f, t, pr]); if (before) { try { coach = { n: G.s.moves.length, lines: [K.explainMove(before, G.s, G.color)].filter(Boolean) }; } catch (e) { console.error(e); } } finishLocal(); store.save(); draw(); }
+        },
         resign() { C.resign(G.s, G.vs === 'ai' ? G.color : G.s.turn); finishLocal(); store.save(); draw(); },
         draw() { C.agreeDraw(G.s); store.save(); draw(); },
         left: (c) => C.clockLeft(G.s, c),
@@ -163,7 +169,8 @@ export default {
       const colSeg = segmented([{ value: 'w', label: 'Hvid' }, { value: 'b', label: 'Sort' }, { value: 'r', label: 'Tilfældig' }], o.color, (v) => { o.color = v; }, { label: 'Din farve' });
       h(levelRow, { hidden: o.vs !== 'ai' }, bots,
         h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Partiet'), ratedSeg),
-        h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Du spiller'), colSeg));
+        h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Du spiller'), colSeg),
+        h('div', { class: 'ch-setup-row' }, h('span', { class: 'faint' }, 'Gnist forklarer'), segmented([{ value: 'n', label: 'Fra' }, { value: 'y', label: 'Til – lær undervejs' }], st.coach ? 'y' : 'n', (v) => { st.coach = v === 'y'; store.save(); }, { label: 'Gnist forklarer dine træk' })));
       h(clear(root), null, h('div', { class: 'ch-setup-wrap' },
         panel('Nyt parti', 'play',
           h('div', { class: 'ch-setup-row' }, vsSeg), levelRow, clockRow,
@@ -172,9 +179,38 @@ export default {
             const color = o.color === 'r' ? (Math.random() < 0.5 ? 'w' : 'b') : o.color;
             st.game = { s: C.newGame(), line: [], vs: o.vs, bot: o.bot, rated: o.vs === 'ai' && o.rated !== false, color };
             if (o.vs === 'two') C.setClock(st.game.s, o.clock);
-            sel = -1; hint = null; store.save(); ctl = localCtl(); draw();
+            sel = -1; hint = null; coach = null; store.save(); ctl = localCtl(); draw();
           } }, icon('play'), 'Start partiet'))),
-        h('div', { class: 'stack' }, ratingPanel(), ladderPanel(), rules())));
+        h('div', { class: 'stack' }, lessonPanel(), ratingPanel(), ladderPanel(), rules())));
+    }
+    /** Lær skak med Gnist: one small lesson at a time, with a board that shows where the piece can go. */
+    function lessonPanel() {
+      const box = h('div', { class: 'chl' });
+      let open = false;
+      const paint = () => {
+        if (!open) return h(clear(box), null, h('p', { class: 'chl-text' }, 'Vil du lære skak? Gnist viser dig brikkerne én ad gangen – og kan forklare dine træk, mens du spiller.'),
+          h('div', { class: 'row-actions', style: { margin: 0 } }, h('button', { class: 'btn btn-sm', onclick: () => { open = true; paint(); } }, icon('sparkles'), 'Start lektionerne')));
+        const L = K.LESSONS[lesson], s = C.fromFEN(L.fen), dots = K.lessonTargets(L), from = L.from ? C.sqIndex(L.from) : -1;
+        const board = h('div', { class: 'chl-board', role: 'img', 'aria-label': `Bræt: ${L.t}` }, [...Array(64).keys()].map(i => {
+          const p = s.board[i], r = Math.floor(i / 8), c = i % 8;
+          return h('span', { class: ['chl-sq', (r + c) % 2 ? 'dark' : 'light', i === from && 'is-from', dots.includes(i) && (p ? 'is-cap' : 'is-dot')] },
+            p ? h('span', { class: ['ch-piece', p === p.toUpperCase() ? 'w' : 'b'] }, `${C.GLYPH[p.toLowerCase()]}\uFE0E`) : null);
+        }));
+        h(clear(box), null,
+          h('div', { class: 'chl-head' }, h('span', { class: 'gn-play-mark' }, gnist(32, { mood: 'wave' })), h('div', null, h('b', { class: 'chl-title' }, L.t), h('span', { class: 'faint' }, ` · ${lesson + 1} af ${K.LESSONS.length}`))),
+          board, h('p', { class: 'chl-text' }, L.text),
+          h('div', { class: 'row-actions', style: { margin: 0 } },
+            h('button', { class: 'btn btn-sm', disabled: lesson === 0, onclick: () => { lesson--; paint(); } }, icon('arrowLeft'), 'Forrige'),
+            lesson < K.LESSONS.length - 1 ? h('button', { class: 'btn btn-sm', onclick: () => { lesson++; paint(); } }, 'Næste', icon('arrowRight')) : null,
+            h('button', { class: 'btn btn-sm btn-primary', onclick: () => {
+              st.coach = true;   // chosen to learn: Gnist explains the moves
+              st.setup = { ...(st.setup || {}), vs: 'ai', bot: 'gnist', rated: false, color: 'w' };
+              st.game = { s: C.newGame(), line: [], vs: 'ai', bot: 'gnist', rated: false, color: 'w' };
+              sel = -1; hint = null; coach = null; store.save(); ctl = localCtl(); draw();
+            } }, icon('play'), 'Spil og lær mod Gnist')));
+      };
+      paint();
+      return panel('Lær skak med Gnist', 'sparkles', box);
     }
     function ratingPanel() {
       const R = st.rating?.games ? st.rating : null, r = R ? R.r : C.START_RATING, k = C.rankOf(r);
@@ -260,6 +296,16 @@ export default {
         : h('div', { class: 'ch-status' }, h('b', null, ctl.canMove() ? (ctl.online || st.game?.vs === 'ai' ? 'Dit træk' : `${COLOR[s.turn]} trækker`) : `${ctl.name(s.turn)} tænker …`),
           C.inCheck(s) ? h('span', { class: 'chip chip-bad' }, 'Skak!') : null);
       const B = ctl.online ? ctl.B : null;
+      const CG = !ctl.online ? st.game : null;
+      let coachBox = null;
+      if (coachOn(CG)) {
+        const said = coach?.n === s.moves.length ? [...coach.lines] : [];
+        if (hint?.why) said.push({ kind: 'tip', text: `Hint: ${hint.why}` });
+        if (!said.length && !res) said.push({ kind: 'ok', text: s.moves.length ? 'Din tur. Tjek først: er nogen af dine brikker truet?' : 'Hej! Jeg forklarer dine træk undervejs. Er du i tvivl, så tryk på Hint – så fortæller jeg, hvorfor trækket er godt.' });
+        coachBox = said.length ? h('div', { class: 'gn-play ch-coach', role: 'status', 'aria-live': 'polite' },
+          h('span', { class: 'gn-play-mark' }, gnist(36, { mood: !ctl.canMove() && !res ? 'think' : 'idle' })),
+          h('div', { class: 'ch-coach-lines' }, said.map(l => h('p', { class: ['gn-play-say', `is-${l.kind}`] }, h('b', null, 'Gnist: '), l.text)))) : null;
+      }
       const offer = B && !res && B.drawOffer
         ? (B.drawOffer !== ctl.myColor && ctl.myColor
           ? h('div', { class: 'ch-offer' }, h('b', null, `${ctl.name(B.drawOffer)} tilbyder remis`),
@@ -283,13 +329,14 @@ export default {
           } }, icon('plus'), 'Nyt parti'),
         !ctl.online && !res && G.vs === 'ai' && ctl.canMove() ? h('button', { class: 'btn btn-sm', onclick: () => {
           if (G.rated) { G.rated = false; toast('Partiet tæller ikke længere i din rating', { type: 'info', text: 'Hints og fortryd gør partiet uden rating.' }); }
-          think(s, 'holger').then(m => { if (!m || st.game !== G || G.s.moves.length !== s.moves.length) return; hint = { ...m, n: s.moves.length }; G.hints = (G.hints || 0) + 1; store.save(); draw(); });
+          think(s, 'holger').then(m => { if (!m || st.game !== G || G.s.moves.length !== s.moves.length) return; let why = ''; try { why = K.hintWhy(s, m); } catch { /* */ } hint = { ...m, n: s.moves.length, why }; G.hints = (G.hints || 0) + 1; store.save(); draw(); });
         } }, icon('sparkles'), 'Hint') : null,
         !ctl.online && !res && G.line.length && !s.clock ? h('button', { class: 'btn btn-sm', onclick: () => {
           if (G.rated) { G.rated = false; toast('Partiet tæller ikke længere i din rating', { type: 'info' }); }
           const back = G.vs === 'ai' ? (G.s.turn === G.color ? 2 : 1) : 1;
           G.line = G.line.slice(0, Math.max(0, G.line.length - back)); G.s = replay(G.line); sel = -1; ctl = localCtl(); store.save(); draw();
         } }, icon('undo'), 'Fortryd') : null,
+        !ctl.online && G?.vs === 'ai' ? h('button', { class: ['btn btn-sm', st.coach && 'btn-primary'], 'aria-pressed': String(!!st.coach), onclick: () => { st.coach = !st.coach; store.save(); draw(); } }, icon('sparkles'), 'Gnist forklarer') : null,
         !ctl.online && G?.vs === 'two' ? h('button', { class: 'btn btn-sm', onclick: () => { st.flip = !st.flip; store.save(); ctl = localCtl(); draw(); } }, icon('refresh'), 'Vend brættet') : null,
         !res && G?.vs === 'two' && !ctl.online && s.moves.length >= 2 ? h('button', { class: 'btn btn-sm', onclick: async () => {
           if (await confirmDialog({ title: 'Remis?', text: 'Er I begge enige om, at partiet ender uafgjort?', confirmLabel: 'Ja, remis' })) ctl.draw();
@@ -307,7 +354,7 @@ export default {
       const top = bottom === 'w' ? 'b' : 'w';
       h(clear(root), null, h('div', { class: 'ch-wrap' },
         h('div', { class: 'ch-main' }, bar(top), board, bar(bottom)),
-        h('div', { class: 'ch-side' }, status, offer, acts, h('h3', { class: 'gr-h' }, 'Træk'), s.moves.length ? moves : h('p', { class: 'faint', style: { margin: 0 } }, 'Hvid starter.'))));
+        h('div', { class: 'ch-side' }, coachBox, status, offer, acts, h('h3', { class: 'gr-h' }, 'Træk'), s.moves.length ? moves : h('p', { class: 'faint', style: { margin: 0 } }, 'Hvid starter.'))));
       moves.scrollTop = moves.scrollHeight;
     }
     /** An online game is over: move my rating against the opponent's (from the ranking). Each player updates their own. */
@@ -333,7 +380,11 @@ export default {
         if (!document.body.contains(root) || st.game?.s !== s) return;
         const m = await think(s, botOf(G).id);
         if (!document.body.contains(root) || st.game?.s !== s || s.moves.length !== n) return;     // a take-back or a new game meanwhile
-        if (m && C.play(s, m.from, m.to, m.promo)) { G.line.push([m.from, m.to, m.promo]); finishLocal(); store.save(); }
+        if (m && C.play(s, m.from, m.to, m.promo)) {
+          G.line.push([m.from, m.to, m.promo]);
+          if (coachOn(G)) { try { coach = { n: s.moves.length, lines: [...(coach?.n === n ? coach.lines : []), K.explainReply(s, G.color)].filter(Boolean) }; } catch (e) { console.error(e); } }
+          finishLocal(); store.save();
+        }
         if (ctl && !ctl.online) draw();
       }, 350);
     }
@@ -431,7 +482,7 @@ export default {
       else openRoom(null);
     } else if (st.game) { C.resumeClock(st.game.s); ctl = localCtl(); draw(); } else setup();
     return h('div', { class: 'page gm-page ch-page', style: { '--app': app.hue } },
-      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Skak', lead: 'Spil mod syv bots fra 400 til 2200 i rating, to på samme skærm eller online – og stig i rang.', compact: true }),
+      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Skak', lead: 'Lær skak med Gnist, spil mod otte bots fra 300 til 2200 i rating, to på samme skærm eller online – og stig i rang.', compact: true }),
       h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), root);
   },
 };

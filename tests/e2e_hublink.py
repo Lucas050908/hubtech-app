@@ -163,7 +163,7 @@ async def main():
             await pga.press(".modal input[type=search]", "Enter"); await pga.wait_for_url("**/apps/gems", timeout=5000)
             # on a phone: no sideways scrolling on the new pages
             cm = await browser.new_context(**p.devices["Pixel 7"]); pm = await cm.new_page()
-            await pm.goto(a + "/#/login"); await pm.fill("#login-user", "oliver"); await pm.fill("#login-pass", "Sommer2026xx!"); await pm.click("button[type=submit]")
+            await pm.goto(a + "/#/login", wait_until="domcontentloaded"); await pm.wait_for_selector("#login-user", timeout=30000); await pm.fill("#login-user", "oliver"); await pm.fill("#login-pass", "Sommer2026xx!"); await pm.click("button[type=submit]")
             await pm.wait_for_selector(".home-title", timeout=20000)
             wide = {}
             for route in ["/", "/hubs", "/apps"]:

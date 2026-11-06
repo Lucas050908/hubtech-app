@@ -138,7 +138,8 @@ function desert(S, b, r, s, W, Hfull, time, light, full = false) {
   // the desert is a band at the top (like the design), the rest is warm dark stone with the circuit at the bottom;
   // full: the whole picture is desert (cards and heroes)
   const H = full ? Hfull * 1.02 : Math.max(Hfull * 0.42, Math.min(Hfull, 300 * s));
-  b.fillStyle = '#141210'; b.fillRect(0, 0, W, Hfull);
+  const stone = light ? '#ebe2d4' : '#141210';   // warm dark stone – light sand in the light theme
+  b.fillStyle = stone; b.fillRect(0, 0, W, Hfull);
   b.fillStyle = vgrad(b, 0, H, P.sky); b.fillRect(0, 0, W, H);
   for (let i = 0; i < 160 * P.stars; i++) { b.fillStyle = `rgba(255,240,220,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.55, z * s, z * s); }
   const hz = H * 0.66, sx = W * 0.76, sy = H * (time === 'day' ? 0.28 : 0.46), sr = Math.min(70 * s, H * 0.17);
@@ -154,8 +155,8 @@ function desert(S, b, r, s, W, Hfull, time, light, full = false) {
   if (full) { S.anim.push({ type: 'dust', n: Math.round(20 * s), light }); return; }
   // the band fades into the stone below
   const f0 = H * 0.84, f1 = H * 1.02;
-  b.fillStyle = vgrad(b, f0, f1, [[0, 'rgba(20,18,16,0)'], [1, '#141210']]); b.fillRect(0, f0, W, f1 - f0);
-  b.fillStyle = '#141210'; b.fillRect(0, f1, W, Hfull - f1);
+  b.fillStyle = vgrad(b, f0, f1, [[0, light ? 'rgba(235,226,212,0)' : 'rgba(20,18,16,0)'], [1, stone]]); b.fillRect(0, f0, W, f1 - f0);
+  b.fillStyle = stone; b.fillRect(0, f1, W, Hfull - f1);
   // the circuit: thin traces rising from the bottom edge, with a few pulses travelling up them
   const paths = [], base = Hfull, top = Hfull - Math.min(260 * s, Hfull * 0.22);
   for (let x = 20 * s; x < W; x += (46 + r() * 70) * s) {
@@ -187,9 +188,92 @@ function drawCamel(ctx, x, y, s, t, color) {
   ctx.restore();
 }
 
+
+// ── Højhuse: en skyline i solnedgangen, gadelamper og en bil, der kører forbi – og kredsløbet i bunden (standardlooket) ──
+const CITY = {
+  night: { far: '#2b2233', mid: '#1b1622', near: '#100d12', road: '#0c0a0d', lit: 0.38, lamps: 1 },
+  dusk: { far: '#6a3a3e', mid: '#3e2430', near: '#22161c', road: '#1a1116', lit: 0.22, lamps: 0.8 },
+  dawn: { far: '#8a6a7a', mid: '#5a4458', near: '#33273a', road: '#241b28', lit: 0.1, lamps: 0.4 },
+  day: { far: '#a7b6c8', mid: '#71859b', near: '#4c5c6e', road: '#3a4450', lit: 0.03, lamps: 0 },
+};
+function city(S, b, r, s, W, Hfull, time, light, full = false) {
+  time = 'night';   // the city is always shown at night – the lights are the point
+  const tk = 'night';
+  const P = DESERT[tk] || DESERT.night, C = CITY[tk] || CITY.night;
+  const H = full ? Hfull * 1.02 : Math.max(Hfull * 0.42, Math.min(Hfull, 300 * s));
+  const stone = light ? '#ebe2d4' : '#141210';
+  b.fillStyle = stone; b.fillRect(0, 0, W, Hfull);
+  b.fillStyle = vgrad(b, 0, H, P.sky); b.fillRect(0, 0, W, H);
+  for (let i = 0; i < 160 * P.stars; i++) { b.fillStyle = `rgba(255,240,220,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.45, z * s, z * s); }
+  const hz = H * 0.62, sx = W * 0.76, sy = H * (time === 'day' ? 0.26 : 0.42), sr = Math.min(64 * s, H * 0.16);
+  const g = b.createRadialGradient(sx, sy, 0, sx, sy, sr * 7); g.addColorStop(0, hexA(P.glow, 0.45)); g.addColorStop(1, hexA(P.glow, 0)); b.fillStyle = g; b.fillRect(0, 0, W, H);
+  b.globalAlpha = P.sunA; b.fillStyle = P.sun; b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill(); b.globalAlpha = 1;
+  const win = ['#ffd38a', '#ffe9c2', '#ffb25a'];
+  // three rows of buildings: far and hazy, the tall towers, and lower houses near the street
+  skyline(b, r, { W, base: hz + H * 0.04, hMin: H * 0.12, hMax: H * 0.3, wMin: 24 * s, wMax: 58 * s, color: C.far, win: null, lit: 0, roofs: ['flat', 'stepped', 'antenna'] });
+  const towers = skyline(b, r, { W, base: hz + H * 0.12, hMin: H * 0.2, hMax: H * 0.56, wMin: 34 * s, wMax: 82 * s, color: C.mid, win, lit: C.lit, roofs: ['flat', 'spire', 'stepped', 'antenna', 'slant'], gap: 6 * s, winSize: s * 0.8 });
+  skyline(b, r, { W, base: hz + H * 0.17, hMin: H * 0.06, hMax: H * 0.16, wMin: 40 * s, wMax: 90 * s, color: C.near, win, lit: C.lit * 0.8, roofs: ['flat', 'slant'], winSize: s * 0.7 });
+  // a red blinking light on the tallest tower (aviation light)
+  const top = towers.reduce((a, t) => (t.top < a.top ? t : a), towers[0]);
+  if (top) S.anim.push({ type: 'blink', x: top.x + top.w / 2, y: top.top - (top.roof === 'spire' ? top.h * 0.18 : top.roof === 'antenna' ? top.h * 0.22 : 0) - 2 * s, s });
+  // the street
+  const road = hz + H * 0.17;
+  b.fillStyle = C.road; b.fillRect(0, road, W, H - road);
+  b.fillStyle = hexA('#f8d9a0', light && time === 'day' ? 0.35 : 0.22);
+  for (let x = 0; x < W; x += 46 * s) b.fillRect(x, road + H * 0.07, 22 * s, 2 * s);
+  for (let x = 30 * s; x < W; x += 150 * s) {   // street lamps
+    b.fillStyle = C.near; b.fillRect(x, road - 30 * s, 2 * s, 30 * s); b.fillRect(x, road - 30 * s, 9 * s, 2 * s);
+    if (C.lamps) { const lg = b.createRadialGradient(x + 8 * s, road - 27 * s, 0, x + 8 * s, road - 27 * s, 30 * s); lg.addColorStop(0, `rgba(255,214,150,${0.55 * C.lamps})`); lg.addColorStop(1, 'rgba(255,214,150,0)'); b.fillStyle = lg; b.fillRect(x - 24 * s, road - 58 * s, 64 * s, 64 * s); }
+  }
+  S.anim.push({ type: 'car', y: road + H * 0.055, s: 1.25 * s, sp: 0.04, lights: time !== 'day', body: '#ea6a1c', glass: time === 'day' ? '#2a3a4c' : '#1c1420' });
+  if (full) return;
+  const f0 = H * 0.86, f1 = H * 1.02;
+  b.fillStyle = vgrad(b, f0, f1, [[0, light ? 'rgba(235,226,212,0)' : 'rgba(20,18,16,0)'], [1, stone]]); b.fillRect(0, f0, W, f1 - f0);
+  b.fillStyle = stone; b.fillRect(0, f1, W, Hfull - f1);
+  circuit(S, b, r, s, W, Hfull, light);
+}
+/** Thin glowing traces rising from the bottom edge, with a few pulses travelling up them. */
+function circuit(S, b, r, s, W, Hfull, light) {
+  const paths = [], base = Hfull, top = Hfull - Math.min(260 * s, Hfull * 0.22);
+  for (let x = 20 * s; x < W; x += (46 + r() * 70) * s) {
+    const pts = [[x, base + 2]]; let cx = x, cy = base;
+    const steps = 2 + Math.floor(r() * 3);
+    for (let k = 0; k < steps; k++) { cy -= (base - top) / steps * (0.5 + r() * 0.6); pts.push([cx, cy]); if (r() < 0.6) { const dx = (r() < 0.5 ? -1 : 1) * (10 + r() * 22) * s; cx += dx; cy -= Math.abs(dx); pts.push([cx, cy]); } }
+    paths.push(pts);
+  }
+  b.save(); b.strokeStyle = hexA('#f97316', light ? 0.16 : 0.13); b.lineWidth = 1.4 * s; b.lineJoin = 'round';
+  for (const p of paths) { b.beginPath(); p.forEach(([x, y], i) => i ? b.lineTo(x, y) : b.moveTo(x, y)); b.stroke(); const [ex, ey] = p[p.length - 1]; b.fillStyle = hexA('#f97316', 0.3); b.beginPath(); b.arc(ex, ey, 2.4 * s, 0, TAU); b.fill(); }
+  b.restore();
+  const fade = b.createLinearGradient(0, top - 20 * s, 0, Hfull); fade.addColorStop(0, hexA('#f97316', 0)); fade.addColorStop(1, hexA('#f97316', 0.07)); b.fillStyle = fade; b.fillRect(0, top - 20 * s, W, Hfull - top + 20 * s);
+  S.anim.push({ type: 'pcb', paths: paths.filter((_, i) => i % 3 === 0), s });
+}
+function drawCar(ctx, x, y, s, t, c) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  if (c.lights) {   // the headlights light up the street in front
+    const g = ctx.createLinearGradient(30, 0, 130, 0); g.addColorStop(0, 'rgba(255,236,180,.38)'); g.addColorStop(1, 'rgba(255,236,180,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(30, -8); ctx.lineTo(130, -18); ctx.lineTo(130, 4); ctx.lineTo(30, -4); ctx.closePath(); ctx.fill();
+    const tg = ctx.createRadialGradient(-31, -8, 0, -31, -8, 12); tg.addColorStop(0, 'rgba(255,59,47,.5)'); tg.addColorStop(1, 'rgba(255,59,47,0)'); ctx.fillStyle = tg; ctx.fillRect(-44, -20, 26, 24);
+  }
+  ctx.fillStyle = c.body; ctx.beginPath();
+  ctx.moveTo(-31, -3); ctx.lineTo(-31, -10); ctx.quadraticCurveTo(-30, -13.5, -23, -14); ctx.lineTo(-14, -14); ctx.lineTo(-7, -22);
+  ctx.quadraticCurveTo(-5, -24, -1, -24); ctx.lineTo(12, -24); ctx.quadraticCurveTo(16, -24, 19, -20); ctx.lineTo(25, -14);
+  ctx.quadraticCurveTo(32, -13, 33, -8); ctx.lineTo(33, -3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(-29, -12.5, 60, 1.2);   // a highlight along the side
+  ctx.fillStyle = c.glass; ctx.beginPath(); ctx.moveTo(-11, -14.5); ctx.lineTo(-5.5, -21); ctx.lineTo(3, -21); ctx.lineTo(3, -14.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(5, -14.5); ctx.lineTo(5, -21); ctx.lineTo(12, -21); ctx.quadraticCurveTo(14.5, -21, 16.5, -18); ctx.lineTo(20, -14.5); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffe9b0'; ctx.fillRect(30, -10, 3, 2.8);
+  ctx.fillStyle = '#ff3b2f'; ctx.fillRect(-31.5, -10, 2.5, 2.8);
+  for (const wx of [-18, 21]) {
+    ctx.fillStyle = '#0a0808'; ctx.beginPath(); ctx.arc(wx, -3, 5.6, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#b8b0a8'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(wx, -3, 2.7, 0, TAU); ctx.stroke();
+    const a = t * 14; ctx.beginPath(); ctx.moveTo(wx + Math.cos(a) * 2.7, -3 + Math.sin(a) * 2.7); ctx.lineTo(wx - Math.cos(a) * 2.7, -3 - Math.sin(a) * 2.7); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ── scenes ──
 function buildScene(name, W, H, time, light) {
-  const r = mulberry({ desert: 97, 'desert-full': 97, tokyo: 11, neon: 23, shanghai: 37, future: 41, kyoto: 53, harbor: 67, minimal: 71, silk: 83 }[name] || 1);
+  const r = mulberry({ desert: 97, 'desert-full': 97, pyramids: 89, tokyo: 11, neon: 23, shanghai: 37, future: 41, kyoto: 53, harbor: 67, minimal: 71, silk: 83 }[name] || 1);
   const P = palette(name, time);
   const bg = layer(W, H), b = bg.getContext('2d');
   const S = { name, W, H, bg, time, anim: [], P, horizon: H * 0.68 };
@@ -198,7 +282,8 @@ function buildScene(name, W, H, time, light) {
   const stars = () => { for (let i = 0; i < 260 * P.stars; i++) { b.fillStyle = `rgba(255,255,255,${0.2 + r() * 0.6})`; const z = r() < 0.08 ? 1.6 : 1; b.fillRect(r() * W, r() * H * 0.55, z * s, z * s); } };
   const glowBand = (y, color, h, a) => { const g = b.createLinearGradient(0, y - h, 0, y + h); g.addColorStop(0, hexA(color, 0)); g.addColorStop(0.5, hexA(color, a)); g.addColorStop(1, hexA(color, 0)); b.fillStyle = g; b.fillRect(0, y - h, W, h * 2); };
 
-  if (name === 'desert' || name === 'desert-full') { desert(S, b, r, s, W, H, time, light, name === 'desert-full'); }
+  if (name === 'desert' || name === 'desert-full') { city(S, b, r, s, W, H, time, light, name === 'desert-full'); }   // 'desert' is the id of the standard look
+  if (name === 'pyramids') { desert(S, b, r, s, W, H, time, light); }
 
   if (name === 'tokyo') {
     stars();
@@ -547,6 +632,15 @@ export class CityScene {
           ctx.beginPath();
           for (let x = -40; x <= W + 40; x += 24) { const y = a.y + Math.sin(x / W * 4 + t * a.sp * 6 + a.ph) * a.amp + Math.sin(x / W * 9 - t * a.sp * 3) * a.amp * 0.3; x < 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
           ctx.stroke(); ctx.restore(); break;
+        }
+        case 'car': {
+          const span = W + 320 * a.s, x = ((t * a.sp * W) % span) - 160 * a.s;
+          drawCar(ctx, x, a.y, a.s, t, a); break;
+        }
+        case 'blink': {
+          const on = (t % 1.6) < 0.25 ? 1 : 0.15;
+          const g = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, 9 * a.s); g.addColorStop(0, `rgba(255,70,60,${0.9 * on})`); g.addColorStop(1, 'rgba(255,70,60,0)');
+          ctx.fillStyle = g; ctx.fillRect(a.x - 9 * a.s, a.y - 9 * a.s, 18 * a.s, 18 * a.s); break;
         }
         case 'camel': {
           const span = W + 240 * a.s, x = ((t * a.sp * W) % span) - 120 * a.s;

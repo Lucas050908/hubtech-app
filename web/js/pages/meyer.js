@@ -16,7 +16,7 @@ export default {
   async render() {
     const app = appById('meyer');
     let store;
-    try { store = await appState('meyer', { game: null, setup: { players: [{ name: 'Dig', ai: false }, { name: 'Computer 1', ai: true }, { name: 'Computer 2', ai: true }] }, wins: 0, played: 0 }); } catch (e) { return loadError('Meyer', e); }
+    try { store = await appState('meyer', { game: null, setup: { players: [{ name: 'Dig', ai: false }, { name: 'Gnist', ai: true }, { name: 'Gnist 2', ai: true }] }, wins: 0, played: 0 }); } catch (e) { return loadError('Meyer', e); }
     const st = store.data;
     const g = this._g = hostedGame({
       page: 'meyer', game: 'meyer', title: 'Meyer', store, minPlayers: 2, maxPlayers: 6,

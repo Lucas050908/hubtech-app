@@ -4605,3 +4605,5 @@ html.is-widget #world-scrim { opacity: .9; }
 @media (max-width: 980px) { .lx-wrap { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .lx-screen { height: 56vh; min-height: 260px; } .lx-keys { gap: 4px; } .lx-key { height: 38px; font-size: 11.5px; } }
 @media (prefers-reduced-motion: reduce) { .lx-boot-spin { animation: none; } }
+/* the course card's progress row shares the class name with the chess ladder: keep it a simple line */
+.ch-progress > .ch-row { display: flex; grid-template-columns: none; padding: 0; background: none; border-radius: 0; justify-content: space-between; align-items: baseline; }

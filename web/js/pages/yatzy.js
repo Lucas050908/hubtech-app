@@ -60,7 +60,7 @@ export default {
 
     // ── one screen: setup ──
     function setup() {
-      const players = st.setup?.players || [{ name: myName(), ai: false }, { name: 'Computer', ai: true }];
+      const players = st.setup?.players || [{ name: myName(), ai: false }, { name: 'Gnist', ai: true }];
       const list = h('div', { class: 'pg-setup-list' });
       const drawList = () => {
         clear(list);
@@ -68,7 +68,7 @@ export default {
           const name = h('input', { class: 'input', value: p.name, maxlength: 16, 'aria-label': `Navn på spiller ${i + 1}` });
           name.addEventListener('input', () => { p.name = name.value.trim() || `Spiller ${i + 1}`; });
           list.append(h('div', { class: 'pg-setup-row' }, h('span', { class: 'yz-seat' }, String(i + 1)), name,
-            h('button', { class: ['btn btn-sm', p.ai && 'btn-primary'], onclick: () => { p.ai = !p.ai; if (p.ai && /^(Spiller)/.test(p.name)) p.name = 'Computer'; drawList(); } }, icon(p.ai ? 'bot' : 'user'), p.ai ? 'Computer' : 'Menneske'),
+            h('button', { class: ['btn btn-sm', p.ai && 'btn-primary'], onclick: () => { p.ai = !p.ai; if (p.ai && /^(Spiller)/.test(p.name)) p.name = 'Gnist'; drawList(); } }, icon(p.ai ? 'bot' : 'user'), p.ai ? 'Computer' : 'Menneske'),
             players.length > 1 ? h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Fjern spiller', onclick: () => { players.splice(i, 1); drawList(); } }, icon('x')) : null));
         });
         addBtn.disabled = players.length >= 6;
@@ -109,7 +109,7 @@ export default {
       const status = s.phase === 'over'
         ? h('div', { class: 'yz-status is-over' }, icon('trophy'), h('b', null, s.log[0]))
         : h('div', { class: 'yz-status' }, h('b', null, mine ? (s.players.length > 1 ? 'Din tur' : `Runde ${s.round} af 15`) : `${p.name}s tur`),
-          h('span', { class: 'faint' }, s.rolls ? `Slag ${s.rolls} af 3${mine ? ' – vælg en rubrik, eller gem terninger og slå igen' : ''}` : mine ? 'Slå for at starte turen' : p.ai ? 'Computeren tænker …' : 'Venter …'));
+          h('span', { class: 'faint' }, s.rolls ? `Slag ${s.rolls} af 3${mine ? ' – vælg en rubrik, eller gem terninger og slå igen' : ''}` : mine ? 'Slå for at starte turen' : p.ai ? 'Gnist tænker …' : 'Venter …'));
       // the score card: one column per player, the current player's free boxes show what the dice give
       const head = h('tr', null, h('th', { scope: 'col' }, 'Rubrik'), s.players.map((q, i) => h('th', { scope: 'col', class: [i === seat && s.phase === 'play' && 'is-turn'] }, q.ai ? icon('bot') : null, q.name)));
       const row = (c) => h('tr', { class: [c.id === 'pair' && 'yz-split'] }, h('th', { scope: 'row' }, c.label, c.hint ? h('small', null, c.hint) : null),
@@ -202,7 +202,7 @@ export default {
       if (!room?.state?.blob || room.host !== me()) return;
       const s = room.state.blob, ids = new Set(room.players.map(p => p.id));
       let changed = false;
-      s.players.forEach(p => { if (p.uid && !p.ai && !ids.has(p.uid)) { p.ai = true; s.log = [`${p.name} har forladt spillet – computeren tager over.`, ...s.log]; changed = true; } });
+      s.players.forEach(p => { if (p.uid && !p.ai && !ids.has(p.uid)) { p.ai = true; s.log = [`${p.name} har forladt spillet – Gnist tager over.`, ...s.log]; changed = true; } });
       if (changed) push();
     }
     async function rematch() {
@@ -222,7 +222,7 @@ export default {
       const botSel = h('select', { class: 'select', 'aria-label': 'Computerspillere' }, [0, 1, 2, 3].map(n => h('option', { value: n }, n ? `+ ${n} computer${n > 1 ? 'e' : ''}` : 'Ingen computere')));
       const startBtn = h('button', { class: 'btn btn-primary btn-lg', disabled: room.players.length < 2, onclick: async () => {
         const seats = room.players.slice(0, 6).map(p => ({ name: (p.name || 'Spiller').split(' ')[0].slice(0, 16), uid: p.id, ai: false }));
-        for (let n = 0; n < bots && seats.length < 6; n++) seats.push({ name: `Computer ${n + 1}`, ai: true });
+        for (let n = 0; n < bots && seats.length < 6; n++) seats.push({ name: n ? `Gnist ${n + 1}` : 'Gnist', ai: true });
         if (seats.length < 2) return toast('Der skal være mindst to spillere', { type: 'warn' });
         try {
           await roomApi.start(room.id);

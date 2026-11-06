@@ -61,24 +61,52 @@ export async function collect(use) {
   return items;
 }
 
+// words that mean the same thing in a question and in HUBTECH's guides (Danish and English, everyday and technical)
+const SYNONYMS = [
+  ['printer', 'skriver', 'print', 'printe', 'udskrift', 'toner', 'blæk'],
+  ['wifi', 'trådløs', 'trådløst', 'wlan', 'netværk', 'router', 'internet', 'forbindelse'],
+  ['laser', 'laserskærer', 'gravering', 'gravere', 'lightburn', 'co2', 'fiber', 'diode'],
+  ['3d', 'filament', 'slicer', 'bambu', 'creality', 'dyse', 'nozzle'],
+  ['computer', 'pc', 'maskine', 'bærbar', 'laptop', 'windows'],
+  ['fejl', 'problem', 'virker', 'fungerer', 'error', 'galt', 'stopper', 'går'],
+  ['kode', 'program', 'programmere', 'script', 'python', 'javascript'],
+  ['kodeord', 'adgangskode', 'password', 'login', 'logge'],
+  ['strøm', 'spænding', 'volt', 'ampere', 'modstand', 'ohm', 'kredsløb'],
+  ['fokus', 'fokusere', 'brændvidde', 'højde'],
+  ['skære', 'skæring', 'cut', 'skærer', 'gennem'],
+  ['kalender', 'aftale', 'aftaler', 'møde', 'tid'],
+  ['opgave', 'opgaver', 'todo', 'deadline'],
+];
+const SYN = new Map();
+for (const g of SYNONYMS) for (const w of g) SYN.set(w, g);
+export function expandWords(ws) {
+  const out = new Set(ws);
+  for (const w of ws) for (const x of SYN.get(w) || []) out.add(x);
+  return [...out];
+}
+
 const words = (s) => String(s || '').toLowerCase().normalize('NFC').match(/[a-zæøå0-9]{3,}/g)?.filter(w => !STOP.has(w)) || [];
 
 /** Pick the items most relevant to the question, within a character budget. */
-export function retrieve(items, question, budget, { calendarish = false } = {}) {
-  const q = words(question);
+export function retrieve(items, question, budget, { calendarish = false, page = '' } = {}) {
+  const asked = words(question);
+  const extra = new Set(expandWords(asked).filter(w => !asked.includes(w)));
+  const q = [...asked, ...extra];
   const today = iso(new Date()), soon = iso(new Date(Date.now() + 14 * 864e5));
   const scored = items.map(it => {
     const t = words(it.title), b = words(it.text);
     let s = 0;
     for (const w of q) {
       const stem = w.slice(0, Math.max(4, w.length - 2));
-      if (t.some(x => x.startsWith(stem))) s += 4;
-      s += Math.min(3, b.filter(x => x.startsWith(stem)).length);
+      const wt = extra.has(w) ? 0.5 : 1;   // a synonym counts, but less than the word the user wrote
+      if (t.some(x => x.startsWith(stem))) s += 4 * wt;
+      s += Math.min(3, b.filter(x => x.startsWith(stem)).length) * wt;
     }
     if (calendarish && (it.kind === 'event' && it.date >= today && it.date <= soon)) s += 3;
     if (calendarish && it.kind === 'task' && !it.done && it.due && it.due <= soon) s += 2;
     if (/prompt/i.test(it.title) && q.some(w => w.startsWith('prompt'))) s += 6;
     if (it.pinned) s += 0.5;
+    if (page && it.href && page.startsWith(it.href)) s += 30;   // "what does this mean?" on a lesson: that lesson first
     // HUBTECH's own guides need a clear match (two words), so they don't crowd out the user's own data
     if ((it.kind === 'guide' || it.kind === 'lesson') && s < 6) s = 0;
     return { it, s };
@@ -108,7 +136,7 @@ function dateHelp() {
 }
 
 /** System prompt for normal use or for teacher mode (Kodeskolen). */
-export function systemPrompt({ mode, context, facts, userName, style = 'points' }) {
+export function systemPrompt({ mode, context, facts, userName, style = 'points', compact = false }) {
   const now = new Date();
   // facts === null: the date, time and excerpts come with the question instead (questionBlock), so this prompt stays the
   // same between questions and the engine can reuse what it has already read – the answer starts much sooner
@@ -149,6 +177,14 @@ ${style === 'text' ? '- Svar i korte, klare afsnit.' : `- Start med selve svaret
 - Bygger dit svar på en guide eller lektion, så nævn dens titel, så brugeren kan læse videre.
 - Er spørgsmålet uklart, så stil ét kort opklarende spørgsmål i stedet for at gætte.
 - Ved du det ikke, så sig det ærligt – gæt aldrig på tal, priser, datoer eller indstillinger.
+${style === 'text' || compact ? '' : `Eksempel på et godt svar:
+Spørgsmål: Min printer er offline – hvad gør jeg?
+Svar: Det skyldes oftest forbindelsen – lad os tjekke den først.
+1. Se om printeren er tændt og viser **klar** i displayet.
+2. Tjek **netværket**: står printeren på samme wifi som computeren?
+3. Genstart **printerkøen** på computeren (Indstillinger → Printere).
+4. Hjælper det ikke, så fjern printeren og tilføj den igen.
+Se guiden "Printer-support" for flere trin.`}
 Når brugeren beder dig OPRETTE eller FLYTTE noget, så skriv kort hvad du foreslår, og afslut med én eller flere handlinger i præcis dette format (én pr. linje):
 <handling>{"type":"aftale","titel":"...","dato":"ÅÅÅÅ-MM-DD","start":"TT:MM","slut":"TT:MM","sted":"","noter":""}</handling>
 <handling>{"type":"opgave","titel":"...","frist":"ÅÅÅÅ-MM-DD","noter":""}</handling>

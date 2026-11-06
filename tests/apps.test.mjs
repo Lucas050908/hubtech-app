@@ -196,7 +196,7 @@ console.log('apps ok');
   assert.equal(C.sqName(mv.to), 'a8');
   const fq = C.fromFEN('4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1'); assert.equal(C.sqName(C.bestMove(fq, 'medium', () => 0.5).to), 'd5');
   // bots, Elo and ranks
-  assert.equal(C.BOTS.length, 7); assert.ok(C.BOTS.every((b, i) => i === 0 || b.rating > C.BOTS[i - 1].rating));
+  assert.equal(C.BOTS.length, 8); assert.ok(C.BOTS[0].coach); assert.ok(C.BOTS.every((b, i) => i === 0 || b.rating > C.BOTS[i - 1].rating));
   assert.equal(C.rate(800, 800, 1, 0), 820); assert.equal(C.rate(800, 800, 0, 30), 790); assert.equal(C.rate(1500, 1500, 0.5, 30), 1500);
   assert.ok(C.rate(800, 400, 1, 0) - 800 < C.rate(800, 1300, 1, 0) - 800);        // beating a stronger bot gives more
   assert.equal(C.rankOf(599).name, 'Bonde'); assert.equal(C.rankOf(600).name, 'Springer'); assert.equal(C.rankOf(2500).name, 'Skakmester'); assert.equal(C.rankOf(1250).toNext, 250);
@@ -1366,7 +1366,7 @@ console.log('apps ok');
   assert.deepEqual([S.cases.value, S.cases.sub, S.cases.warn], ['2', '1 overskredet', true]);
   assert.deepEqual([S.appt.value, S.appt.sub], ['10:00', 'Tandlæge'], 'næste aftale er den efter nu');
   assert.equal(S.hours.value, '2,5', 'kun denne uge (mandag–) tæller');
-  assert.deepEqual([S.level.label, S.level.value, S.level.pct], ['Level 4', '3.420', 42]);
+  assert.deepEqual([S.level.label, S.level.value, S.level.sub, S.level.pct], ['Level 4', '3.420 XP', '580 XP til level 5', 42], 'level-kortet siger XP og hvor langt der er');
   assert.equal(W.buildStats({ calendar: { events: [{ title: 'Fodbold', date: '2026-11-06', start: '17:00' }] } }, t9).appt.sub, 'I morgen · Fodbold');
   assert.equal(W.greeting('Lucas', [{ kind: 'event' }, { kind: 'event' }, { kind: 'task' }], new Date(2026, 10, 5, 8)), 'God morgen, Lucas – 2 aftaler og 1 deadline i dag');
   assert.equal(W.greeting('Lucas', [], new Date(2026, 10, 5, 20)), 'God aften, Lucas – ingen aftaler i dag');
@@ -1434,4 +1434,61 @@ console.log('apps ok');
   assert.equal(W.gnistTip(new Date(2026, 10, 5, 8)), W.gnistTip(new Date(2026, 10, 5, 22)), 'samme tip hele dagen');
   assert.notEqual(W.gnistTip(new Date(2026, 10, 5)), W.gnistTip(new Date(2026, 10, 6)));
   console.log('dock og tip ok');
+}
+
+// Gnist runde 2: synonymer og siden man står på
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.ok(K.expandWords(['skriver']).includes('printer') && K.expandWords(['wifi']).includes('netværk'));
+  const lib = await K.libraryItems();
+  const r = K.retrieve(lib, 'min skriver vil ikke udskrive', 4000);
+  assert.ok(r.sources.some(s => /printer/i.test(s.title)), 'hverdagsord finder printer-guiden: ' + r.sources.map(s => s.title));
+  const lesson = lib.find(x => x.kind === 'lesson' && /lightburn/i.test(x.title));
+  const r2 = K.retrieve(lib, 'hvad betyder det her', 4000, { page: lesson.href });
+  assert.equal(r2.sources[0]?.href, lesson.href, 'lektionen man står i kommer først');
+  assert.ok(K.systemPrompt({ mode: 'normal', facts: null }).includes('Eksempel på et godt svar'));
+  console.log('gnist runde 2 ok');
+}
+
+// Gnist som modstander i spillene
+{
+  const G = await import('../web/js/features/gnistplay.js');
+  assert.equal(G.botName(1), 'Gnist'); assert.equal(G.botName(3), 'Gnist 3');
+  const ps = G.renameBots([{ name: 'Lucas', ai: false }, { name: 'Computer 1', ai: true }, { name: 'Computer 2', ai: true }, { name: 'Bob', ai: true }]);
+  assert.deepEqual(ps.map(p => p.name), ['Lucas', 'Gnist', 'Gnist 2', 'Bob'], 'gamle navne bliver til Gnist, egne navne bliver');
+  const s = { players: [{ name: 'Lucas', ai: false }, { name: 'Gnist', ai: true }], turn: 1, phase: 'roll', log: ['x'] };
+  assert.equal(G.gnistSays(s).mood, 'think');
+  assert.equal(G.gnistSays(s).text, G.gnistSays(s).text, 'samme stilling – samme replik');
+  assert.ok(G.LINES.you.includes(G.gnistSays({ ...s, turn: 0 }).text));
+  assert.ok(G.LINES.won.includes(G.gnistSays({ ...s, phase: 'over', winner: 1 }).text));
+  assert.ok(G.LINES.lost.includes(G.gnistSays({ ...s, phase: 'over', winner: 0 }).text));
+  assert.equal(G.gnistSays({ players: [{ name: 'A' }, { name: 'B' }], turn: 0 }), null, 'ingen Gnist, når kun mennesker spiller');
+  console.log('gnist som modstander ok');
+}
+
+// Gnist lærer dig skak
+{
+  const C = await import('../web/js/features/chess.js');
+  const K = await import('../web/js/features/chesscoach.js');
+  const step = (s, a, b) => { const before = JSON.parse(JSON.stringify(s)); C.play(s, C.sqIndex(a), C.sqIndex(b)); return K.explainMove(before, s, 'w'); };
+  let s = C.newGame();
+  assert.match(step(s, 'e2', 'e4').text, /midten/);
+  C.play(s, C.sqIndex('e7'), C.sqIndex('e5'));
+  assert.match(K.explainReply(s, 'w').text, /bonden til e5/);
+  C.play(s, C.sqIndex('g1'), C.sqIndex('f3')); C.play(s, C.sqIndex('b8'), C.sqIndex('c6'));
+  const bad = step(s, 'f1', 'a6');
+  assert.equal(bad.kind, 'warn'); assert.match(bad.text, /løberen på a6/);
+  assert.match(K.hintWhy(C.fromFEN('6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1'), { from: C.sqIndex('a1'), to: C.sqIndex('a8') }), /skakmat/);
+  assert.match(K.hintWhy(C.fromFEN('rnbqkbnr/ppp2ppp/8/3pp3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3'), { from: C.sqIndex('e4'), to: C.sqIndex('d5') }), /Slå bonden på d5/);
+  const counts = Object.fromEntries(K.LESSONS.map(l => [l.t, K.lessonTargets(l).length]));
+  assert.deepEqual([counts['Tårnet'], counts['Løberen'], counts['Springeren'], counts['Bonden']], [14, 13, 8, 3]);
+  console.log('gnist skaktræner ok');
+}
+
+// Gnist på små modeller: en kort prompt uden eksempelsvar
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  const full = K.systemPrompt({ mode: 'normal', facts: null }), small = K.systemPrompt({ mode: 'normal', facts: null, compact: true });
+  assert.ok(!small.includes('Eksempel på et godt svar') && small.length < full.length - 200 && small.includes('Gnist'));
+  console.log('kort prompt ok');
 }

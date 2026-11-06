@@ -12,6 +12,7 @@ import { api } from '../core/api.js';
 import { onLive } from '../core/live.js';
 import { store as appStore } from '../core/store.js';
 import { panel } from './appkit.js';
+import { botName, renameBots, gnistSays, gnistStrip } from './gnistplay.js';
 import { lobbyPanel, roomApi, watchRoom, person, me, isWatcher } from './gameroom.js';
 
 const myName = () => (appStore.get('user')?.displayName || 'Dig').split(' ')[0].slice(0, 16);
@@ -115,22 +116,23 @@ export function hostedGame(opts) {
     ctl = mode === 'online' ? onlineCtl() : localCtl();
     const s = ctl.s;
     if (s.phase === 'over' && !s._counted && (mode === 'local' || ctl.host)) { s._counted = true; opts.onOver?.(s, ctl); if (mode === 'local') store.save(); }
-    h(clear(board), null, opts.render(ctl));
+    const said = mode === 'local' || ctl.host ? gnistSays(s, (seat) => ctl.canAct(seat)) : null;   // Gnist plays the computer seats
+    h(clear(board), null, gnistStrip(said), opts.render(ctl));
   }
 
   // ── local: setup ──
   function setup() {
     ctl = null;
-    const players = (st.setup?.players || [{ name: myName(), ai: false }, { name: 'Computer', ai: true }]).slice(0, maxPlayers);
+    const players = renameBots((st.setup?.players || [{ name: myName(), ai: false }, { name: botName(1), ai: true }]).slice(0, maxPlayers));
     const list = h('div', { class: 'pg-setup-list' });
     const drawList = () => {
       h(clear(list), null, players.map((p, i) => {
         const name = h('input', { class: 'input', value: p.name, maxlength: 16, 'aria-label': `Navn på spiller ${i + 1}` });
         name.addEventListener('input', () => { p.name = name.value.trim() || `Spiller ${i + 1}`; });
         return h('div', { class: 'pg-setup-row' }, h('span', { class: 'yz-seat', style: opts.seatColor ? { background: opts.seatColor(i) } : null }, String(i + 1)), name,
-          allowHotseat || i > 0 ? segmented([{ value: 'h', label: 'Menneske' }, { value: 'ai', label: 'Computer' }], p.ai ? 'ai' : 'h', (v) => { p.ai = v === 'ai'; if (p.ai && /^Spiller/.test(p.name)) p.name = 'Computer'; drawList(); }, { label: `Spiller ${i + 1}` }) : h('span'),
+          allowHotseat || i > 0 ? segmented([{ value: 'h', label: 'Menneske' }, { value: 'ai', label: 'Gnist' }], p.ai ? 'ai' : 'h', (v) => { p.ai = v === 'ai'; if (p.ai && /^Spiller/.test(p.name)) p.name = botName(players.filter(x => x.ai).length); if (!p.ai && /^Gnist/.test(p.name)) p.name = `Spiller ${i + 1}`; drawList(); }, { label: `Spiller ${i + 1}` }) : h('span'),
           players.length > minPlayers ? h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Fjern spiller', onclick: () => { players.splice(i, 1); drawList(); } }, icon('x')) : h('span'));
-      }), players.length < maxPlayers ? h('button', { class: 'btn btn-sm', onclick: () => { players.push({ name: `Computer ${players.length}`, ai: true }); drawList(); } }, icon('plus'), 'Tilføj spiller') : null);
+      }), players.length < maxPlayers ? h('button', { class: 'btn btn-sm', onclick: () => { players.push({ name: botName(players.filter(x => x.ai).length + 1), ai: true }); drawList(); } }, icon('plus'), 'Tilføj spiller') : null);
     };
     drawList();
     h(clear(board), null, panel('Nyt spil', 'users', opts.setupExtra?.(st) || null, list,
@@ -170,7 +172,7 @@ export function hostedGame(opts) {
     if (!room?.state?.blob || room.host !== me()) return;
     const s = room.state.blob, ids = new Set(room.players.map(p => p.id));
     let changed = false;
-    s.players.forEach(p => { if (p.uid && !p.ai && !ids.has(p.uid)) { p.ai = true; p.name = `${p.name} (computer)`; changed = true; } });
+    s.players.forEach(p => { if (p.uid && !p.ai && !ids.has(p.uid)) { p.ai = true; p.name = `${p.name} (Gnist)`; changed = true; } });
     if (changed) { push(); scheduleAi(); }
   }
   function drawOnline() {
@@ -183,11 +185,11 @@ export function hostedGame(opts) {
     }
     const host = room.host === me(), watcher = isWatcher(room);
     let bots = 0;
-    const botSel = maxPlayers > 2 ? h('select', { class: 'select', 'aria-label': 'Computerspillere' }, Array.from({ length: maxPlayers - 1 }, (_, n) => h('option', { value: n }, n ? `+ ${n} computer${n > 1 ? 'e' : ''}` : 'Ingen computere'))) : null;
+    const botSel = maxPlayers > 2 ? h('select', { class: 'select', 'aria-label': 'Gnist som medspiller' }, Array.from({ length: maxPlayers - 1 }, (_, n) => h('option', { value: n }, n ? `+ ${n} × Gnist` : 'Uden Gnist'))) : null;
     botSel?.addEventListener('change', () => { bots = Number(botSel.value); });
     const startBtn = h('button', { class: 'btn btn-primary btn-lg', disabled: room.players.length < 2 && !(maxPlayers > 2), onclick: async () => {
       const seats = room.players.slice(0, maxPlayers).map(p => ({ name: (p.name || 'Spiller').split(' ')[0].slice(0, 16), uid: p.id, ai: false }));
-      for (let n = 0; n < bots && seats.length < maxPlayers; n++) seats.push({ name: `Computer ${n + 1}`, ai: true });
+      for (let n = 0; n < bots && seats.length < maxPlayers; n++) seats.push({ name: botName(n + 1), ai: true });
       if (seats.length < minPlayers) return toast(`Der skal være mindst ${minPlayers} spillere`, { type: 'warn' });
       try {
         await roomApi.start(room.id);
@@ -218,7 +220,7 @@ export function hostedGame(opts) {
   /** buttons under the board: new game / leave */
   const controls = () => mode === 'online'
     ? [h('button', { class: 'btn btn-sm', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle spil'),
-      room && !isWatcher(room) && ctl?.s.phase !== 'over' ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { if (await confirmDialog({ title: 'Forlad spillet?', text: room.host === me() ? 'Du er vært – spillet slutter for alle.' : 'Computeren tager over for dig.', confirmLabel: 'Forlad', danger: true })) { await roomApi.leave(room.id).catch(() => {}); openRoom(null); } } }, icon('x'), 'Forlad') : null,
+      room && !isWatcher(room) && ctl?.s.phase !== 'over' ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { if (await confirmDialog({ title: 'Forlad spillet?', text: room.host === me() ? 'Du er vært – spillet slutter for alle.' : 'Gnist tager over for dig.', confirmLabel: 'Forlad', danger: true })) { await roomApi.leave(room.id).catch(() => {}); openRoom(null); } } }, icon('x'), 'Forlad') : null,
       room && ctl?.s.phase === 'over' ? h('button', { class: 'btn btn-sm btn-primary', onclick: async () => { try { openRoom(await roomApi.rematch(room.id)); } catch (e) { toast(e.message, { type: 'warn' }); } } }, icon('refresh'), 'Spil igen') : null]
     : [h('button', { class: ['btn btn-sm', ctl?.s.phase === 'over' && 'btn-primary'], onclick: async () => { if (ctl?.s.phase === 'over' || await confirmDialog({ title: 'Start et nyt spil?', text: 'Det igangværende spil slutter.', confirmLabel: 'Nyt spil' })) { st.game = null; store.save(); setup(); } } }, icon('refresh'), 'Nyt spil')];
 
@@ -235,7 +237,7 @@ export function hostedGame(opts) {
     else if (id) roomApi.get(id).then(async r => openRoom(r.players.some(p => p.id === me()) ? r : await roomApi.join(r.id).catch(() => r)))
       .catch(() => roomApi.watch(id).then(openRoom).catch(() => openRoom(null)));
     else openRoom(null);
-  } else if (st.game) { ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
+  } else if (st.game) { renameBots(st.game.players); ctl = localCtl(); queueMicrotask(after); } else setup();   // after the page has its handle on us (render may use it)
 
   h(root, null, h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), board);
   root.__hg = () => { const g0 = mode === 'online' ? room?.state?.blob : st.game; return { dead, mode, ctl: !!ctl, aiDue, now: Date.now(), idle: Date.now() - lastProgress, aiStuck, turn: g0?.turn, phase: g0?.phase, ai: g0?.players?.map(p => !!p.ai), same: g0 === ctl?.s, log: (g0?.log || []).slice(0, 3), die: g0?.die, last: g0?.last, boardKids: board.childElementCount, boardInRoot: root.contains(board), age: Date.now() - created, afters, fires, applied, instances: window.__hgInstances }; };   // for tests and bug reports

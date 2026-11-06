@@ -28,7 +28,7 @@ export default {
         Array.from({ length: 10 }, (_, r) => [h('span', { class: 'bs-lab' }, String(r + 1)), Array.from({ length: 10 }, (_, c) => {
           const i = r * 10 + c, v = view?.[i];
           return h('button', { class: ['bs-cell', shipSet.has(i) && 'ship', v && `is-${v}`, prev.has(i) && (bad ? 'prev-bad' : 'prev')], disabled: !onCell, 'aria-label': `${cellName(i)}${v === 'hit' ? ', ramt' : v === 'sunk' ? ', sænket' : v === 'miss' ? ', vand' : ''}`,
-            onclick: () => onCell?.(i), onpointerenter: () => { if (kind === 'place') { hover = i; g.redraw(); } } }, v === 'miss' ? '•' : v ? '✕' : '');
+            onclick: () => onCell?.(i), onpointerenter: () => { if (kind === 'place' && hover !== i) { hover = i; g.redraw(); } }   /* only when the square changes – a redraw puts a new cell under the pointer */ }, v === 'miss' ? '•' : v ? '✕' : '');
         })]));
     }
 

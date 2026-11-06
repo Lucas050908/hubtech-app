@@ -76,7 +76,7 @@ export default {
 
     // ── on one screen: setup ──
     function setup() {
-      const players = st.setup?.players || [{ name: myName(), ai: false, token: P.TOKENS[0] }, { name: 'Computer 1', ai: true, token: P.TOKENS[1] }, { name: 'Computer 2', ai: true, token: P.TOKENS[2] }];
+      const players = st.setup?.players || [{ name: myName(), ai: false, token: P.TOKENS[0] }, { name: 'Gnist', ai: true, token: P.TOKENS[1] }, { name: 'Gnist 2', ai: true, token: P.TOKENS[2] }];
       let rounds = st.setup?.rounds ?? 40;
       const list = h('div', { class: 'pg-setup-list' });
       const drawList = () => {
@@ -85,7 +85,7 @@ export default {
           const name = h('input', { class: 'input', value: p.name, maxlength: 16, 'aria-label': `Navn på spiller ${i + 1}` });
           name.addEventListener('input', () => { p.name = name.value.trim() || `Spiller ${i + 1}`; });
           const tok = h('button', { class: 'pg-token-btn', title: 'Skift brik', style: { '--pc': PCOL[i] }, onclick: () => { const used = players.map(q => q.token); const free = P.TOKENS.filter(t => !used.includes(t)); if (free.length) { p.token = free[0]; drawList(); } } }, p.token);
-          const kind = h('button', { class: ['btn btn-sm', p.ai && 'btn-primary'], onclick: () => { p.ai = !p.ai; if (p.ai && /^(Dig|Spiller)/.test(p.name)) p.name = `Computer ${i}`; drawList(); } }, icon(p.ai ? 'bot' : 'user'), p.ai ? 'Computer' : 'Menneske');
+          const kind = h('button', { class: ['btn btn-sm', p.ai && 'btn-primary'], onclick: () => { p.ai = !p.ai; if (p.ai && /^(Dig|Spiller)/.test(p.name)) p.name = i > 1 ? `Gnist ${i}` : 'Gnist'; drawList(); } }, icon(p.ai ? 'bot' : 'user'), p.ai ? 'Computer' : 'Menneske');
           list.append(h('div', { class: 'pg-setup-row' }, tok, name, kind,
             players.length > 2 ? h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Fjern spiller', onclick: () => { players.splice(i, 1); drawList(); } }, icon('x')) : null));
         });
@@ -107,7 +107,7 @@ export default {
     const rules = () => panel('Sådan spiller man', 'help', h('ul', { class: 'pg-rules' },
       h('li', null, 'Slå med terningerne, og ryk rundt. Lander du på en ledig grund, kan du købe den.'),
       h('li', null, 'Lander andre på din grund, betaler de leje. Ejer du hele farvegruppen, er lejen dobbelt – og du kan bygge huse og til sidst et hotel.'),
-      h('li', null, 'Mangler du en enkelt gade i en farve, så lav en handel: tilbyd penge eller dine egne gader. Computeren siger kun ja til en god handel.'),
+      h('li', null, 'Mangler du en enkelt gade i en farve, så lav en handel: tilbyd penge eller dine egne gader. Gnist siger kun ja til en god handel.'),
       h('li', null, `Passerer du START, får du ${kr(P.PASS_START)}. To ens = slå igen. Tre gange to ens = fængsel.`),
       h('li', null, `I fængsel: slå to ens, brug et løsladelseskort, eller betal ${kr(P.JAIL_FINE)}.`),
       h('li', null, 'Mangler du penge, sælges huse og grunde pantsættes automatisk. Er det ikke nok, er du gået fallit.'),
@@ -158,7 +158,7 @@ export default {
         const f = P.BOARD[s.pending.field];
         buttons = [h('button', { class: 'btn btn-primary', disabled: p.money < f.price, onclick: act('buy') }, `Køb ${f.name} for ${kr(f.price)}`), h('button', { class: 'btn', onclick: act('skipBuy') }, 'Køb ikke')];
       } else if (mine && s.phase === 'end') buttons = [h('button', { class: 'btn btn-primary', onclick: act('endTurn') }, s.dice[0] === s.dice[1] && s.dice[0] && !p.jail && !s.noAgain ? '🎲 Slå igen' : 'Afslut tur')];
-      else if (!s.offer && s.phase !== 'over') buttons = [h('span', { class: 'pg-wait' }, p.ai ? 'Computeren tænker …' : `Venter på ${p.name} …`)];
+      else if (!s.offer && s.phase !== 'over') buttons = [h('span', { class: 'pg-wait' }, p.ai ? 'Gnist tænker …' : `Venter på ${p.name} …`)];
       return [
         h('div', { class: 'pg-logo' }, 'EJENDOMS', h('b', null, 'KONGEN')),
         h('div', { class: 'pg-dice' }, s.dice[0] ? [h('span', null, DIE[s.dice[0]]), h('span', null, DIE[s.dice[1]])] : null),
@@ -268,7 +268,7 @@ export default {
       if (!room?.state?.blob || room.host !== me()) return;
       const s = room.state.blob, ids = new Set(room.players.map(p => p.id));
       let changed = false;
-      s.players.forEach(p => { if (p.uid && !p.ai && !ids.has(p.uid)) { p.ai = true; s.log = [`${p.name} har forladt spillet – computeren tager over.`, ...s.log]; changed = true; } });
+      s.players.forEach(p => { if (p.uid && !p.ai && !ids.has(p.uid)) { p.ai = true; s.log = [`${p.name} har forladt spillet – Gnist tager over.`, ...s.log]; changed = true; } });
       if (changed) push();
     }
     function drawOnline() {
@@ -285,7 +285,7 @@ export default {
       botSel.addEventListener('change', () => { bots = Number(botSel.value); });
       const start = async () => {
         const seats = room.players.slice(0, 6).map((p, i) => ({ name: (p.name || 'Spiller').split(' ')[0].slice(0, 16), uid: p.id, ai: false, token: P.TOKENS[i] }));
-        for (let n = 0; n < bots && seats.length < 6; n++) seats.push({ name: `Computer ${n + 1}`, ai: true, token: P.TOKENS[seats.length] });
+        for (let n = 0; n < bots && seats.length < 6; n++) seats.push({ name: n ? `Gnist ${n + 1}` : 'Gnist', ai: true, token: P.TOKENS[seats.length] });
         if (seats.length < 2) return toast('Der skal være mindst to spillere', { type: 'warn' });
         try {
           await roomApi.start(room.id);

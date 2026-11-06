@@ -47,7 +47,7 @@ export default {
       } else turn = turn === 1 ? 2 : 1;
       draw(); return true;
     }
-    const name = (p) => (st.mode === 'cpu' ? (p === 1 ? 'Du' : 'Computeren') : (p === 1 ? 'Rød' : 'Gul'));
+    const name = (p) => (st.mode === 'cpu' ? (p === 1 ? 'Du' : 'Gnist') : (p === 1 ? 'Rød' : 'Gul'));
     function draw() {
       clear(boardEl);
       const winSet = new Set((win?.cells || []).map(([r, c]) => `${r},${c}`));
@@ -58,8 +58,8 @@ export default {
         boardEl.append(col);
       }
       status.className = `c4-status p${turn}`;
-      status.textContent = over ? (win ? (st.mode === 'cpu' ? (win.player === 1 ? 'Du vandt! 🎉' : 'Computeren vandt') : `${name(win.player)} vandt! 🎉`) : 'Uafgjort – brættet er fyldt')
-        : thinking ? 'Computeren tænker …' : st.mode === 'cpu' ? 'Din tur – vælg en kolonne' : `${name(turn)}s tur`;
+      status.textContent = over ? (win ? (st.mode === 'cpu' ? (win.player === 1 ? 'Du vandt! 🎉' : 'Gnist vandt') : `${name(win.player)} vandt! 🎉`) : 'Uafgjort – brættet er fyldt')
+        : thinking ? 'Gnist tænker …' : st.mode === 'cpu' ? 'Din tur – vælg en kolonne' : `${name(turn)}s tur`;
       const s = st.stats[statKey()] || { w: 0, l: 0, d: 0 };
       h(clear(statsEl), null, st.mode === 'cpu'
         ? [h('span', null, 'Vundet ', h('b', null, String(s.w))), h('span', null, 'Tabt ', h('b', null, String(s.l))), h('span', null, 'Uafgjort ', h('b', null, String(s.d)))]
@@ -73,7 +73,7 @@ export default {
     };
     addEventListener('keydown', this._k);
     const levelSeg = segmented(Object.entries(C4_LEVELS).map(([value, l]) => ({ value, label: l.label })), st.level, (v) => { st.level = v; store.save(); reset(); }, { label: 'Sværhedsgrad' });
-    const modeSeg = segmented([{ value: 'cpu', label: 'Mod computeren', icon: 'bot' }, { value: 'two', label: 'To på én skærm', icon: 'users' }, { value: 'online', label: 'Online', icon: 'globe' }], st.mode,
+    const modeSeg = segmented([{ value: 'cpu', label: 'Mod Gnist', icon: 'bot' }, { value: 'two', label: 'To på én skærm', icon: 'users' }, { value: 'online', label: 'Online', icon: 'globe' }], st.mode,
       (v) => { st.mode = v; if (v !== 'online') { store.save(); location.hash !== '#/apps/connect4' && history.replaceState(null, '', '#/apps/connect4'); } showMode(); }, { label: 'Spillere' });
 
     // ── online: against someone else on this HUBTECH ──

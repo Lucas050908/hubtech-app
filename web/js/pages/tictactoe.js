@@ -48,8 +48,8 @@ export default {
     }
     function drawLocal() {
       const s = st.stats[statKey()] || { w: 0, l: 0, d: 0 };
-      const msg = over ? (win ? (st.mode === 'cpu' ? (win.player === 1 ? 'Du vandt! 🎉' : 'Computeren vandt') : `${MARK[win.player]} vandt! 🎉`) : 'Uafgjort')
-        : thinking ? 'Computeren tænker …' : st.mode === 'cpu' ? 'Din tur – du er ✕' : `${MARK[turn]}s tur`;
+      const msg = over ? (win ? (st.mode === 'cpu' ? (win.player === 1 ? 'Du vandt! 🎉' : 'Gnist vandt') : `${MARK[win.player]} vandt! 🎉`) : 'Uafgjort')
+        : thinking ? 'Gnist tænker …' : st.mode === 'cpu' ? 'Din tur – du er ✕' : `${MARK[turn]}s tur`;
       h(clear(localBox), null, panel(null, null, h('div', { class: 'c4-status' }, msg),
         grid(board, { cells: win?.cells || [], onClick: (i) => { if (st.mode === 'cpu' && turn !== 1) return; put(i); }, disabled: over || thinking }),
         h('div', { class: 'gm-top', style: { marginTop: '14px' } }, h('span', null, 'Vundet ', h('b', null, String(s.w))), st.mode === 'cpu' ? h('span', null, 'Tabt ', h('b', null, String(s.l))) : null,
@@ -99,7 +99,7 @@ export default {
         else drawOnline();
       } else reset();
     }
-    const modeSeg = segmented([{ value: 'cpu', label: 'Mod computeren', icon: 'bot' }, { value: 'two', label: 'To på én skærm', icon: 'users' }, { value: 'online', label: 'Online', icon: 'globe' }], st.mode,
+    const modeSeg = segmented([{ value: 'cpu', label: 'Mod Gnist', icon: 'bot' }, { value: 'two', label: 'To på én skærm', icon: 'users' }, { value: 'online', label: 'Online', icon: 'globe' }], st.mode,
       (v) => { st.mode = v; if (v !== 'online') { store.save(); history.replaceState(null, '', '#/apps/tictactoe'); } showMode(); }, { label: 'Spillere' });
     showMode();
     return h('div', { class: 'page gm-page ttt-page', style: { '--app': app.hue } },

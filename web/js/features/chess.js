@@ -293,6 +293,7 @@ export const LEVELS = { easy: { label: 'Let', depth: 1, noise: 150 }, medium: { 
  * judge moves more loosely (noise) and now and then simply blunder (a random legal move).
  */
 export const BOTS = [
+  { id: 'gnist', name: 'Gnist', rating: 300, depth: 1, noise: 400, blunder: 0.3, avatar: '✨', coach: true, about: 'Spiller roligt – godt at starte med. Vil du lære undervejs, så slå “Gnist forklarer” til.' },
   { id: 'bo', name: 'Bo Begynder', rating: 400, depth: 1, noise: 500, blunder: 0.35, avatar: '🐣', about: 'Kender reglerne, men glemmer tit, at brikker kan slås.' },
   { id: 'lise', name: 'Lise Lærling', rating: 700, depth: 1, noise: 220, blunder: 0.15, avatar: '🙂', about: 'Tager gerne dine brikker – men passer ikke altid på sine egne.' },
   { id: 'karl', name: 'Klub-Karl', rating: 1000, depth: 2, noise: 90, blunder: 0.06, avatar: '🧢', about: 'Spiller i klubben om tirsdagen. Solid, men laver fejl under pres.' },

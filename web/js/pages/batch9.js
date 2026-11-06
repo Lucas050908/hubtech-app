@@ -34,7 +34,7 @@ export const nim = {
     const st = store.data, root = h('div');
     let rows, turn, pick, over, log;
     const fresh = (first = 0) => { rows = st.start.slice(); turn = first; pick = null; over = null; log = []; draw(); if (!st.two && turn === 1) setTimeout(cpu, 700); };
-    const names = () => (st.two ? ['Spiller 1', 'Spiller 2'] : ['Dig', 'Computeren']);
+    const names = () => (st.two ? ['Spiller 1', 'Spiller 2'] : ['Dig', 'Gnist']);
     const end = (who) => { // who took the last match
       const winner = st.misere ? 1 - who : who; over = { winner }; if (!st.two) { st.played++; if (winner === 0) st.wins++; store.save(); } draw();
     };
@@ -44,16 +44,16 @@ export const nim = {
       const my = !over && (st.two || turn === 0);
       h(clear(root), null,
         h('div', { class: 'l3-bar' }, segmented([{ value: 'm', label: 'Den sidste taber' }, { value: 'n', label: 'Den sidste vinder' }], st.misere ? 'm' : 'n', (v) => { st.misere = v === 'm'; store.save(); fresh(); }, { label: 'Regel' }),
-          segmented([{ value: 'cpu', label: 'Mod computeren' }, { value: 'two', label: 'To spillere' }], st.two ? 'two' : 'cpu', (v) => { st.two = v === 'two'; store.save(); fresh(); }, { label: 'Modstander' }),
+          segmented([{ value: 'cpu', label: 'Mod Gnist' }, { value: 'two', label: 'To spillere' }], st.two ? 'two' : 'cpu', (v) => { st.two = v === 'two'; store.save(); fresh(); }, { label: 'Modstander' }),
           segmented([{ value: '1,3,5,7', label: '1-3-5-7' }, { value: '3,4,5', label: '3-4-5' }, { value: '2,4,6,8', label: '2-4-6-8' }], st.start.join(','), (v) => { st.start = v.split(',').map(Number); store.save(); fresh(); }, { label: 'Start' })),
         h('div', { class: 'l3-card' },
-          h('div', { class: ['dm-status', over && 'is-over', my && 'is-mine'] }, over ? (st.two ? `${names()[over.winner]} vandt! 🎉` : over.winner === 0 ? 'Du vandt over computeren! 🎉' : 'Computeren vandt – prøv igen') : my ? `${names()[turn]}: vælg tændstikker i én række` : 'Computeren tænker …'),
+          h('div', { class: ['dm-status', over && 'is-over', my && 'is-mine'] }, over ? (st.two ? `${names()[over.winner]} vandt! 🎉` : over.winner === 0 ? 'Du vandt over Gnist! 🎉' : 'Gnist vandt – prøv igen') : my ? `${names()[turn]}: vælg tændstikker i én række` : 'Gnist tænker …'),
           h('div', { class: 'nm-rows' }, rows.map((n, r) => h('div', { class: 'nm-row' }, h('span', { class: 'faint nm-n' }, String(n)),
             Array.from({ length: st.start[r] }, (_, k) => k < n ? h('button', { class: ['nm-match', pick && pick.row === r && k >= n - pick.n && 'is-picked'], disabled: !my, 'aria-label': `Række ${r + 1}, tændstik ${k + 1}`, onclick: () => { pick = { row: r, n: n - k }; draw(); } }) : h('span', { class: 'nm-gone' }))))),
           my && pick ? h('button', { class: 'btn btn-primary btn-lg', onclick: () => take(pick.row, pick.n) }, `Tag ${pick.n} ${pick.n === 1 ? 'tændstik' : 'tændstikker'}`) : null,
-          over ? h('div', { class: 'row', style: { gap: '8px' } }, h('button', { class: 'btn btn-primary', onclick: () => fresh(0) }, 'Jeg starter'), st.two ? null : h('button', { class: 'btn', onclick: () => fresh(1) }, 'Computeren starter')) : null,
+          over ? h('div', { class: 'row', style: { gap: '8px' } }, h('button', { class: 'btn btn-primary', onclick: () => fresh(0) }, 'Jeg starter'), st.two ? null : h('button', { class: 'btn', onclick: () => fresh(1) }, 'Gnist starter')) : null,
           log.length ? h('ul', { class: 'dm-log' }, log.slice(0, 4).map(l => h('li', null, l))) : null,
-          !st.two ? h('p', { class: 'faint', style: { fontSize: '13px', margin: 0 } }, `Du har vundet ${st.wins} af ${st.played}. Tip: computeren regner binært – kan du gennemskue hvordan?`) : null));
+          !st.two ? h('p', { class: 'faint', style: { fontSize: '13px', margin: 0 } }, `Du har vundet ${st.wins} af ${st.played}. Tip: Gnist regner binært – kan du gennemskue hvordan?`) : null));
     }
     fresh();
     return page('nim', 'Spilhal', 'Tændstikker', 'Det gamle tændstikspil: tag så mange du vil fra én række ad gangen. Den, der tager den sidste, taber – eller vinder, hvis I vælger det.', root);

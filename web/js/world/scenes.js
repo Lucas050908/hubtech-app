@@ -1,6 +1,7 @@
 /** The theme scenes (names and the style that goes with each) – small, so the app can read it without loading the renderer. */
 export const SCENES = {
-  desert: { name: 'Ørken med pyramider', short: 'Ørken', style: 'orken', desc: 'Pyramider i ørkenen, en kamel med rytter, der går forbi, og et kredsløb, der gløder svagt i bunden.' },
+  desert: { name: 'Højhuse om natten', short: 'Højhuse', style: 'orken', desc: 'Højhuse om natten med lys i vinduerne, en bil, der kører forbi, og et kredsløb, der gløder svagt i bunden.' },
+  pyramids: { name: 'Ørken med pyramider', short: 'Ørken', style: 'orken', desc: 'Pyramider i ørkenen, en kamel med rytter, der går forbi, og et kredsløb, der gløder svagt i bunden.' },
   tokyo: { name: 'Tokyo om natten', short: 'Tokyo', style: 'neon', desc: 'Tætte tårne, neonskilte, et højbanetog og regn på asfalten.' },
   neon: { name: 'Neongade', short: 'Neon', style: 'neon', desc: 'En våd gade fyldt med lysende skilte.' },
   shanghai: { name: 'Kinesisk storby', short: 'Storby', style: 'futuristisk', desc: 'Skyskrabere ved floden, både og lys, der spejler sig i vandet.' },
@@ -12,5 +13,5 @@ export const SCENES = {
 };
 
 export const STYLES = [
-  ['auto', 'Følger temaet'], ['orken', 'Ørken (varm sten)'], ['standard', 'Standard (aurora)'], ['neon', 'Neon'], ['futuristisk', 'Futuristisk'], ['zen', 'Zen'], ['elegant', 'Elegant'], ['minimal', 'Minimalistisk'],
+  ['auto', 'Følger temaet'], ['orken', 'Varm sten (standard)'], ['standard', 'Standard (aurora)'], ['neon', 'Neon'], ['futuristisk', 'Futuristisk'], ['zen', 'Zen'], ['elegant', 'Elegant'], ['minimal', 'Minimalistisk'],
 ];

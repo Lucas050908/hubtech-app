@@ -22,7 +22,7 @@ function deal(rnd) {
 }
 export function newGame(seats, rnd = Math.random) {
   const s = { players: seats.slice(0, 4).map(p => ({ ...p })), scores: [0, 0, 0, 0], round: 0, log: [] };
-  while (s.players.length < 4) s.players.push({ name: `Computer ${s.players.length}`, ai: true });
+  while (s.players.length < 4) { const n = s.players.filter(p => p.ai).length; s.players.push({ name: n ? `Gnist ${n + 1}` : 'Gnist', ai: true }); }
   startRound(s, rnd);
   return s;
 }
