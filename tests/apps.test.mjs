@@ -1687,3 +1687,17 @@ console.log('apps ok');
   assert.ok(K.asksAboutPage('kan du forklare det her?') && K.asksAboutPage('opsummer siden') && !K.asksAboutPage('hvad skal jeg nå i dag'));
   console.log('verdensur og siden ok');
 }
+
+// Gnist kan hjælpe med HUBTECH og hverdagens IT-problemer
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  const lib = await K.libraryItems();
+  const H = (await import('../web/js/data/helpfaq.js')).HELP;
+  assert.ok(H.length >= 30 && H.every(x => x.q && x.a && x.href?.startsWith('#/')), 'hjælpen har spørgsmål, svar og link');
+  const top = (q) => K.retrieve(lib, q, 3000).sources.map(s => s.title);
+  assert.ok(top('jeg har glemt min adgangskode').some(t => /glemt min adgangskode/.test(t)), 'glemt adgangskode');
+  assert.ok(top('min computer er så langsom').some(t => /Computeren er langsom/.test(t)), 'langsom computer');
+  assert.ok(top('hvordan skifter jeg til mørkt tema').some(t => /tema/.test(t)), 'tema');
+  assert.ok(top('der kommer ingen lyd ud af højtalerne').some(t => /lyd/.test(t)), 'lyd – også med stavefejl');
+  console.log('gnist hjælp ok');
+}

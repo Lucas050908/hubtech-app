@@ -16,7 +16,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const STOP = new Set('og i jeg det at en den til er som på de med han af for ikke der var mig sig men et har om vi min havde ham hun nu over da fra du ud sin dem os op man hans hvor eller hvad skal selv her alle vil blev kunne ind når være dog noget ville jo deres efter ned skulle denne end dette mit også under have dig anden hende mine alt meget sit sine vor mod disse hvis din nogle hos blive mange ad bliver hendes været thi jer sådan kan hvordan hvornår hvem hjælp hjælpe lav lave mine min mit gerne lidt please'.split(' '));
 
 export const SOURCES = { chats: 'Tidligere samtaler med Gnist', guides: 'HUBTECHs guides og kurser', notes: 'Noter', tasks: 'Opgaver', calendar: 'Kalender', snippets: 'Kodestumper', customers: 'Kunder' };
-const KIND = { chat: 'Tidligere samtale', note: 'Note', task: 'Opgave', event: 'Aftale', snippet: 'Kodestump', customer: 'Kunde', guide: 'Guide', lesson: 'Lektion', app: 'App i HUBTECH', term: 'IT-ordbog', command: 'Kommando', fix: 'Printerlægen', case: 'Fejlfindingscase', quiz: 'Quiz', fact: 'Opslag' };
+const KIND = { chat: 'Tidligere samtale', note: 'Note', task: 'Opgave', event: 'Aftale', snippet: 'Kodestump', customer: 'Kunde', guide: 'Guide', lesson: 'Lektion', app: 'App i HUBTECH', term: 'IT-ordbog', command: 'Kommando', fix: 'Printerlægen', case: 'Fejlfindingscase', quiz: 'Quiz', fact: 'Opslag', help: 'Hjælp' };
 const HREF = { chat: '#/apps/gnist', note: '#/apps/notes', task: '#/apps/tasks', event: '#/apps/calendar', snippet: '#/apps/snippets', customer: '#/apps/customers' };
 
 /** HUBTECH's own material – every guide and every course lesson – as small text items (built once). */
@@ -48,6 +48,9 @@ export function libraryItems() {
     for (const c of CODE_COURSES) for (const l of c.lessons || []) items.push({ kind: 'lesson', title: `${c.title}: ${l.title}`, text: strip([l.body, l.task?.text || l.task || ''].join(' ')).slice(0, 2000), href: `#/learn/codeschool/${c.id}/${l.id}` });
     // more of HUBTECH's own material (each part on its own, so one that fails to load doesn't stop the rest)
     const more = async (path, fn) => { try { fn(await import(path)); } catch (e) { console.warn('[gnist] kunne ikke læse', path, e); } };
+    await more('../data/helpfaq.js', ({ HELP }) => {   // how to use HUBTECH, and everyday IT trouble
+      for (const x of HELP) items.push({ kind: 'help', title: x.q, text: `${x.q} ${x.a} ${x.k || ''}`, href: x.href });
+    });
     await more('../data/printer-tree.js', ({ PROBLEMS, NODES }) => {   // the printer doctor: walk each fault tree
       for (const p of PROBLEMS) {
         const seen = new Set(), parts = [], todo = [p.start];
@@ -198,9 +201,9 @@ export function retrieve(items, question, budget, { calendarish = false, page = 
     if (calendarish && it.kind === 'task' && !it.done && it.due && it.due <= soon) s += 2;
     if (/prompt/i.test(it.title) && q.some(w => w.startsWith('prompt'))) s += 6;
     if (it.pinned) s += 0.5;
-    if (page && it.href && page.startsWith(it.href)) s += it.kind === 'app' ? (s > 0 ? 3 : 0) : 30;   // "what does this mean?" on a lesson: that lesson first (the app you're in only nudges)
+    if (page && it.href && it.href.length > 7 && (page === it.href || page.startsWith(it.href + '/'))) s += it.kind === 'app' ? (s > 0 ? 3 : 0) : 30;   // only a real match – "#/" or "#/apps" is not "this page"   // "what does this mean?" on a lesson: that lesson first (the app you're in only nudges)
     // HUBTECH's own guides need a clear match (two words), so they don't crowd out the user's own data
-    if (['guide', 'lesson', 'app', 'term', 'command', 'fix', 'case', 'quiz', 'fact'].includes(it.kind) && s < (it.kind === 'app' ? 9 : 6)) s = 0;   // HUBTECH's own material only when it really fits
+    if (['guide', 'lesson', 'app', 'term', 'command', 'fix', 'case', 'quiz', 'fact', 'help'].includes(it.kind) && s < (it.kind === 'app' ? 9 : 6)) s = 0;   // HUBTECH's own material only when it really fits
     return { it, s };
   }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   const out = []; let used = 0;

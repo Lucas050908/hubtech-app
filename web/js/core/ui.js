@@ -106,7 +106,9 @@ export function stateBlock({ icon: ic = 'sparkles', title, text, actions = [], k
       : h('div', { class: 'state-art is-gnist' }, gnist(84, { mood: 'wave' }), h('span', { class: 'state-badge' }, icon(ic))),
     h('h3', null, title),
     text ? h('p', null, text) : null,
-    actions.length ? h('div', { class: 'state-actions' }, actions) : null);
+    // an error: Gnist can explain what to do – she gets the error with the question
+    (actions.length || kind === 'error' || kind === 'bad') ? h('div', { class: 'state-actions' }, actions,
+      kind === 'error' || kind === 'bad' ? h('button', { type: 'button', class: 'btn btn-ghost state-ask', onclick: () => import('../ai/panel.js').then(m => m.askAssistant(`Jeg får denne fejl i HUBTECH (${document.title.replace(/\s*·\s*HUBTECH$/, '')}): "${title}"${text ? ` – ${text}` : ''}. Hvad kan jeg gøre?`)) }, gnist(20), 'Spørg Gnist om hjælp') : null) : null);
 }
 
 export function skeletonRows(n = 4) {
