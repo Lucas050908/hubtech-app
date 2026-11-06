@@ -6,7 +6,8 @@ import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 import { lobbyPanel, roomApi, watchRoom, person, me, isWatcher } from '../features/gameroom.js';
-import { c4Empty, c4Drop, c4Winner, c4Valid, c4Best, C4_LEVELS, C4_ROWS, C4_COLS } from '../features/gamelogic.js';
+import { c4Empty, c4Drop, c4Winner, c4Valid, c4Best, c4Advice, C4_LEVELS, C4_ROWS, C4_COLS } from '../features/gamelogic.js';
+import { gnist } from '../core/icons.js';
 
 export default {
   title: 'Fire på stribe',
@@ -20,6 +21,7 @@ export default {
     const boardEl = h('div', { class: 'c4-board', role: 'grid', 'aria-label': 'Spillebræt' });
     const status = h('div', { class: 'c4-status', 'aria-live': 'polite' });
     const statsEl = h('div', { class: 'c4-stats' });
+    const coachEl = h('div', { class: 'gn-coach-slot' });   // "Gnist forklarer" – only when you have turned it on
     const statKey = () => (st.mode === 'cpu' ? st.level : 'two');
     if (ctx?.params?.sub === 'online') st.mode = 'online';
     let room = null;                                    // the online game being shown
@@ -50,9 +52,11 @@ export default {
     const name = (p) => (st.mode === 'cpu' ? (p === 1 ? 'Du' : 'Gnist') : (p === 1 ? 'Rød' : 'Gul'));
     function draw() {
       clear(boardEl);
+      const tip = st.coach && st.mode === 'cpu' && !over && !thinking && turn === 1 ? c4Advice(board, 1) : null;
+      h(clear(coachEl), null, tip ? h('div', { class: 'gn-play', role: 'status', 'aria-live': 'polite' }, h('span', { class: 'gn-play-mark' }, gnist(36)), h('p', { class: 'gn-play-say' }, h('b', null, 'Gnist: '), tip.text)) : null);
       const winSet = new Set((win?.cells || []).map(([r, c]) => `${r},${c}`));
       for (let c = 0; c < C4_COLS; c++) {
-        const col = h('button', { class: ['c4-col', c === hover && !over && 'is-hover'], 'aria-label': `Kolonne ${c + 1}`, disabled: over || board[0][c] !== 0, dataset: { c },
+        const col = h('button', { class: ['c4-col', c === hover && !over && 'is-hover', tip?.col === c && 'is-hint'], 'aria-label': `Kolonne ${c + 1}`, disabled: over || board[0][c] !== 0, dataset: { c },
           onclick: () => play(c), onmouseenter: () => { hover = c; boardEl.querySelectorAll('.c4-col').forEach(x => x.classList.toggle('is-hover', Number(x.dataset.c) === c && !over)); } });
         for (let r = 0; r < C4_ROWS; r++) col.append(h('i', { class: ['c4-cell', board[r][c] && `p${board[r][c]}`, winSet.has(`${r},${c}`) && 'is-win'] }));
         boardEl.append(col);
@@ -134,7 +138,9 @@ export default {
       h('div', { class: 'cmd-filters c4-filters', style: { margin: '16px 0' } }, modeSeg, levelSeg),
       h(localBox, null, panel(null, null, status,
         h('div', { class: 'c4-wrap' }, boardEl),
-        h('div', { class: 'gm-top', style: { marginTop: '14px' } }, statsEl, h('button', { class: 'btn btn-sm', onclick: reset }, icon('refresh'), 'Nyt spil')))),
+        h('div', { class: 'gm-top', style: { marginTop: '14px' } }, statsEl,
+          h('button', { class: ['btn btn-sm', 'c4-coach', st.coach && 'btn-primary'], 'aria-pressed': String(!!st.coach), onclick: (e) => { st.coach = !st.coach; store.save(); e.currentTarget.classList.toggle('btn-primary', st.coach); e.currentTarget.setAttribute('aria-pressed', String(st.coach)); draw(); } }, icon('sparkles'), 'Gnist forklarer'),
+          h('button', { class: 'btn btn-sm', onclick: reset }, icon('refresh'), 'Nyt spil')), coachEl)),
       onlineBox);
   },
 };

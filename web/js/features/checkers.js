@@ -134,3 +134,19 @@ export function aiMove(s, seat) {
   return m ? { name: 'move', args: [m.path[0], m.path.at(-1)] } : null;
 }
 export const count = (b) => ({ white: b.filter(v => v > 0).length, black: b.filter(v => v < 0).length });
+
+const sq = (i) => `${'abcdefgh'[i & 7]}${8 - (i >> 3)}`;
+/** Gnist's advice for the player whose turn it is: the move she would make, in plain words. */
+export function advice(s, seat) {
+  if (s.phase !== 'play' || s.turn !== seat) return null;
+  const m = bestMove(s.board, seat, 2, () => 0);
+  if (!m) return null;
+  const from = m.path[0], to = m.path.at(-1), after = play(s.board, m);
+  const crowned = Math.abs(s.board[from]) === 1 && Math.abs(after[to]) === 2;
+  let text;
+  if (m.caps.length) text = `Du skal slå – det er tvang i dam. Spring fra ${sq(from)} til ${sq(to)} og tag ${m.caps.length === 1 ? 'én brik' : `${m.caps.length} brikker`}.`;
+  else if (crowned) text = `Flyt fra ${sq(from)} til ${sq(to)} – så får du en dam, der kan gå hele vejen på skrå!`;
+  else if (!legalMoves(after, 1 - seat).some(x => x.caps.length)) text = `Flyt fra ${sq(from)} til ${sq(to)} – der står brikken sikkert.`;
+  else text = `Flyt fra ${sq(from)} til ${sq(to)}. Pas på: modstanderen kan slå bagefter – se, om du kan slå tilbage.`;
+  return { from, to, text };
+}

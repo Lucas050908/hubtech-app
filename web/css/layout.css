@@ -337,7 +337,7 @@ a.tw-chip:hover, a.tw-chip:focus-visible { border-color: color-mix(in srgb, var(
 .home-tip-mark .gnist-mark { width: 100%; height: 100%; }
 
 @media (max-width: 640px) {
-  .search-trigger { flex: 0 1 40px; width: 40px; min-width: 34px; height: 40px; padding: 0; justify-content: center; }
+  .search-trigger { flex: 0 1 36px; width: 36px; min-width: 32px; height: 36px; padding: 0; justify-content: center; border-radius: 50%; }
   .search-trigger span, .search-trigger kbd { display: none; }
 }
 @media (max-width: 760px) {
@@ -348,3 +348,22 @@ a.tw-chip:hover, a.tw-chip:focus-visible { border-color: color-mix(in srgb, var(
 .home-stat-next { display: block; margin-top: 6px; font-size: var(--fs-xs); color: var(--muted); }
 .home-customize-top { color: #f5f5f4 !important; text-shadow: 0 1px 8px rgba(0, 0, 0, .5); }
 .home-customize-top:hover, .home-customize-top:focus-visible { background: rgba(255, 255, 255, .12) !important; }
+
+/* ════════════════ Det nye design inde i alle apps (orken-stilen) ════════════════
+   Den røde tråd: alt, der er "valgt", "i gang" eller vigtigt, er orange på alle sider. App-ikonerne beholder deres egne farver
+   (de sætter deres --app selv), så man stadig kan kende apps fra hinanden. */
+:root[data-style="orken"] :is(.page, .app-hero) { --app: var(--accent) !important; }
+/* the hero card: warm glass with an orange line along the top */
+:root[data-style="orken"] .app-hero { border: 1px solid rgba(255, 228, 200, .12); box-shadow: 0 18px 40px -26px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .04); }
+:root[data-style="orken"] .app-hero::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent-2) 50%, var(--accent) 80%, transparent); opacity: .85; z-index: 2; pointer-events: none; }
+:root[data-style="orken"] .app-hero-eyebrow { color: var(--accent-2); }
+/* panels: warm stone with a thin orange edge at the top, orange heading icons */
+:root[data-style="orken"] .page .panel { border-color: rgba(255, 228, 200, .1); box-shadow: inset 0 1px 0 rgba(249, 115, 22, .22), 0 14px 32px -24px rgba(0, 0, 0, .7); }
+:root[data-style="orken"] .page .panel-title > svg { color: var(--accent); }
+/* "chosen" and "your turn" look the same in every app */
+:root[data-style="orken"] .page :is(.is-on, .is-turn, [aria-checked="true"]):not(.seg-btn):not(.switch) { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+/* the hero card shows the night picture in both themes – keep its eyebrow gold */
+:root[data-style="orken"] .app-hero-eyebrow { color: #fbbf24 !important; }
+/* rows of game buttons wrap on phones instead of running off the edge */
+.gm-top { flex-wrap: wrap; row-gap: 10px; }
+@media (max-width: 640px) { .gm-top { gap: 12px 16px; } }

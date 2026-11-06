@@ -76,6 +76,7 @@ export const GNIST_TIPS = [
   'Tryk ↑ i mit skrivefelt for at hente dit sidste spørgsmål frem igen.',
   'Elværkstedet har nye regneopgaver hver gang – perfekt til at øve Ohms lov.',
   'Alle kurser kan søges i – også de enkelte lektioner.',
+  'Skriv til mig: "Husk at jeg arbejder med lasere" – så husker jeg det og tager det med i mine svar.',
 ];
 export function gnistTip(now = new Date()) {
   const day = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 864e5);
@@ -109,3 +110,23 @@ export function winStreak(hist = []) {
   return n;
 }
 
+
+/**
+ * Gnist's brief for today, from the "I dag" agenda (buildToday): what to start with, the next appointment and
+ * today's deadlines – at most two short sentences. null when there is nothing today (then Hjem shows a tip).
+ */
+export function gnistBrief(agenda = [], now = new Date()) {
+  const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const out = [];
+  const late = agenda.filter(a => a.kind === 'overdue');
+  if (late.length) out.push(`Start med «${late[0].title}» – den er overskredet${late.length > 1 ? ` (og ${late.length - 1} mere)` : ''}.`);
+  const next = agenda.filter(a => a.kind === 'event' && a.time && a.time >= hm).sort((a, b) => a.time.localeCompare(b.time))[0];
+  if (next) {
+    const mins = (Number(next.time.slice(0, 2)) * 60 + Number(next.time.slice(3, 5))) - (now.getHours() * 60 + now.getMinutes());
+    out.push(`Næste aftale: «${next.title}» kl. ${next.time}${mins <= 60 ? ` – om ${mins} min` : ''}.`);
+  }
+  const due = agenda.filter(a => a.kind === 'task');
+  if (due.length && out.length < 2) out.push(due.length === 1 ? `«${due[0].title}» har deadline i dag${due[0].time ? ` kl. ${due[0].time}` : ''}.` : `${due.length} opgaver har deadline i dag – den første er «${due[0].title}».`);
+  if (!out.length && agenda.some(a => a.kind === 'event')) out.push('Dagens aftaler er overstået – godt klaret!');
+  return out.length ? out.slice(0, 2).join(' ') : null;
+}

@@ -181,3 +181,16 @@ export function seededRandom(text) {
   return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 export const todayISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Gnist's advice in Fire på stribe for player `me`: win now, block, or the strongest column. */
+export function c4Advice(b0, me = 1) {
+  const opp = me === 1 ? 2 : 1, valid = c4Valid(b0);
+  if (!valid.length) return null;
+  const wins = (p) => valid.find(c => { const b = b0.map(row => [...row]); c4Drop(b, c, p); return c4Winner(b)?.player === p; });
+  const w = wins(me);
+  if (w != null) return { col: w, text: `Læg i kolonne ${w + 1} – så har du fire på stribe!` };
+  const bl = wins(opp);
+  if (bl != null) return { col: bl, text: `Læg i kolonne ${bl + 1} – ellers får modstanderen fire på stribe.` };
+  const col = c4Best(b0, me, 4, () => 0.5);
+  return { col, text: col === 3 ? 'Læg i kolonne 4 – midten giver flest måder at få fire på stribe.' : `Læg i kolonne ${col + 1} – det giver dig flest muligheder.` };
+}

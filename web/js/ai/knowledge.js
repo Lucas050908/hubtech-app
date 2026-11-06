@@ -16,20 +16,66 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const STOP = new Set('og i jeg det at en den til er som på de med han af for ikke der var mig sig men et har om vi min havde ham hun nu over da fra du ud sin dem os op man hans hvor eller hvad skal selv her alle vil blev kunne ind når være dog noget ville jo deres efter ned skulle denne end dette mit også under have dig anden hende mine alt meget sit sine vor mod disse hvis din nogle hos blive mange ad bliver hendes været thi jer sådan kan hvordan hvornår hvem hjælp hjælpe lav lave mine min mit gerne lidt please'.split(' '));
 
 export const SOURCES = { chats: 'Tidligere samtaler med Gnist', guides: 'HUBTECHs guides og kurser', notes: 'Noter', tasks: 'Opgaver', calendar: 'Kalender', snippets: 'Kodestumper', customers: 'Kunder' };
-const KIND = { chat: 'Tidligere samtale', note: 'Note', task: 'Opgave', event: 'Aftale', snippet: 'Kodestump', customer: 'Kunde', guide: 'Guide', lesson: 'Lektion' };
+const KIND = { chat: 'Tidligere samtale', note: 'Note', task: 'Opgave', event: 'Aftale', snippet: 'Kodestump', customer: 'Kunde', guide: 'Guide', lesson: 'Lektion', app: 'App i HUBTECH', term: 'IT-ordbog', command: 'Kommando', fix: 'Printerlægen', case: 'Fejlfindingscase', quiz: 'Quiz', fact: 'Opslag' };
 const HREF = { chat: '#/apps/gnist', note: '#/apps/notes', task: '#/apps/tasks', event: '#/apps/calendar', snippet: '#/apps/snippets', customer: '#/apps/customers' };
 
 /** HUBTECH's own material – every guide and every course lesson – as small text items (built once). */
 let library = null;
 export function libraryItems() {
   library ||= (async () => {
-    const [{ GUIDES }, C] = await Promise.all([import('../data/guides.js'), import('../data/courses.js')]);
+    const [{ GUIDES }, C, { APPS }, { GLOSSARY }, { COMMANDS, CMD_GROUPS, OS_LABEL }, { CODE_COURSES }, ST] = await Promise.all([
+      import('../data/guides.js'), import('../data/courses.js'), import('../core/registry.js'), import('../data/glossary.js'),
+      import('../data/commands.js'), import('../data/code-courses.js'), import('../data/course-servicetekniker.js')]);
     const { courses } = await C.loadAllCourses();
     const items = [];
     for (const g of GUIDES) items.push({ kind: 'guide', title: g.title, text: strip([g.summary, ...(g.sections || []).map(s => [s.h, s.p, ...(s.list || s.ul || [])].filter(Boolean).join(': '))].join(' ')).slice(0, 3000), href: `#/learn/guide/${g.id}` });
     for (const c of [C.START_COURSE, ...courses]) {
       (c.days || []).forEach((d, i) => items.push({ kind: 'lesson', title: `${c.short || c.title}: ${d.t}`, text: strip([d.g, C.pointsText(d.l), (d.q || []).map(q => q.join(' ')).join(' ')].join(' ')).slice(0, 2500), href: `#/learn/course/${c.id}/day/${i + 1}` }));
     }
+    // every app: what it does and where it is – "hvor kan jeg lave en faktura?"
+    for (const a of APPS) {
+      if (!a.route || a.status === 'hidden') continue;
+      items.push({ kind: 'app', title: a.name, text: strip([`${a.name}: ${a.tagline || ''}`, a.description || '', (a.keywords || []).join(' ')].join(' ')).slice(0, 900), href: a.route });
+    }
+    // the IT dictionary: one item per word
+    for (const [term, , text] of GLOSSARY) items.push({ kind: 'term', title: term, text: `${term}: ${text}`, href: '#/learn/glossary' });
+    // commands, grouped like in the app (fx "Netværk – Windows")
+    for (const [gid, glabel] of CMD_GROUPS.map(g => (Array.isArray(g) ? g : [g.id, g.label]))) {
+      const cs = COMMANDS.filter(c => c.g === gid);
+      if (cs.length) items.push({ kind: 'command', title: `Kommandoer: ${glabel}`, text: cs.map(c => `${c.cmd.replace(/\n/g, ' ; ')} (${OS_LABEL[c.os] || c.os}) – ${c.d}`).join(' | ').slice(0, 3000), href: '#/learn/commands' });
+    }
+    // Kodeskolen
+    for (const c of CODE_COURSES) for (const l of c.lessons || []) items.push({ kind: 'lesson', title: `${c.title}: ${l.title}`, text: strip([l.body, l.task?.text || l.task || ''].join(' ')).slice(0, 2000), href: `#/learn/codeschool/${c.id}/${l.id}` });
+    // more of HUBTECH's own material (each part on its own, so one that fails to load doesn't stop the rest)
+    const more = async (path, fn) => { try { fn(await import(path)); } catch (e) { console.warn('[gnist] kunne ikke læse', path, e); } };
+    await more('../data/printer-tree.js', ({ PROBLEMS, NODES }) => {   // the printer doctor: walk each fault tree
+      for (const p of PROBLEMS) {
+        const seen = new Set(), parts = [], todo = [p.start];
+        while (todo.length && seen.size < 60) { const id = todo.shift(); if (!id || seen.has(id) || !NODES[id]) continue; seen.add(id); const n = NODES[id];
+          if (n.q) parts.push(`Spørgsmål: ${n.q}${n.hint ? ` (${n.hint})` : ''}${n.code ? ` [${n.code}]` : ''}`); if (n.fix) parts.push(`Løsning – ${n.fix}: ${(n.steps || []).join(' ')}`); todo.push(n.yes, n.no); }
+        items.push({ kind: 'fix', title: `${p.title} – ${p.sub}`, text: strip(parts.join(' ')).slice(0, 3000), href: '#/apps/printerdoctor' });
+      }
+    });
+    await more('../features/labs.js', ({ CASES, NET_FAULTS }) => {   // the lab's cases: symptom, tests, answer and why
+      for (const c of CASES || []) items.push({ kind: 'case', title: `${c.area}: ${c.title}`, text: strip([c.symptom, (c.tests || []).map(t => t.join(': ')).join(' '), `Årsag: ${c.options?.[c.a] || ''}.`, c.why].join(' ')).slice(0, 2500), href: '#/learn/labs' });
+      if (NET_FAULTS?.length) items.push({ kind: 'case', title: 'Netværksfejl: sådan kender du dem', text: NET_FAULTS.map(f => `${f.label}: ${f.why}`).join(' '), href: '#/learn/labs' });
+    });
+    await more('../data/phishing.js', ({ SCENARIOS }) => {
+      const tips = [...new Set((SCENARIOS || []).map(s => s.tip).filter(Boolean))];
+      if (tips.length) items.push({ kind: 'guide', title: 'Sådan spotter du phishing og svindel', text: tips.join(' '), href: '#/learn/phishing' });
+    });
+    await more('../data/quizzes.js', ({ QUIZZES }) => {   // every question with the right answer and why
+      for (const q of QUIZZES || []) items.push({ kind: 'quiz', title: `Quiz: ${q.title}`, text: (q.qs || []).map(([qq, opts, a, why]) => `${qq} Svar: ${opts[a]}. ${why || ''}`).join(' ').slice(0, 3500), href: '#/learn/quiz' });
+    });
+    await more('../data/elements.js', ({ ELEMENTS, CATS }) => {   // the periodic table
+      for (const e of ELEMENTS || []) items.push({ kind: 'fact', title: `${e.name} (${e.sym})`, text: `${e.name} har kemisk tegn ${e.sym} og atomnummer ${e.z}. Atommasse ${e.mass}. ${CATS?.[e.cat]?.label || CATS?.[e.cat] || e.cat}, ${e.state} ved stuetemperatur. Periode ${e.period}${e.group ? `, gruppe ${e.group}` : ''}.`, href: '#/apps/elements' });
+    });
+    await more('../data/timeline.js', ({ EVENTS, yearText }) => {   // history, in chunks of 12 events
+      const ev = (EVENTS || []).map(([y, t, approx]) => `${yearText(y, approx)}: ${t}.`);
+      for (let i = 0; i < ev.length; i += 12) items.push({ kind: 'fact', title: `Historie ${i / 12 + 1}: tidslinje`, text: ev.slice(i, i + 12).join(' '), href: '#/apps/timeline' });
+    });
+    // the servicetekniker course
+    (ST.DAYS || []).forEach((d, i) => items.push({ kind: 'lesson', title: `Servicetekniker dag ${i + 1}: ${d.t}`, text: strip([d.g, (d.l || []).join(' '), (d.q || []).map(q => q.join(' ')).join(' ')].join(' ')).slice(0, 2500), href: `#/learn/course/servicetekniker/day/${i + 1}` }));
     return items;
   })().catch(() => []);
   return library;
@@ -87,9 +133,55 @@ export function expandWords(ws) {
 
 const words = (s) => String(s || '').toLowerCase().normalize('NFC').match(/[a-zæøå0-9]{3,}/g)?.filter(w => !STOP.has(w)) || [];
 
+/** How many letters must change to turn a into b (a swap of two neighbours counts as one) – stops early above max. */
+export function editDistance(a, b, max = 2) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev2 = null, prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + c);
+      if (prev2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
+      cur[j] = v; if (v < best) best = v;
+    }
+    if (best > max) return max + 1;
+    prev2 = prev; prev = cur;
+  }
+  return prev[b.length];
+}
+// the words HUBTECH knows (from the items being searched), built once per list
+const vocabs = new WeakMap();
+function vocab(items) {
+  let v = vocabs.get(items);
+  if (!v) { v = new Set(); for (const it of items) { for (const w of words(it.title)) v.add(w); for (const w of words(it.text)) v.add(w); } vocabs.set(items, v); }
+  return v;
+}
+/** Typos: each word that isn't known is matched to the closest known word. Returns Map(typed → meant). */
+export function fixTypos(ws, items) {
+  const v = vocab(items), out = new Map();
+  for (const w of ws) {
+    if (w.length < 4 || v.has(w) || /\d/.test(w)) continue;
+    const ascii = w.replace(/aa/g, 'å').replace(/oe/g, 'ø').replace(/ae/g, 'æ');   // "netvaerk" → "netværk"
+    if (ascii !== w && v.has(ascii)) { out.set(w, ascii); continue; }
+    const max = w.length >= 7 ? 2 : 1;
+    let best = null, bd = max + 1;
+    for (const x of v) {
+      if (Math.abs(x.length - w.length) > max || x[0] !== w[0] && x[1] !== w[1]) continue;   // cheap filters first
+      const d = editDistance(w, x, max);
+      if (d < bd || (d === bd && best && x.length === w.length && best.length !== w.length)) { bd = d; best = x; if (d === 1 && x.length === w.length) break; }
+    }
+    if (best) out.set(w, best);
+  }
+  return out;
+}
+
 /** Pick the items most relevant to the question, within a character budget. */
 export function retrieve(items, question, budget, { calendarish = false, page = '' } = {}) {
-  const asked = words(question);
+  const typed = words(question);
+  const typos = fixTypos(typed, items);   // "pritner" is read as "printer"
+  const asked = [...new Set(typed.map(w => typos.get(w) || w))];
   const extra = new Set(expandWords(asked).filter(w => !asked.includes(w)));
   const q = [...asked, ...extra];
   const today = iso(new Date()), soon = iso(new Date(Date.now() + 14 * 864e5));
@@ -106,9 +198,9 @@ export function retrieve(items, question, budget, { calendarish = false, page = 
     if (calendarish && it.kind === 'task' && !it.done && it.due && it.due <= soon) s += 2;
     if (/prompt/i.test(it.title) && q.some(w => w.startsWith('prompt'))) s += 6;
     if (it.pinned) s += 0.5;
-    if (page && it.href && page.startsWith(it.href)) s += 30;   // "what does this mean?" on a lesson: that lesson first
+    if (page && it.href && page.startsWith(it.href)) s += it.kind === 'app' ? (s > 0 ? 3 : 0) : 30;   // "what does this mean?" on a lesson: that lesson first (the app you're in only nudges)
     // HUBTECH's own guides need a clear match (two words), so they don't crowd out the user's own data
-    if ((it.kind === 'guide' || it.kind === 'lesson') && s < 6) s = 0;
+    if (['guide', 'lesson', 'app', 'term', 'command', 'fix', 'case', 'quiz', 'fact'].includes(it.kind) && s < (it.kind === 'app' ? 9 : 6)) s = 0;   // HUBTECH's own material only when it really fits
     return { it, s };
   }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   const out = []; let used = 0;
@@ -136,14 +228,14 @@ function dateHelp() {
 }
 
 /** System prompt for normal use or for teacher mode (Kodeskolen). */
-export function systemPrompt({ mode, context, facts, userName, style = 'points', compact = false }) {
+export function systemPrompt({ mode, context, facts, userName, style = 'points', compact = false, memory = '' }) {
   const now = new Date();
   // facts === null: the date, time and excerpts come with the question instead (questionBlock), so this prompt stays the
   // same between questions and the engine can reuse what it has already read – the answer starts much sooner
   const stable = facts === null;
   const base = `Du hedder Gnist og er HUBTECHs egen AI-assistent – "en lille gnist fra værkstedet". Du kører lokalt på ${userName ? userName + 's' : 'brugerens'} egen enhed, så ingen data forlader enheden.
 Din personlighed: varm, nysgerrig og ligefrem – som en hjælpsom makker på værkstedet. Du er positiv uden at overdrive, siger tingene, som de er, og har en tør, venlig humor (højst én lille bemærkning, og aldrig når noget er alvorligt eller farligt). Du roser, når brugeren gør noget godt, og du siger "vi", når I løser noget sammen. Du bruger sjældent emojis (højst én ⚡ en gang imellem). ${userName ? `Brugeren hedder ${userName.split(' ')[0]} – brug navnet en gang imellem, ikke i hvert svar.` : ''}
-Svar altid på dansk, kort og konkret. Opfind aldrig fakta om brugerens data – hvis du ikke kan se det i uddragene, så sig det. Spørger nogen, hvem du er, så fortæl, at du hedder Gnist, er HUBTECHs AI og kører på deres egen enhed.${stable ? '\nDato, klokkeslæt, den side brugeren er på og uddrag af brugerens data står sammen med hvert spørgsmål.' : `\nI dag er ${DAYS[now.getDay()]} ${iso(now)}, klokken er ${pad(now.getHours())}:${pad(now.getMinutes())}. Datoer: ${dateHelp()}.`}`;
+Svar altid på dansk, kort og konkret. Brugeren skriver måske med stavefejl – forstå, hvad der menes, og ret ikke på stavningen. Opfind aldrig fakta om brugerens data – hvis du ikke kan se det i uddragene, så sig det. Spørger nogen, hvem du er, så fortæl, at du hedder Gnist, er HUBTECHs AI og kører på deres egen enhed.${stable ? '\nDato, klokkeslæt, den side brugeren er på og uddrag af brugerens data står sammen med hvert spørgsmål.' : `\nI dag er ${DAYS[now.getDay()]} ${iso(now)}, klokken er ${pad(now.getHours())}:${pad(now.getMinutes())}. Datoer: ${dateHelp()}.`}`;
   if (mode === 'builder') {
     const c = context || {};
     return `${base}
@@ -170,13 +262,15 @@ VIGTIGE REGLER:
 3. Du må vise korte eksempler på 1-2 linjer, der forklarer et begreb, men de må ikke løse opgaven.
 4. Ros det, eleven gør rigtigt.`;
   }
-  return `${base}
+  return `${base}${memory ? '\n' + memory : ''}
 Du kan hjælpe med at planlægge kalenderen, skrive tekster, forklare teknik (IT, netværk, printere, lasere, 3D-print, elektronik, kode) og bruge brugerens egne noter, opgaver, aftaler, kodestumper og kunder samt HUBTECHs egne guides og kurser (uddrag herunder). Hvis brugeren henviser til en "prompt" i sine noter, så følg den.
 Sådan svarer du godt:
 ${style === 'text' ? '- Svar i korte, klare afsnit.' : `- Start med selve svaret i én kort sætning. Skriv resten som korte punkter, der starter med "- ", og fremhæv nøgleord med **fed**. Er det en fremgangsmåde, så brug nummererede trin (1. 2. 3.). Del længere svar op med en kort overskrift ("## ..."). Hold hvert punkt på én linje.`}
 - Bygger dit svar på en guide eller lektion, så nævn dens titel, så brugeren kan læse videre.
+- Beder brugeren om en graf eller et diagram, så skriv den som en kodeblok, der starter med \`\`\`graf – en linje 'type: søjle' (eller linje eller cirkel), en linje 'titel: …' og så én linje pr. værdi som 'navn: tal'. HUBTECH tegner grafen.
 - Er spørgsmålet uklart, så stil ét kort opklarende spørgsmål i stedet for at gætte.
 - Ved du det ikke, så sig det ærligt – gæt aldrig på tal, priser, datoer eller indstillinger.
+- Står der en udregning fra HUBTECH ved spørgsmålet, så brug de tal – regn ikke selv.
 ${style === 'text' || compact ? '' : `Eksempel på et godt svar:
 Spørgsmål: Min printer er offline – hvad gør jeg?
 Svar: Det skyldes oftest forbindelsen – lad os tjekke den først.
@@ -194,11 +288,11 @@ Brugeren skal selv godkende handlingerne. Brug kun handlinger, når brugeren bed
 }
 
 /** What goes with each question when the system prompt is stable: date and time, the page, the excerpts – and the question. */
-export function questionBlock(question, facts, { page = '' } = {}) {
+export function questionBlock(question, facts, { page = '', computed = [] } = {}) {
   const now = new Date();
   return `[I dag er ${DAYS[now.getDay()]} ${iso(now)} kl. ${pad(now.getHours())}:${pad(now.getMinutes())}. Datoer: ${dateHelp()}.${page ? ` Brugeren er på siden: ${page}.` : ''}]
 ${facts.length ? `[Uddrag af brugerens data og HUBTECHs guides:\n${facts.join('\n')}]` : '[Ingen af brugerens data eller guides passede til spørgsmålet.]'}
-
+${computed.length ? `[Udregnet præcist af HUBTECH – brug præcis disse tal i dit svar:\n${computed.map(c => '- ' + c).join('\n')}]\n` : ''}
 ${question}`;
 }
 
@@ -251,3 +345,6 @@ export async function runAction(a) {
   return a.path;
 }
 
+
+/** Does the question point at the page ("forklar det her", "hvad står der på siden", "opsummer siden")? */
+export function asksAboutPage(q) { return /\b(det her|denne side|siden|skærmen|opsummer|resumé af|forklar (det|denne|dette|lektionen|opgaven)|hvad står der|hvad betyder det(te)?)\b/i.test(String(q || '')); }

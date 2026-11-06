@@ -879,3 +879,49 @@ body.ai-page .ai-fab { display: none; }
 .chl-sq.is-dot::after { content: ''; width: 28%; aspect-ratio: 1; border-radius: 50%; background: rgba(28, 18, 6, .45); }
 .chl-sq.is-cap { box-shadow: inset 0 0 0 3px rgba(239, 68, 68, .85); }
 .chl-text { margin: 0; font-size: var(--fs-sm); line-height: 1.45; }
+
+/* Gnist forklarer in Fire på stribe and Yatzy */
+.gn-coach-slot .gn-play { margin: 12px 0 0; }
+.c4-col.is-hint { box-shadow: inset 0 0 0 3px #fb923c; border-radius: 12px; }
+.yz-coach { margin: 10px 0; }
+
+/* Gnist forklarer in Dam */
+.dm-cell.is-hint { box-shadow: inset 0 0 0 3px #fb923c; }
+.dm-coach { margin: 8px 0; }
+
+/* Gnist's memory in her settings */
+.ai-mem-list { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 4px; }
+.ai-mem-list li { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; border-radius: 10px; border: 1px solid var(--line); font-size: var(--fs-sm); }
+.ai-mem-list li span { flex: 1; min-width: 0; }
+
+/* Gnist's charts */
+.ai-chart { margin: 10px 0; padding: 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(0, 0, 0, .18); color: var(--text); }
+.ai-chart-svg { display: block; width: 100%; height: auto; }
+.ai-chart-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+:root[data-theme="light"] .ai-chart { background: rgba(255, 255, 255, .6); }
+
+/* new chats: the button in the head, and the chat list next to Gnist on full screen */
+.ai-new { gap: 6px; padding: 0 10px; min-height: 32px; }
+.ai-new svg { width: 15px; height: 15px; }
+@media (max-width: 420px) { .ai-new span { display: none; } }
+.gn-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 14px; align-items: start; }
+.gn-side { padding: 12px; border-radius: var(--r-lg, 16px); display: grid; gap: 8px; max-height: calc(100vh - 280px); overflow: auto; }
+.gn-newchat { width: 100%; justify-content: center; }
+.gn-side-h { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+.gn-chats { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.gn-chats li { display: flex; align-items: center; gap: 4px; border-radius: 10px; }
+.gn-chats li.is-on { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.gn-chat { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 0; background: none; color: inherit; cursor: pointer; border-radius: 10px; }
+.gn-chat:hover, .gn-chat:focus-visible { background: rgba(255, 255, 255, .06); }
+.gn-chat-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: var(--fs-sm); }
+.gn-chat .faint { font-size: var(--fs-xs); }
+.gn-side-empty { font-size: var(--fs-sm); margin: 4px 2px; }
+@media (max-width: 900px) { .gn-layout { grid-template-columns: minmax(0, 1fr); } .gn-side { max-height: 220px; order: 2; } }
+
+/* attach a file, read aloud */
+.ai-attach { cursor: pointer; flex: none; align-self: center; }
+.ai-attach-row { padding: 0 12px 6px; }
+.ai-attached { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.ai-attached span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+
+.ai-msg:has(.ai-chart) { width: min(620px, 100%); max-width: min(620px, 100%) !important; }

@@ -6,7 +6,7 @@ import { store, refreshSummary } from '../core/store.js';
 import { appById, isLearnApp, entryApps, access, visible } from '../core/registry.js';
 import { todayPanel, buildToday } from '../features/today.js';
 import { getState } from '../core/services.js';
-import { buildStats, greeting, gnistTip } from '../features/widgetlogic.js';
+import { buildStats, greeting, gnistTip, gnistBrief } from '../features/widgetlogic.js';
 import { gnist } from '../core/icons.js';
 import { widgetPrefs, openCustomize, onWeather } from '../features/topwidgets.js';
 import { appCard, profileCard, activityPanel, shortcutsPanel, worldQuickPanel, seasonStrip, projectsPreview, learningPreview, panel } from '../features/widgets.js';
@@ -65,7 +65,15 @@ export default {
     Promise.all(['calendar', 'tasks', 'timesheet', 'flashcards'].map(k => getState(k).catch(() => null))).then(([calendar, tasks, timesheet, flashcards]) => {
       states = { calendar, tasks, timesheet };
       refreshStats();
-      greet.textContent = greeting(first, buildToday({ calendar, tasks, flashcards }).agenda);
+      const agenda = buildToday({ calendar, tasks, flashcards }).agenda;
+      greet.textContent = greeting(first, agenda);
+      // Gnist's brief for today replaces the tip when there is something today – a click asks her for the whole plan
+      const brief = gnistBrief(agenda);
+      if (brief) {
+        h(clear(tip), null, h('span', { class: 'home-tip-mark' }, gnist(30, { mood: 'wave' })), h('span', null, h('b', null, 'Gnist i dag: '), brief));
+        tip.classList.add('is-brief'); tip.title = 'Spørg Gnist om dagens plan';
+        tip.onclick = () => import('../ai/panel.js').then(m => m.askAssistant('Hvad skal jeg nå i dag? Lav en kort plan.'));
+      }
     });
     unsub.push(store.on('summary', refreshStats));
     refreshStats();

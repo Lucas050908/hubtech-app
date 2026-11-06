@@ -3,7 +3,7 @@
  * on HUBTECH: then the host's browser runs the game, the server keeps the latest state and passes the others' moves on.
  */
 import { h, clear } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, gnist } from '../core/icons.js';
 import { api } from '../core/api.js';
 import { toast, confirmDialog, segmented } from '../core/ui.js';
 import { onLive } from '../core/live.js';
@@ -68,7 +68,7 @@ export default {
           const name = h('input', { class: 'input', value: p.name, maxlength: 16, 'aria-label': `Navn på spiller ${i + 1}` });
           name.addEventListener('input', () => { p.name = name.value.trim() || `Spiller ${i + 1}`; });
           list.append(h('div', { class: 'pg-setup-row' }, h('span', { class: 'yz-seat' }, String(i + 1)), name,
-            h('button', { class: ['btn btn-sm', p.ai && 'btn-primary'], onclick: () => { p.ai = !p.ai; if (p.ai && /^(Spiller)/.test(p.name)) p.name = 'Gnist'; drawList(); } }, icon(p.ai ? 'bot' : 'user'), p.ai ? 'Computer' : 'Menneske'),
+            h('button', { class: ['btn btn-sm', p.ai && 'btn-primary'], onclick: () => { p.ai = !p.ai; if (p.ai && /^(Spiller)/.test(p.name)) p.name = 'Gnist'; drawList(); } }, icon(p.ai ? 'bot' : 'user'), p.ai ? 'Gnist' : 'Menneske'),
             players.length > 1 ? h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Fjern spiller', onclick: () => { players.splice(i, 1); drawList(); } }, icon('x')) : null));
         });
         addBtn.disabled = players.length >= 6;
@@ -76,7 +76,7 @@ export default {
       const addBtn = h('button', { class: 'btn btn-sm', onclick: () => { players.push({ name: `Spiller ${players.length + 1}`, ai: false }); drawList(); } }, icon('plus'), 'Tilføj spiller');
       drawList();
       h(clear(root), null, panel('Nyt spil på denne skærm', 'users',
-        h('p', { class: 'muted', style: { marginTop: 0 } }, 'Spil alene for at slå din rekord, mod computeren eller med op til seks på samme skærm. Vil I spille hver på sin egen enhed, så vælg Online øverst.'),
+        h('p', { class: 'muted', style: { marginTop: 0 } }, 'Spil alene for at slå din rekord, mod Gnist eller med op til seks på samme skærm. Vil I spille hver på sin egen enhed, så vælg Online øverst.'),
         list, h('div', { class: 'row-actions' }, addBtn),
         h('div', { class: 'row-actions' }, h('button', { class: 'btn btn-primary btn-lg', onclick: () => {
           if (!players.some(p => !p.ai)) return toast('Mindst én skal være et menneske', { type: 'warn' });
@@ -92,7 +92,7 @@ export default {
     const topBox = h('div');
     const topPanel = () => {
       api.get('/api/games/boards/yatzy').then(b => h(clear(topBox), null, boardTable(b))).catch(() => {});
-      return panel('Toplisten', 'trophy', h('p', { class: 'faint', style: { marginTop: 0 } }, 'Din bedste slutsum kommer på listen – både når du spiller alene, mod computeren og online.'), topBox);
+      return panel('Toplisten', 'trophy', h('p', { class: 'faint', style: { marginTop: 0 } }, 'Din bedste slutsum kommer på listen – både når du spiller alene, mod Gnist og online.'), topBox);
     };
 
     // ── the board ──
@@ -135,6 +135,8 @@ export default {
         Y.CATS.filter(c => !c.upper).map(row),
         sumRow('I alt', (cd) => String(Y.totalOf(cd)), 'yz-total'))));
       const watcher = ctl.online && isWatcher(room);
+      const tip = !ctl.online && st.coach && mine && s.rolls ? Y.advice(p.card, s.dice, s.rolls) : null;
+      const coach = tip ? h('div', { class: 'gn-play yz-coach', role: 'status', 'aria-live': 'polite' }, h('span', { class: 'gn-play-mark' }, gnist(36)), h('p', { class: 'gn-play-say' }, h('b', null, 'Gnist: '), tip.text)) : null;
       h(clear(root), null,
         h('div', { class: 'row-actions', style: { marginTop: 0 } },
           ctl.online ? h('button', { class: 'btn btn-sm', onclick: () => openRoom(null) }, icon('arrowLeft'), 'Alle spil') : h('button', { class: 'btn btn-sm', onclick: async () => {
@@ -142,11 +144,12 @@ export default {
             st.game = null; store.save(); ctl = null; setup();
           } }, icon('plus'), 'Nyt spil'),
           watcher ? h('span', { class: 'chip chip-info' }, icon('eye'), 'Du ser med') : null,
+          !ctl.online ? h('button', { class: ['btn btn-sm', st.coach && 'btn-primary'], 'aria-pressed': String(!!st.coach), onclick: () => { st.coach = !st.coach; store.save(); draw(); } }, icon('sparkles'), 'Gnist forklarer') : null,
           ctl.online && !watcher && s.phase === 'play' ? h('button', { class: 'btn btn-sm btn-ghost', onclick: async () => { if (await confirmDialog({ title: 'Forlad spillet?', text: ctl.host ? 'Du er vært – spillet slutter for alle.' : 'Computeren tager over for dig.', confirmLabel: 'Forlad', danger: true })) { await roomApi.leave(room.id).catch(() => {}); openRoom(null); } } }, icon('x'), 'Forlad') : null,
           ctl.online && s.phase === 'over' && ctl.host ? h('button', { class: 'btn btn-sm btn-primary', onclick: rematch }, icon('refresh'), 'Spil igen') : null,
           !ctl.online && s.phase === 'over' ? h('button', { class: 'btn btn-sm btn-primary', onclick: () => { st.game = Y.newGame(st.setup?.players || s.players); reported = null; store.save(); ctl = localCtl(); draw(); } }, icon('refresh'), 'Spil igen') : null),
         h('div', { class: 'yz-wrap' },
-          h('div', { class: 'yz-table' }, status, dice, rollBtn, s.log.length ? h('ul', { class: 'yz-log' }, s.log.slice(0, 6).map(l => h('li', null, l))) : null),
+          h('div', { class: 'yz-table' }, status, coach, dice, rollBtn, s.log.length ? h('ul', { class: 'yz-log' }, s.log.slice(0, 6).map(l => h('li', null, l))) : null),
           card));
     }
     function scheduleAI() {
@@ -251,7 +254,7 @@ export default {
       else openRoom(null);
     } else if (st.game) { ctl = localCtl(); draw(); } else setup();
     return h('div', { class: 'page gm-page yz-page', style: { '--app': app.hue } },
-      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Yatzy', lead: 'Fem terninger, tre slag og 15 rubrikker. Spil alene mod rekorden, mod computeren eller online med de andre.', compact: true }),
+      appHero(app, { eyebrow: 'Brætspil og kort', title: 'Yatzy', lead: 'Fem terninger, tre slag og 15 rubrikker. Spil alene mod rekorden, mod Gnist eller online med de andre.', compact: true }),
       h('div', { class: 'cmd-filters', style: { margin: '16px 0' } }, modeSeg), root);
   },
 };

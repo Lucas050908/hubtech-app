@@ -2,7 +2,14 @@
  * The AI assistant pop-up window. Runs a small language model on this device (see engine.js), reads your own data
  * when it helps (knowledge.js), proposes actions you confirm, and turns into a teacher in Kodeskolen.
  */
-import { h, clear, rect, uiZoom, viewW, viewH } from '../core/dom.js';
+import { quickFacts } from './tools.js';
+import { pageSuggestions, isLooping, tidyAnswer } from './quality.js';
+import { parseChart, chartFromText, chartFromCsv, chartSvg } from './charts.js';
+let attached = null;   // a file the user attached to the next question: { name, text }
+let pendingFile = null;   // the file going with the question being answered now
+import { parseMemoryCommand, applyMemory, memoryBlock } from './memory.js';
+let memory = null;   // what the user has asked Gnist to remember (on the account, state 'gnist')
+import { h, clear, rect, uiZoom, viewW, viewH, raw } from '../core/dom.js';
 import { icon, gnist } from '../core/icons.js';
 import { toast, modal } from '../core/ui.js';
 import { navigate } from '../core/router.js';
@@ -10,7 +17,7 @@ import { store } from '../core/store.js';
 import { fmtBody } from '../community/chat.js';
 import { getAiContext, onAiContext } from './context.js';
 import { MODELS, CTX_STEPS, ramFor, pickFor, gb, mb, deviceRam } from './models.js';
-import { SOURCES, collect, retrieve, isCalendarQuestion, systemPrompt, questionBlock, exerciseFacts, studioFacts, parseActions, describe, runAction, guardCode } from './knowledge.js';
+import { SOURCES, collect, retrieve, isCalendarQuestion, asksAboutPage, systemPrompt, questionBlock, exerciseFacts, studioFacts, parseActions, describe, runAction, guardCode } from './knowledge.js';
 import { extractFiles, answerBlocks } from './actions.js';
 import { getState, saveState, flushState } from '../core/services.js';
 
@@ -38,8 +45,11 @@ export function resolved() {
 
 let panel = null, engine = null, localFile = null, unsubCtx = null;
 let messages = read(HIST, []).filter(m => m && m.role && typeof m.content === 'string').slice(-30);
+messages._id = read(HIST + '.id', null) || undefined;
+const chatListeners = new Set();
+const chatsChanged = () => { for (const f of chatListeners) { try { f(); } catch { /* */ } } };
 let busy = false, abort = null;
-const persistChat = () => write(HIST, messages.slice(-30));
+const persistChat = () => { write(HIST, messages.slice(-30)); write(HIST + '.id', messages._id || null); };
 
 async function eng() { engine ||= await import('./engine.js'); return engine; }
 
@@ -63,6 +73,67 @@ export function unmountAssistantPage() {
   document.body.appendChild(panel);
   document.body.classList.remove('ai-page');
 }
+
+/** Read an answer aloud with the device's own voices (a Danish one when there is one). Click again to stop. */
+function speak(text) {
+  const S = window.speechSynthesis;
+  if (S.speaking) { S.cancel(); return; }
+  const plain = String(text).replace(/```[\s\S]*?(```|$)/g, ' ').replace(/[*#>`_]/g, '').replace(/\[(.+?)\]\(.+?\)/g, '$1').replace(/\s+/g, ' ').trim();
+  const u = new SpeechSynthesisUtterance(plain.slice(0, 4000));
+  const v = S.getVoices().find(x => /^da/i.test(x.lang)) || null;
+  if (v) u.voice = v;
+  u.lang = v?.lang || 'da-DK'; u.rate = 1.02;
+  S.speak(u);
+}
+/** The chat as a text file (Markdown) the user can keep. */
+function saveChatFile() {
+  const lines = [`# Chat med Gnist – ${new Date().toLocaleString('da-DK')}`, ''];
+  for (const m of messages) { if (m.error) continue; lines.push(m.role === 'user' ? `**Dig:** ${m.content}` : `**Gnist:** ${parseActions(m.content).text}`, ''); }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' }));
+  a.download = `gnist-chat-${new Date().toISOString().slice(0, 10)}.md`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+/** Attach a text file to the next question (read here in the browser – it isn't uploaded anywhere). */
+async function attachFile(file) {
+  if (!file) return;
+  if (file.size > 400 * 1024) { toast('Filen er for stor', { type: 'warn', text: 'Gnist kan læse tekstfiler op til 400 KB.' }); return; }
+  try { attached = { name: file.name, text: await file.text() }; } catch { toast('Filen kunne ikke læses', { type: 'warn' }); return; }
+  drawAttach(); els.input.focus();
+}
+function drawAttach() {
+  h(clear(els.attachBox), null, attached ? h('span', { class: 'chip ai-attached' }, icon('paperclip'), h('span', null, attached.name),
+    h('button', { type: 'button', class: 'icon-btn btn-sm', 'aria-label': `Fjern ${attached.name}`, onclick: () => { attached = null; drawAttach(); } }, icon('x'))) : null);
+  els.attachBox.hidden = !attached;
+}
+
+/** Start a new chat – the one you were in is saved first. */
+export async function newChat() {
+  if (busy) return false;
+  const old = messages;   // cleared at once (you can type right away); the old chat is saved in the background
+  messages = []; messages._id = undefined; persistChat(); if (panel) drawMsgs();
+  setTimeout(() => els?.input?.focus(), 30);
+  await archiveChat(old); chatsChanged();
+  return true;
+}
+/** Your saved chats (newest first) and the id of the one that is open. */
+export async function chatList() { let chats = []; try { chats = ((await getState('gnist')) || {}).chats || []; } catch { /* */ } return { chats, current: messages._id || null }; }
+export async function openChat(id) {
+  if (busy) return false;
+  const c = (await chatList()).chats.find(x => x.id === id);
+  if (!c) return false;
+  const old = messages;
+  messages = c.messages.map(m => ({ ...m })); messages._id = c.id; persistChat(); if (panel) drawMsgs();
+  if (old._id !== c.id) await archiveChat(old);
+  chatsChanged();
+  return true;
+}
+export async function deleteChat(id) {
+  const st = (await getState('gnist', { force: true })) || {}; st.chats = (st.chats || []).filter(c => c.id !== id); saveState('gnist', st); flushState('gnist');
+  if (messages._id === id) { messages = []; messages._id = undefined; persistChat(); if (panel) drawMsgs(); }
+  chatsChanged();
+}
+export function onChatsChanged(fn) { chatListeners.add(fn); return () => chatListeners.delete(fn); }
 
 export function toggleAssistant(open) {
   if (!panel) build();
@@ -126,20 +197,23 @@ function build() {
   const send = h('button', { class: 'ai-send', 'aria-label': 'Send', title: 'Send (Enter)' }, icon('send'));
   const settingsBox = h('div', { class: 'ai-settings', hidden: true });
   const histBox = h('div', { class: 'ai-history', hidden: true });
+  const attachBox = h('div', { class: 'ai-attach-row', hidden: true });
   const head = h('header', { class: 'ai-head' },
     h('span', { class: 'ai-logo', 'aria-hidden': 'true' }, gnist(34)),
     h('div', { class: 'ai-title' }, h('b', null, 'Gnist'), status), mode,
-    h('button', { class: 'icon-btn', 'aria-label': 'Ny samtale', title: 'Ny samtale', onclick: () => { if (busy) return; archiveChat(); messages = []; persistChat(); drawMsgs(); } }, icon('plus')),
+    h('button', { class: 'btn btn-sm ai-new', 'aria-label': 'Ny samtale', title: 'Start en ny chat (den gamle gemmes)', onclick: () => newChat() }, icon('plus'), h('span', null, 'Ny chat')),
     h('button', { class: 'icon-btn ai-hist-btn', 'aria-label': 'Tidligere samtaler', title: 'Tidligere samtaler', 'aria-expanded': 'false', onclick: (e) => { histBox.hidden = !histBox.hidden; e.currentTarget.setAttribute('aria-expanded', String(!histBox.hidden)); drawHistory(); } }, icon('clock')),
     h('button', { class: 'icon-btn', 'aria-label': 'Indstillinger for assistenten', title: 'Indstillinger', 'aria-expanded': 'false', onclick: (e) => { settingsBox.hidden = !settingsBox.hidden; e.currentTarget.setAttribute('aria-expanded', String(!settingsBox.hidden)); drawSettings(); } }, icon('settings')),
     h('a', { class: 'icon-btn ai-expand', href: '#/apps/gnist', 'aria-label': 'Åbn Gnist på fuld skærm', title: 'Fuld skærm', onclick: () => toggleAssistant(false) }, icon('maximize')),
     h('button', { class: 'icon-btn ai-close', 'aria-label': 'Luk assistenten', title: 'Luk (Esc)', onclick: () => toggleAssistant(false) }, icon('x')));
   panel = h('section', { class: 'ai-panel glass', role: 'dialog', 'aria-label': 'Gnist – AI-assistent', hidden: true },
     head, settingsBox, histBox, list,
-    h('div', { class: 'ai-compose' }, input, send),
+    attachBox,
+    h('div', { class: 'ai-compose' }, h('label', { class: 'icon-btn ai-attach', title: 'Vedhæft en fil (tekst, noter, kode eller CSV)', 'aria-label': 'Vedhæft en fil' }, icon('paperclip'),
+      h('input', { type: 'file', accept: '.txt,.md,.csv,.tsv,.json,.log,.html,.css,.js,.py,.ino,.c,.cpp,.xml,.yaml,.yml,.ini,.cfg', hidden: true, onchange: (e) => { attachFile(e.target.files?.[0]); e.target.value = ''; } })), input, send),
     h('p', { class: 'ai-foot' }, icon('lock'), 'Kører på din enhed – dine data sendes ikke nogen steder hen.'));
   document.body.appendChild(panel);
-  els = { status, mode, list, input, send, settingsBox, histBox, head };
+  els = { status, mode, list, input, send, settingsBox, histBox, head, attachBox };
 
   const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 160) + 'px'; };
   input.addEventListener('input', autosize);
@@ -175,15 +249,16 @@ function drawAll() { drawStatus(); drawMsgs(); }
 
 // ── earlier conversations: saved on the profile, can be opened again – and Gnist can look in them (knowledge.js) ──
 const chatTitle = (msgs) => (msgs.find(m => m.role === 'user')?.content || 'Samtale').replace(/\s+/g, ' ').slice(0, 70);
-async function archiveChat() {
-  const real = messages.filter(m => !m.error && !m.streaming && m.content);
+async function archiveChat(msgs = messages) {
+  const real = msgs.filter(m => !m.error && !m.streaming && m.content);
   if (!real.some(m => m.role === 'user')) return;
   try {
     const st = (await getState('gnist', { force: true })) || {}; st.chats ||= [];
     const keep = real.slice(-40).map(m => ({ role: m.role, content: String(m.content).slice(0, 4000), sources: m.sources }));
-    const id = messages._id || Date.now().toString(36);
+    const id = msgs._id ||= Date.now().toString(36);
+    if (msgs === messages) write(HIST + '.id', id);
     st.chats = [{ id, title: chatTitle(keep), at: Date.now(), model: engine?.state?.model?.name || '', messages: keep }, ...st.chats.filter(c => c.id !== id)].slice(0, 40);
-    saveState('gnist', st); flushState('gnist');
+    saveState('gnist', st); flushState('gnist'); chatsChanged();
   } catch { /* the conversation is still in this browser */ }
 }
 async function drawHistory() {
@@ -225,7 +300,7 @@ function drawStatus() {
 function suggestions() {
   const list = builder() ? ['Ret fejlen i konsollen', 'Gør designet pænere og mere moderne', 'Tilføj en knap der nulstiller alt', 'Forklar hvordan koden virker']
     : tutor() ? ['Giv mig et lille hint', 'Hvorfor virker min kode ikke?', 'Forklar opgaven med andre ord', 'Hvad betyder fejlbeskeden?']
-    : ['Hvad skal jeg nå i dag?', 'Hjælp mig med at planlægge min uge', 'Hvordan finder jeg fokus på en CO2-laser?', 'Min printer er offline – hvad gør jeg?', 'Lav en aftale i morgen kl. 10 med tandlægen'];
+    : pageSuggestions(location.hash);   // the page you are on first
   return h('div', { class: 'ai-sugg' }, list.map(t => h('button', { class: 'chip', onclick: () => { els.input.value = t; ask(); } }, t)));
 }
 
@@ -332,15 +407,27 @@ function render(m, i) {
       m.sources.map(s => s.href ? h('a', { class: 'chip ai-source', href: s.href, title: `${s.label}: ${s.title}`, onclick: () => { if (matchMedia('(max-width: 700px)').matches) toggleAssistant(false); } }, icon(s.kind === 'lesson' || s.kind === 'guide' ? 'book' : 'file'), h('span', null, s.title))
         : h('span', { class: 'chip ai-source' }, s.title))) : null,
     !m.streaming && m.content && i === messages.length - 1 ? h('div', { class: 'ai-msg-tools' },
+      m.error || !('speechSynthesis' in window) ? null : h('button', { class: 'icon-btn ai-speak', 'aria-label': 'Læs svaret op', title: 'Læs op', onclick: () => speak(m.content) }, icon('volume')),
+      h('button', { class: 'icon-btn', 'aria-label': 'Gem chatten som fil', title: 'Gem chatten', onclick: () => saveChatFile() }, icon('download')),
       m.error ? null : h('button', { class: 'icon-btn', 'aria-label': 'Kopiér svaret', title: 'Kopiér', onclick: () => navigator.clipboard?.writeText(parseActions(m.content).text).then(() => toast('Kopieret', { type: 'ok' })).catch(() => {}) }, icon('copy')),
-      messages[i - 1]?.role === 'user' ? h('button', { class: 'icon-btn', 'aria-label': 'Prøv igen med et nyt svar', title: 'Prøv igen', onclick: () => retry() }, icon('refresh')) : null) : null,
-    !m.streaming && !m.error && m.content && i === messages.length - 1 && messages[i - 1]?.role === 'user' && !tutor() && !builder()
+      messages[i - 1]?.role === 'user' && !m.local ? h('button', { class: 'icon-btn', 'aria-label': 'Prøv igen med et nyt svar', title: 'Prøv igen', onclick: () => retry() }, icon('refresh')) : null) : null,
+    !m.streaming && !m.error && !m.local && m.content && i === messages.length - 1 && messages[i - 1]?.role === 'user' && !tutor() && !builder()
       ? h('div', { class: 'ai-follow', role: 'group', 'aria-label': 'Spørg videre' }, FOLLOW.map(([label, ask2]) => h('button', { type: 'button', class: 'chip ai-follow-chip', onclick: () => { if (busy) return; els.input.value = ask2; ask(); } }, label))) : null);
 }
 
 /** An answer as headings, lists and paragraphs (code blocks are kept whole). */
+/** A chart drawn by HUBTECH (charts.js escapes every text, so the SVG is safe to insert) – with "Gem som billede". */
+function chartFigure(c) {
+  const svg = chartSvg(c);
+  return h('figure', { class: 'ai-chart' }, raw(svg),
+    h('div', { class: 'ai-chart-actions' }, h('a', { class: 'btn btn-sm btn-ghost', download: `${(c.title || 'graf').replace(/[^\wæøåÆØÅ -]/g, '').trim() || 'graf'}.svg`, href: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) }, icon('download'), 'Gem som billede')));
+}
+const chartBlock = (c) => '```graf\n' + [`type: ${{ bar: 'søjle', line: 'linje', pie: 'cirkel' }[c.type]}`, c.title ? `titel: ${c.title}` : '', ...c.data.map(d => `${d.label}: ${d.value}`)].filter(Boolean).join('\n') + '\n```';
 function richText(text) {
   return text.split(/(```[\s\S]*?(?:```|$))/).map((part) => {
+    const gm = part.startsWith('```') && part.match(/^```\s*(?:graf|chart|diagram)\b[^\n]*\n([\s\S]*?)(?:```|$)/i);
+    const chart = gm && parseChart(gm[1]);
+    if (chart) return chartFigure(chart);
     if (part.startsWith('```')) return h('div', null, fmtBody(part));
     return answerBlocks(part).map(b => b.type === 'h' ? h('h4', { class: 'ai-h' }, fmtBody(b.text))
       : b.type === 'ul' ? h('ul', { class: 'ai-ul' }, b.items.map(x => h('li', null, fmtBody(x))))
@@ -361,6 +448,20 @@ function drawMsgs() {
 }
 
 // ── settings ──
+/** "Det husker Gnist om dig" in the settings: each thing with a delete button. */
+function memBox() {
+  const box = h('div', { class: 'field ai-memory' }, h('span', { class: 'field-label' }, 'Det husker Gnist om dig'), h('p', { class: 'faint' }, 'Henter …'));
+  getState('gnist').then(st => {
+    const list = (st || {}).memory || [];
+    const save = async (l) => { const s2 = (await getState('gnist', { force: true })) || {}; s2.memory = l; memory = l; saveState('gnist', s2); flushState('gnist'); h(clear(box), null, ...memBox().childNodes); };
+    h(clear(box), null, h('span', { class: 'field-label' }, 'Det husker Gnist om dig'),
+      list.length ? h('ul', { class: 'ai-mem-list' }, list.map((x, i) => h('li', null, h('span', null, x.text),
+        h('button', { type: 'button', class: 'icon-btn btn-sm', 'aria-label': `Glem: ${x.text}`, onclick: () => save(list.filter((_, k) => k !== i)) }, icon('x'))))) : h('p', { class: 'faint' }, 'Ingenting endnu. Skriv fx «Husk at jeg arbejder med lasere».'),
+      list.length ? h('button', { type: 'button', class: 'btn btn-sm btn-ghost', onclick: () => save([]) }, icon('trash'), 'Glem alt') : null);
+  }).catch(() => h(clear(box), null, h('span', { class: 'field-label' }, 'Det husker Gnist om dig'), h('p', { class: 'faint' }, 'Kunne ikke hentes.')));
+  return box;
+}
+
 function drawSettings() {
   const box = els.settingsBox;
   if (box.hidden) return;
@@ -411,6 +512,7 @@ function drawSettings() {
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Svarform'), style),
     h('label', { class: 'cal-pcheck' }, gpu, h('span', null, 'Brug grafikkortet (WebGPU), når det findes')),
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Må læse'), srcs),
+    memBox(),
     h('div', { class: 'ai-set-btns' },
       st === 'ready' ? h('button', { class: 'btn btn-sm', onclick: async () => { await (await eng()).unload(); drawAll(); toast('Gnist sover nu', { text: 'Hukommelsen er frigivet.' }); } }, icon('power'), 'Stop og frigiv RAM') : null,
       h('button', { class: 'btn btn-sm', onclick: () => start(true) }, icon('refresh'), st === 'ready' ? 'Genstart med valget' : 'Start med valget'),
@@ -510,13 +612,41 @@ function retry() {
 }
 
 async function ask() {
-  const q = els.input.value.trim();
-  if (!q || busy) return;
+  let q = els.input.value.trim();
+  if (busy || (!q && !attached)) return;
+  const file = attached; attached = null; drawAttach();
+  if (file && !q) q = `Hvad står der i filen ${file.name}? Giv et kort overblik.`;
+  const csvChart = file && /\.(csv|tsv)$/i.test(file.name) && (/graf|diagram|tegn|vis/i.test(q) || /overblik/.test(q)) ? chartFromCsv(file.text, file.name) : null;
+  if (csvChart) {
+    els.input.value = '';
+    messages.push({ role: 'user', content: `${q}\n📎 ${file.name}` }, { role: 'assistant', content: `Her er en graf over ${file.name} (${csvChart.data.length} rækker):\n\n${chartBlock(csvChart)}`, local: true });
+    persistChat(); drawMsgs(); archiveChat(); return;
+  }
+  pendingFile = file;
+  const quickChart = !tutor() && !builder() ? chartFromText(q) : null;
+  if (quickChart) {   // "lav en graf over jan 5, feb 8 og mar 3": drawn at once by HUBTECH
+    els.input.value = ''; els.input.style.height = 'auto';
+    messages.push({ role: 'user', content: q }, { role: 'assistant', content: `Her er din graf:\n\n${chartBlock(quickChart)}\n\n${quickChart.type === 'pie' ? 'Skriv fx «lav det som søjlediagram»' : 'Skriv fx «lav et cirkeldiagram»'} med tallene, hvis den skal se anderledes ud.`, local: true });
+    persistChat(); drawMsgs(); archiveChat(); return;
+  }
+  const mem = parseMemoryCommand(q);
+  if (mem) {   // "Husk at …" / "Hvad husker du?" / "Glem …": HUBTECH does it at once – no model needed
+    els.input.value = ''; els.input.style.height = 'auto';
+    let reply;
+    try {
+      const st = (await getState('gnist', { force: true })) || {};
+      const r = applyMemory(st.memory || [], mem); reply = r.reply;
+      st.memory = r.list; memory = r.list; saveState('gnist', st); flushState('gnist');
+    } catch { reply = 'Jeg kunne ikke gemme det lige nu – prøv igen om lidt.'; }
+    messages.push({ role: 'user', content: q }, { role: 'assistant', content: reply, local: true });
+    persistChat(); drawMsgs(); archiveChat(); return;
+  }
   const e = await eng();
   if (!e.isReady()) { if (!await start()) return; }
   els.input.value = ''; els.input.style.height = 'auto';
   const isTutor = tutor(), isBuilder = builder();
-  messages.push({ role: 'user', content: q });
+  const fileNow = pendingFile; pendingFile = null;
+  messages.push({ role: 'user', content: fileNow ? `${q}\n📎 ${fileNow.name}` : q });
   const bot = { role: 'assistant', content: '', streaming: true, tutor: isTutor, builder: isBuilder };
   messages.push(bot);
   busy = true; abort = new AbortController();
@@ -533,9 +663,16 @@ async function ask() {
       const items = await collect(cfg.use);
       const facts = retrieve(items, q + ' ' + messages.slice(-4, -2).map(m => m.content).join(' '), Math.floor(budgetChars * 0.45), { calendarish: isCalendarQuestion(q), page: location.hash });
       bot.sources = (facts.sources || []).slice(0, 4);
+      if (asksAboutPage(q) && !pageHost) {   // "forklar det her": Gnist reads the page you are on (what you can see, not hidden parts)
+        const pg = document.querySelector('.content .page, .page');
+        const seen = pg ? pg.innerText.replace(/\n{2,}/g, '\n').trim().slice(0, Math.max(600, Math.floor(budgetChars * 0.35))) : '';
+        if (seen) facts.unshift(`- [Siden brugeren står på] ${document.title.replace(/\s*·\s*HUBTECH$/, '')}:\n${seen}`);
+      }
+      if (fileNow) facts.unshift(`- [Fil fra brugeren] ${fileNow.name}:\n${fileNow.text.slice(0, Math.max(800, Math.floor(budgetChars * 0.5)))}${fileNow.text.length > budgetChars * 0.5 ? '\n…(resten af filen er skåret fra)' : ''}`);
       // a small model (or a retry because it didn't fit): the short prompt without the example answer
-      sys = systemPrompt({ mode: 'normal', facts: null, userName: store.get('user')?.displayName, style: cfg.style, compact: factor < 1 || ctxTokens < 3000 });
-      lastUser = questionBlock(q, facts, { page: document.title.replace(/\s*·\s*HUBTECH$/, '') });
+      if (memory == null) { try { memory = ((await getState('gnist')) || {}).memory || []; } catch { memory = []; } }
+      sys = systemPrompt({ mode: 'normal', facts: null, userName: store.get('user')?.displayName, style: cfg.style, memory: memoryBlock(memory), compact: factor < 1 || ctxTokens < 3000 });
+      lastUser = questionBlock(q, facts, { page: document.title.replace(/\s*·\s*HUBTECH$/, ''), computed: quickFacts(q) });
     }
     // history that fits next to the system prompt
     const hist = [];
@@ -553,17 +690,24 @@ async function ask() {
   };
   try {
     let shown = 0;
-    const onToken = (t) => { bot.content = t; if (t.length - shown > 12 || /\n/.test(t.slice(shown))) { shown = t.length; drawMsgs(); } };
+    let looped = false;
+    const onToken = (t) => {
+      bot.content = t;
+      if (!looped && isLooping(t)) { looped = true; abort?.abort(); }   // a small model stuck repeating itself: stop it
+      if (t.length - shown > 12 || /\n/.test(t.slice(shown))) { shown = t.length; drawMsgs(); }
+    };
     for (const factor of [1, 0.5, 0.25]) {
       const { msgs, maxTokens } = await build(factor);
       try { await e.chat(msgs, { maxTokens, temperature: cfg.temp, signal: abort.signal, onToken }); break; }
       catch (x) { if (x.code !== 'context' || factor === 0.25) throw x; }   // too long: try again with less data
     }
+    bot.content = tidyAnswer(bot.content);   // repeated lines out
     if (!bot.content.trim()) bot.content = abort.signal.aborted ? '(stoppet)' : 'Jeg har ikke noget svar på det. Prøv at spørge på en anden måde.';
   } catch (x) {
     bot.content = x.message || String(x); bot.error = true;
   } finally {
     bot.streaming = false; busy = false; abort = null;
     persistChat(); drawMsgs();
+    archiveChat();   // saved as you go – it shows up in the chat list at once
   }
 }

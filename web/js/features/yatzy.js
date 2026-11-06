@@ -149,3 +149,21 @@ export function aiStep(s, r = Math.random) {
   applyAction(s, seat, 'score', [bestBox(card, s.dice).cat], r);
   return 'score';
 }
+
+/** Gnist's advice for the dice on the table (rolls = how many rolls are used this turn). Same dice → same advice. */
+export function advice(card, dice, rolls) {
+  if (!rolls) return null;
+  let x = 7; for (const d of dice) x = (x * 31 + d) >>> 0;
+  const r = () => { x = (x * 1103515245 + 12345) >>> 0; return (x >>> 8) / 16777216; };   // seeded, so a redraw keeps the advice
+  const stay = bestBox(card, dice);
+  const label = (id) => CATS.find(c => c.id === id)?.label || id;
+  if (rolls < 3) {
+    const { held, value } = bestHold(card, dice, 3 - rolls, r, 64);
+    if (value > stay.value + 0.5 && !held.every(Boolean)) {
+      const keep = dice.filter((_, i) => held[i]).sort((a, b) => b - a);
+      return { kind: 'hold', held, text: keep.length ? `Gem ${keep.join(', ')} og slå igen.` : 'Slå alle terningerne om – der er ikke noget værd at gemme.' };
+    }
+  }
+  const pts = scoreFor(stay.cat, dice);
+  return { kind: 'score', cat: stay.cat, text: pts ? `Skriv ${pts} i ${label(stay.cat)}.` : `Stryg ${label(stay.cat)} – den koster dig mindst.` };
+}

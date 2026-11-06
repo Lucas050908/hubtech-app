@@ -1,6 +1,6 @@
 /** Dam – draughts against the computer, with someone on the same screen, or online. */
 import { h } from '../core/dom.js';
-import { icon } from '../core/icons.js';
+import { icon, gnist } from '../core/icons.js';
 import { segmented } from '../core/ui.js';
 import { appById } from '../core/registry.js';
 import { appHero } from '../features/apphero.js';
@@ -35,11 +35,12 @@ export default {
         const from = new Set(legal.map(m => m.path[0])), to = sel != null ? legal.filter(m => m.path[0] === sel) : [];
         const mustCap = legal.some(m => m.caps.length);
         const lastSet = new Set(s.last ? [s.last.path[0], s.last.path.at(-1)] : []);
+        const tip = !ctl.online && st.coach && my ? D.advice(s, s.turn) : null;   // "Gnist forklarer" – only when turned on
         const cells = [];
         for (let k = 0; k < 64; k++) {
           const i = flip ? 63 - k : k, v = s.board[i], dest = to.find(m => m.path.at(-1) === i);
           cells.push(h('button', {
-            class: ['dm-cell', D.dark(i) && 'is-dark', from.has(i) && 'can', sel === i && 'is-sel', dest && 'is-dest', lastSet.has(i) && 'is-last'],
+            class: ['dm-cell', D.dark(i) && 'is-dark', from.has(i) && 'can', sel === i && 'is-sel', dest && 'is-dest', lastSet.has(i) && 'is-last', tip && (tip.from === i || tip.to === i) && 'is-hint'],
             disabled: !D.dark(i), 'aria-label': `Felt ${'abcdefgh'[i & 7]}${8 - (i >> 3)}${v ? (v > 0 ? ', hvid' : ', sort') + (Math.abs(v) === 2 ? ' dam' : '') : ''}`,
             onclick: () => {
               if (dest) { const f = sel; sel = null; ctl.act('move', [f, i]); return; }
@@ -55,6 +56,8 @@ export default {
           h('div', { class: 'dm-side' },
             s.players.map((p, i) => h('div', { class: ['dm-player', s.turn === i && s.phase === 'play' && 'is-turn'] }, h('span', { class: ['dm-piece', 'mini', i ? 'b' : 'w'] }), h('b', null, p.name), h('span', { class: 'faint' }, `${i ? c.black : c.white} brikker`))),
             h('div', { class: ['dm-status', s.phase === 'over' && 'is-over'] }, status),
+            tip ? h('div', { class: 'gn-play dm-coach', role: 'status', 'aria-live': 'polite' }, h('span', { class: 'gn-play-mark' }, gnist(36)), h('p', { class: 'gn-play-say' }, h('b', null, 'Gnist: '), tip.text)) : null,
+            !ctl.online ? h('button', { class: ['btn btn-sm dm-coach-btn', st.coach && 'btn-primary'], 'aria-pressed': String(!!st.coach), onclick: () => { st.coach = !st.coach; store.save(); g.redraw(); } }, icon('sparkles'), 'Gnist forklarer') : null,
             my ? h('button', { class: 'btn btn-sm btn-ghost', onclick: () => ctl.act('resign') }, icon('flag'), 'Giv op') : null,
             h('div', { class: 'row-actions' }, g.controls()),
             s.log?.length ? h('ul', { class: 'dm-log' }, s.log.slice(0, 6).map(l => h('li', null, l))) : null,

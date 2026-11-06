@@ -143,11 +143,16 @@ async def main():
         check("Hjem: dagens tip fra Gnist", "Tip fra Gnist" in await page.inner_text(".home-tip"))
         await page.click(".dock .dock-item[data-id='gnist']"); await page.wait_for_selector(".gn-page .ai-panel.is-page")
         check("Gnist: egen app på fuld skærm", await page.locator(".gn-page .ai-panel.is-page").is_visible() and await page.locator(".ai-fab").is_hidden())
+        check("Gnist: en tydelig Ny chat-knap og en liste med chats", await page.locator(".gn-side .gn-newchat").is_visible() and await page.locator(".ai-head .ai-new").count() == 1)
         await page.wait_for_timeout(700)   # let the page finish fading in
         await page.screenshot(path=f"{OUT}/gnist-app.png")
         await page.click(".dock .dock-item[data-id='home']"); await page.wait_for_selector(".home .home-hero")
         check("Gnist: vinduet er tilbage som lille pop-up, når appen forlades", await page.locator("body > .ai-panel").count() == 1 and await page.locator(".ai-fab").is_visible())
         check("widgets: nulstil giver standardvalgene", await page.locator(".home-stats").is_visible() and await page.locator("[data-tour='home-apps']").is_hidden())
+        await page.goto(BASE + "/#/apps/connect4"); await page.wait_for_selector(".c4-board"); await page.wait_for_timeout(500)
+        hue = await page.evaluate("() => [getComputedStyle(document.querySelector('.c4-page')).getPropertyValue('--app').trim(), getComputedStyle(document.querySelector('.app-hero-icon')).getPropertyValue('--app').trim()]")
+        check("nyt design i apps: siden bruger den røde tråd, ikonet sin egen farve", hue[0] in ("#f97316", "#c2410c") and hue[0] != hue[1], hue)
+        await page.screenshot(path=f"{OUT}/design-i-app.png")
         await page.goto(BASE + "/#/apps/casino"); await page.wait_for_timeout(600)
         check("kasinoet er fjernet: gamle links går til Apps", page.url.endswith("#/apps") and await page.locator(".cs-table").count() == 0, page.url)
 
@@ -542,7 +547,7 @@ async def main():
             await m.wait_for_timeout(400)
         await m.screenshot(path=f"{OUT}/e2e_mobile_home.png", full_page=False)
         sb = await m.locator(".search-trigger").bounding_box()
-        check("mobil: søgning er en rund knap med ikon", sb and sb["width"] >= 36, sb)
+        check("mobil: søgning er en rund knap med ikon", sb and sb["width"] >= 32 and abs(sb["width"] - sb["height"]) <= 4, sb)
         vis = await m.evaluate("() => [...document.querySelectorAll('.dock .dock-item')].filter(e => e.getClientRects().length).map(e => e.dataset.id)")
         check("mobil: docken viser højst 6 apps, altid med Alle apps", 2 <= len(vis) <= 6 and "apps" in vis, vis)
 
@@ -568,6 +573,7 @@ async def main():
         await page.goto(BASE + "/#/")
         await page.wait_for_timeout(1500)
         await page.screenshot(path=f"{OUT}/e2e_light.png")
+        check("Hjem: Gnist giver en kort brief, når der er noget i dag", "Gnist i dag:" in await page.inner_text(".home-tip"), await page.inner_text(".home-tip"))
 
         # 4xx resource logs come from the deliberate negative tests above (weak password, wrong login, logout check)
         real = [e for e in errors if not e.startswith("Failed to load resource: the server responded with a status of 4")]
@@ -1031,6 +1037,22 @@ async def main():
                 await page.wait_for_timeout(500)
             txt = await page.evaluate("document.querySelector('.ai-msg.is-bot:last-of-type')?.textContent || ''")
             check("ai: modellen kører lokalt og svarer", len(txt) > 3, txt[:80])
+            # Gnist draws charts: numbers in the question are drawn at once
+            await page.fill(".ai-input", "lav en graf over jan 5, feb 8 og mar 3"); await page.keyboard.press("Enter")
+            await page.wait_for_selector(".ai-chart svg", timeout=5000)
+            check("ai: Gnist tegner en graf og kan gemme den som billede", await page.locator(".ai-chart rect").count() >= 3 and await page.locator(".ai-chart a[download]").count() == 1)
+            await page.screenshot(path=f"{OUT}/ai-graf.png")
+            # attach a CSV: a chart at once
+            await page.set_input_files(".ai-attach input[type=file]", files=[{"name": "salg.csv", "mimeType": "text/csv", "buffer": "Måned;Salg\nJan;120\nFeb;180\nMar;150".encode("utf-8")}])
+            await page.wait_for_selector(".ai-attached:has-text('salg.csv')", timeout=3000)
+            await page.fill(".ai-input", "vis det som en graf"); await page.keyboard.press("Enter")
+            await page.wait_for_selector(".ai-msg.is-bot:has-text('salg.csv') .ai-chart svg", timeout=5000)
+            check("ai: en vedhæftet CSV-fil bliver til en graf", await page.locator(".ai-msg.is-bot:has-text('salg.csv') .ai-chart polyline").count() == 1)
+            # Gnist remembers: handled at once by HUBTECH, saved on the account
+            await page.fill(".ai-input", "Husk at jeg arbejder med lasere"); await page.keyboard.press("Enter")
+            await page.wait_for_selector(".ai-msg.is-bot:has-text('husker jeg nu')", timeout=5000)
+            mem = (await api(page, "GET", "/api/state/gnist"))["data"]["state"].get("memory") or []
+            check("ai: Gnist husker det, man beder hende om, på kontoen", any("lasere" in m["text"] for m in mem), mem)
             # a question HUBTECH's guides answer: the answer shows its sources, and "Prøv igen" asks once more
             await page.click(".ai-head [aria-label='Ny samtale']")
             await page.fill(".ai-input", "Min printer er offline – hvad gør jeg?")
@@ -1042,7 +1064,7 @@ async def main():
             src = await page.locator(".ai-sources a.ai-source").all_text_contents()
             check("ai: svaret viser kilder fra HUBTECHs guides og kurser", any("rinter" in x for x in src), src)
             href = await page.get_attribute(".ai-sources a.ai-source", "href")
-            check("ai: kilderne linker til guiden eller lektionen", (href or "").startswith("#/learn/"), href)
+            check("ai: kilderne linker til guiden, lektionen eller værktøjet", (href or "").startswith(("#/learn/", "#/apps/printerdoctor", "#/apps/")) and href != "#/apps/notes", href)
             await page.screenshot(path=f"{OUT}/ai-kilder.png")
             await page.click(".ai-msg-tools [aria-label='Prøv igen med et nyt svar']")
             await page.wait_for_timeout(600)
@@ -1350,6 +1372,9 @@ async def main():
         await page.screenshot(path=f"{OUT}/app-arcade.png", full_page=True)
         await go("apps/connect4", ".c4-col")
         await page.locator(".c4-local .c4-col").nth(3).click(); await page.wait_for_timeout(900)
+        await page.click(".c4-coach"); await page.wait_for_timeout(200)
+        check("fire på stribe: Gnist forklarer viser et råd og markerer kolonnen", "Læg i kolonne" in await page.inner_text(".gn-coach-slot") and await page.locator(".c4-col.is-hint").count() == 1, await page.inner_text(".gn-coach-slot"))
+        await page.click(".c4-coach")
         check("fire på stribe: din brik og computerens svar", await page.locator(".c4-cell.p1").count() == 1 and await page.locator(".c4-cell.p2").count() == 1)
         await page.screenshot(path=f"{OUT}/app-connect4.png")
         await go("apps/hangman", ".hm-key")

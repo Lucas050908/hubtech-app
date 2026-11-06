@@ -1388,7 +1388,7 @@ console.log('apps ok');
   globalThis.matchMedia ||= () => ({ matches: false, addEventListener() {} });
   const K = await import('../web/js/ai/knowledge.js');
   const lib = await K.libraryItems();
-  assert.ok(lib.length > 150 && lib.every(x => x.href.startsWith('#/learn/')), 'alle guides og lektioner, med link');
+  assert.ok(lib.length > 150 && lib.every(x => x.href.startsWith('#/')), 'alle guides, lektioner, apps og ord, med link');
   const r = K.retrieve(lib, 'hvordan finder jeg fokus på en CO2 laser', 4000);
   assert.ok(r.sources.length && r.sources.some(s => /laser/i.test(s.title)), r.sources.map(s => s.title));
   assert.ok(K.retrieve(lib, 'printeren er offline', 4000).sources.some(s => /printer/i.test(s.title)));
@@ -1491,4 +1491,199 @@ console.log('apps ok');
   const full = K.systemPrompt({ mode: 'normal', facts: null }), small = K.systemPrompt({ mode: 'normal', facts: null, compact: true });
   assert.ok(!small.includes('Eksempel på et godt svar') && small.length < full.length - 200 && small.includes('Gnist'));
   console.log('kort prompt ok');
+}
+
+// Gnists brief på Hjem
+{
+  const W = await import('../web/js/features/widgetlogic.js');
+  const at = new Date(2026, 10, 6, 7, 45);
+  assert.equal(W.gnistBrief([], at), null, 'ingenting i dag – så vises et tip');
+  assert.equal(W.gnistBrief([{ kind: 'overdue', title: 'Ring til Jensen' }, { kind: 'overdue', title: 'Faktura' }, { kind: 'event', time: '08:00', title: 'Morgenmøde' }], at),
+    'Start med «Ring til Jensen» – den er overskredet (og 1 mere). Næste aftale: «Morgenmøde» kl. 08:00 – om 15 min.');
+  assert.equal(W.gnistBrief([{ kind: 'event', time: '07:00', title: 'Tidligt' }, { kind: 'task', time: '', title: 'Aflever rapport' }], at), '«Aflever rapport» har deadline i dag.');
+  assert.equal(W.gnistBrief([{ kind: 'event', time: '07:00', title: 'Tidligt' }], at), 'Dagens aftaler er overstået – godt klaret!');
+  console.log('gnist brief ok');
+}
+
+// Gnist forklarer i Yatzy og Fire på stribe
+{
+  const Yz = await import('../web/js/features/yatzy.js');
+  const G = await import('../web/js/features/gamelogic.js');
+  const card = Object.fromEntries(Yz.CAT_IDS.map(id => [id, null]));
+  const a = Yz.advice(card, [6, 6, 6, 2, 1], 1);
+  assert.equal(a.kind, 'hold'); assert.match(a.text, /^Gem 6, 6, 6/);
+  assert.deepEqual(Yz.advice(card, [6, 6, 6, 2, 1], 1), a, 'samme terninger – samme råd');
+  assert.equal(Yz.advice(card, [5, 5, 5, 5, 5], 1).text, 'Skriv 50 i Yatzy.');
+  assert.equal(Yz.advice(card, [1, 2, 3, 4, 5], 3).text, 'Skriv 15 i Lille straight.');
+  assert.equal(Yz.advice(card, [1, 2, 3, 4, 5], 0), null);
+  let b = G.c4Empty(); [0, 1, 2].forEach(c => G.c4Drop(b, c, 1));
+  assert.equal(G.c4Advice(b, 1).col, 3, 'tag sejren');
+  b = G.c4Empty(); [0, 1, 2].forEach(c => G.c4Drop(b, c, 2));
+  assert.match(G.c4Advice(b, 1).text, /ellers får modstanderen/);
+  assert.equal(G.c4Advice(G.c4Empty(), 1).col, 3, 'midten først');
+  console.log('gnist spiltips ok');
+}
+
+// Gnist forklarer i Dam
+{
+  const D = await import('../web/js/features/checkers.js');
+  const s = D.newGame([{ name: 'A' }, { name: 'B', ai: true }]);
+  const a = D.advice(s, 0);
+  assert.ok(a && /^Flyt fra [a-h][1-8] til [a-h][1-8]/.test(a.text), a?.text);
+  const b = Array(64).fill(0); b[5 * 8 + 2] = 1; b[4 * 8 + 3] = -1; b[0 * 8 + 1] = -1;   // white c3, black d4: white must take
+  const t = { ...s, board: b, turn: 0 };
+  assert.match(D.advice(t, 0).text, /Du skal slå/);
+  assert.equal(D.advice({ ...t, turn: 1 }, 0), null, 'ikke din tur – intet råd');
+  console.log('gnist dam ok');
+}
+
+// Gnist ved mere: apps, IT-ordbog, kommandoer, Kodeskolen og servicetekniker-kurset
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  const lib = await K.libraryItems();
+  const kinds = new Set(lib.map(x => x.kind));
+  for (const k of ['guide', 'lesson', 'app', 'term', 'command']) assert.ok(kinds.has(k), 'Gnist kender ' + k);
+  const r1 = K.retrieve(lib, 'hvad er DHCP', 4000);
+  assert.ok(r1.sources.some(s => s.title === 'DHCP' || /DHCP/.test(s.title)), 'ordbogen: ' + r1.sources.map(s => s.title));
+  const r2 = K.retrieve(lib, 'hvordan ser jeg min ip adresse ipconfig', 4000);
+  assert.ok(r2.sources.some(s => /Kommandoer/.test(s.title)), 'kommandoer: ' + r2.sources.map(s => s.title));
+  const r3 = K.retrieve(lib, 'hvor kan jeg spille skak', 4000);
+  assert.ok(r3.sources.some(s => s.href === '#/apps/chess'), 'apps: ' + r3.sources.map(s => s.title));
+  assert.ok(lib.some(x => x.href?.startsWith('#/learn/codeschool/')), 'Kodeskolens lektioner er med');
+  console.log('gnist viden ok: ' + lib.length + ' emner');
+}
+
+// Gnist ved endnu mere: printerlægen, fejlfindingscases, quiz, grundstoffer og historie
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  const lib = await K.libraryItems();
+  const kinds = new Set(lib.map(x => x.kind));
+  for (const k of ['fix', 'case', 'quiz', 'fact']) assert.ok(kinds.has(k), 'Gnist kender ' + k);
+  assert.ok(K.retrieve(lib, 'printeren siger papirstop hvad gør jeg', 4000).sources.some(s => s.href === '#/apps/printerdoctor'), 'printerlægen');
+  assert.ok(K.retrieve(lib, 'hvad er atomnummeret for jern', 4000).sources.some(s => /Jern/.test(s.title)), 'grundstoffer');
+  assert.ok(K.retrieve(lib, 'co2 laseren skærer ikke igennem længere', 4000).sources.some(s => s.href === '#/learn/labs'), 'fejlfindingscases');
+  assert.ok(lib.length > 700, 'mange emner: ' + lib.length);
+  console.log('gnist mere viden ok: ' + lib.length + ' emner');
+}
+
+// Gnist regner præcist: tal, procent, moms, datoer og enheder
+{
+  const T = await import('../web/js/ai/tools.js');
+  const now = new Date(2026, 10, 6, 8, 20);
+  assert.deepEqual(T.quickFacts('hvad er 15 % af 2.400', now), ['15 % af 2.400 = 360']);
+  assert.match(T.quickFacts('hvad er 1000 kr med moms', now)[0], /1\.250 kr\./);
+  assert.match(T.quickFacts('1250 kr inkl. moms', now)[0], /1\.000 kr\. uden moms/);
+  assert.deepEqual(T.quickFacts('regn 12*(3+4)/2 ud', now), ['12*(3+4)/2 = 42']);
+  assert.deepEqual(T.quickFacts('hvad er 2,5 x 4', now), ['2,5 x 4 = 10']);
+  assert.match(T.quickFacts('hvor mange dage er der til jul', now)[0], /48 dage til juleaften/);
+  assert.match(T.quickFacts('hvilken ugedag er 24. december 2026', now)[0], /^torsdag/);
+  assert.match(T.quickFacts('hvilken uge er det', now)[0], /uge 45/);
+  assert.deepEqual(T.quickFacts('hvor mange cm er 12 tommer', now), ['12 tommer = 30,48 cm']);
+  assert.deepEqual(T.quickFacts('30 c til f', now), ['30 °C = 86 °F']);
+  assert.deepEqual(T.quickFacts('møde 24-12 kl 10', now), [], 'en dato er ikke et regnestykke');
+  assert.deepEqual(T.quickFacts('printeren er offline', now), []);
+  assert.equal(T.num('2.400'), 2400); assert.equal(T.num('2,5'), 2.5); assert.equal(T.num('1.5'), 1.5);
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.ok(K.questionBlock('hvad er 2+2', [], { computed: ['2+2 = 4'] }).includes('- 2+2 = 4'));
+  console.log('gnist regner ok');
+}
+
+// Gnist forstår stavefejl
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.equal(K.editDistance('pritner', 'printer'), 1, 'to bogstaver byttet om er én fejl');
+  assert.equal(K.editDistance('netvrk', 'netværk'), 1);
+  assert.ok(K.editDistance('kat', 'printer') > 2);
+  const lib = await K.libraryItems();
+  const fx = K.fixTypos(['pritner', 'netvaerk', 'printer'], lib);
+  assert.equal(fx.get('pritner'), 'printer'); assert.equal(fx.get('netvaerk'), 'netværk'); assert.ok(!fx.has('printer'), 'rigtige ord rører den ikke');
+  assert.ok(K.retrieve(lib, 'min pritner er ofline', 4000).sources.some(s => /printer/i.test(s.title)), 'stavefejl finder stadig printer-guiden');
+  assert.ok(K.retrieve(lib, 'hvad er dhpc', 4000).sources.some(s => /DHCP/.test(s.title)), 'dhpc → DHCP');
+  assert.ok(K.systemPrompt({ mode: 'normal', facts: null }).includes('stavefejl'));
+  console.log('gnist stavefejl ok');
+}
+
+// siden man står på: lektionen kommer først, men appen man er i skubber kun lidt
+{
+  const K = await import('../web/js/ai/knowledge.js');
+  const lib = await K.libraryItems();
+  const r = K.retrieve(lib, 'Min printer er offline – hvad gør jeg?', 1300, { page: '#/apps/notes' });
+  assert.ok(/rinter/.test(r.sources[0]?.title || ''), 'på Noter finder printer-spørgsmålet stadig printer-hjælpen: ' + r.sources.map(s => s.title));
+  console.log('side-boost ok');
+}
+
+// Gnist husker dig
+{
+  const M = await import('../web/js/ai/memory.js');
+  assert.deepEqual(M.parseMemoryCommand('Husk at jeg arbejder med lasere.'), { type: 'remember', text: 'jeg arbejder med lasere' });
+  assert.deepEqual(M.parseMemoryCommand('hvad husker du om mig?'), { type: 'list' });
+  assert.deepEqual(M.parseMemoryCommand('Glem alt'), { type: 'forgetAll' });
+  assert.equal(M.parseMemoryCommand('glem at jeg arbejder med lasere').type, 'forget');
+  assert.equal(M.parseMemoryCommand('Min printer er offline'), null, 'almindelige spørgsmål er ikke kommandoer');
+  let r = M.applyMemory([], M.parseMemoryCommand('Husk at jeg arbejder med lasere'));
+  assert.equal(r.list[0].text, 'Jeg arbejder med lasere'); assert.match(r.reply, /husker jeg nu/);
+  r = M.applyMemory(r.list, M.parseMemoryCommand('husk at min printer er en Brother'));
+  assert.equal(r.list.length, 2);
+  assert.match(M.applyMemory(r.list, { type: 'list' }).reply, /Brother/);
+  r = M.applyMemory(r.list, M.parseMemoryCommand('glem at min printer er en Brother'));
+  assert.deepEqual(r.list.map(x => x.text), ['Jeg arbejder med lasere']);
+  assert.match(M.memoryBlock(r.list), /lasere/);
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.ok(K.systemPrompt({ mode: 'normal', facts: null, memory: M.memoryBlock(r.list) }).includes('lasere'));
+  assert.ok(!K.systemPrompt({ mode: 'tutor', facts: [], memory: 'XYZ' }).includes('XYZ'), 'kun i almindelig samtale');
+  console.log('gnist husker ok');
+}
+
+// Gnist laver grafer
+{
+  const C = await import('../web/js/ai/charts.js');
+  const c = C.parseChart('type: søjle\ntitel: Timer pr. dag\nMandag: 4\nTirsdag: 6,5\n- Onsdag: 3 timer');
+  assert.deepEqual([c.type, c.title, c.data.map(d => d.value)], ['bar', 'Timer pr. dag', [4, 6.5, 3]]);
+  assert.equal(C.parseChart('titel: x\nkun: 1'), null, 'mindst to tal');
+  assert.deepEqual(C.chartFromText('lav en graf over jan 5, feb 8 og mar 3').data.map(d => d.label), ['jan', 'feb', 'mar']);
+  assert.equal(C.chartFromText('lav et cirkeldiagram: husleje 6000, mad 3000, transport 1200').type, 'pie');
+  assert.equal(C.chartFromText('hvad er en graf'), null);
+  assert.equal(C.chartFromText('printeren er offline'), null);
+  for (const t of ['bar', 'line', 'pie']) { const svg = C.chartSvg({ ...c, type: t }); assert.ok(svg.startsWith('<svg') && svg.includes('Timer pr. dag')); }
+  assert.ok(!C.chartSvg({ type: 'bar', title: '<script>', data: [{ label: '<b>', value: 1 }, { label: 'x', value: 2 }] }).includes('<script>'), 'tekst escapes');
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.ok(K.systemPrompt({ mode: 'normal', facts: null }).includes('```graf'));
+  console.log('gnist grafer ok');
+}
+
+// Gnist læser en CSV-fil og laver en graf
+{
+  const C = await import('../web/js/ai/charts.js');
+  const c = C.chartFromCsv('Måned;Salg;Kunder\nJan;120;4\nFeb;180;6\nMar;150;5', 'salg.csv');
+  assert.deepEqual([c.type, c.title, c.data.map(d => d.value)], ['line', 'Salg (salg.csv)', [120, 180, 150]]);
+  assert.equal(C.chartFromCsv('Vare,Antal\nSkruer,40\nMøtrikker,25\nSkiver,60').type, 'bar');
+  assert.equal(C.chartFromCsv('bare noget tekst\nuden tal\nher'), null);
+  console.log('csv-graf ok');
+}
+
+// bedre svar: forslag til siden, stop gentagelser, ryd op
+{
+  const Q = await import('../web/js/ai/quality.js');
+  assert.match(Q.pageSuggestions('#/apps/chess')[0], /springeren/);
+  assert.match(Q.pageSuggestions('#/learn/labs')[0], /laseren/, 'labs før det generelle læringsforslag');
+  assert.equal(Q.pageSuggestions('#/').length, 5);
+  assert.ok(Q.isLooping('Svaret er her. ' + 'Tjek kablet. '.repeat(8)));
+  assert.ok(Q.isLooping('Start\n' + 'Genstart printeren og prøv igen.\n'.repeat(3)));
+  assert.ok(!Q.isLooping('1. Tjek kablet.\n2. Genstart routeren.\n3. Prøv igen om lidt, og ring hvis det ikke virker.'));
+  assert.equal(Q.tidyAnswer('Hej\nHej\nTjek kablet og strømmen.\nAndet\nTjek kablet og strømmen.'), 'Hej\nTjek kablet og strømmen.\nAndet');
+  assert.equal(Q.tidyAnswer('```graf\na: 1\na: 1\n```'), '```graf\na: 1\na: 1\n```', 'kode og grafer røres ikke');
+  console.log('bedre svar ok');
+}
+
+// Gnist kender klokken i hele verden og ser siden
+{
+  const T = await import('../web/js/ai/tools.js');
+  const now = new Date(Date.UTC(2026, 10, 6, 8, 0));   // 09:00 i København (vintertid)
+  const f = T.quickFacts('hvad er klokken i tokyo', now)[0];
+  assert.match(f, /Tokyo er nu .*17[.:]00/, f);
+  assert.match(T.quickFacts('hvad er klokken i new york', now)[0], /New York er nu .*03[.:]00/);
+  assert.deepEqual(T.quickFacts('min printer er offline', now), []);
+  const K = await import('../web/js/ai/knowledge.js');
+  assert.ok(K.asksAboutPage('kan du forklare det her?') && K.asksAboutPage('opsummer siden') && !K.asksAboutPage('hvad skal jeg nå i dag'));
+  console.log('verdensur og siden ok');
 }
