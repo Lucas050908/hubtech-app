@@ -9,6 +9,7 @@ import { QUIZZES } from './quizzes.js';
 import { SCENARIOS } from './phishing.js';
 import { COMMANDS, CMD_GROUPS, OS_LABEL } from './commands.js';
 import { CODE_COURSES } from './code-courses.js';
+import { GENERAL_COURSES, GENERAL_GROUP } from './generalcourses.js';
 
 const ENT = { '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ' };
 /** HTML from a lesson → plain bullet points (one per paragraph and list item). */
@@ -267,8 +268,8 @@ const windows = {
   ],
 };
 
-const HUES = { start: '#3b82f6', it: '#06b6d4', code: '#8b5cf6', electro: '#22c55e' };
-export const APP_COURSES = [hubtech, digital, network, printers, windows, glossary, quiz, phishing, commands, electronics, ...code]
+const HUES = { start: '#3b82f6', it: '#06b6d4', code: '#8b5cf6', electro: '#22c55e', general: '#f97316' };
+export const APP_COURSES = [hubtech, digital, network, printers, windows, ...GENERAL_COURSES, glossary, quiz, phishing, commands, electronics, ...code]
   .map(c => ({ ...c, stateId: `course-${c.id}`, unit: 'Lektion', hue: c.hue || HUES[c.group],
     note: 'Bygget på indholdet i læringsappene. Øvelserne i appen giver også deres egne point.' }));
-export const APP_GROUPS = [['start', 'HUBTECH'], ['it', 'IT og support'], ['code', 'Programmering'], ['electro', 'Elektronik']];
+export const APP_GROUPS = [['start', 'HUBTECH'], ['it', 'IT og support'], GENERAL_GROUP, ['code', 'Programmering'], ['electro', 'Elektronik']];

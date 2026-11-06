@@ -80,7 +80,7 @@ export default {
     search.addEventListener('input', doSearch);
     search.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const first = found.querySelector('a'); if (first) location.hash = first.getAttribute('href'); } });
     let recent = []; try { recent = JSON.parse(localStorage.getItem('hubtech.recentApps') || '[]').map(appById).filter(usable).slice(0, 8); } catch { /* */ }
-    const topics = SUITES.map(s => ({ s, apps: s.members.map(appById).filter(usable) })).filter(t => t.apps.length > 1);
+    const topics = [{ s: { name: 'Læring', icon: 'book', hue: 'var(--hue-learning, #22c55e)' }, apps: LEARN_APPS.filter(usable) }, ...SUITES.map(s => ({ s, apps: s.members.map(appById).filter(usable) }))].filter(t => t.apps.length > 1);
     h(browse, null,
       recent.length ? h('section', { class: 'lx-sec' }, h('h2', { class: 'lx-h' }, icon('clock'), 'Senest brugt'), h('div', { class: 'lx-tiles' }, recent.map(tile))) : null,
       h('section', { class: 'lx-sec' }, h('h2', { class: 'lx-h' }, icon('grid'), 'Emner'),
@@ -96,7 +96,7 @@ export default {
         h('div', { class: 'page-head-actions' }, segmented(CATS, cat, (v) => { cat = v; draw(); }, { label: 'Kategori' }))),
       h('div', { class: 'lx-searchbar' }, icon('search'), search), found, browse,
       h('a', { class: 'callout launcher-learn', href: '#/learn', style: { marginBottom: '18px' } }, icon('book'),
-        h('div', null, h('strong', null, 'Al læring er samlet i Guides & Læring. '), `${LEARN_APPS.map(a => a.name).join(', ')} samt kurser og guides ligger dér – med faner øverst.`)),
+        h('div', null, h('strong', null, 'Al læring er samlet i Guides & Læring. '), `${LEARN_APPS.map(a => a.name).join(', ')} samt kurser og guides ligger dér.`)),
       grid,
       h('div', { class: 'callout', style: { marginTop: '24px' } }, icon('rocket'),
         h('div', null, h('strong', null, 'Plads til nye apps. '), 'En ny app tilføjes med én registrering i app-registret – navigation, søgning og launcher følger med automatisk. ', h('a', { href: '#/learn/guide/add-app', style: { color: 'var(--accent)', fontWeight: 800 } }, 'Se hvordan →'))));

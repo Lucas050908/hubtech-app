@@ -184,17 +184,11 @@ function browserName(ua = '') {
 function worldTab() {
   const w = () => store.get('prefs').world;
   const preview = h('canvas', { class: 'world-preview', 'aria-hidden': 'true' });
-  const drawPreview = () => {
-    const im = w().source === 'image' && w().image?.url;
-    if (im) {
-      const img = new Image();
-      img.onload = () => { const r = devicePixelRatio || 1; preview.width = preview.clientWidth * r; preview.height = preview.clientHeight * r; const c = preview.getContext('2d'); const k = Math.max(preview.width / img.width, preview.height / img.height); c.drawImage(img, (preview.width - img.width * k) / 2, (preview.height - img.height * k) / 2, img.width * k, img.height * k); };
-      img.src = im; return;
-    }
-    const d = describeWorld(); paintStill(preview, { keep: true, season: d.season, time: d.time, landscape: d.landscape, weather: w().weather === 'auto' ? (d.season === 'winter' ? 'snow' : 'clear') : w().weather, focusX: 0.55 });
+  const drawPreview = () => {   // the one background: Højhuse om natten
+    import('../world/cityscape.js').then(m => m.paintScene(preview, 'desert', { time: 'night', light: document.documentElement.dataset.theme === 'light' }));
   };
   const status = h('div', { class: 'faint', style: { fontSize: 'var(--fs-sm)' } });
-  const drawStatus = () => { const d = describeWorld(); status.textContent = `Lige nu: ${d.seasonLabel} · ${d.timeLabel} · ${WEATHER_LABEL[w().weather]}`; };
+  const drawStatus = () => { const d = describeWorld(); status.textContent = `Højhuse om natten · ${d.seasonLabel}`; };
   const refresh = () => { drawStatus(); requestAnimationFrame(drawPreview); };
   const theme = segmented([{ value: 'dark', label: 'Mørk', icon: 'moon' }, { value: 'light', label: 'Lys', icon: 'sun' }, { value: 'system', label: 'System', icon: 'monitor' }], store.get('prefs').theme, (v) => setPref('theme', v), { label: 'Tema' });
   const seasonMode = segmented([{ value: 'auto', label: 'Automatisk', icon: 'calendar' }, { value: 'manual', label: 'Manuel', icon: 'edit' }], w().seasonMode, (v) => { setWorld({ seasonMode: v, season: describeWorld().season }); seasonPick.style.display = v === 'manual' ? '' : 'none'; refresh(); }, { label: 'Årstid' });
@@ -211,69 +205,13 @@ function worldTab() {
   };
   const motion = segmented([{ value: 'system', label: 'Følg system' }, { value: 'full', label: 'Fuld' }, { value: 'reduced', label: 'Reduceret' }], w().motion, (v) => setWorld({ motion: v }), { label: 'Bevægelse' });
   const clarity = segmented([{ value: 'system', label: 'Følg system' }, { value: 'normal', label: 'Glas' }, { value: 'solid', label: 'Tydelig' }], w().clarity || 'system', (v) => setWorld({ clarity: v }), { label: 'Læsbarhed' });
-  // ── background: one of the landscapes, or your own picture ──
-  const LANDS = [['valley', 'Dalen'], ['highlands', 'Højlandet'], ['fjord', 'Fjorden'], ['alps', 'Alperne'], ['hills', 'Bakkerne'], ['coast', 'Kysten'], ['lakes', 'Søerne']];
-  const landGrid = h('div', { class: 'land-grid', role: 'radiogroup', 'aria-label': 'Landskab' });
-  const drawLands = () => {
-    const d = describeWorld();
-    h(clear(landGrid), null, LANDS.map(([k, label]) => {
-      const cv = h('canvas', { 'aria-hidden': 'true' });
-      const on = (w().source || 'landscape') === 'landscape' && (w().landscape || 'valley') === k;
-      const b = h('button', { type: 'button', class: ['land-tile', on && 'is-on'], role: 'radio', 'aria-checked': String(on), onclick: () => { setWorld({ landscape: k, source: 'landscape' }); drawLands(); drawScenes(); drawSource(); refresh(); drawStyle(); } }, cv, h('span', null, label));
-      requestAnimationFrame(() => paintStill(cv, { keep: true, season: d.season, time: d.time, landscape: k, focusX: 0.5, focusY: 0.4 }));
-      return b;
-    }));
-  };
-  // ── theme scenes: cities, Japan, minimal, elegant ──
-  const sceneGrid = h('div', { class: 'land-grid theme-grid', role: 'radiogroup', 'aria-label': 'Temaer' });
-  const drawScenes = () => {
-    const d = describeWorld();
-    h(clear(sceneGrid), null, Object.entries(SCENES).map(([k, sc]) => {
-      const cv = h('canvas', { 'aria-hidden': 'true' });
-      const on = w().source === 'scene' && w().scene === k;
-      const b = h('button', { type: 'button', class: ['land-tile', on && 'is-on'], role: 'radio', 'aria-checked': String(on), title: sc.desc,
-        onclick: () => { setWorld({ source: 'scene', scene: k }); drawScenes(); drawLands(); drawSource(); refresh(); drawStyle(); } }, cv, h('span', null, sc.name));
-      requestAnimationFrame(() => import('../world/cityscape.js').then(m => m.paintScene(cv, k, { time: ['tokyo', 'neon', 'future'].includes(k) ? 'night' : d.time, light: document.documentElement.dataset.theme === 'light' })));
-      return b;
-    }));
-  };
   const styleSel = h('select', { class: 'select', 'aria-label': 'Stil' });
   const drawStyle = () => {
-    const auto = w().source === 'scene' && SCENES[w().scene] ? SCENES[w().scene].style : 'standard';
+    const auto = SCENES.desert.style;
     h(clear(styleSel), null, STYLES.map(([v, l]) => h('option', { value: v, selected: (w().style || 'auto') === v }, v === 'auto' ? `${l} (${STYLES.find(x => x[0] === auto)?.[1] || 'Standard'})` : l)));
   };
   styleSel.addEventListener('change', () => { setWorld({ style: styleSel.value }); drawStyle(); });
   drawStyle();
-  const imgBox = h('div', { class: 'own-image' });
-  const PROMPT = 'Et roligt, malerisk landskab i bredformat (16:9, 3840×2160): bjerge, en sø og blød morgentåge i dæmpede farver. Ingen tekst, ingen personer, ingen logoer. Motivet må gerne være lidt mørkt foroven og nederst, så hvid tekst kan læses ovenpå.';
-  const upload = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', class: 'sr-only', id: 'world-upload' });
-  upload.addEventListener('change', async () => {
-    const f = upload.files[0]; upload.value = '';
-    if (!f) return;
-    try {
-      const { uploadImage } = await import('../office/store.js');
-      const url = await uploadImage(f, 3840);
-      if (!url || url.startsWith('data:')) throw new Error('Billedet kunne ikke gemmes på serveren.');
-      setWorld({ source: 'image', image: { url, name: f.name.slice(0, 80) } });
-      toast('Baggrundsbillede sat', { type: 'ok' });
-      drawSource(); drawLands(); refresh();
-    } catch (e) { toast('Billedet kunne ikke bruges', { type: 'bad', text: e.message }); }
-  });
-  const drawSource = () => {
-    clear(imgBox);
-    const img = w().image;
-    if (img?.url) {
-      const on = w().source === 'image';
-      imgBox.append(h('button', { type: 'button', class: ['own-thumb', on && 'is-on'], 'aria-pressed': String(on), title: on ? 'Bruges som baggrund' : 'Brug som baggrund', onclick: () => { setWorld({ source: 'image' }); drawSource(); drawLands(); refresh(); }, style: { backgroundImage: `url("${img.url}")` } }, h('span', null, on ? 'I brug' : 'Brug billedet')),
-        h('div', { class: 'own-actions' }, h('label', { class: 'btn btn-sm', for: 'world-upload' }, icon('upload'), 'Skift billede'),
-          h('button', { class: 'btn btn-sm btn-ghost', onclick: () => { setWorld({ source: 'landscape', image: null }); drawSource(); drawLands(); refresh(); } }, icon('trash'), 'Fjern')));
-    } else imgBox.append(h('label', { class: 'btn', for: 'world-upload' }, icon('image'), 'Vælg dit eget billede'));
-    imgBox.append(upload, h('details', { class: 'own-ai' }, h('summary', null, 'Lav et billede med AI (fx Gemini)'),
-      h('p', { class: 'faint' }, 'Kopiér teksten, indsæt den i Gemini eller en anden billedgenerator, gem billedet, og vælg det her. Billeder over 3840 px bliver gjort mindre.'),
-      h('pre', { class: 'own-prompt' }, PROMPT),
-      h('button', { class: 'btn btn-sm', onclick: async () => { try { await navigator.clipboard.writeText(PROMPT); toast('Kopieret', { type: 'ok', ms: 1400 }); } catch { toast('Kunne ikke kopiere', { type: 'bad' }); } } }, icon('copy'), 'Kopiér prompt')));
-  };
-  drawLands(); drawScenes(); drawSource();
   const quality = segmented([{ value: 'normal', label: 'Normal' }, { value: 'high', label: 'Høj' }], w().quality || 'normal', (v) => setWorld({ quality: v }), { label: 'Billedkvalitet' });
   const locBox = h('div');
   const drawLoc = () => {
@@ -310,33 +248,22 @@ function worldTab() {
   };
   drawTrans();
   return h('div', { class: 'stack', dataset: { tour: 'world-settings' } },
-    h('section', { class: 'glass panel world-hero' }, preview, h('div', { class: 'world-hero-text' }, h('h2', { class: 'panel-title' }, 'Den levende verden'), status)),
+    h('section', { class: 'glass panel world-hero' }, preview, h('div', { class: 'world-hero-text' }, h('h2', { class: 'panel-title' }, 'Baggrunden'), status)),
     h('section', { class: 'glass panel' },
       row('Tema', 'Lys eller mørk brugerflade', theme),
-      row('Årstid', 'Automatisk følger datoen (og evt. din placering)', h('div', { class: 'set-stack' }, seasonMode, seasonPick)),
-      row('Placering', 'Valgfrit. Kun den afrundede breddegrad gemmes på din konto.', locBox),
-      row('Tid på dagen', 'Auto følger dit ur', time),
-      row('Vejr', 'Regn, sne og tåge', weather)),
+      ),
     h('section', { class: 'glass panel' },
       h('h2', { class: 'panel-title' }, 'Baggrund'),
-      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'Vælg et tema eller et af de syv landskaber, der følger årstid, tid på dagen og vejr – eller brug dit eget billede. Dine øvrige indstillinger bliver, som de er.'),
-      h('h3', { class: 'set-sub' }, 'Temaer'),
-      sceneGrid,
-      h('h3', { class: 'set-sub' }, 'Landskaber'),
-      landGrid,
+      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'HUBTECH har én baggrund: Højhuse om natten – med lys i vinduerne, en bil, der kører forbi, og et kredsløb, der gløder i bunden.'),
       row('Stil', 'Farver og former på knapper og paneler. “Følger temaet” skifter med baggrunden.', styleSel),
-      row('Eget billede', 'Et foto eller et billede, du har lavet med AI. Gemmes på din konto og synkroniseres.', imgBox),
-      row('Billedkvalitet', 'Høj tegner landskabet i fuld skarphed på store og skarpe skærme (bruger lidt mere strøm)', quality)),
+      row('Billedkvalitet', 'Høj tegner baggrunden i fuld skarphed på store og skarpe skærme (bruger lidt mere strøm)', quality)),
     h('section', { class: 'glass panel' },
       h('h2', { class: 'panel-title' }, 'Skærm'),
       row('Størrelse', 'Gør alt større eller mindre på denne skærm. Automatisk gør det større på store skærme som 4K.', h('div', { class: 'set-stack' }, scaleSel, screenInfo)),
-      row('Gennemsigtig baggrund', 'Se dit eget skrivebordsbaggrund bag HUBTECH i stedet for landskabet', transBox)),
+      row('Gennemsigtig baggrund', 'Se dit eget skrivebord bag HUBTECH i stedet for højhusene', transBox)),
     h('section', { class: 'glass panel' },
       row('Animationer', 'Mængden af partikler og bevægelse', mkRange('intensity', 0, 1, 0.05, 'Animationernes intensitet')),
       row('Baggrundens lysstyrke', 'Dæmp verdenen for mere ro', mkRange('brightness', 0.4, 1.1, 0.05, 'Lysstyrke')),
-      row('Dybdeeffekt', 'Landskabet bevæger sig let med musen', parallax),
-      row('Stjerneskud', 'Meteorer, der flyver over himlen – også små stjerneskudsregn', segmented([{ value: 'auto', label: 'Om aftenen og natten' }, { value: 'on', label: 'Altid' }, { value: 'off', label: 'Fra' }], w().meteors || 'auto', (v) => setWorld({ meteors: v }), { label: 'Stjerneskud' })),
-      row('Skyernes skygger', 'Bløde skygger, der driver hen over landskabet på klare dage', switchControl({ checked: w().cloudShadows !== false, label: 'Skyernes skygger', onChange: (v) => setWorld({ cloudShadows: v }) })),
       row('Bevægelse', 'Reduceret viser et stillbillede og slår overgange fra', motion),
       row('Læsbarhed', 'Tydelig giver faste paneler og stærkere kontrast – godt i skarpt lys eller ved nedsat syn', clarity),
       row('Ydeevne', 'Telefoner og langsomme computere starter i let tilstand, og verdenen skruer selv ned (til sidst et stillbillede), hvis den bliver for tung.', perfControl())));

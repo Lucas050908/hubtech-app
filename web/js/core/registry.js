@@ -1370,7 +1370,7 @@ export function entryApp(app) {
   if (!s) return app;
   const lead = appById(s.members[0]);
   return { ...lead, name: s.name, tagline: s.tagline || lead.tagline, icon: s.icon || lead.icon, hue: s.hue || lead.hue, suite: s.id,
-    description: `${s.tagline} Samlet i én app med faner: ${s.members.map(id => appById(id)?.name).join(', ')}.`,
+    description: `${s.tagline} Find dem alle under Alle apps → Emner: ${s.members.map(id => appById(id)?.name).join(', ')}.`,
     keywords: s.members.flatMap(id => [appById(id)?.name.toLowerCase(), ...(appById(id)?.keywords || [])]) };
 }
 /** Unique menu entries for a list of app ids (pinned apps). */

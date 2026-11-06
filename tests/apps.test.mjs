@@ -1733,3 +1733,16 @@ console.log('apps ok');
   assert.ok(SV.searchKb([{ t: 'Fejlkode', ti: 'E-04', c: 'Papirstop i bakke 2' }], 'bakke').length === 1);
   console.log('servicehjælp ok');
 }
+
+// mere undervisning: almen IT-viden
+{
+  const { GENERAL_COURSES } = await import('../web/js/data/generalcourses.js');
+  assert.ok(GENERAL_COURSES.length >= 8, 'otte nye kurser');
+  for (const c of GENERAL_COURSES) {
+    assert.ok(c.id && c.title && c.intro && c.days.length >= 4, `kurset ${c.id} har lektioner`);
+    for (const d of c.days) assert.ok(d.t && d.g && d.l.length >= 4 && d.d.length >= 2 && d.q.length >= 2 && d.r.every(([t, u]) => t && u.startsWith('#/')), `${c.id}: ${d.t}`);
+  }
+  const { APP_COURSES, APP_GROUPS } = await import('../web/js/data/appcourses.js');
+  assert.ok(APP_COURSES.some(c => c.id === 'linux') && APP_GROUPS.some(g => g[0] === 'general'), 'kurserne vises i Læring');
+  console.log('almen it-viden ok');
+}

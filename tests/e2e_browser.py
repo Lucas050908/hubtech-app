@@ -845,21 +845,12 @@ async def main():
         tk = (await api(page, "GET", "/api/state/tasks"))["data"]["state"]["tasks"]
         check("deling: delt tekst bliver til en opgave", tk[0]["title"] == "Husk at bestille toner" and "Jensen" in tk[0]["notes"], tk[0])
 
-        # ── backgrounds: seven landscapes and the quality setting ──
-        await page.goto(BASE + "/#/settings/world")
-        await page.wait_for_selector(".land-tile")
-        await page.click(".land-tile:has-text('Kysten')")
-        await page.wait_for_timeout(1400)
-        prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
-        check("baggrund: 7 landskaber + 10 temaer, valget gemmes", await page.locator(".land-tile").count() == 17 and prefs["world"]["landscape"] == "coast" and prefs["world"]["source"] == "landscape", prefs["world"])
-        await page.click(".land-tile:has-text('Tokyo')")
-        await page.wait_for_timeout(1400)
-        prefs = (await api(page, "GET", "/api/me/prefs"))["data"]["prefs"]
-        check("tema: Tokyo om natten vælges og tegnes", prefs["world"]["source"] == "scene" and prefs["world"]["scene"] == "tokyo" and await page.locator("#world-scene").count() == 1, prefs["world"])
-        await page.screenshot(path=f"{OUT}/theme-tokyo.png")
-        await page.click(".land-tile:has-text('Kysten')")
-        await page.wait_for_timeout(800)
-        await page.click(".land-tile:has-text('Dalen')")
+        # ── one background: Højhuse om natten, also when an old choice is saved ──
+        await api(page, "PUT", "/api/me/prefs", {"world": {"source": "landscape", "landscape": "coast"}})
+        await page.goto(BASE + "/#/settings/world"); await page.reload()
+        await page.wait_for_selector(".world-hero")
+        look = await page.evaluate("({ src: document.documentElement.dataset.worldSource, scene: !!document.getElementById('world-scene') && !document.getElementById('world-scene').hidden, tiles: document.querySelectorAll('.land-tile').length })")
+        check("baggrund: kun Højhuse om natten – ingen andre baggrunde at vælge", look == {"src": "scene", "scene": True, "tiles": 0}, look)
 
         # ── scanner: without a camera the code can be typed ──
         await page.goto(BASE + "/#/apps/inventory")
@@ -1163,9 +1154,8 @@ async def main():
         await page.keyboard.press("Escape")
 
         # ── app groups: Planlæg / Service / Office share one menu entry with tabs; Kodestumper lives in Læring ──
-        await page.goto(BASE + "/#/apps/tasks"); await page.wait_for_selector(".suite-tabs")
-        tabs = await page.locator(".suite-tabs .learn-tab").all_text_contents()
-        check("app-grupper: Opgaver har faner for Planlæg", [t.strip() for t in tabs if not t.strip().startswith("Alle ")] == ["Kalender", "Opgaver", "Dagens plan", "Morgenrutine", "Pligter", "Fødselsdage", "Arrangementer", "Find en dato", "Booking", "Skoleskema", "Madplan", "Fokus", "Vaner", "Træning", "Stopur", "Verdensur"], tabs)
+        await page.goto(BASE + "/#/apps/tasks"); await page.wait_for_selector(".page"); await page.wait_for_timeout(400)
+        check("apps: ingen app-faner i toppen – du skifter app i docken", await page.locator(".suite-tabs").count() == 0)
         await page.goto(BASE + "/#/apps"); await page.wait_for_selector(".launcher-item")
         names = await page.locator(".launcher-item .app-card-title, .launcher-item h3").all_text_contents()
         joined = " | ".join(names)

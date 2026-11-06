@@ -49,7 +49,7 @@ export function niceError(e) {
   if (/memory|Out of memory|allocation|RangeError|Aborted\(\)|OOM/i.test(msg)) return 'Der var ikke hukommelse nok. Vælg en lavere RAM-grænse eller en mindre model under Indstillinger i assistenten.';
   if (/Failed to fetch|NetworkError|network|download|ERR_|Load failed|status (4|5)\d\d/i.test(msg)) return 'Modellen kunne ikke hentes. Tjek internetforbindelsen – første gang skal modellen downloades (og firewall eller annonceblokering må ikke blokere huggingface.co).';
   if (/gik i stå/.test(msg)) return msg;
-  if (/JSPI|suspended|crashed|unreachable|RuntimeError/i.test(msg)) return 'AI-motoren gik ned. Prøv igen – hvis det sker igen, så vælg en mindre model eller genindlæs siden.';
+  if (/\(ABORT\)|abort\(|JSPI|suspended|crashed|unreachable|RuntimeError/i.test(msg)) return 'AI-motoren gik ned. Prøv igen – hvis det sker igen, så vælg en mindre model eller genindlæs siden.';
   if (/compat|WebAssembly|SIMD|exception handling/i.test(msg)) return 'Din browser kan ikke køre den lokale AI. Opdatér browseren (Chrome, Edge, Firefox eller Safari 16.4+).';
   return msg || 'Ukendt fejl i AI-motoren.';
 }
@@ -202,8 +202,9 @@ export async function chat(messages, opts = {}) {
       set({ status: 'ready' });
       if (/kv_cache_full|context/i.test(String(e?.message || e?.type))) throw Object.assign(new Error('Samtalen er blevet for lang til modellens hukommelse. Start en ny samtale, eller vælg mere hukommelse i indstillingerne.'), { code: 'context' });
       reportError('chat', e, {});
-      if (/crashed|RuntimeError|unreachable|JSPI/i.test(String(e?.message || e))) { try { await W?.exit(); } catch { /* */ } W = null; loadedKey = null; set({ status: 'idle' }); }
-      throw new Error(niceError(e));
+      const crash = /\(ABORT\)|abort\(|crashed|RuntimeError|unreachable|JSPI/i.test(String(e?.message || e));
+      if (crash) { try { await W?.exit(); } catch { /* */ } W = null; loadedKey = null; set({ status: 'idle' }); }
+      throw Object.assign(new Error(niceError(e)), crash ? { code: 'crash' } : {});
     }
   }
   set({ status: 'ready' });

@@ -551,11 +551,18 @@ async function drawExternal(box) {
       h('span', { class: ['chip', extInfo.ok ? 'chip-ok' : ''] }, extInfo.ok ? `${extInfo.kind === 'ollama' ? 'Ollama' : 'Server'} fundet · ${extInfo.models.length} modeller` : 'Ikke fundet')),
     h('p', { class: 'faint ai-note' }, extInfo.ok ? 'Store modeller kører i Ollama eller LM Studio på computeren med grafikkortet – meget klogere end modellerne i browseren. Samtalen følger med, når du skifter.'
       : 'Store modeller kræver det gratis program Ollama (ollama.com) eller LM Studio på den computer, HUBTECH kører på. Installér det, start det, og åbn indstillingerne igen.'),
-    extInfo.ok ? h('ul', { class: 'ai-tiers' }, (extInfo.tiers || []).map(t => {
+    !extInfo.ok ? h('ol', { class: 'ai-ext-steps faint' },
+      h('li', null, 'Hent det gratis program Ollama fra ollama.com på den computer, HUBTECH kører på.'),
+      h('li', null, 'Start Ollama (det ligger ved uret i Windows).'),
+      h('li', null, 'Tryk «Søg igen» – så kan du hente og bruge modellerne herunder.')) : null,
+    !extInfo.ok ? h('button', { type: 'button', class: 'btn btn-sm', onclick: () => { extInfo = null; drawExternal(box); } }, icon('refresh'), 'Søg igen') : null,
+    (extInfo.tiers || []).length ? h('ul', { class: 'ai-tiers' }, (extInfo.tiers || []).map(t => {
       const btn = h('button', { type: 'button', class: ['btn', 'btn-sm', have.has(t.model) ? 'btn-primary' : ''] }, have.has(t.model) ? (cfg.model === 'ext:' + t.model ? 'I brug' : 'Brug') : `Hent (${String(t.size).replace('.', ',')} GB)`);
+      if (!extInfo.ok) { btn.disabled = true; btn.textContent = 'Kræver Ollama'; }
       const bar = h('div', { class: 'ai-bar', hidden: true }, h('i'));
       btn.onclick = () => (have.has(t.model) ? use(t.model) : pull(t.model, btn, bar));
       if (!have.has(t.model) && !extInfo.canEdit) btn.disabled = true;
+      if (!extInfo.ok) btn.onclick = null;
       return h('li', { class: 'ai-tier' }, h('span', { class: 'ai-tier-ram' }, `${t.ram} GB`), h('span', { class: 'ai-tier-t' }, h('b', null, t.model), h('small', { class: 'faint' }, t.note)), btn, bar);
     })) : null,
     extInfo.canEdit ? h('div', { class: 'ai-ext-url' }, urlIn, h('button', { class: 'btn btn-sm', onclick: async () => {
@@ -696,10 +703,24 @@ async function ask() {
       if (!looped && isLooping(t)) { looped = true; abort?.abort(); }   // a small model stuck repeating itself: stop it
       if (t.length - shown > 12 || /\n/.test(t.slice(shown))) { shown = t.length; drawMsgs(); }
     };
-    for (const factor of [1, 0.5, 0.25]) {
-      const { msgs, maxTokens } = await build(factor);
-      try { await e.chat(msgs, { maxTokens, temperature: cfg.temp, signal: abort.signal, onToken }); break; }
-      catch (x) { if (x.code !== 'context' || factor === 0.25) throw x; }   // too long: try again with less data
+    const run = async () => {
+      for (const factor of [1, 0.5, 0.25]) {
+        const { msgs, maxTokens } = await build(factor);
+        try { await e.chat(msgs, { maxTokens, temperature: cfg.temp, signal: abort.signal, onToken }); break; }
+        catch (x) { if (x.code !== 'context' || factor === 0.25) throw x; }   // too long: try again with less data
+      }
+    };
+    try { await run(); }
+    catch (x) {
+      // the model was too big for this device and the engine crashed: Gnist moves to the next smaller model and answers
+      const was = MODELS.find(m => m.id === engine?.state?.model?.id) || (x.code === 'crash' ? resolved().model : null);
+      const alt = x.code === 'crash' && was ? MODELS.filter(m => m.size < was.size).pop() : null;
+      if (!alt) throw x;
+      cfg.model = alt.id; saveCfg();
+      toast(`${was.name} var for stor til enheden`, { type: 'warn', text: `Gnist skifter til ${alt.name} og svarer igen.` });
+      bot.content = ''; looped = false; shown = 0; drawMsgs();
+      if (!await start(true)) throw x;
+      await run();
     }
     bot.content = tidyAnswer(bot.content);   // repeated lines out
     if (!bot.content.trim()) bot.content = abort.signal.aborted ? '(stoppet)' : 'Jeg har ikke noget svar på det. Prøv at spørge på en anden måde.';

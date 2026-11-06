@@ -250,10 +250,11 @@ function circuit(S, b, r, s, W, Hfull, light) {
 function drawCar(ctx, x, y, s, t, c) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   if (c.lights) {   // the headlights light up the street in front
-    const g = ctx.createLinearGradient(30, 0, 130, 0); g.addColorStop(0, 'rgba(255,236,180,.38)'); g.addColorStop(1, 'rgba(255,236,180,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(30, -8); ctx.lineTo(130, -18); ctx.lineTo(130, 4); ctx.lineTo(30, -4); ctx.closePath(); ctx.fill();
-    const tg = ctx.createRadialGradient(-31, -8, 0, -31, -8, 12); tg.addColorStop(0, 'rgba(255,59,47,.5)'); tg.addColorStop(1, 'rgba(255,59,47,0)'); ctx.fillStyle = tg; ctx.fillRect(-44, -20, 26, 24);
+    const g = ctx.createLinearGradient(29, 0, 130, 0); g.addColorStop(0, 'rgba(255,236,180,.38)'); g.addColorStop(1, 'rgba(255,236,180,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(29, -9); ctx.lineTo(130, -18); ctx.lineTo(130, 4); ctx.lineTo(29, -5); ctx.closePath(); ctx.fill();
+    const tg = ctx.createRadialGradient(-33, -8, 0, -33, -8, 12); tg.addColorStop(0, 'rgba(255,59,47,.5)'); tg.addColorStop(1, 'rgba(255,59,47,0)'); ctx.fillStyle = tg; ctx.fillRect(-46, -20, 26, 24);
   }
+  ctx.save(); ctx.scale(-1, 1);   // the body is drawn facing left – mirror it, so the bonnet is at the front (right), where it drives
   ctx.fillStyle = c.body; ctx.beginPath();
   ctx.moveTo(-31, -3); ctx.lineTo(-31, -10); ctx.quadraticCurveTo(-30, -13.5, -23, -14); ctx.lineTo(-14, -14); ctx.lineTo(-7, -22);
   ctx.quadraticCurveTo(-5, -24, -1, -24); ctx.lineTo(12, -24); ctx.quadraticCurveTo(16, -24, 19, -20); ctx.lineTo(25, -14);
@@ -261,13 +262,14 @@ function drawCar(ctx, x, y, s, t, c) {
   ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(-29, -12.5, 60, 1.2);   // a highlight along the side
   ctx.fillStyle = c.glass; ctx.beginPath(); ctx.moveTo(-11, -14.5); ctx.lineTo(-5.5, -21); ctx.lineTo(3, -21); ctx.lineTo(3, -14.5); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(5, -14.5); ctx.lineTo(5, -21); ctx.lineTo(12, -21); ctx.quadraticCurveTo(14.5, -21, 16.5, -18); ctx.lineTo(20, -14.5); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ffe9b0'; ctx.fillRect(30, -10, 3, 2.8);
-  ctx.fillStyle = '#ff3b2f'; ctx.fillRect(-31.5, -10, 2.5, 2.8);
   for (const wx of [-18, 21]) {
     ctx.fillStyle = '#0a0808'; ctx.beginPath(); ctx.arc(wx, -3, 5.6, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#b8b0a8'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(wx, -3, 2.7, 0, TAU); ctx.stroke();
-    const a = t * 14; ctx.beginPath(); ctx.moveTo(wx + Math.cos(a) * 2.7, -3 + Math.sin(a) * 2.7); ctx.lineTo(wx - Math.cos(a) * 2.7, -3 - Math.sin(a) * 2.7); ctx.stroke();
+    const a = -t * 14; ctx.beginPath(); ctx.moveTo(wx + Math.cos(a) * 2.7, -3 + Math.sin(a) * 2.7); ctx.lineTo(wx - Math.cos(a) * 2.7, -3 - Math.sin(a) * 2.7); ctx.stroke();
   }
+  ctx.restore();
+  ctx.fillStyle = '#ffe9b0'; ctx.fillRect(28.5, -10, 2.8, 2.8);   // headlight at the front …
+  ctx.fillStyle = '#ff3b2f'; ctx.fillRect(-33, -10, 2.5, 2.8);    // … tail light at the back
   ctx.restore();
 }
 

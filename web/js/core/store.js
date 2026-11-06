@@ -113,6 +113,7 @@ export async function loadUserData() {
     merged.look = LOOK_VERSION;
     api.put('/api/me/prefs', { world: merged.world, widgets: merged.widgets, look: LOOK_VERSION }).catch(() => {});
   }
+  merged.world = { ...merged.world, source: 'scene', scene: 'desert' };   // one background: Højhuse om natten
   state.prefs = merged;
   state.device.world = merged.world; state.device.theme = merged.theme; writeLocal(state.device);
   // first login on this account: upload the look this device already had

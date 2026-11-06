@@ -858,6 +858,7 @@ body.ai-page .ai-fab { display: none; }
 .gnist-mark.is-think .gnist-body { animation: gnSpin 1.4s cubic-bezier(.5, .1, .5, .9) infinite; }
 .gnist-mark.is-think .gnist-eyes { animation: none; transform: scaleY(.35); }
 .gn-games h2 { display: flex; align-items: center; gap: 8px; font-size: var(--fs-lg, 1.1rem); margin: 6px 0 10px; }
+.gn-games h2 svg { width: 20px; height: 20px; flex: none; color: #fb923c; }   /* the icon stays small – it filled the page */
 .gn-games-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .gn-game { text-decoration: none; color: inherit; cursor: pointer; }
 .gn-game:hover, .gn-game:focus-visible { border-color: #fb923c; }

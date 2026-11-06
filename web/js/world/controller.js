@@ -35,8 +35,8 @@ function apply() {
   document.documentElement.dataset.clarity = w.clarity === 'solid' || (w.clarity !== 'normal' && sysClear) ? 'solid' : 'normal';
   document.documentElement.dataset.season = r.season;
   document.documentElement.dataset.time = r.time;
-  const useImage = w.source === 'image' && w.image?.url;
-  const useScene = !useImage && w.source === 'scene' && SCENES[w.scene] ? w.scene : null;
+  const useImage = false;
+  const useScene = 'desert';   // HUBTECH has one background: Højhuse om natten
   document.documentElement.dataset.worldSource = useImage ? 'image' : useScene ? 'scene' : 'landscape';
   showImage(useImage ? w.image.url : null, w.brightness, reduced);
   showScene(useScene, { time: r.time, intensity: w.intensity, reduced, hq: w.quality === 'high', brightness: w.brightness });
