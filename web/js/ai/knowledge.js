@@ -127,7 +127,13 @@ export function expandWords(ws) {
   return [...out];
 }
 
-const words = (s) => String(s || '').toLowerCase().normalize('NFC').match(/[a-zæøå0-9]{3,}/g)?.filter(w => !STOP.has(w)) || [];
+// two-letter words only when they are IT words ("ip adresse", "min pc") – and small verbs like "ser" and "får" say nothing
+const SHORT = new Set(['ip', 'pc', 'it', 'ai', 'os', 'ad', 'tv', 'vm', '3d', '4g', '5g']);
+const VERBS = new Set('ser får gør gøre går kommer står ved tror siger sker findes viser vise'.split(' '));   // not "skriver" (a printer), "bruger" (a user) or "finder" (the Mac's)
+const words = (s) => String(s || '').toLowerCase().normalize('NFC').match(/[a-zæøå0-9]{2,}/g)?.filter(w => (w.length > 2 || SHORT.has(w)) && !STOP.has(w) && !VERBS.has(w)) || [];
+/** Does the word x from a text match the asked word w? Long words by their stem; short ones only as themselves (+ an ending),
+ *  so "ser" isn't "server" and "ram" isn't "rammeaftale". */
+const hits = (x, w) => (w.length < 5 ? x === w || (x.startsWith(w) && x.length <= w.length + 2) : x.startsWith(w.slice(0, Math.max(4, w.length - 2))));
 
 /** How many letters must change to turn a into b (a swap of two neighbours counts as one) – stops early above max. */
 export function editDistance(a, b, max = 2) {
@@ -185,10 +191,9 @@ export function retrieve(items, question, budget, { calendarish = false, page = 
     const t = words(it.title), b = words(it.text);
     let s = 0;
     for (const w of q) {
-      const stem = w.slice(0, Math.max(4, w.length - 2));
       const wt = extra.has(w) ? 0.5 : 1;   // a synonym counts, but less than the word the user wrote
-      if (t.some(x => x.startsWith(stem))) s += 4 * wt;
-      s += Math.min(3, b.filter(x => x.startsWith(stem)).length) * wt;
+      if (t.some(x => hits(x, w))) s += 4 * wt;
+      s += Math.min(3, b.filter(x => hits(x, w)).length) * wt;
     }
     if (calendarish && (it.kind === 'event' && it.date >= today && it.date <= soon)) s += 3;
     if (calendarish && it.kind === 'task' && !it.done && it.due && it.due <= soon) s += 2;

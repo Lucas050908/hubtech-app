@@ -764,18 +764,18 @@ async def main():
         await page.mouse.click(box["x"] + 60, box["y"] + 60); await page.wait_for_selector(".nb-text-ed:focus")
         await page.keyboard.type("Switch i skabet ved døren")
         await page.click(".nb-bar .nb-tool:has-text('Tjekliste')"); await page.wait_for_selector(".nb-todo-t:focus")
-        await page.keyboard.type("Mål Wi-Fi"); await page.keyboard.press("Enter"); await page.keyboard.type("Bestil adgangspunkt")
+        await page.keyboard.type("Mål Wi-Fi"); await page.keyboard.press("Enter"); await page.keyboard.type("Bestil access point")
         await page.click(".nb-bar .nb-tool:has-text('Tegn')")
         await page.mouse.move(box["x"] + 420, box["y"] + 320); await page.mouse.down(); await page.mouse.move(box["x"] + 520, box["y"] + 360, steps=8); await page.mouse.move(box["x"] + 600, box["y"] + 300, steps=8); await page.mouse.up()
         await page.wait_for_timeout(900)
         nbst = (await api(page, "GET", "/api/state/notebook"))["data"]["state"]
         pg = next((x for b in nbst["books"] for s2 in b["sections"] for x in s2["pages"] if x.get("title") == "Netværk i nyt lokale"), None)
-        check("notesbog: tekst, to-do og tegning gemmes på kontoen", pg and any("Switch" in (b2.get("html") or "") for b2 in pg["blocks"]) and any(b2["kind"] == "todo" and [i["text"] for i in b2["items"]] == ["Mål Wi-Fi", "Bestil adgangspunkt"] for b2 in pg["blocks"]) and len(pg["ink"]) == 1, pg)
+        check("notesbog: tekst, to-do og tegning gemmes på kontoen", pg and any("Switch" in (b2.get("html") or "") for b2 in pg["blocks"]) and any(b2["kind"] == "todo" and [i["text"] for i in b2["items"]] == ["Mål Wi-Fi", "Bestil access point"] for b2 in pg["blocks"]) and len(pg["ink"]) == 1, pg)
         await page.screenshot(path=f"{OUT}/notesbog.png")
-        await page.fill(".nb-search-in", "adgangspunkt"); await page.wait_for_selector(".nb-pg.is-hit")
+        await page.fill(".nb-search-in", "access point"); await page.wait_for_selector(".nb-pg.is-hit")
         check("notesbog: søgning finder siden", "Netværk i nyt lokale" in await page.inner_text(".nb-list"))
         await page.fill(".nb-search-in", ""); await page.click(".nb-todos-btn"); await page.wait_for_selector(".nb-todo-all li")
-        check("notesbog: alle åbne punkter samlet", "Bestil adgangspunkt" in await page.inner_text(".nb-todo-all"))
+        check("notesbog: alle åbne punkter samlet", "Bestil access point" in await page.inner_text(".nb-todo-all"))
         await page.goto(BASE + "/#/learn/codepad"); await page.wait_for_selector(".kx-cm .cm-editor", timeout=20000)
         # the editor fills the screen: the files fold away, Gnist only when you want her
         h0 = await page.evaluate("document.querySelector('.kx-cm').getBoundingClientRect().height")
@@ -788,6 +788,7 @@ async def main():
         check("lær og øv: vælgeren i topbaren viser læringsapps i grupper", await page.locator(".lnb-pop .lnb-item").count() == 13 and await page.locator(".lnb-pop .lnb-item.is-on:has-text('Kode-editor')").count() == 1 and await page.locator(".page > .lnb").is_hidden())
         await page.screenshot(path=f"{OUT}/laering-vaelger.png")
         await page.click(".lnb-pop .lnb-item:has-text('Quiz')"); await page.wait_for_url("**/learn/quiz", timeout=6000)
+        await page.wait_for_selector(".lnb-pop", state="detached", timeout=6000)   # the picker's own text also says "Quiz": wait until it is gone
         await page.wait_for_selector(".tb-crumb:has-text('Quiz')", timeout=6000)
         check("lær og øv: et klik skifter app og lukker vælgeren", await page.locator(".lnb-pop").count() == 0 and "Quiz" in await page.inner_text(".tb-crumb"))
         # Arbejdstilstand: warmer light, softer contrast and fewer distractions – saved with the profile
@@ -925,7 +926,8 @@ async def main():
         # ── one background: Højhuse om natten, also when an old choice is saved ──
         await api(page, "PUT", "/api/me/prefs", {"world": {"source": "landscape", "landscape": "coast"}})
         await page.goto(BASE + "/#/settings/world"); await page.reload()
-        await page.wait_for_selector(".world-hero")
+        await page.wait_for_selector("[data-tour='world-settings'] select[aria-label='Stil']")
+        check("udseende: design D viser ikke en baggrund, den ikke har", await page.locator(".world-hero").count() == 0 and await page.locator("[data-tour='world-settings'] select[aria-label='Stil'] option").first.inner_text() == "Rolig og varm (standard)")
         look = await page.evaluate("({ src: document.documentElement.dataset.worldSource, scene: !!document.getElementById('world-scene') && !document.getElementById('world-scene').hidden, tiles: document.querySelectorAll('.land-tile').length })")
         check("baggrund: design D tegner ingen baggrund – og der er ingen andre at vælge", look == {"src": "none", "scene": False, "tiles": 0}, look)
 
@@ -1163,6 +1165,38 @@ async def main():
             await page.wait_for_timeout(1200)
             check("ai: store modeller (4–32 GB) via Ollama/LM Studio kan vælges", "Store modeller" in await page.inner_text(".ai-ext") and ("Ikke fundet" in await page.inner_text(".ai-ext") or await page.locator(".ai-tier").count() == 4), await page.inner_text(".ai-ext"))
             await page.click(".ai-head [aria-label='Indstillinger for assistenten']")
+            # impatient use of the engine: two clicks in a row, a new choice while a model is on its way, "sleep" while it loads
+            # and while it answers. The older load stops quietly, the newest wins, nothing hangs and no error is reported.
+            await page.evaluate("document.body.insertAdjacentHTML('beforeend', '<input type=file id=race-file style=\"position:fixed;left:0;top:0;opacity:.01\">')")
+            await page.set_input_files("#race-file", tiny)
+            await page.evaluate("""(async () => {
+              const E = await import('/js/ai/engine.js'), file = document.querySelector('#race-file').files[0], out = {};
+              const settle = async (ps) => (await Promise.allSettled(ps)).map(r => r.status === 'fulfilled' ? 'ok' : (r.reason?.code || ('ERR: ' + (r.reason?.message || r.reason))));
+              await E.unload();
+              out.twice = [await settle([E.load({ file, ctx: 1024 }), E.load({ file, ctx: 1024 })]), E.state.status];
+              out.choice = [await settle([E.load({ file, ctx: 512 }), E.load({ file, ctx: 2048 })]), E.state.status, E.isReady()];
+              await E.unload();
+              const p = E.load({ file, ctx: 1024 }), u = E.unload();
+              out.sleepLoading = [await settle([p, u]), E.state.status, E.isReady()];
+              out.three = [await settle([E.load({ file, ctx: 512 }), E.load({ file, ctx: 1024 }), E.load({ file, ctx: 2048 })]), E.state.status];
+              const c = E.chat([{ role: 'user', content: 'Hej' }], { maxTokens: 40 });
+              await new Promise(r => setTimeout(r, 150));
+              out.sleepAnswering = [await settle([c, E.unload()]), E.state.status];
+              await E.load({ file, ctx: 1024 });
+              out.after = [typeof await E.chat([{ role: 'user', content: 'Hej' }], { maxTokens: 12 }), E.state.status, E.isReady()];
+              await E.unload();
+              return out;
+            })().then(r => { window.__race = r; }, e => { window.__race = { failed: String(e && e.message || e) }; }); 0""")
+            race = None
+            for _ in range(240):
+                await page.wait_for_timeout(500)
+                try: race = await page.evaluate("window.__race || null")
+                except Exception: continue
+                if race: break
+            check("ai: utålmodig brug (to klik, nyt valg, sov midt i det hele) giver hverken fejl eller hængning", race == {
+                "twice": [["ok", "ok"], "ready"], "choice": [["superseded", "ok"], "ready", True], "sleepLoading": [["superseded", "ok"], "idle", False],
+                "three": [["superseded", "superseded", "ok"], "ready"], "sleepAnswering": [["ok", "ok"], "idle"], "after": ["string", "ready", True]}, race)
+            await page.evaluate("document.querySelector('#race-file')?.remove()")
         else:
             check("ai: test-model findes (sæt HUBTECH_TEST_GGUF)", False, tiny)
         # action proposals need a confirmation before anything changes
@@ -2277,6 +2311,22 @@ async def main():
             v = await ap.evaluate(run_axe)
             if v:
                 bad[pth] = v
+        # the light theme too (headings and numbers were white on white there): the pages you see most
+        await api(ap, "PUT", "/api/me/prefs", {"theme": "light"})
+        await ap.reload(); await ap.wait_for_timeout(1200)
+        light_ok = await ap.evaluate("document.documentElement.dataset.theme") == "light"
+        for pth in ["/", "/apps", "/apps/tasks", "/apps/hubtech", "/apps/calendar", "/learn", "/learn/course/hubtech/day/1", "/settings/world", "/apps/economy", "/apps/notebook"]:
+            await ap.goto(BASE + "/#" + pth)
+            await ap.wait_for_timeout(900)
+            for _ in range(6):
+                if not await ap.locator(".rm-card button:has-text('Set')").count(): break
+                await ap.locator(".rm-card button:has-text('Set')").first.click(); await ap.wait_for_timeout(150)
+            await ap.wait_for_timeout(300)
+            v = await ap.evaluate(run_axe)
+            if v:
+                bad["lyst tema " + pth] = v
+        await api(ap, "PUT", "/api/me/prefs", {"theme": "dark"})
+        check("accessibility: det lyse tema blev testet", light_ok)
         bad = {k: v for k, v in bad.items() if v}
         check("accessibility: no serious/critical axe violations", not bad, bad)
         await actx.close()

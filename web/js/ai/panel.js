@@ -604,7 +604,14 @@ function cloudBox(box) {
 }
 
 // ── running ──
-async function start(force) {
+let starting = null;
+/** Start the chosen model. Two clicks in a row share one start; a new choice (force) replaces the one on its way. */
+function start(force) {
+  if (starting && !force) return starting;
+  const mine = (starting = startNow(force).finally(() => { if (starting === mine) starting = null; }));
+  return mine;
+}
+async function startNow(force) {
   const e = await eng();
   const r = resolved();
   const bad = r.external ? null : e.supported();
@@ -616,7 +623,7 @@ async function start(force) {
     if (force) await e.unload();
     drawMsgs();
     try { await e.loadExternal(r.external); els.settingsBox.hidden = true; drawMsgs(); return true; }
-    catch (x) { drawMsgs(); toast('Den store model er ikke klar', { type: 'bad', text: x.message }); return false; }
+    catch (x) { drawMsgs(); if (x?.code !== 'superseded') toast('Den store model er ikke klar', { type: 'bad', text: x.message }); return false; }
   }
   else opts.model = r.model;
   if (force) await e.unload();
@@ -628,7 +635,7 @@ async function start(force) {
     els.settingsBox.hidden = true;
     drawMsgs();
     return true;
-  } catch (x) { drawMsgs(); toast('Gnist kunne ikke starte', { type: 'bad', text: x.message }); return false; }
+  } catch (x) { drawMsgs(); if (x?.code !== 'superseded') toast('Gnist kunne ikke starte', { type: 'bad', text: x.message }); return false; }
 }
 
 function stop() { abort?.abort(); }
