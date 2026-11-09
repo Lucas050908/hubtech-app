@@ -95,7 +95,7 @@ export default {
     }
     function drawOnline() {
       clear(onlineBox);
-      if (!room) { onlineBox.append(lobbyPanel({ game: 'connect4', text: 'Vælg en, der har HUBTECH, og send en udfordring. De får en besked og kan spille med med det samme – også på telefonen.', onOpen: openRoom })); return; }
+      if (!room) { onlineBox.append(lobbyPanel({ game: 'connect4', text: 'Vælg en, der har HUBTECH, og send en udfordring. De får en besked og kan spille med det samme – også på telefonen.', onOpen: openRoom })); return; }
       const S = room.state, mi = myIdx();
       const red = room.players[0], yellow = room.players[1];
       let msg;

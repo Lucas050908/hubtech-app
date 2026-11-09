@@ -153,7 +153,9 @@ export async function loadExternal(name) {
   const cloud = name.startsWith('cloud:');
   set({ status: 'loading', progress: 0.5, error: null, model: { id: 'ext:' + name, name, think: !cloud && /qwen3|deepseek-r1|qwq/i.test(name), external: true, cloud }, ctx: cloud ? 100000 : 16384, noCache: false });
   try {
-    const r = await fetch('/api/ai/external', { headers: { 'X-Requested-With': 'hubtech' } }).then(x => x.json());
+    const res = await fetch('/api/ai/external', { headers: { 'X-Requested-With': 'hubtech' } });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`HUBTECH kunne ikke slå modellerne op (fejl ${res.status}). Genstart HUBTECH, og prøv igen.`);
     if (cloud) {
       if (!(r.cloud || []).some(m => m.id === name)) throw new Error('Den AI-tjeneste er ikke sat op (længere). Ejeren kan tilføje en nøgle under «Claude og andre AI’er».');
     } else {

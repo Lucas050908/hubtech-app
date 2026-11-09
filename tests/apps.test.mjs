@@ -1285,11 +1285,12 @@ console.log('apps ok');
   const owner = A.appGroups({ role: 'owner', admin: true }), member = A.appGroups({ role: 'member' });
   const ids = (gs) => gs.flatMap(g => g.apps.map(a => a.id));
   assert.equal(new Set(ids(owner)).size, ids(owner).length, 'en app står kun ét sted');
-  assert.deepEqual(owner.find(g => g.id === 'money').apps.map(a => a.id), ['budget', 'savings', 'piggy', 'expenses', 'splitbill', 'loans']);
+  assert.deepEqual(owner.find(g => g.id === 'money').apps.map(a => a.id), ['economy']);
   assert.ok(owner.find(g => g.id === 'learn').apps.some(a => a.id === 'codepad'), 'læringsapps under Lær og øv');
   assert.ok(!ids(member).includes('admin') && !ids(member).includes('owner') && !ids(member).includes('next'), 'skjulte og kommende apps vises ikke');
   assert.deepEqual(A.searchApps('skak', owner).map(a => a.id), ['chess']);
-  assert.equal(A.searchApps('økonomi', owner).length, 6, 'gruppens navn tæller med');
+  assert.equal(A.searchApps('økonomi', owner).length, 7, 'gruppens navn tæller med – Økonomi og dens seks dele');
+  assert.equal(A.searchApps('økonomi', owner)[0].id, 'economy', 'selve appen først');
   assert.equal(A.searchApps('kode', owner)[0].name.startsWith('Kode'), true, 'navnet først');
   assert.deepEqual(A.searchApps('   ', owner), []);
   const on = A.togglePin({}, 'budget');
@@ -1357,4 +1358,48 @@ console.log('apps ok');
   const I = await import('../web/js/core/appicons.js');
   for (const [id, d] of Object.entries(I.APP_GLYPHS)) assert.ok(!/<script|on\w+=/i.test(d), id);
   console.log('arbejdstilstand og læring ok');
+}
+
+// Notesbog: tekst, to-do, tabel og billede som tekst og Markdown, søgning, alle to-do'er, streger og formen på data
+{
+  const N = await import('../web/js/pages/notebook.js');
+  const d = N.starter(Date.UTC(2026, 10, 9));
+  assert.equal(d.books.length, 1); assert.equal(d.books[0].sections[0].pages[0].title, 'Velkommen til Notesbogen');
+  const p = d.books[0].sections[0].pages[0];
+  p.blocks.push({ id: 't9', kind: 'table', x: 40, y: 400, w: 300, rows: [['VLAN', 'Navn'], ['10', 'Kontor']] }, { id: 'i9', kind: 'image', x: 40, y: 500, w: 200, src: 'data:image/png;base64,AAAA', caption: 'Skabet' });
+  assert.equal(N.htmlText('Hej<br><b>du</b> &amp; mig<ul><li>en</li></ul>'), 'Hej\ndu & mig\n• en');
+  const md = N.pageMarkdown(p);
+  assert.ok(md.startsWith('# Velkommen til Notesbogen') && md.includes('**Tegn**') && md.includes('- [ ] Prøv Tegn og Viskelæder') && md.includes('(Idé)') && md.includes('| VLAN | Navn |\n|---|---|\n| 10 | Kontor |') && md.includes('_(billede: Skabet)_'), md);
+  assert.ok(N.pageText(p).includes('[ ] Lav en sektion'));
+  const hits = N.searchNotes(d, 'kontor');
+  assert.equal(hits.length, 1); assert.ok(hits[0].snippet.includes('Kontor'));
+  assert.equal(N.searchNotes(d, 'velkommen')[0].score, 2, 'titlen tæller mest');
+  assert.deepEqual(N.searchNotes(d, '  '), []);
+  assert.equal(N.allTodos(d).length, 3);
+  p.blocks[1].items[0].done = true; assert.equal(N.allTodos(d).length, 2, 'færdige tæller ikke');
+  const pts = [0, 0, 0.5, 0.2, 1, 0.4, 10, 10, 10.4, 10.2, 20, 20];
+  const s = N.simplify(pts); assert.ok(s.length < pts.length && s[0] === 0 && s.at(-1) === 20, String(s));
+  assert.ok(N.strokePath(s).startsWith('M0 0') && N.strokePath([5, 5]).startsWith('M5 5'));
+  assert.equal(N.hitStroke({ p: s }, 10, 11, 5), true); assert.equal(N.hitStroke({ p: s }, 60, 60, 5), false);
+  assert.ok(N.bottomOf(p) >= 500);
+  const m = N.migrate({ books: [{ id: 'b', name: 'X', sections: [{ id: 's', name: 'Y', pages: [{ id: 'p', title: 'Z' }] }] }], open: { book: 'nope' } });
+  assert.deepEqual(m.open, { book: 'b', section: 's', page: 'p' }); assert.deepEqual(m.books[0].sections[0].pages[0].blocks, []);
+  assert.equal(N.migrate(null).books.length, 1, 'tom = en ny notesbog');
+  console.log('notesbog ok');
+}
+
+// Økonomi er én app med faner; Office har Notesbog og Noter som faner
+{
+  const Rg = await import('../web/js/core/registry.js');
+  const A = await import('../web/js/features/appdrawer.js');
+  assert.deepEqual(Rg.appById('economy').parts, ['budget', 'savings', 'piggy', 'expenses', 'splitbill', 'loans']);
+  assert.ok(Rg.appById('economy').parts.every(id => Rg.appById(id).partOf === 'economy'));
+  const g = A.appGroups({ role: 'owner', admin: true });
+  assert.deepEqual(g.find(x => x.id === 'money').apps.map(a => a.id), ['economy'], 'én app');
+  assert.ok(!g.some(x => x.apps.some(a => a.partOf)), 'dele står ikke for sig');
+  assert.ok(g.find(x => x.id === 'office').apps.some(a => a.id === 'hubtech') && !g.find(x => x.id === 'more').apps.some(a => a.id === 'hubtech'));
+  const hit = A.searchApps('budget', g)[0];
+  assert.equal(hit.id, 'budget', 'søgningen finder stadig Budget');
+  assert.deepEqual(Rg.appById('hubtech').parts, ['notebook', 'notes']);
+  console.log('dele ok');
 }

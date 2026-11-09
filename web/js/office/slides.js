@@ -306,7 +306,7 @@ export function slidesEditor(doc, ctx) {
   }
 
   frame.body.append(h('div', { class: 'sl-layout' }, h('aside', { class: 'sl-side glass' }, list, h('button', { type: 'button', class: 'sl-add', onclick: (e) => addMenu(e.currentTarget) }, icon('plus'), 'Nyt dias')), h('div', { class: 'sl-main' }, h('div', { class: 'sl-stagewrap glass' }, stage), notes)));
-  frame.status.append(h('span', { class: 'faint' }, 'Træk diasene for at ændre rækkefølge · Træk et billede ind på diaset · Præsentér: ← → · N noter · S talervisning'));
+  frame.status.append(h('span', { class: 'faint' }, 'Træk diassene for at ændre rækkefølge · Træk et billede ind på diaset · Præsentér: ← → · N noter · S talervisning'));
   drawAll();
   return {
     el: frame.el,

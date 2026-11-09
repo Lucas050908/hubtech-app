@@ -142,6 +142,19 @@ class ApiTest(unittest.TestCase):
         st, body, _ = self.owner.req("PUT", "/api/me/prefs", {"theme": "light"}, headers={"Origin": "http://evil.example"})
         self.assertEqual(st, 403)
 
+    def test_gnist_model_list_through_the_real_server(self):
+        # Gnist's model list: the logged-in user is a database row here (not a dict as in the unit test)
+        st, body, _ = self.owner.req("GET", "/api/ai/external")
+        self.assertEqual(st, 200, body)
+        self.assertTrue(body["canEdit"])
+        self.assertEqual([t["ram"] for t in body["tiers"]], [4, 8, 16, 32])
+        self.assertIsInstance(body["cloud"], list)
+        st, body, _ = self.member.req("GET", "/api/ai/external")
+        self.assertEqual(st, 200, body)
+        self.assertFalse(body["canEdit"])
+        self.assertTrue(all(p["help"] == "" for p in body["providers"]), "kun ejeren ser hjælp til nøgler")
+        self.assertEqual(self.anon.req("GET", "/api/ai/external")[0], 401)
+
     def test_unauthenticated_is_401(self):
         st, _, _ = Client(self.base).req("GET", "/api/me")
         self.assertEqual(st, 401)

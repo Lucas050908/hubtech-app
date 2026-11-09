@@ -205,11 +205,12 @@ function officeHome() {
   page.append(
     appHero(app, {
       eyebrow: 'HUBTECH Office', title: 'HUBTECH Office',
-      lead: 'Skriv dokumenter, regn på regneark og lav præsentationer. Alt gemmes på din konto – og kan hentes som Word, Excel, PowerPoint og PDF.',
+      lead: 'Skriv dokumenter, regn på regneark, lav præsentationer og hold styr på det hele i Notesbogen. Alt gemmes på din konto – og kan hentes som Word, Excel, PowerPoint og PDF.',
       actions: [
         heroBtn('Nyt dokument', 'file', { onclick: quick('doc') }),
         heroGhost('Nyt regneark', 'grid', { onclick: quick('sheet') }),
         heroGhost('Ny præsentation', 'monitor', { onclick: quick('slides') }),
+        heroGhost('Notesbog', 'book', { onclick: () => { location.hash = '#/apps/notebook'; }, title: 'Notesbøger med sektioner og sider – skriv, tegn og sæt flueben' }),
         heroGhost('Åbn fil', 'upload', { onclick: () => fileInput.click(), title: 'Åbn .docx, .xlsx, .csv, .txt, .md eller .html' }), fileInput],
       stats: [
         { icon: 'file', label: 'Dokumenter', value: v.doc },

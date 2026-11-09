@@ -23,10 +23,11 @@ export const GUIDES = [
     sections: [
       { h: 'Ét univers, flere apps', p: 'HUBTECH samler dine værktøjer, projekter og læringsforløb i ét personligt arbejdsrum. Apps som Elværkstedet, ByteForge og Cursor Projekter deler login, profil, søgning og design – men har hver deres formål og farve.' },
       { h: 'Det vigtigste på 30 sekunder', list: [
-        'Hjem viser dine apps, seneste projekter, læring og aktivitet.',
-        'Dashboard samler din fremdrift, favoritter og status for integrationer.',
-        'Søg alt med Ctrl+K (⌘K på Mac) – apps, guides, kursusdage og projekter.',
-        'Baggrunden er en levende verden med fire årstider. Styr den under Indstillinger → Verden.',
+        'Hjem viser dagens aftaler og opgaver, hvor du slap sidst, og et tip fra Gnist.',
+        'Menuen med ikoner til venstre har de faste steder og dine egne genveje. Med + tilføjer du en app, en side eller en hjemmeside.',
+        'Alle apps samler alle apps i grupper – klik på nålen for at fastgøre en app i menuen.',
+        'Søg i alt med Ctrl+K (⌘K på Mac) – apps, Office-filer, guides, lektioner og projekter.',
+        'Arbejdstilstand i topbjælken gør skærmen lettere for øjnene, når du arbejder længe.',
       ] },
       { callout: { kind: 'info', text: 'Alt du gør gemmes på din konto i HUBTECH-serverens database – ikke kun i browseren – så du kan fortsætte fra en anden computer.' } },
     ],
@@ -49,13 +50,13 @@ export const GUIDES = [
   },
   {
     id: 'launcher', category: 'platform', app: 'hubtech', icon: 'apps', minutes: 1,
-    title: 'App-launcher og søgning',
+    title: 'Alle apps og søgning',
     summary: 'Åbn apps, fastgør dem i menuen og find alt med Ctrl+K.',
     sections: [
       { steps: [
-        { t: 'Åbn launcheren', d: 'Vælg “Apps” i menuen. Her ser du alle apps, deres status og om de kræver en integration.' },
-        { t: 'Fastgør i menuen', d: 'Tryk på nålen på et app-kort for at vise appen under “Dine apps” i sidebaren.' },
-        { t: 'Søg overalt', d: 'Tryk Ctrl+K (⌘K). Søgningen dækker apps, guides, kursusdage, projekter og kommandoer som “Skift til vinter”.', code: 'Ctrl + K' },
+        { t: 'Åbn Alle apps', d: 'Vælg “Alle apps” i menuen til venstre. Her ser du alle apps i grupper med søgning øverst – og “Vis som side”, hvis du vil have dem på en hel side.' },
+        { t: 'Fastgør i menuen', d: 'Klik på nålen ved en app, så står den som genvej i menuen til venstre. Med + i menuen kan du også tilføje en side eller en hjemmeside.' },
+        { t: 'Søg overalt', d: 'Tryk Ctrl+K (⌘K). Søgningen dækker apps, Office-filer, guides, lektioner, projekter og kommandoer som “Skift lys/mørk tilstand”.', code: 'Ctrl + K' },
         { t: 'Genveje', d: 'Tryk G og derefter H, D, P, L, A eller S for at hoppe til Hjem, Dashboard, Projekter, Læring, Apps eller Indstillinger. Tryk ? for oversigten.' },
       ] },
     ],

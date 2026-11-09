@@ -18,11 +18,11 @@ export function prefixFromMask(mask) {
 export function subnet(input) {
   const s = String(input || '').trim();
   const m = s.match(/^(\d+\.\d+\.\d+\.\d+)\s*(?:\/\s*(\d{1,2})|\s+(\d+\.\d+\.\d+\.\d+))?$/);
-  if (!m) return { error: 'Skriv en IP-adresse med prefiks, fx 192.168.1.10/24.' };
+  if (!m) return { error: 'Skriv en IP-adresse med præfiks, fx 192.168.1.10/24.' };
   const ip = ipToInt(m[1]);
   if (ip === null) return { error: 'IP-adressen er ugyldig – hvert tal skal være 0–255.' };
   let prefix = m[2] !== undefined ? Number(m[2]) : m[3] ? prefixFromMask(m[3]) : 24;
-  if (prefix === null || prefix > 32) return { error: 'Ugyldig subnetmaske/prefiks (0–32).' };
+  if (prefix === null || prefix > 32) return { error: 'Ugyldig subnetmaske/præfiks (0–32).' };
   const mask = maskFromPrefix(prefix);
   const size = 2 ** (32 - prefix);
   const network = Math.floor(ip / size) * size;

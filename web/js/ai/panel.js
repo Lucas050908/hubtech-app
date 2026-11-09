@@ -528,7 +528,10 @@ let extInfo = null;
 async function drawExternal(box) {
   const first = !extInfo;
   if (first) h(clear(box), null, h('p', { class: 'faint' }, 'Leder efter Ollama/LM Studio …'));
-  try { extInfo = await fetch('/api/ai/external', { headers: { 'X-Requested-With': 'hubtech' } }).then(r => r.json()); } catch { extInfo = { ok: false, models: [], tiers: [] }; }
+  try {
+    const res = await fetch('/api/ai/external', { headers: { 'X-Requested-With': 'hubtech' } });
+    extInfo = res.ok ? await res.json() : { ok: false, models: [], tiers: [] };
+  } catch { extInfo = { ok: false, models: [], tiers: [] }; }
   if (first && ((extInfo.ok && extInfo.models.length) || (extInfo.cloud || []).length)) drawSettings();   // the model list now includes the big models and the cloud
   const have = new Set((extInfo.models || []).map(m => m.id));
   const use = (id) => { cfg.model = 'ext:' + id; saveCfg(); drawSettings(); start(true); };

@@ -39,14 +39,14 @@ const SHORT = { hubtech: 'Office', calendar: 'Kalender', tasks: 'Opgaver' };
 export function dockEntry(id, u = store.get('user')) {
   if (DOCK_PLACES[id]) return DOCK_PLACES[id];
   if (id.startsWith(SC)) return shortcutEntry(id, store.get('prefs')?.widgets || {});   // your own shortcut: a page or a website
-  const a = appById(id);
+  const a0 = appById(id), a = a0?.partOf ? appById(a0.partOf) : a0;
   if (!a || !access(a, u).ok) return null;
-  const route = a.route.replace(/^#/, '');
-  return { id, label: SHORT[id] || a.name, icon: a.icon, href: a.route, hue: a.hue, match: (p) => p.startsWith(route) };
+  const routes = [a, ...(a.parts || []).map(appById).filter(Boolean)].map(x => x.route.replace(/^#/, ''));
+  return { id: a.id, label: SHORT[a.id] || a.name, icon: a.icon, href: a.route, hue: a.hue, match: (p) => routes.some(r => p === r || p.startsWith(r + '/')) };
 }
 function dockItems() {
   const u = store.get('user');
-  return dockIds(store.get('prefs')?.widgets || {}).map(id => dockEntry(id, u)).filter(Boolean);
+  return dockIds(store.get('prefs')?.widgets || {}).map(id => dockEntry(id, u)).filter((e, i, all) => e && all.findIndex(x => x?.id === e.id) === i);
 }
 let dockTab = null;
 const dockMin = () => { try { return localStorage.getItem('hubtech.dockMin') === '1'; } catch { return false; } };
@@ -80,7 +80,7 @@ function renderDock() {
 const RAIL = [
   { id: 'home', label: 'Hjem', icon: 'home', href: '#/', match: (p) => p === '/' },
   { id: 'projects', label: 'Projekter', icon: 'chat', href: '#/apps/projects', match: (p) => p.startsWith('/apps/projects'), app: 'projects' },
-  { id: 'hubtech', label: 'Office', icon: 'office', href: '#/apps/hubtech', match: (p) => p.startsWith('/apps/hubtech'), app: 'hubtech' },
+  { id: 'hubtech', label: 'Office', icon: 'office', href: '#/apps/hubtech', match: (p) => /^\/apps\/(hubtech|notebook|notes)(\/|$)/.test(p), app: 'hubtech' },
   { id: 'calendar', label: 'Kalender', icon: 'calendar', href: '#/apps/calendar', match: (p) => p.startsWith('/apps/calendar'), app: 'calendar' },
   { id: 'tasks', label: 'Opgaver', icon: 'kanban', href: '#/apps/tasks', match: (p) => p.startsWith('/apps/tasks'), app: 'tasks' },
   { id: 'codepad', label: 'Kode-editor', icon: 'code', href: '#/learn/codepad', match: (p) => p.startsWith('/learn/codepad'), app: 'codepad' },
@@ -96,7 +96,7 @@ const RAIL_IDS = new Set(RAIL.filter(r => r.id).map(r => r.id));
 let railPins = [];
 let railKey = '';
 const RAIL_MAX_PINS = 8;
-const pinsNow = (u = store.get('user')) => dockIds(store.get('prefs')?.widgets || {}).filter(id => !RAIL_IDS.has(id)).map(id => dockEntry(id, u)).filter(Boolean).slice(0, RAIL_MAX_PINS);
+const pinsNow = (u = store.get('user')) => dockIds(store.get('prefs')?.widgets || {}).map(id => dockEntry(id, u)).filter((e, i, all) => e && !RAIL_IDS.has(e.id) && all.findIndex(x => x?.id === e.id) === i).slice(0, RAIL_MAX_PINS);
 const pinsKey = (u, pins) => `${u?.id}|${pins.map(p => `${p.id}:${p.label}`).join(',')}`;
 function pinMenu(el, at) {
   const order = [...railEl.querySelectorAll('.irail-item.is-pin')].map(x => x.dataset.id);

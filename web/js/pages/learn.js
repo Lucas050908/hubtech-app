@@ -90,7 +90,7 @@ export default {
           icon('arrowRight'));
       };
       makerSlot.replaceChildren(
-        h('div', { class: 'guide-head' }, h('h2', null, icon('graduation'), 'Kurser'), h('span', { class: 'faint' }, `${MAKER_COURSES.length} kurser · ${MAKER_COURSES.reduce((a, c) => a + c.days.length, 0)} lektioner – alt fra læringsappene og maskinerne`)),
+        h('div', { class: 'guide-head' }, h('h2', null, icon('graduation'), 'Kurser'), h('span', { class: 'faint' }, `${MAKER_COURSES.length} kurser · ${MAKER_COURSES.reduce((a, c) => a + c.days.length, 0)} lektioner – alt fra læringsappsene og maskinerne`)),
         ...MAKER_GROUPS.map(([g, label]) => {
           const list = MAKER_COURSES.map((c, i) => [c, i]).filter(([c]) => c.group === g);
           return h('div', null, h('h3', { class: 'guide-cat' }, label), h('div', { class: 'guide-grid' }, list.map(([c, i]) => card(c, i))));

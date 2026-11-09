@@ -18,7 +18,7 @@
  */
 export const APPS = [
   {
-    id: 'hubtech', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark og præsentationer.',
+    id: 'hubtech', name: 'HUBTECH Office', tagline: 'Dokumenter, regneark, præsentationer og notesbøger.', parts: ['notebook', 'notes'], tabLabel: 'Filer', tabIcon: 'folder',
     description: 'Dit kontorprogram: tekstbehandling, regneark med formler og præsentationer med præsentationstilstand. Åbn Word- og Excel-filer, og gem som Word, Excel, PowerPoint og PDF.',
     icon: 'hubtech', hue: 'var(--hue-hubtech)', route: '#/apps/hubtech', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'night', focusX: 0.55, tint: '#2f6bff' }, page: () => import('../pages/hubtech.js'),
@@ -48,7 +48,7 @@ export const APPS = [
   },
   {
     id: 'linux', name: 'Linux-terminal', tagline: 'En rigtig Linux at lege i – lige som Termux.',
-    description: 'En ægte Linux (Buildroot · Linux 6.8 · BusyBox) der kører i en lukket maskine på din enhed: shell, vi, less, top, Lua og 200 andre kommandoer, ekstra tastrække som i Termux, og maskinen gemmes, så dine filer er der næste gang. Ingen adgang til din computer eller internettet.',
+    description: 'En ægte Linux (Buildroot · Linux 6.8 · BusyBox) der kører i en lukket maskine på din enhed: shell, vi, less, top, Lua og 200 andre kommandoer, ekstra tasterække som i Termux, og maskinen gemmes, så dine filer er der næste gang. Ingen adgang til din computer eller internettet.',
     icon: 'terminal', hue: '#f97316', route: '#/learn/linux', category: 'learning', status: 'available',
     art: { season: 'autumn', time: 'dusk', focusX: 0.4, tint: '#f97316' }, page: () => import('../pages/linux.js'),
     keywords: ['linux', 'terminal', 'termux', 'shell', 'bash', 'kommandolinje', 'konsol', 'busybox', 'vi', 'ubuntu', 'kommandoer'],
@@ -97,7 +97,7 @@ export const APPS = [
     keywords: ['todo', 'to-do', 'kanban', 'opgave', 'deadline', 'board', 'plan'],
   },
   {
-    id: 'notes', name: 'Noter', tagline: 'Hurtige noter, gemt på din konto.',
+    id: 'notes', partOf: 'hubtech', name: 'Noter', tagline: 'Hurtige noter, gemt på din konto.',
     description: 'Skriv idéer, mødenoter og huskelister. Søg, fastgør og farv dem – alt gemmes automatisk på serveren, så de følger dig på alle enheder.',
     icon: 'note', hue: 'var(--hue-notes)', route: '#/apps/notes', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'dusk', focusX: 0.4, tint: '#ff9500' }, page: () => import('../pages/notes.js'),
@@ -154,7 +154,7 @@ export const APPS = [
   },
   {
     id: 'studio', name: 'App-værksted', tagline: 'Byg dine egne apps – med AI-hjælp.',
-    description: 'En kode-editor til HTML, CSS og JavaScript med live forhåndsvisning og konsol. Gnist, din lokale AI-assistent, kan skrive og rette koden for dig. Appene kører sikkert inde i HUBTECH, gemmer deres data på din konto og kan deles med andre brugere.',
+    description: 'En kode-editor til HTML, CSS og JavaScript med live forhåndsvisning og konsol. Gnist, din lokale AI-assistent, kan skrive og rette koden for dig. Appsene kører sikkert inde i HUBTECH, gemmer deres data på din konto og kan deles med andre brugere.',
     icon: 'code', hue: 'var(--hue-studio)', route: '#/apps/studio', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'dusk', focusX: 0.6, tint: '#fbbf24' }, page: () => import('../pages/studio.js'),
     keywords: ['kode', 'editor', 'app', 'html', 'css', 'javascript', 'ai', 'byg', 'program', 'web', 'værksted', 'ide'],
@@ -244,7 +244,21 @@ export const APPS = [
     keywords: ['tjekliste', 'checkliste', 'kundebesøg', 'ny computer', 'opsætning', 'backup', 'skabelon'],
   },
   {
-    id: 'budget', name: 'Budget', tagline: 'Styr på pengene.',
+    id: 'economy', name: 'Økonomi', tagline: 'Budget, opsparing, fællesudgifter og udlån – ét sted.',
+    description: 'Alt om penge i én app: budgettet for måneden, opsparing med renters rente, sparegrisen til dine mål, fællesudgifter med venner, del regningen og hvem der har lånt hvad. Hver del har sin egen fane.',
+    icon: 'wallet', hue: 'var(--hue-budget)', route: '#/apps/economy', category: 'workspace', status: 'available', parts: ['budget', 'savings', 'piggy', 'expenses', 'splitbill', 'loans'], tabLabel: 'Overblik', tabIcon: 'dashboard',
+    art: { season: 'summer', time: 'day', focusX: 0.45, tint: '#10b981' }, page: () => import('../pages/economy.js'),
+    keywords: ['økonomi', 'penge', 'budget', 'opsparing', 'sparegris', 'udlån', 'regning', 'fællesudgifter', 'løn'],
+  },
+  {
+    id: 'notebook', partOf: 'hubtech', name: 'Notesbog', tagline: 'Notesbøger med sektioner og sider – skriv, tegn og sæt flueben.',
+    description: 'Som et ringbind: notesbøger med farvede sektioner, sider og undersider. Klik hvor som helst på siden for at skrive, tegn med musen eller fingeren, lav tjeklister og tabeller, og indsæt billeder. Sæt mærker som Vigtigt og Spørgsmål, se alle to-do’er samlet, søg i det hele, lad Gnist opsummere en side og lave opgaver – og send en side til et projekt.',
+    icon: 'book', hue: '#b07ad8', route: '#/apps/notebook', category: 'workspace', status: 'available',
+    art: { season: 'autumn', time: 'dusk', focusX: 0.4, tint: '#b07ad8' }, page: () => import('../pages/notebook.js'),
+    keywords: ['notesbog', 'ringbind', 'sektion', 'side', 'tegn', 'skitse', 'to-do', 'tjekliste', 'mødenoter', 'noter'],
+  },
+  {
+    id: 'budget', partOf: 'economy', name: 'Budget', tagline: 'Styr på pengene.',
     description: 'Indtægter og udgifter pr. måned, hvad pengene går til, og hvad der er tilbage. Faste poster kopieres til næste måned med ét klik.',
     icon: 'chart', hue: 'var(--hue-budget)', route: '#/apps/budget', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'day', focusX: 0.45, tint: '#10b981' }, page: () => import('../pages/budget.js'),
@@ -272,7 +286,7 @@ export const APPS = [
     keywords: ['formular', 'spørgeskema', 'tilmelding', 'survey', 'feedback', 'undersøgelse', 'excel', 'svar'],
   },
   {
-    id: 'expenses', name: 'Fællesudgifter', tagline: 'Hvem skylder hvem?',
+    id: 'expenses', partOf: 'economy', name: 'Fællesudgifter', tagline: 'Hvem skylder hvem?',
     description: 'Skriv hvem der betalte hvad på turen, i bofællesskabet eller til festen. HUBTECH regner ud, hvem der skal betale hvem – med færrest mulige overførsler.',
     icon: 'wallet', hue: 'var(--hue-expenses)', route: '#/apps/expenses', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#4ade80' }, page: () => import('../pages/expenses.js'),
@@ -335,7 +349,7 @@ export const APPS = [
     keywords: ['koder', 'hemmelige beskeder', 'morse', 'cæsar', 'kryptering', 'binær', 'gåder'],
   },
   {
-    id: 'loans', name: 'Udlån', tagline: 'Hvem har din bog?',
+    id: 'loans', partOf: 'economy', name: 'Udlån', tagline: 'Hvem har din bog?',
     description: 'Hold styr på hvad du har lånt ud, og hvad du selv har lånt – med afleveringsdato og besked, når noget er for sent.',
     icon: 'share', hue: 'var(--hue-loans)', route: '#/apps/loans', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#38bdf8' }, page: () => import('../pages/home2.js').then(m => ({ default: m.loans })),
@@ -356,7 +370,7 @@ export const APPS = [
     keywords: ['find en dato', 'dato', 'mødeplanlægning', 'afstemning', 'hvornår', 'aftale', 'fest'],
   },
   {
-    id: 'savings', name: 'Opsparing', tagline: 'Renters rente på en opsparing.',
+    id: 'savings', partOf: 'economy', name: 'Opsparing', tagline: 'Renters rente på en opsparing.',
     description: 'Se hvad der sker, når man sparer op hver måned – og hvordan renter på renter får pengene til at vokse over tid.',
     icon: 'wallet', hue: 'var(--hue-savings)', route: '#/apps/savings', category: 'workspace', status: 'available',
     art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#10b981' }, page: () => import('../pages/batch8.js').then(m => ({ default: m.savings })),
@@ -377,7 +391,7 @@ export const APPS = [
     keywords: ['genveje', 'tastaturgenveje', 'ctrl', 'windows', 'mac', 'it', 'lær'],
   },
   {
-    id: 'splitbill', name: 'Del regningen', tagline: 'Hvem skal betale hvad?',
+    id: 'splitbill', partOf: 'economy', name: 'Del regningen', tagline: 'Hvem skal betale hvad?',
     description: 'Del regningen ligeligt med drikkepenge og oprunding – eller regn ud, hvem der skylder hvem, når I har lagt forskelligt ud.',
     icon: 'wallet', hue: 'var(--hue-splitbill)', route: '#/apps/splitbill', category: 'workspace', status: 'available',
     art: { season: 'spring', time: 'day', focusX: 0.5, tint: '#16a34a' }, page: () => import('../pages/batch10.js').then(m => ({ default: m.splitbill })),
@@ -412,7 +426,7 @@ export const APPS = [
     keywords: ['farver', 'farvekode', 'hex', 'rgb', 'palette', 'kontrast', 'design', 'wcag'],
   },
   {
-    id: 'piggy', name: 'Sparegris', tagline: 'Spar op til dine mål.',
+    id: 'piggy', partOf: 'economy', name: 'Sparegris', tagline: 'Spar op til dine mål.',
     description: 'Sæt sparemål, sæt penge ind og se hvor mange uger der er til, du har råd. Grisen fyldes op, efterhånden som du sparer.',
     icon: 'wallet', hue: 'var(--hue-piggy)', route: '#/apps/piggy', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'day', focusX: 0.5, tint: '#f9a8d4' }, page: () => import('../pages/tools2.js').then(m => ({ default: m.piggy })),

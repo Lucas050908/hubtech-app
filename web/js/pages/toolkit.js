@@ -194,7 +194,7 @@ function capCode() {
 
 // ── IT & network tools ─────────────────────────────────────────────────
 function subnetTool() {
-  const ip = field('IP-adresse og prefiks', '', { value: '192.168.1.10/24', placeholder: '192.168.1.10/24 eller 10.0.0.5 255.255.255.0', inputmode: 'text' });
+  const ip = field('IP-adresse og præfiks', '', { value: '192.168.1.10/24', placeholder: '192.168.1.10/24 eller 10.0.0.5 255.255.255.0', inputmode: 'text' });
   const o = out();
   const calc = () => {
     const r = subnet(ip.inp.value);
@@ -207,7 +207,7 @@ function subnetTool() {
   };
   ip.inp.addEventListener('input', calc);
   calc();
-  return tool('subnet', 'Subnetberegner', 'globe', 'Netværk, broadcast og værtsområde for en IPv4-adresse. Prefiks (/24) eller maske (255.255.255.0) – begge virker.', h('div', null, ip.el, o));
+  return tool('subnet', 'Subnetberegner', 'globe', 'Netværk, broadcast og værtsområde for en IPv4-adresse. Præfiks (/24) eller maske (255.255.255.0) – begge virker.', h('div', null, ip.el, o));
 }
 
 function basesTool() {

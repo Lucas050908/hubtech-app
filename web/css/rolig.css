@@ -356,3 +356,6 @@ a.tb-crumb-t:hover { color: var(--accent-2); }
   :root[data-look="rolig"] .top-actions { gap: 2px; margin-left: auto; }
   .tb-pop { position: fixed; top: calc(var(--topbar-h, 60px) + 6px); right: 8px; left: 8px; width: auto; }
 }
+
+/* deadlines from Opgaver in the calendar: small text, so a bit more contrast */
+:root[data-look="rolig"] .cal-task { color: color-mix(in srgb, var(--hue-tasks) 62%, var(--text)); }

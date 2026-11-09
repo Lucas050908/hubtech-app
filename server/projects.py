@@ -527,9 +527,9 @@ def commit(req, params):
     title = body_str(b, "title", 120).strip()
     descr = body_str(b, "descr", 4000).strip()
     if len(title) < 3:
-        raise ApiError(400, "Giv ændringen en titel (mindst 3 tegn).", "title")
+        raise ApiError(400, "Giv committen en titel (mindst 3 tegn).", "title")
     if len(descr) < 10:
-        raise ApiError(400, "Beskriv ændringen: hvad er ændret, og hvorfor (mindst 10 tegn).", "descr")
+        raise ApiError(400, "Beskriv committen: hvad er ændret, og hvorfor (mindst 10 tegn).", "descr")
     raw = b.get("files")
     if not isinstance(raw, list) or not raw:
         raise ApiError(400, "Der er ingen ændrede filer.", "empty")

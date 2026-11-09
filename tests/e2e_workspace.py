@@ -167,8 +167,10 @@ async def main():
             check("budget: ret en post", "4.800" in await p1.inner_text(".bd-row:has-text('Husleje')") and await p1.locator(".bd-bar.is-over").count() == 0)
             check("budget: de sidste 12 måneder", await p1.locator(".bd-yb").count() == 12)
             await p1.screenshot(path=f"{OUT}/budget.png", full_page=True)
-            await p1.click(".bd-row:has-text('Husleje') button[aria-label^='Slet']"); await p1.click(".toast button:has-text('Fortryd')"); await p1.wait_for_timeout(300)
-            check("budget: slet kan fortrydes", await p1.locator(".bd-row").count() == 2)
+            await p1.click(".bd-row:has-text('Husleje') button[aria-label^='Slet']"); await p1.locator(".toast button:has-text('Fortryd')").last.click()
+            try: await p1.wait_for_function("document.querySelectorAll('.bd-row').length === 2", timeout=4000); undone = True
+            except Exception: undone = False
+            check("budget: slet kan fortrydes", undone, await p1.locator(".bd-row").count())
             await api(p1, "PUT", "/api/state/calendar", {"state": {"events": []}})
             await p1.goto(BASE + "/#/"); await p1.wait_for_selector(".home-title")
             await p1.keyboard.press("Control+k"); await p1.wait_for_selector(".palette-input")
@@ -351,7 +353,7 @@ async def main():
             # machine and software courses
             await p1.goto(BASE + "/#/learn"); await p1.wait_for_selector(".maker-courses .guide-card", timeout=10000)
             n = await p1.locator(".maker-courses .guide-card").count()
-            check("kurser: læringsappenes og maskinernes kurser i Guides & Læring", n >= 25, n)
+            check("kurser: læringsappsenes og maskinernes kurser i Guides & Læring", n >= 25, n)
             await p1.screenshot(path=f'{OUT}/ws-kurser.png', full_page=False)
             await p1.click(".maker-courses .guide-card[data-course='lightburn']"); await p1.wait_for_selector(".day-grid")
             check("kurser: LightBurn-oversigten viser lektioner", "lektioner" in (await p1.inner_text(".course-page")).lower() and await p1.locator(".day-tile").count() >= 5)

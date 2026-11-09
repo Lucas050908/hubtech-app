@@ -57,9 +57,10 @@ def probe(url):
 
 def status(req, _):
     u = require_user(req)
+    owner = u["role"] == "owner"     # the user is a database row, not a dict
     url = base_url()
-    out = {"url": url, "tiers": TIERS, "canEdit": u.get("role") == "owner", **probe(url),
-           "cloud": cloud_list(), "providers": cloud_providers(u.get("role") == "owner")}
+    out = {"url": url, "tiers": TIERS, "canEdit": owner, **probe(url),
+           "cloud": cloud_list(), "providers": cloud_providers(owner)}
     return 200, out
 
 

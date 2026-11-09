@@ -5,7 +5,7 @@ import { store, loadUserData, resetSessionState } from './core/store.js';
 import { route, startRouter, navigate, currentPath } from './core/router.js';
 import { buildShell, hasShell, getOutlet, setActiveNav } from './core/shell.js';
 import { appById, access, isLearnApp, suiteOf } from './core/registry.js';
-import { learnTabs } from './features/learnnav.js';
+import { learnTabs, partTabs } from './features/learnnav.js';
 import { initAutoSync } from './features/autosync.js';
 import { startLive } from './core/live.js';
 import { initWorld, setFocus } from './world/controller.js';
@@ -114,7 +114,9 @@ async function onRoute({ path, route: r, params }) {
     if (!acc.ok) return showInShell(lockedPage(app, acc), { title: app.name }, seq);
     try { const k = 'hubtech.recentApps', cur = JSON.parse(localStorage.getItem(k) || '[]').filter(x => x !== app.id); localStorage.setItem(k, JSON.stringify([app.id, ...cur].slice(0, 12))); } catch { /* */ }
     const mod = await app.page();
-    return showInShell(mod.default, { params, app }, seq);
+    // an app made of parts (Økonomi, HUBTECH Office): a tab per part – on the parts and on the app's own front page
+    const tabsFor = app.partOf ? appById(app.partOf) : app.parts && !params.sub ? app : null;
+    return showInShell(mod.default, { params, app, tabsFor }, seq);
   }
   const mod = await r.loader();
   return showInShell(mod.default, { params, app: r.app ? appById(r.app) : null }, seq);
@@ -148,7 +150,7 @@ async function showInShell(mod, opts = {}, seq) {
   try { await Promise.race([prev, new Promise(r => setTimeout(r, 8000))]); if (seq !== renderSeq) return; await showInShellNow(mod, opts, seq); }
   finally { release(); }
 }
-async function showInShellNow(mod, { params = {}, app = null, title, focus } = {}, seq) {
+async function showInShellNow(mod, { params = {}, app = null, title, focus, tabsFor = null } = {}, seq) {
   if (!hasShell()) { buildShell(root); initAutoSync(); startLive(); import('./ai/panel.js').then(m => m.initAssistant()).catch(e => console.error(e)); import('./features/calls.js').then(m => m.initCalls()).catch(e => console.error(e)); import('./features/bgm.js').then(m => m.initBgm()).catch(e => console.error(e)); initGamepad(); }
   const outlet = getOutlet();
   setActiveNav(currentPath());
@@ -172,6 +174,7 @@ async function showInShellNow(mod, { params = {}, app = null, title, focus } = {
   if (seq !== renderSeq) { try { mod.destroy?.(); } catch { /* */ } return; }
   activePage = mod;
   if (currentPath().startsWith('/learn') && node?.classList?.contains('page')) node.prepend(learnTabs(currentPath()));
+  else if (tabsFor && node?.classList?.contains('page')) node.prepend(partTabs(tabsFor, currentPath()));
   outlet.appendChild(node);
   document.title = `${title || mod.title || app?.name || 'HUBTECH'} · HUBTECH`;
   window.scrollTo(0, 0);

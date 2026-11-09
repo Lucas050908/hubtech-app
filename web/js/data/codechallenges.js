@@ -67,7 +67,7 @@ export const CHALLENGES = [
   { id: 'factorial', title: 'Fakultet', level: 2, points: 20, topic: 'Løkker',
     text: 'n! (n-fakultet) er 1 · 2 · 3 · … · n, og 0! er 1. Skriv **fakultet(n)**.', fn: 'fakultet',
     start: 'function fakultet(n) {\n  \n}\n', tests: [T([0], 1), T([1], 1), T([5], 120), T([10], 3628800)],
-    hint: 'Start med resultat = 1 og gang med i i en løkke fra 2 til n.', solution: 'function fakultet(n) {\n  let r = 1;\n  for (let i = 2; i <= n; i++) r *= i;\n  return r;\n}' },
+    hint: 'Start med resultat = 1. Lav en løkke fra 2 til n, og gang resultatet med tallet hver gang.', solution: 'function fakultet(n) {\n  let r = 1;\n  for (let i = 2; i <= n; i++) r *= i;\n  return r;\n}' },
   { id: 'fib', title: 'Fibonacci', level: 2, points: 20, topic: 'Løkker',
     text: 'Fibonacci-tallene starter 0, 1, og hvert nyt tal er summen af de to forrige: 0, 1, 1, 2, 3, 5, 8 … Skriv **fib(n)**, der returnerer det n\'te tal (fib(0) = 0).', fn: 'fib',
     start: 'function fib(n) {\n  \n}\n', tests: [T([0], 0), T([1], 1), T([7], 13), T([20], 6765), T([50], 12586269025)],

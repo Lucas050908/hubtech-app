@@ -25,19 +25,20 @@ const usable = (a, user) => !!a && !!a.page && a.status !== 'coming' && visible(
 
 /** Every app the user can open, in groups: [{ id, name, icon, hue, apps }]. */
 export function appGroups(user) {
-  const grouped = new Set(SUITES.flatMap(s => s.members));
+  const lift = (a) => (a?.partOf ? appById(a.partOf) : a);
+  const grouped = new Set(SUITES.flatMap(s => s.members.flatMap(id => [id, appById(id)?.partOf].filter(Boolean))));
   const out = [];
   for (const key of ORDER) {
     let g;
-    if (key === '_more') g = { id: 'more', name: 'Gnist og fællesskab', icon: 'sparkles', apps: APPS.filter(a => a.category === 'workspace' && !grouped.has(a.id)) };
+    if (key === '_more') g = { id: 'more', name: 'Gnist og fællesskab', icon: 'sparkles', apps: APPS.filter(a => a.category === 'workspace' && !a.partOf && !grouped.has(a.id)) };
     else if (key === '_learn') g = { id: 'learn', name: 'Lær og øv', icon: 'graduation', apps: [appById('learning'), ...LEARN_APPS] };
     else if (key === '_system') g = { id: 'system', name: 'System', icon: 'settings', apps: APPS.filter(a => a.category === 'system') };
     else { const s = SUITES.find(x => x.id === key); if (!s) continue; g = { id: s.id, name: s.name, icon: s.icon, hue: s.hue, apps: s.members.map(appById) }; }
-    g.apps = g.apps.filter(a => usable(a, user));
+    g.apps = [...new Map(g.apps.map(lift).filter(a => usable(a, user)).map(a => [a.id, a])).values()];
     if (g.apps.length) out.push(g);
   }
   const seen = new Set(out.flatMap(g => g.apps.map(a => a.id)));
-  const rest = APPS.filter(a => usable(a, user) && !seen.has(a.id) && !isLearnApp(a));
+  const rest = APPS.filter(a => usable(a, user) && !a.partOf && !seen.has(a.id) && !isLearnApp(a));
   if (rest.length) out.push({ id: 'other', name: 'Andre apps', icon: 'apps', apps: rest });
   return out;
 }
@@ -49,8 +50,8 @@ export function searchApps(q, groups) {
   const n = norm(q.trim());
   if (!n) return [];
   const hits = [];
-  for (const g of groups) for (const a of g.apps) {
-    const name = norm(a.name), hay = norm([a.tagline, a.description, g.name, ...(a.keywords || [])].join(' '));
+  for (const g of groups) for (const a of g.apps.flatMap(x => [x, ...(x.parts || []).map(appById).filter(Boolean)])) {
+    const name = norm(a.name), hay = norm([a.tagline, a.description, g.name, a.partOf ? appById(a.partOf)?.name : '', ...(a.keywords || [])].join(' '));
     const sc = name.startsWith(n) ? 4 : name.split(/[\s-]+/).some(w => w.startsWith(n)) ? 3 : name.includes(n) ? 2 : hay.includes(n) ? 1 : 0;
     if (sc && !hits.some(x => x.a.id === a.id)) hits.push({ a, sc });
   }
@@ -120,12 +121,13 @@ export function appBrowser({ mode = 'page', onGo = () => {} } = {}) {
     const on = isPinned(a.id);
     return h('button', { type: 'button', class: 'ab-pin', dataset: { pin: a.id }, 'aria-pressed': String(on), 'aria-label': on ? `Fjern ${a.name} fra menuen` : `Fastgør ${a.name} i menuen`, title: on ? 'Fastgjort i menuen – klik for at fjerne' : 'Fastgør i menuen', onclick: () => pin(a) }, icon(on ? 'pinFill' : 'pin'));
   };
-  const row = (a, first = false) => h('li', { class: ['ab-row', first && 'is-first'], style: { '--app': a.hue } },
+  const parts = (a) => (a.parts ? h('div', { class: 'ab-parts' }, a.parts.map(appById).filter(Boolean).map(p => h('a', { class: 'ab-part', href: p.route, onclick: () => onGo(p) }, p.name))) : null);
+  const row = (a, first = false) => h('li', { class: ['ab-row', first && 'is-first', a.parts && 'has-parts'], style: { '--app': a.hue } },
     h('a', { class: 'ab-link', href: a.route, onclick: () => onGo(a) },
       h('span', { class: 'ab-ico' }, appGlyph(a)),
       h('span', { class: 'ab-txt' }, h('b', null, a.name), a.tagline ? h('small', null, a.tagline) : null),
       first ? h('kbd', { class: 'ab-enter', 'aria-hidden': 'true' }, 'Enter') : null),
-    pinBtn(a));
+    pinBtn(a), parts(a));
   const tile = (a) => h('li', { class: 'ab-tile', style: { '--app': a.hue } },
     h('a', { class: 'ab-link ab-tile-a', href: a.route, onclick: () => onGo(a), ...(a.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}) }, h('span', { class: 'ab-ico ab-ico-lg' }, appGlyph(a)), h('span', { class: 'ab-tile-n' }, a.name)),
     PLACES[a.id] ? null : pinBtn(a));

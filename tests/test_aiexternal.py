@@ -14,6 +14,14 @@ os.environ.setdefault("HUBTECH_DATA_DIR", tempfile.mkdtemp())
 from server import aiexternal, db  # noqa: E402
 
 
+def row(**kw):
+    """A user as the server has it: a sqlite3.Row (no .get()), not a dict."""
+    import sqlite3
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    return c.execute("SELECT " + ", ".join(f"? AS {k}" for k in kw), tuple(kw.values())).fetchone()
+
+
 class FakeOllama(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -65,8 +73,8 @@ class AiExternalTest(unittest.TestCase):
         cls.srv.shutdown()
 
     def setUp(self):
-        self.p = [mock.patch.object(aiexternal, "require_user", return_value={"id": 1, "role": "owner"}),
-                  mock.patch.object(aiexternal, "require_owner", return_value={"id": 1, "role": "owner"})]
+        self.p = [mock.patch.object(aiexternal, "require_user", return_value=row(id=1, role="owner")),
+                  mock.patch.object(aiexternal, "require_owner", return_value=row(id=1, role="owner"))]
         for x in self.p:
             x.start()
 
@@ -95,6 +103,12 @@ class AiExternalTest(unittest.TestCase):
             aiexternal.pull(Req({"model": "a b"}), None)
         with self.assertRaises(aiexternal.ApiError):
             aiexternal.chat(Req({"model": "", "messages": []}), None)
+
+    def test_member_sees_the_list_but_cannot_edit(self):
+        with mock.patch.object(aiexternal, "require_user", return_value=row(id=2, role="member")):
+            st, out = aiexternal.status(Req(), None)
+        self.assertEqual(st, 200)
+        self.assertFalse(out["canEdit"])
 
     def test_offline(self):
         db.set_server_setting("ai.external_url", "http://127.0.0.1:9")

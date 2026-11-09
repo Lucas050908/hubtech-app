@@ -305,19 +305,19 @@ console.log(\`Velkommen til \${navn} – besøg nr. \${besøg}\`);`),
           starter: 'const pris = 249;\n', hint: 'console.log(`I alt: ${pris * antal} kr.`)', solution: 'const pris = 249;\nconst antal = 3;\nconsole.log(`I alt: ${pris * antal} kr.`);',
           check: { out: 'I alt: 747 kr.' } },
         quiz: [['Hvad er forskellen på let og const?', ['Ingen', 'const kan ikke tildeles en ny værdi', 'let er hurtigere', 'const er kun til tal'], 1, 'Brug const, medmindre værdien skal skifte.']] },
-      { id: 'js2', title: 'Funktioner og pile-funktioner', minutes: 12,
-        body: `<p>Funktioner skrives med <code>function navn(a, b) { return a + b; }</code> eller kortere som pile-funktion: <code>const navn = (a, b) =&gt; a + b;</code>.</p>`,
+      { id: 'js2', title: 'Funktioner og arrow functions', minutes: 12,
+        body: `<p>Funktioner skrives med <code>function navn(a, b) { return a + b; }</code> eller kortere som arrow function: <code>const navn = (a, b) =&gt; a + b;</code>.</p>`,
         example: c(`
 const moms = (beløb) => beløb * 0.25;
 function medMoms(beløb) {
   return beløb + moms(beløb);
 }
 console.log(medMoms(400));`),
-        task: { text: 'Skriv pile-funktionen <code>celsiusTilF</code>, der omregner Celsius til Fahrenheit (C × 9/5 + 32).',
+        task: { text: 'Skriv funktionen <code>celsiusTilF</code> som arrow function, der omregner Celsius til Fahrenheit (C × 9/5 + 32).',
           starter: 'const celsiusTilF = (c) => {\n  // din kode\n};\n\nconsole.log(celsiusTilF(100));\n', hint: 'return c * 9 / 5 + 32;',
           solution: 'const celsiusTilF = (c) => c * 9 / 5 + 32;\nconsole.log(celsiusTilF(100));',
           check: { test: 'if (celsiusTilF(100) !== 212) throw new Error("100 °C skal give 212 °F"); if (celsiusTilF(-40) !== -40) throw new Error("-40 °C skal give -40 °F");' } },
-        quiz: [['Hvad returnerer (x) => x * 2 for x = 5?', ['5', '10', 'undefined', '"x * 2"'], 1, 'En pile-funktion uden {} returnerer udtrykket.']] },
+        quiz: [['Hvad returnerer (x) => x * 2 for x = 5?', ['5', '10', 'undefined', '"x * 2"'], 1, 'En arrow function uden {} returnerer udtrykket.']] },
       { id: 'js3', title: 'Arrays og metoder', minutes: 15,
         body: `<p>Et array er en liste: <code>[3, 8, 1]</code>. De mest brugte metoder:</p>
 <ul><li><code>map</code> laver en ny liste ud fra hver værdi</li><li><code>filter</code> beholder dem, der opfylder en betingelse</li><li><code>reduce</code> samler til én værdi</li><li><code>find</code> finder den første, der passer</li></ul>`,

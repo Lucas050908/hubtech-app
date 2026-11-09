@@ -16,7 +16,7 @@ import { diffLines, hunks, countChanges, unified } from '../features/linediff.js
 import { currentCall } from '../features/calls.js';
 
 const COLORS = ['#e8763a', '#8fb3d9', '#8fcf9b', '#c4a7e7', '#e8b46a', '#7fc4c4', '#e57b6a'];
-const TABS = [['samtale', 'Samtale'], ['opgaver', 'Opgaver'], ['kode', 'Kode'], ['aendringer', 'Ændringer'], ['noter', 'Noter'], ['side', 'Hjemmeside'], ['indstillinger', 'Indstillinger']];
+const TABS = [['samtale', 'Samtale'], ['opgaver', 'Opgaver'], ['kode', 'Kode'], ['aendringer', 'Commits'], ['noter', 'Noter'], ['side', 'Hjemmeside'], ['indstillinger', 'Indstillinger']];
 export const COMMIT_TEMPLATE = 'Hvad: \nHvorfor: \nSådan testes: ';
 const P = (pid, sub = '') => `/api/pj/${pid}${sub}`;
 const me = () => store.get('user');
@@ -66,7 +66,7 @@ export function aiReviewPrompt(title, diffs) {
 
 /** Is the description good enough to hand in? '' when it is, otherwise what is missing (pure – tested). */
 export function commitProblem(title, descr) {
-  if (String(title || '').trim().length < 3) return 'Giv ændringen en titel.';
+  if (String(title || '').trim().length < 3) return 'Giv committen en titel.';
   const d = String(descr || '').replace(/^(Hvad|Hvorfor|Sådan testes):\s*$/gim, '').trim();
   if (d.length < 10) return 'Beskriv, hvad du har ændret, og hvorfor.';
   return '';
@@ -253,9 +253,9 @@ function eventNode(e) {
       h('div', null, h('div', null, h('b', null, e.name), ' indsendte ', h('b', null, b.title)),
         h('small', null, `${b.files.length} ${b.files.length === 1 ? 'fil' : 'filer'} · `, h('span', { class: 'pj-add' }, `+${add}`), ' ', h('span', { class: 'pj-rem' }, `−${del}`),
           b.needsReview ? ' · venter på godkendelse' : '', b.aiChecked ? ' · gennemgået af AI' : '')),
-      h('button', { type: 'button', class: 'btn btn-sm', onclick: () => { S.openCommit = b.cid; setTab('aendringer'); } }, 'Se ændringen'));
+      h('button', { type: 'button', class: 'btn btn-sm', onclick: () => { S.openCommit = b.cid; setTab('aendringer'); } }, 'Se committen'));
   }
-  if (e.kind === 'review') return sys(b.state === 'approved' ? 'checkCircle' : 'alert', h('b', null, e.name), b.state === 'approved' ? ' godkendte ' : ' bad om ændringer til ', h('b', null, b.title || 'en ændring'), b.text ? `: “${b.text}”` : '');
+  if (e.kind === 'review') return sys(b.state === 'approved' ? 'checkCircle' : 'alert', h('b', null, e.name), b.state === 'approved' ? ' godkendte ' : ' bad om ændringer til ', h('b', null, b.title || 'en commit'), b.text ? `: “${b.text}”` : '');
   if (e.kind === 'member') return sys(b.op === 'remove' ? 'logout' : 'userPlus', h('b', null, e.name), b.op === 'remove' ? (b.username === e.author ? ' forlod projektet' : ` fjernede ${memberName(b.username)}`) : ` tilføjede ${b.name || b.username}`);
   if (e.kind === 'call') return sys('phone', h('b', null, e.name), ' startede et opkald');
   if (e.kind === 'project') return sys('sparkles', h('b', null, e.name), ' oprettede projektet');
@@ -442,14 +442,14 @@ async function drawCode(body, p) {
   function drawSubmit(list) {
     // what you have written survives when the list of files is drawn again (fx while you type in the editor)
     const form = S.form ||= { title: '', descr: COMMIT_TEMPLATE, task: '', aiChecked: false };
-    const title = h('input', { class: 'input', maxlength: 120, placeholder: 'Fx Ret login-fejl på lageret', 'aria-label': 'Titel på ændringen', value: form.title, oninput: (e) => { form.title = e.target.value; } });
-    const descr = h('textarea', { class: 'textarea', rows: 6, maxlength: 4000, 'aria-label': 'Beskrivelse af ændringen', oninput: (e) => { form.descr = e.target.value; } }); descr.value = form.descr;
+    const title = h('input', { class: 'input', maxlength: 120, placeholder: 'Fx Ret login-fejl på lageret', 'aria-label': 'Commit-titel', value: form.title, oninput: (e) => { form.title = e.target.value; } });
+    const descr = h('textarea', { class: 'textarea', rows: 6, maxlength: 4000, 'aria-label': 'Commit-beskrivelse', oninput: (e) => { form.descr = e.target.value; } }); descr.value = form.descr;
     const task = h('select', { class: 'select', 'aria-label': 'Lukker opgave', onchange: (e) => { form.task = e.target.value; } }, h('option', { value: '' }, 'Ingen opgave'), p.tasksList.filter(t => !t.done).map(t => h('option', { value: t.id, selected: t.id === form.task }, t.title)));
     const err = h('div', { class: 'field-error', role: 'alert' });
-    const aiNote = h('p', { class: 'faint pj-ai-note' }, form.aiChecked ? 'Gnist har kigget på ændringen. Den får mærket “gennemgået af AI”, når du indsender.' : 'Valgfrit: lad en AI kigge ændringen igennem for fejl, før du indsender. Svaret kommer i Gnist – du vælger selv, om du vil rette noget.');
+    const aiNote = h('p', { class: 'faint pj-ai-note' }, form.aiChecked ? 'Gnist har kigget på committen. Den får mærket “gennemgået af AI”, når du committer.' : 'Valgfrit: lad en AI gennemgå committen for fejl, før du committer. Svaret kommer i Gnist – du vælger selv, om du vil rette noget.');
     const review = async () => {
       const diffs = list.map(c => c.del ? `--- ${c.path}\n(slettes)` : c.binary ? `+++ ${c.path} (billede/binær)` : unified(c.path, c.base ?? '', c.content));
-      form.aiChecked = true; aiNote.textContent = 'Gnist kigger på ændringen nu. Ændringen får mærket “gennemgået af AI”, når du indsender.';
+      form.aiChecked = true; aiNote.textContent = 'Gnist kigger på committen nu. Den får mærket “gennemgået af AI”, når du committer.';
       const m = await import('../ai/panel.js'); m.askAssistant(aiReviewPrompt(title.value.trim(), diffs));
     };
     const submit = async (btn) => {
@@ -458,26 +458,26 @@ async function drawCode(body, p) {
       btn.disabled = true;
       try {
         list = await changes(p.id);   // what is in the working copy right now – also what was typed a moment ago
-        if (!list.length) { err.textContent = 'Der er ingen ændringer at indsende.'; return; }
+        if (!list.length) { err.textContent = 'Der er ingen ændringer at committe.'; return; }
         await api.post(P(p.id, '/commits'), { title: title.value.trim(), descr: descr.value.trim(), task: task.value, aiChecked: form.aiChecked,
           files: list.map(c => c.del ? { path: c.path, delete: true } : { path: c.path, content: c.content, binary: c.binary }) });
         const w = getWork(p.id); list.forEach(c => delete w[c.path]); setWork(p.id, w);
-        S.base = {}; S.form = null; toast(p.review ? 'Ændringen er sendt til godkendelse' : 'Ændringen er lagt i den fælles mappe', { type: 'ok' });
+        S.base = {}; S.form = null; toast(p.review ? 'Committen venter på review' : 'Committen er lagt i den fælles mappe', { type: 'ok' });
         S.files = (await api.get(P(p.id, '/files'))).files; open = null; blank(); clear(fileBar); refreshProject(false); drawTree();
       } catch (e) { err.textContent = e.message; } finally { btn.disabled = false; }
     };
     const total = list.reduce((a, c) => { if (c.del || c.binary) return a; const x = countChanges(diffLines(c.base ?? '', c.content)); return { add: a.add + x.add, del: a.del + x.del }; }, { add: 0, del: 0 });
-    h(clear(side), null, h('h3', null, 'Indsend ændring'),
+    h(clear(side), null, h('h3', null, 'Commit'),
       list.length ? h('p', { class: 'pj-sum' }, `${list.length} ${list.length === 1 ? 'fil' : 'filer'} · `, h('span', { class: 'pj-add' }, `+${total.add}`), ' ', h('span', { class: 'pj-rem' }, `−${total.del}`))
         : h('p', { class: 'faint' }, 'Ingen ændringer endnu. Ret i en fil, lav en ny, eller hent filer ind.'),
       list.length ? [
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Titel ', h('small', { class: 'faint' }, '– kort, i bydeform')), title),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Beskrivelse ', h('small', { class: 'faint' }, '– hvad og hvorfor')), descr),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Lukker opgave'), task),
-        h('div', { class: 'pj-ai' }, h('button', { type: 'button', class: 'btn btn-sm', onclick: review }, icon('sparkles'), 'Lad en AI gennemgå ændringen'), aiNote),
+        h('div', { class: 'pj-ai' }, h('button', { type: 'button', class: 'btn btn-sm', onclick: review }, icon('sparkles'), 'AI-review før commit'), aiNote),
         err,
-        (() => { const b = h('button', { type: 'button', class: 'btn btn-primary btn-block' }, p.review ? 'Indsend til godkendelse' : 'Indsend ændring'); b.addEventListener('click', () => submit(b)); return b; })(),
-        h('p', { class: 'faint pj-small' }, 'Ændringen vises i samtalen. Den gamle version gemmes i historikken, så I kan gå tilbage.'),
+        (() => { const b = h('button', { type: 'button', class: 'btn btn-primary btn-block' }, p.review ? 'Commit til review' : 'Commit'); b.addEventListener('click', () => submit(b)); return b; })(),
+        h('p', { class: 'faint pj-small' }, 'Committen vises i samtalen. Den gamle version gemmes i historikken, så I kan gå tilbage.'),
       ] : null);
   }
 
@@ -517,14 +517,14 @@ async function drawChanges(body, p) {
         h('summary', null, h('span', { class: 'pj-path' }, f.path), f.op === 'del' ? h('span', { class: 'pj-rem' }, 'slettet') : f.binary ? h('span', { class: 'faint' }, 'billede/binær') : [h('span', { class: 'pj-add' }, `+${f.add}`), ' ', h('span', { class: 'pj-rem' }, `−${f.del}`)]),
         f.op === 'del' || f.binary ? null : diffView(f.old, f.new))),
       c.merged ? h('button', { type: 'button', class: 'btn btn-sm btn-ghost', onclick: async () => {
-        if (!await confirmDialog({ title: 'Gå tilbage?', text: `Filerne fra “${c.title}” sættes tilbage til, som de var før. Det bliver en ny ændring, så intet forsvinder.`, confirmLabel: 'Gå tilbage' })) return;
-        try { await api.post(P(p.id, `/commits/${cid}/restore`)); toast('Filerne er sat tilbage', { type: 'ok' }); drawRoom(); } catch (e) { toast(e.message, { type: 'bad' }); } } }, icon('undo'), 'Gå tilbage til før denne ændring') : null);
+        if (!await confirmDialog({ title: 'Gå tilbage?', text: `Filerne fra “${c.title}” sættes tilbage til, som de var før. Det bliver en ny commit, så intet forsvinder.`, confirmLabel: 'Gå tilbage' })) return;
+        try { await api.post(P(p.id, `/commits/${cid}/restore`)); toast('Filerne er sat tilbage', { type: 'ok' }); drawRoom(); } catch (e) { toast(e.message, { type: 'bad' }); } } }, icon('undo'), 'Revert – gå tilbage til før denne commit') : null);
   };
   h(clear(listEl), null, list.length ? list.map(c => { const [st, cls] = state(c); const add = c.files.reduce((a, f) => a + f.add, 0), del = c.files.reduce((a, f) => a + f.del, 0);
     return h('li', { dataset: { id: c.id } }, h('button', { type: 'button', onclick: () => open(c.id) },
       h('b', null, c.title), h('small', null, `${c.name || c.author} · ${new Date(c.ts).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })} · `, h('span', { class: 'pj-add' }, `+${add}`), ' ', h('span', { class: 'pj-rem' }, `−${del}`)),
       h('span', { class: `pj-state is-${cls}` }, st))); })
-    : h('li', { class: 'pj-empty-small' }, h('p', null, 'Ingen ændringer endnu. Under Kode ret du filer og indsender dem med en beskrivelse.')));
+    : h('li', { class: 'pj-empty-small' }, h('p', null, 'Ingen commits endnu. Under Kode retter du filer og committer dem med en beskrivelse.')));
   if (S.openCommit && list.some(c => c.id === S.openCommit)) open(S.openCommit);
   else if (list[0]) open(list[0].id);
 }
@@ -581,7 +581,7 @@ async function drawSettings(body, p) {
       h('div', { class: 'pj-two' }, h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Kunde'), customer), h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Deadline'), deadline)),
       h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Farve'), sw),
       h('button', { type: 'button', class: 'btn btn-primary', onclick: () => save({ name: name.value.trim(), customer: customer.value.trim(), deadline: deadline.value, color }) }, 'Gem'),
-      h('div', { class: 'pj-switchrow' }, h('div', null, h('b', null, 'Kræv godkendelse af ændringer'), h('p', { class: 'faint' }, 'En anden i holdet skal godkende en ændring, før den kommer i den fælles mappe – som en pull request.')),
+      h('div', { class: 'pj-switchrow' }, h('div', null, h('b', null, 'Kræv review af commits'), h('p', { class: 'faint' }, 'En anden i holdet skal godkende en commit, før den kommer i den fælles mappe – som en pull request.')),
         switchControl({ checked: p.review, label: 'Kræv godkendelse', onChange: (v) => save({ review: v }) }))),
     h('div', { class: 'pj-pane' }, h('h3', null, `Holdet (${p.members.length})`),
       h('ul', { class: 'pj-members', role: 'list' }, p.members.map(m => h('li', null, avatar(m.username, m.name, 30), h('span', null, m.name, h('small', null, `@${m.username}${m.role === 'owner' ? ' · startede projektet' : ''}${m.here ? '' : ' · på en anden pc'}`)),
