@@ -15,11 +15,13 @@ const ENT = { '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&#39;': "'
 /** HTML from a lesson → plain bullet points (one per paragraph and list item). */
 export function htmlToPoints(html) {
   return String(html || '')
+    .replace(/<\/t[hd]>\s*<t[hd][^>]*>/gi, ': ').replace(/<\/tr>/gi, '\n')   // a table: one line per row, “kunder: id, navn, by”
     .replace(/<\/(p|li|h\d|pre|div)>|<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&[a-z#0-9]+;/gi, (m) => ENT[m] ?? m)
     .split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s.length > 1);
 }
+const dot = (s) => (/[.!?…”"]$/.test(String(s).trim()) ? String(s).trim() : `${String(s).trim()}.`);   // an answer ends with one full stop – not “…?.”
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 const pick = (arr, n) => arr.filter((_, i) => i % Math.max(1, Math.floor(arr.length / n)) === 0).slice(0, n);
 
@@ -46,9 +48,9 @@ const quiz = {
   days: QUIZZES.map(z => ({
     t: z.title, g: `Du kender svarene i quizzen om ${z.title.toLowerCase()} – og ved hvorfor.`,
     r: [[`Tag quizzen “${z.title}”`, '#/learn/quiz']],
-    l: z.qs.map(([q, opts, right, why]) => `${q} → ${opts[right]}. ${why || ''}`.trim()),
-    d: [`Læs alle punkterne, og dæk svaret til, mens du gætter.`, `Tag quizzen “${z.title}” i Quiz-appen, og få mindst 8 rigtige.`, `Skriv de svar, du tog fejl af, i dine noter herunder.`],
-    q: z.qs.slice(0, 4).map(([q, opts, right, why]) => [q, `${opts[right]}. ${why || ''}`.trim()]),
+    l: z.qs.map(([q, opts, right, why]) => `${q} → ${dot(opts[right])} ${why || ''}`.trim()),
+    d: [`Læs alle punkterne, og dæk svaret til, mens du gætter.`, `Tag quizzen “${z.title}” i Quiz-appen, og få mindst ${Math.ceil(z.qs.length * 0.8)} af ${z.qs.length} rigtige.`, `Skriv de svar, du tog fejl af, i dine noter herunder.`],
+    q: z.qs.slice(0, 4).map(([q, opts, right, why]) => [q, `${dot(opts[right])} ${why || ''}`.trim()]),
   })),
 };
 
@@ -56,7 +58,7 @@ const quiz = {
 const phishing = (() => {
   const fake = SCENARIOS.filter(s => s.phish), real = SCENARIOS.filter(s => !s.phish);
   const flags = [...new Set(fake.flatMap(s => s.flags || []))];
-  const tips = [...new Set(SCENARIOS.map(s => s.tip).filter(Boolean))];
+  const tips = [...new Set(fake.map(s => s.tip).filter(Boolean))];   // what to do about the false ones (the genuine ones have their own lesson)
   const ask = (s) => [`${s.kind === 'sms' ? 'SMS' : 'Mail'} fra “${s.from}”${s.subject ? `: “${s.subject}”` : ''} – ægte eller falsk?`, `${s.phish ? 'Falsk' : 'Ægte'}. ${s.tip || (s.flags || []).join('. ')}`];
   return {
     id: 'phishing', title: 'Spot phishing i mails og SMS', short: 'Phishing', icon: 'shield', group: 'it', app: 'phishing',
@@ -92,12 +94,42 @@ const commands = {
   }).filter(d => d.l.length),
 };
 
+// what you can do after each lesson in Kodeskolen (the course page shows it as the lesson's goal)
+const CODE_GOALS = {
+  py1: 'Du kan skrive tekst og tal ud med print() og skrive en kommentar', py2: 'Du kan gemme værdier i variabler og kender typerne int, float, str og bool',
+  py3: 'Du kan læse input fra brugeren og lave tekst om til tal', py4: 'Du kan lade programmet vælge med if, elif og else',
+  py5: 'Du kan gentage kode med for- og while-løkker', py6: 'Du kan samle værdier i lister og slå op i en dictionary',
+  py7: 'Du kan skrive dine egne funktioner med parametre og return', py8: 'Du kan fange fejl med try/except, så programmet ikke crasher',
+  pv1: 'Du kan rense, dele og formatere tekst med strengmetoder og f-strings', pv2: 'Du kan lave og sortere lister på én linje med list comprehensions og sorted()',
+  pv3: 'Du kan lave en klasse med data og metoder og bruge dens objekter', pv4: 'Du kan hente moduler med import og bruge math, random og datetime',
+  pv5: 'Du kan gemme og læse data i filer – også som JSON', pv6: 'Du kan sætte det hele sammen og regne timer pr. kunde ud fra en log',
+  js1: 'Du kan skrive ud med console.log og gemme værdier med let og const', js2: 'Du kan skrive funktioner – både almindelige og arrow functions',
+  js3: 'Du kan arbejde med arrays med map, filter, reduce og find', js4: 'Du kan samle data i objekter og lave dem om til og fra JSON',
+  js5: 'Du kan styre koden med if/else og løkker – og sammenligne med ===', js6: 'Du kan vente på noget, der tager tid, med Promise, async og await',
+  js7: 'Du kan lave en klasse med constructor og metoder',
+  web1: 'Du kan bygge en side af HTML-tags: overskrifter, afsnit, lister og links', web2: 'Du kan style en side med CSS: farver, skrift og klasser',
+  web3: 'Du kender box model og kan lægge elementer på række med flexbox', web4: 'Du kan lave en formular med felter, labels og en knap',
+  web5: 'Du kan få siden til at passe til både telefon og computer',
+  sql1: 'Du kan hente kolonner fra en tabel med SELECT og FROM', sql2: 'Du kan filtrere med WHERE og sortere med ORDER BY',
+  sql3: 'Du kan tælle og lægge sammen pr. gruppe med GROUP BY', sql4: 'Du kan sætte to tabeller sammen med JOIN',
+  sql5: 'Du kan tilføje, ændre og slette rækker – og ved, hvorfor WHERE er vigtig',
+  git1: 'Du kan finde rundt i mapper fra terminalen', git2: 'Du ved, hvad Git er, og kan gemme dit første commit',
+  git3: 'Du kan lave en branch, skifte mellem branches og merge dem', git4: 'Du kan sende commits til GitHub med push og hente med pull',
+  git5: 'Du kan fortryde ændringer og holde hemmeligheder ude af Git med .gitignore',
+  lx1: 'Du kan vise, kopiere, flytte og slette filer på en server', lx2: 'Du kan læse og ændre rettigheder og ved, hvornår sudo skal bruges',
+  lx3: 'Du kan søge i filer med grep og find og kæde kommandoer sammen med pipes', lx4: 'Du kan se, hvad der kører, og starte og genstarte tjenester',
+  lx5: 'Du kan tjekke netværket og logge ind på en anden maskine med SSH', lx6: 'Du kan installere og opdatere programmer med pakkehåndteringen',
+  ard1: 'Du kender setup() og loop() og kan gøre et ben til en udgang', ard2: 'Du kan læse en knap med digitalRead() og INPUT_PULLUP',
+  ard3: 'Du kan måle en spænding med analogRead() og regne den om til volt', ard4: 'Du kan dæmpe en LED med PWM og analogWrite()',
+  ard5: 'Du kan lave pauser med millis() uden at stoppe resten af programmet',
+};
+
 // ── Kodeskolen ──
 const code = CODE_COURSES.map(c => ({
   id: `kode-${c.id}`, title: c.title, short: c.title, icon: c.icon || 'code', group: 'code', app: 'codeschool', hue: c.hue,
   intro: `${c.intro} Læs lektionerne her – og kør koden og løs opgaverne i Kodeskolen.`,
   days: c.lessons.map(l => ({
-    t: l.title, g: `Du kan bruge “${l.title.toLowerCase()}” i din egen kode${l.minutes ? ` (ca. ${l.minutes} min.)` : ''}.`,
+    t: l.title, g: `${CODE_GOALS[l.id] || `Du har læst lektionen “${l.title}”, kørt eksemplet og løst opgaven`}${l.minutes ? ` (ca. ${l.minutes} min.)` : ''}.`,
     r: [['Åbn lektionen i Kodeskolen (kør koden)', `#/learn/codeschool/${c.id}/${l.id}`]],
     l: [...htmlToPoints(l.body), ...(l.example ? [{ code: String(l.example).trim() }] : [])],
     d: ['Læs eksemplet, og kør det i Kodeskolen.', ...(l.task ? [`Løs opgaven i Kodeskolen: ${htmlToPoints(l.task.text).join(' ')}`] : []), 'Svar på lektionens quiz i Kodeskolen.'],
@@ -135,16 +167,16 @@ const electronics = {
 
 const digital = {
   id: 'digitale-grundfaerdigheder', title: 'Digitale grundfærdigheder', short: 'Grundfærdigheder', icon: 'chip', group: 'it', app: 'bits',
-  intro: 'Binære tal, ti-finger-skrivning, smart udenadslære og hurtige beregninger – det, Bit-spil, Tastaturtræner, Huskekort og Værktøjskassen træner.',
+  intro: 'Binære tal, blindskrift med ti fingre, smart udenadslære og hurtige beregninger – det, Bit-spil, Tastaturtræner, Huskekort og Værktøjskassen træner.',
   days: [
     { t: 'Binære tal og bits', g: 'Du kan omregne mellem binær og decimal.', r: [['Spil Bit-spil', '#/learn/bits'], ['Talsystemer i Værktøjskassen', '#/learn/toolkit']],
       l: ['En bit er 0 eller 1. Otte bits er en byte.', 'Hver plads er dobbelt så meget værd som den forrige: 128 64 32 16 8 4 2 1.', 'Eksempel: 1010 = 8 + 2 = 10. 11111111 = 255.', 'Hexadecimal bruger 0–9 og A–F; ét hex-ciffer er fire bits (F = 1111).', 'IP-adresser er fire bytes: 192.168.1.1 – hvert tal er mellem 0 og 255.'],
       d: ['Omregn 13, 64 og 200 til binær.', 'Klar tre baner i Bit-spil.', 'Find din computers IP-adresse og skriv det første tal i binær.'],
       q: [['Hvad er 1010 i decimal?', '10.'], ['Hvor mange bits er en byte?', 'Otte.']] },
-    { t: 'Skriv hurtigt med ti fingre', g: 'Du kender hjemrækken og øver dig fast.', r: [['Øv i Tastaturtræneren', '#/learn/typing']],
-      l: ['Fingrene hviler på hjemrækken: a s d f og j k l æ. Tommelfingrene på mellemrum.', 'Hver finger har sine taster – ræk op og ned og tilbage til hjemrækken.', 'Kig på skærmen, ikke på tasterne. Præcision først, så kommer farten.', 'Korte daglige øvelser (5–10 minutter) virker bedre end én lang.', 'Lær genveje: Ctrl+C/V/Z, Ctrl+F, Win+L (lås skærmen), Alt+Tab.'],
-      d: ['Øv hjemrækken i Tastaturtræneren i 5 minutter.', 'Mål din hastighed (ord pr. minut) og skriv den ned.', 'Øv i en uge og mål igen.'],
-      q: [['Hvilke taster er hjemrækken for venstre hånd?', 'a s d f.'], ['Hvad er vigtigst i starten – fart eller præcision?', 'Præcision; farten kommer af sig selv.']] },
+    { t: 'Skriv hurtigt med ti fingre', g: 'Du kender grundstillingen og øver dig fast.', r: [['Øv i Tastaturtræneren', '#/learn/typing']],
+      l: ['Fingrene hviler i grundstillingen på den midterste række: a s d f og j k l æ. Tommelfingrene på mellemrum.', 'Hver finger har sine taster – ræk op og ned og tilbage til grundstillingen.', 'Kig på skærmen, ikke på tasterne. Præcision først, så kommer farten.', 'Korte daglige øvelser (5–10 minutter) virker bedre end én lang.', 'Lær genveje: Ctrl+C/V/Z, Ctrl+F, Win+L (lås skærmen), Alt+Tab.'],
+      d: ['Øv grundstillingen i Tastaturtræneren i 5 minutter.', 'Mål din hastighed (ord pr. minut) og skriv den ned.', 'Øv i en uge og mål igen.'],
+      q: [['Hvilke taster hviler venstre hånd på i grundstillingen?', 'a s d f.'], ['Hvad er vigtigst i starten – fart eller præcision?', 'Præcision; farten kommer af sig selv.']] },
     { t: 'Lær udenad med huskekort', g: 'Du bruger gentagelser med mellemrum til at huske.', r: [['Åbn Huskekort', '#/learn/flashcards']],
       l: ['Spaced repetition: kort, du kan, ser du sjældnere; kort, du glemmer, ser du oftere.', 'Prøv at huske svaret, før du vender kortet – det er selve genkaldelsen, der lærer dig det.', 'Ét spørgsmål pr. kort, og hellere korte svar.', 'Lidt hver dag er bedre end meget én gang om ugen.', 'Lav kort ud af de spørgsmål, du var usikker på i kurserne.'],
       d: ['Lav ti huskekort fra et kursus, du er i gang med.', 'Gennemgå dine huskekort tre dage i træk.', 'Markér de svære spørgsmål i et kursus og lav kort af dem.'],
@@ -163,9 +195,9 @@ const hubtech = {
   intro: 'Hvad HUBTECH kan, og hvordan du får mest ud af det: søgning, apps, Office, kalender, opgaver, læring, spil, forbindelser og widgets.',
   days: [
     { t: 'Kom i gang: Hjem, menuen og søgningen', g: 'Du kan finde rundt i HUBTECH og finde alt med søgningen.', r: [['Gå til Hjem', '#/'], ['Guide: Velkommen til HUBTECH', '#/learn/guide/welcome']],
-      l: ['Hjem viser dagens aftaler og opgaver, hvor du slap sidst, og et tip fra Gnist.', 'Menuen med ikoner til venstre har de faste steder: Hjem, Projekter, Office, Kalender, Opgaver, Kode-editor, Lær og øv og Alle apps – og nederst Gnist og Indstillinger. På telefonen ligger de vigtigste i bunden af skærmen.', 'Under de faste steder ligger dine genveje. Med + tilføjer du en app, en side i HUBTECH eller en hjemmeside. Træk en genvej for at flytte den, eller højreklik på den for at omdøbe eller fjerne den.', 'Søg i alt med Ctrl+K (⌘K på Mac) eller søgefeltet i topbjælken: apps, Office-filer, guides, lektioner og projekter. Skriv fx “aftale tandlæge fredag kl. 10”, så laver søgningen aftalen for dig.', 'Topbjælken viser, hvor du er. Til højre ligger Arbejdstilstand, notifikationer, en menu med tema og fuld skærm og din profil.'],
+      l: ['Hjem viser dagens aftaler og opgaver, hvor du slap sidst, og et tip fra Gnist.', 'Menuen med ikoner til venstre har de faste steder: Hjem, Projekter, Office, Kalender, Opgaver, Kode-editor, Lær og øv og Alle apps – og nederst Gnist og Indstillinger. På telefonen ligger de vigtigste i bunden af skærmen.', 'Under de faste steder ligger dine genveje. Med + tilføjer du en app, en side i HUBTECH eller en hjemmeside. Træk en genvej for at flytte den, eller højreklik på den for at omdøbe eller fjerne den.', 'Søg i alt med Ctrl+K (⌘K på Mac) eller søgefeltet i topbaren: apps, Office-filer, guides, lektioner og projekter. Skriv fx “aftale tandlæge fredag kl. 10”, så laver søgningen aftalen for dig.', 'Topbaren viser, hvor du er. Til højre ligger Arbejdstilstand, notifikationer, en menu med tema og fuld skærm og din profil.'],
       d: ['Tryk Ctrl+K, og find Kalender uden at bruge musen.', 'Tilføj to genveje med + i menuen til venstre: en app og en hjemmeside.', 'Træk genvejene i den rækkefølge, du vil have dem, og fjern den ene igen.'],
-      q: [['Hvordan åbner du søgningen?', 'Ctrl+K (⌘K på Mac) – eller søgefeltet i topbjælken.'], ['Hvordan fjerner du en genvej fra menuen til venstre?', 'Højreklik på den, og vælg “Fjern fra menuen”.']] },
+      q: [['Hvordan åbner du søgningen?', 'Ctrl+K (⌘K på Mac) – eller søgefeltet i topbaren.'], ['Hvordan fjerner du en genvej fra menuen til venstre?', 'Højreklik på den, og vælg “Fjern fra menuen”.']] },
     { t: 'Alle apps: find, åbn og fastgør', g: 'Du ved, hvilke apps der findes, og hvordan du finder og fastgør dem.', r: [['Se alle apps', '#/apps']],
       l: ['Alle apps i menuen til venstre åbner en oversigt med søgning øverst og alle apps i grupper: Planlæg, HUBTECH Office, Team, Kunder og drift, IT-support, Økonomi, Udvikling, Værktøjer, Pauserum og Lær og øv.', 'Klik på nålen ved en app for at fastgøre den i menuen til venstre. Klik på nålen igen for at fjerne den.', 'Nogle apps er samlet i én med faner: Økonomi har Budget, Opsparing, Sparegris, Fællesudgifter, Del regningen og Udlån, og HUBTECH Office har Notesbog og Noter.', 'IT-support samler værktøjerne til hverdagen i supporten: Printer-doktor, Netværksberegner, Hardwaretest, Kommandoer, Tjeklister og Svarskabeloner.', 'Al data gemmes på din konto, så den følger med fra computer til telefon.'],
       d: ['Åbn Alle apps, og find tre apps, du ikke kendte.', 'Fastgør en app, du bruger tit, så den står i menuen til venstre.', 'Åbn Økonomi, og skift mellem fanerne.'],
@@ -187,7 +219,7 @@ const hubtech = {
       d: ['Skriv til en kollega i Fællesskab.', 'Start et opkald og del din skærm.', 'Del en opgave i en chat.'],
       q: [['Hvordan kommer en kollega med i teamet?', 'Ved at logge ind på den samme HUBTECH-server.'], ['Hvor deler du skærmen?', 'I et opkald i Fællesskab.']] },
     { t: 'Forbindelser, widgets og indstillinger', g: 'Du kan forbinde HUBTECH’er, bruge widgets og indstille platformen.', r: [['Forbindelser', '#/hubs'], ['Indstillinger', '#/settings']],
-      l: ['HUBTECH’er på samme netværk finder og forbinder sig selv automatisk – du skal ikke gøre noget.', 'Forbindelser viser, hvilke HUBTECH’er du er forbundet med, og du kan blokere en, du ikke vil forbindes med.', 'Widgets: under Indstillinger → Apps og opkald er der vejledning til Windows, iPhone og Android, så du kan have dagens aftaler og opgaver på skrivebordet eller hjemskærmen.', 'Under Indstillinger styrer du profil, adgangskode og sikkerhed – og under Verden & udseende tema (mørk, lys eller som systemet) og stil.', 'Arbejdstilstand i topbjælken gør lyset varmere og kontrasten blødere, når du arbejder længe. Den kan slå sig til af sig selv om aftenen.', 'Admin og Ejer styrer brugere og rettigheder på serveren.'],
+      l: ['HUBTECH’er på samme netværk finder og forbinder sig selv automatisk – du skal ikke gøre noget.', 'Forbindelser viser, hvilke HUBTECH’er du er forbundet med, og du kan blokere en, du ikke vil forbindes med.', 'Widgets: under Indstillinger → Apps og opkald er der vejledning til Windows, iPhone og Android, så du kan have dagens aftaler og opgaver på skrivebordet eller hjemskærmen.', 'Under Indstillinger styrer du profil, adgangskode og sikkerhed – og under Udseende tema (mørk, lys eller som systemet) og stil.', 'Arbejdstilstand i topbaren gør lyset varmere og kontrasten blødere, når du arbejder længe. Den kan slå sig til af sig selv om aftenen.', 'Admin og Ejer styrer brugere og rettigheder på serveren.'],
       d: ['Åbn Forbindelser, og se, hvilke HUBTECH’er du er forbundet med.', 'Sæt en widget op på din computer eller telefon.', 'Slå Arbejdstilstand til, prøv de tre styrker af varmt lys, og slå den fra igen.'],
       q: [['Skal du selv forbinde HUBTECH’er på samme netværk?', 'Nej, de finder og forbinder sig selv automatisk.'], ['Hvor finder du vejledningen til widgets?', 'Under Indstillinger → Apps og opkald.']] },
     { t: 'Gnist – din AI-assistent', g: 'Du kan spørge Gnist om hjælp og lade hende planlægge, forklare og fejlfinde for dig.', r: [['Linux-terminal', '#/learn/linux'], ['Guides & Læring', '#/learn']],
@@ -204,13 +236,13 @@ const network = {
   intro: 'IP-adresser, DHCP, DNS, router, Wi-Fi og fejlfinding trin for trin – med øvelser i Netværkslabbet.',
   days: [
     { t: 'IP-adresser, subnet og gateway', g: 'Du kan læse en IP-opsætning og forklare den.', r: [['Øv i Netværkslabbet', '#/learn/labs/network'], ['Netværksberegner i Værktøjskassen', '#/learn/toolkit']],
-      l: ['En IP-adresse (fx 192.168.1.42) er enhedens adresse på netværket. Fire tal fra 0 til 255.', 'Undernetmasken (fx 255.255.255.0 = /24) fortæller, hvilke adresser der er på samme lokale net.', 'Standardgatewayen er routeren – vejen ud af det lokale net (typisk .1).', 'Private adresser (192.168.x.x, 10.x.x.x, 172.16–31.x.x) bruges hjemme og på kontoret; routeren oversætter til én offentlig adresse (NAT).', 'ipconfig (Windows) eller ip a (Linux) viser adresse, maske og gateway.'],
+      l: ['En IP-adresse (fx 192.168.1.42) er enhedens adresse på netværket. Fire tal fra 0 til 255.', 'Subnetmasken (fx 255.255.255.0 = /24) fortæller, hvilke adresser der er på samme lokale net. I Windows står der Undernetmaske.', 'Default gateway (i Windows: Standardgateway) er routeren – vejen ud af det lokale net (typisk .1).', 'Private adresser (192.168.x.x, 10.x.x.x, 172.16–31.x.x) bruges hjemme og på kontoret; routeren oversætter til én offentlig adresse (NAT).', 'ipconfig (Windows) eller ip a (Linux) viser adresse, maske og gateway.'],
       d: ['Kør ipconfig på din egen computer, og forklar hver linje.', 'Brug Netværksberegneren til at finde antallet af adresser i et /24 og et /26.', 'Find routerens adresse på dit eget netværk.'],
-      q: [['Hvad er standardgatewayen?', 'Routeren – vejen ud af det lokale netværk.'], ['Hvor mange brugbare adresser har et /24?', '254.']] },
+      q: [['Hvad er default gateway?', 'Routeren – vejen ud af det lokale netværk.'], ['Hvor mange brugbare adresser har et /24?', '254.']] },
     { t: 'DHCP og DNS', g: 'Du kan forklare DHCP og DNS og genkende fejl i dem.', r: [['Øv i Netværkslabbet', '#/learn/labs/network']],
-      l: ['DHCP giver automatisk enheder en adresse, maske, gateway og DNS – typisk fra routeren.', 'Får en Windows-pc ingen adresse fra DHCP, giver den sig selv en nødadresse, der starter med 169.254.', 'DNS oversætter navne (google.com) til IP-adresser – som en telefonbog.', 'Virker ping 8.8.8.8, men ikke ping google.com, er det DNS, der fejler.', 'ipconfig /renew henter en ny adresse; ipconfig /flushdns tømmer DNS-cachen.'],
+      l: ['DHCP giver automatisk enheder en adresse, maske, gateway og DNS – typisk fra routeren.', 'Får en Windows-pc ingen adresse fra DHCP, giver den sig selv en APIPA-adresse, der starter med 169.254 – en nødadresse, som ikke kan komme på internettet.', 'DNS oversætter navne (google.com) til IP-adresser – som en telefonbog.', 'Virker ping 8.8.8.8, men ikke ping google.com, er det DNS, der fejler.', 'ipconfig /renew henter en ny adresse; ipconfig /flushdns tømmer DNS-cachen.'],
       d: ['Find en fejl i Netværkslabbet, hvor computeren har en 169.254-adresse.', 'Find en DNS-fejl i Netværkslabbet.', 'Forklar en kunde forskellen på DHCP og DNS med en sammenligning fra hverdagen.'],
-      q: [['Hvad betyder en adresse, der starter med 169.254?', 'Computeren har ikke fået en adresse fra DHCP.'], ['Ping 8.8.8.8 virker, ping google.com gør ikke. Hvad er galt?', 'Navneopslag (DNS).']] },
+      q: [['Hvad betyder en adresse, der starter med 169.254?', 'Computeren har ikke fået en adresse fra DHCP.'], ['Ping 8.8.8.8 virker, ping google.com gør ikke. Hvad er galt?', 'DNS – navnet kan ikke slås op.']] },
     { t: 'Router, switch og Wi-Fi', g: 'Du kender netværkets dele og typiske Wi-Fi-problemer.', r: [['IT-ordbog: netværk', '#/learn/course/it-ordbog/day/2']],
       l: ['Routeren forbinder dit net med internettet og laver typisk DHCP, NAT og Wi-Fi.', 'En switch forbinder flere kablede enheder på samme net.', 'Wi-Fi på 2,4 GHz når længere og gennem vægge; 5 GHz er hurtigere, men kortere. Mange smarte enheder og printere kan kun 2,4 GHz.', 'Svagt Wi-Fi: flyt routeren højt og frit, brug et mesh-system eller kabel til faste enheder.', 'Skift standardkoden til routerens administration, og brug WPA2/WPA3.'],
       d: ['Tegn dit eget netværk: internet, router, switch, enheder.', 'Find ud af, om dit Wi-Fi sender på 2,4 og 5 GHz.', 'Lav en tjekliste til “Wi-Fi er langsomt”.'],
@@ -250,7 +282,7 @@ const windows = {
   intro: 'De opgaver, du møder oftest: langsom computer, opdateringer, konti og adgangskoder, backup og malware.',
   days: [
     { t: 'Langsom computer', g: 'Du kan finde årsagen til en langsom computer.', r: [['Fejlfindingslab', '#/learn/labs/cases'], ['Hardwaretest', '#/apps/hwtest']],
-      l: ['Åbn Jobliste (Ctrl+Shift+Esc): hvad bruger CPU, hukommelse og disk?', 'Mange programmer ved opstart gør computeren langsom – slå unødvendige fra under Start.', 'Næsten fuld disk gør Windows langsom. Ryd op med Diskoprydning eller Lagerplads.', 'En gammel harddisk (HDD) er den største bremse – en SSD gør en stor forskel.', 'En ukendt proces med højt forbrug kan være malware.'],
+      l: ['Åbn Jobliste (Ctrl+Shift+Esc): hvad bruger CPU, hukommelse og disk?', 'Mange programmer ved opstart gør computeren langsom – slå unødvendige fra under Startapps i Jobliste.', 'Næsten fuld disk gør Windows langsom. Ryd op med Diskoprydning eller Lagerassistent (Indstillinger → System → Lager).', 'En gammel harddisk (HDD) er den største bremse – en SSD gør en stor forskel.', 'En ukendt proces med højt forbrug kan være malware.'],
       d: ['Åbn Jobliste og find de tre programmer, der bruger mest hukommelse.', 'Se, hvilke programmer der starter med Windows på din computer.', 'Løs sagen “Computeren er blevet meget langsom” i Fejlfindingslabbet.'],
       q: [['Hvilken genvej åbner Jobliste?', 'Ctrl+Shift+Esc.'], ['Hvad giver den største hastighedsforbedring på en gammel pc?', 'At skifte harddisken (HDD) til en SSD.']] },
     { t: 'Opdateringer og drivere', g: 'Du holder Windows og drivere opdateret uden problemer.', r: [['Guide: sikkerhed', '#/learn']],
@@ -258,7 +290,7 @@ const windows = {
       d: ['Tjek, hvornår din computer sidst blev opdateret.', 'Find, hvor man afinstallerer en opdatering.', 'Lav en tjekliste før en stor opdatering hos en kunde.'],
       q: [['Hvorfor er sikkerhedsopdateringer vigtige?', 'De lukker huller, som angribere ellers kan bruge.'], ['Hvad gør du, hvis en opdatering skaber problemer?', 'Afinstallerer opdateringen eller bruger Systemgendannelse.']] },
     { t: 'Konti, adgangskoder og totrin', g: 'Du kan hjælpe med konti og sikre logins.', r: [['Kodeord-appen', '#/apps/passwords'], ['Spot phishing', '#/learn/course/phishing']],
-      l: ['Brug lange adgangskoder (fx fire tilfældige ord) – og aldrig den samme flere steder.', 'En adgangskodemanager husker koderne, så kunden kun skal huske én.', 'Totrinsbekræftelse (fx en kode i en app) stopper de fleste kontoovertagelser.', 'Glemt kode til en Microsoft-konto nulstilles via Microsofts gendannelsesside – med mail eller telefon.', 'Bed aldrig kunden om at sige sin kode højt – lad kunden selv taste den.'],
+      l: ['Brug lange adgangskoder (fx fire tilfældige ord) – og aldrig den samme flere steder.', 'En password manager (i Windows og Edge: adgangskodeadministrator) husker koderne, så kunden kun skal huske én.', 'Totrinsbekræftelse – også kaldet to-faktor, 2FA eller MFA – stopper de fleste kontoovertagelser. Det er fx en kode i en app.', 'Glemt kode til en Microsoft-konto nulstilles via Microsofts gendannelsesside – med mail eller telefon.', 'Bed aldrig kunden om at sige sin kode højt – lad kunden selv taste den.'],
       d: ['Lav en stærk adgangskode med Kodeord-appen.', 'Slå totrinsbekræftelse til på en af dine egne konti.', 'Forklar en kunde, hvorfor man ikke bør genbruge koder.'],
       q: [['Hvad stopper de fleste kontoovertagelser?', 'Totrinsbekræftelse.'], ['Hvorfor ikke genbruge adgangskoder?', 'Lækkes én tjeneste, kan angriberen logge ind på alle de andre.']] },
     { t: 'Backup og malware', g: 'Du kan sætte backup op og håndtere malware.', r: [['Fejlfindingslab', '#/learn/labs/cases']],

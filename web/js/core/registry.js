@@ -203,7 +203,7 @@ export const APPS = [
   },
   {
     id: 'typing', name: 'Tastaturtræner', tagline: 'Skriv hurtigt med ti fingre.',
-    description: 'Lektioner fra hjemrækken til rigtige sætninger med æ, ø og å. Måler hastighed og præcision og husker dine rekorder.',
+    description: 'Lektioner fra grundstillingen til rigtige sætninger med æ, ø og å. Måler hastighed og præcision og husker dine rekorder.',
     icon: 'edit', hue: 'var(--hue-typing)', route: '#/learn/typing', category: 'learning', status: 'available',
     art: { season: 'autumn', time: 'day', focusX: 0.5, tint: '#facc15' }, page: () => import('../pages/typing.js'),
     keywords: ['tastatur', 'skrive', 'touch', 'ti fingre', 'hastighed', 'wpm', 'typing'],

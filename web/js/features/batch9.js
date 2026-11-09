@@ -104,7 +104,7 @@ export const SHORTCUTS = [
   ['Kopiér', 'Ctrl+C', '⌘+C'], ['Sæt ind', 'Ctrl+V', '⌘+V'], ['Klip', 'Ctrl+X', '⌘+X'], ['Fortryd', 'Ctrl+Z', '⌘+Z'], ['Gentag', 'Ctrl+Y', '⌘+Shift+Z'],
   ['Markér alt', 'Ctrl+A', '⌘+A'], ['Gem', 'Ctrl+S', '⌘+S'], ['Søg på siden', 'Ctrl+F', '⌘+F'], ['Udskriv', 'Ctrl+P', '⌘+P'], ['Ny fane', 'Ctrl+T', '⌘+T'],
   ['Luk fanen', 'Ctrl+W', '⌘+W'], ['Genåbn lukket fane', 'Ctrl+Shift+T', '⌘+Shift+T'], ['Skift program', 'Alt+Tab', '⌘+Tab'], ['Lås computeren', 'Win+L', 'Ctrl+⌘+Q'], ['Vis skrivebordet', 'Win+D', 'F11'],
-  ['Skærmbillede af et område', 'Win+Shift+S', '⌘+Shift+4'], ['Stifinder / Finder', 'Win+E', '⌘+Mellemrum'], ['Opgavestyring', 'Ctrl+Shift+Esc', '⌘+Alt+Esc'], ['Fed skrift', 'Ctrl+B', '⌘+B'], ['Kursiv', 'Ctrl+I', '⌘+I'],
+  ['Skærmbillede af et område', 'Win+Shift+S', '⌘+Shift+4'], ['Stifinder / Finder', 'Win+E', '⌘+Mellemrum'], ['Jobliste (Task Manager)', 'Ctrl+Shift+Esc', '⌘+Alt+Esc'], ['Fed skrift', 'Ctrl+B', '⌘+B'], ['Kursiv', 'Ctrl+I', '⌘+I'],
   ['Understreget', 'Ctrl+U', '⌘+U'], ['Zoom ind', 'Ctrl++', '⌘++'], ['Genindlæs siden', 'F5', '⌘+R'], ['Adresselinjen', 'Ctrl+L', '⌘+L'], ['Omdøb fil', 'F2', 'Enter'],
 ];
 /** the keys pressed as a normalized combo like 'Ctrl+Shift+T' */

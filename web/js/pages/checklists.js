@@ -28,7 +28,7 @@ export const TEMPLATES = [
     'Prøv at gendanne én fil', 'Ligger der en kopi uden for huset (sky eller anden adresse)?', 'Er backupdisken frakoblet, når den ikke bruges (beskytter mod ransomware)?'] },
   { id: 'wifi', title: 'Wi-Fi-problemer', icon: 'globe', items: [
     'Gælder det alle enheder eller kun én?', 'Genstart routeren', 'Test hastigheden tæt på routeren og langt fra', 'Tjek kanal og frekvens (2,4 / 5 GHz)',
-    'Opdater routerens firmware', 'Overvej mesh eller et ekstra adgangspunkt ved huller i dækningen', 'Tjek at gæstenetværket er adskilt fra resten'] },
+    'Opdater routerens firmware', 'Overvej mesh eller et ekstra access point ved huller i dækningen', 'Tjek at gæstenetværket er adskilt fra resten'] },
   { id: 'employee', title: 'Ny medarbejder (IT)', icon: 'userPlus', items: [
     'Opret konto og e-mail', 'Tildel licenser (fx Office)', 'Klargør computer og telefon', 'Giv adgang til fællesmapper og systemer',
     'Opsæt totrinsbekræftelse', 'Tilføj printere', 'Gennemgå IT-regler og phishing', 'Notér udleveret udstyr'] },

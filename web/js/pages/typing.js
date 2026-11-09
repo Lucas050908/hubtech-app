@@ -8,8 +8,8 @@ import { appHero } from '../features/apphero.js';
 import { panel, appState, loadError } from '../features/appkit.js';
 
 const LESSONS = [
-  { id: 'home', title: 'Hjemrækken', hint: 'Fingrene hviler på a s d f og j k l æ. Tommelfingrene på mellemrum.', texts: ['asdf jklæ asdf jklæ fdsa ælkj', 'sal dal fald jal kaskade', 'fad flask æsel klas klasse', 'saks lak dask flad dall'] },
-  { id: 'top', title: 'Øverste række', hint: 'Ræk op fra hjemrækken og tilbage igen: q w e r t y u i o p å.', texts: ['were tree pure quiet power', 'rute ruter tirsdag ude oppe', 'pære porte river etage ryttere', 'tyr tur tipper ripper retter'] },
+  { id: 'home', title: 'Grundstillingen', hint: 'Fingrene hviler på a s d f og j k l æ. Tommelfingrene på mellemrum.', texts: ['asdf jklæ asdf jklæ fdsa ælkj', 'sal dal fald jal kaskade', 'fad flask æsel klas klasse', 'saks lak dask flad dall'] },
+  { id: 'top', title: 'Øverste række', hint: 'Ræk op fra grundstillingen og tilbage igen: q w e r t y u i o p å.', texts: ['were tree pure quiet power', 'rute ruter tirsdag ude oppe', 'pære porte river etage ryttere', 'tyr tur tipper ripper retter'] },
   { id: 'bottom', title: 'Nederste række', hint: 'Ræk ned: z x c v b n m og komma, punktum, bindestreg.', texts: ['ben bind vinden mange cyklen', 'zebra boxen cement banan', 'vind, vand, venner, vinter.', 'mange mennesker bor ved byen'] },
   { id: 'nums', title: 'Tal og tegn', hint: 'Tallene sidder over q–p. Hold blikket på skærmen.', texts: ['192.168.1.1 og 10.0.0.1', 'port 443, port 80 og port 22', 'Ring 70 20 30 40 kl. 8:15', 'Pris: 1.299,95 kr. inkl. moms'] },
   { id: 'words', title: 'Hverdagsord', hint: 'Almindelige danske ord med æ, ø og å.', texts: ['Øl, æbler og blåbær på bordet.', 'Hun gik ned ad gaden i går.', 'Vi ses på fredag efter skole.', 'Kaffen er kold, men kagen er god.'] },
@@ -102,7 +102,7 @@ export default {
     const seg = segmented(LESSONS.map(l => ({ value: l.id, label: l.title })), lesson.id, (v) => { lesson = LESSONS.find(l => l.id === v); newText(); }, { label: 'Lektion' });
     newText(); drawHist();
     return h('div', { class: 'page ty-page', style: { '--app': app.hue } },
-      appHero(app, { eyebrow: 'Læring', title: 'Tastaturtræner', lead: 'Lær at skrive hurtigt med ti fingre – fra hjemrækken til rigtige sætninger med æ, ø og å. Se på skærmen, ikke på tastaturet.',
+      appHero(app, { eyebrow: 'Læring', title: 'Tastaturtræner', lead: 'Lær at skrive hurtigt med ti fingre – fra grundstillingen til rigtige sætninger med æ, ø og å. Se på skærmen, ikke på tastaturet.',
         stats: [{ icon: 'trophy', label: 'Rekord', value: best.v }, { icon: 'list', label: 'Lektioner', value: String(LESSONS.length) }, { icon: 'clock', label: 'Øvelser', value: String(st.runs.length) }] }),
       panel(null, null, h('div', { class: 'cmd-filters' }, seg), hint,
         h('div', { class: 'ty-box', onclick: () => input.focus() }, textEl, input),

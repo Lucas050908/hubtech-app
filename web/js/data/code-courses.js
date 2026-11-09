@@ -108,9 +108,9 @@ print("Start!")`),
           check: { out: '5050', test: 'assert total == 5050' } },
         quiz: [['Hvilke tal giver range(2, 5)?', ['2, 3, 4, 5', '2, 3, 4', '3, 4, 5', '0, 1, 2, 3, 4'], 1, 'Slutværdien er ikke med.'],
           ['Hvad gør break?', ['Stopper hele programmet', 'Hopper ud af den inderste løkke', 'Springer én runde over', 'Laver en pause'], 1, 'continue springer over, break stopper løkken.']] },
-      { id: 'py6', title: 'Lister og ordbøger', minutes: 16,
+      { id: 'py6', title: 'Lister og dictionaries', minutes: 16,
         body: `<p>En <b>liste</b> holder flere værdier i rækkefølge: <code>maal = [12.1, 11.9, 12.4]</code>. Første element er <code>maal[0]</code>, sidste er <code>maal[-1]</code>. <code>append()</code> tilføjer, <code>len()</code> tæller.</p>
-<p>En <b>ordbog</b> (dict) slår op med nøgler: <code>lager = {"LED": 40, "ESP32": 2}</code>, og <code>lager["LED"]</code> giver 40.</p>
+<p>En <b>dictionary</b> (dict) slår op med nøgler – ligesom en ordbog: <code>lager = {"LED": 40, "ESP32": 2}</code>, og <code>lager["LED"]</code> giver 40.</p>
 <p>Nyttige funktioner: <code>sum()</code>, <code>min()</code>, <code>max()</code>, <code>sorted()</code>.</p>`,
         example: c(`
 lager = {"Modstand 4k7": 85, "LED rød": 40, "ESP32": 2}
@@ -123,7 +123,7 @@ for navn, antal in lager.items():
           solution: 'maalinger = [230.1, 229.4, 231.8, 228.9, 230.6]\ngennemsnit = sum(maalinger) / len(maalinger)\nhoejeste = max(maalinger)\nprint(gennemsnit, hoejeste)',
           check: { test: 'assert abs(gennemsnit - 230.16) < 0.001, "gennemsnit er forkert"\nassert hoejeste == 231.8, "hoejeste er forkert"' } },
         quiz: [['Hvad er tal[-1] for tal = [4, 8, 15]?', ['4', '8', '15', 'Fejl'], 2, 'Negative indeks tæller bagfra.'],
-          ['Hvordan læser du antallet af "LED" i lager = {"LED": 40}?', ['lager.LED', 'lager[0]', 'lager["LED"]', 'lager("LED")'], 2, 'Ordbøger slås op med nøglen i firkantede parenteser.']] },
+          ['Hvordan læser du antallet af "LED" i lager = {"LED": 40}?', ['lager.LED', 'lager[0]', 'lager["LED"]', 'lager("LED")'], 2, 'I en dictionary slår du op med nøglen i firkantede parenteser.']] },
       { id: 'py7', title: 'Funktioner', minutes: 16,
         body: `<p>En <b>funktion</b> samler kode under et navn, så du kan genbruge den: <code>def navn(parametre):</code>. Med <code>return</code> sender den et resultat tilbage.</p>
 <p>Gode funktioner gør én ting og har et navn, der siger hvad: <code>beregn_modstand()</code> frem for <code>f()</code>.</p>`,
