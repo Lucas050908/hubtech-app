@@ -766,6 +766,7 @@ async def main():
         check("lær og øv: vælgeren i topbaren viser læringsapps i grupper", await page.locator(".lnb-pop .lnb-item").count() == 13 and await page.locator(".lnb-pop .lnb-item.is-on:has-text('Kode-editor')").count() == 1 and await page.locator(".page > .lnb").is_hidden())
         await page.screenshot(path=f"{OUT}/laering-vaelger.png")
         await page.click(".lnb-pop .lnb-item:has-text('Quiz')"); await page.wait_for_url("**/learn/quiz", timeout=6000)
+        await page.wait_for_selector(".tb-crumb:has-text('Quiz')", timeout=6000)
         check("lær og øv: et klik skifter app og lukker vælgeren", await page.locator(".lnb-pop").count() == 0 and "Quiz" in await page.inner_text(".tb-crumb"))
         # Arbejdstilstand: warmer light, softer contrast and fewer distractions – saved with the profile
         await page.click(".tb-work"); await page.wait_for_selector(".tb-work-pop"); await page.click(".tb-work-go"); await page.wait_for_timeout(700)
@@ -1523,7 +1524,7 @@ async def main():
         check("skak: 16 bots i fire faner – Begynder har Mini-Mia og Gnist", len(tiers) == 4 and all(t.endswith("4") for t in tiers) and await page.locator(".ch-bot").count() == 4 and await page.locator(".ch-bot[data-bot='gnist']").count() == 1, tiers)
         await page.click(".ch-tiers button:has-text('Stærk')")
         check("skak: den stærkeste er Stormester Storm (2400)", "2400" in await page.inner_text(".ch-bot[data-bot='storm']") and await page.locator(".ch-rec").count() == 0)
-        await page.click(".ch-tiers button:has-text('Øvet')"); await page.click(".ch-bot[data-bot='tanja']"); await page.click(".ch-setup-row button:has-text('Med rating')"); await page.click(".ch-setup-row button:has-text('Hvid')")
+        await page.click(".ch-tiers button >> nth=2"); await page.click(".ch-bot[data-bot='tanja']"); await page.click(".ch-setup-row button:has-text('Med rating')"); await page.click(".ch-setup-row button:has-text('Hvid')")
         await page.screenshot(path=f"{OUT}/app-chess-bots.png")
         await page.click(".ch-page button:has-text('Start partiet')"); await page.wait_for_selector(".ch-board")
         check("skak: botten står med navn og rating", "Taktik-Tanja (1300)" in await page.inner_text(".ch-main"))

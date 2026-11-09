@@ -31,6 +31,22 @@ python3 server/app.py
 
 **Telefon (iPhone og Android):** åbn HUBTECH på pc'en, vælg "Forbind din telefon", og scan QR-koden. Tryk "Føj til hjemmeskærm", så ligger den som en app.
 
+## Prøv den med en testkonto
+
+Vil du bare kigge rundt? Start demoen – den har en færdig konto med eksempler (projekter, kalender, opgaver og noter):
+
+```bash
+python3 server/demo.py          # Windows: py server\demo.py
+```
+
+Åbn **http://127.0.0.1:8095**, og log ind med
+
+| Brugernavn | Adgangskode |
+|---|---|
+| `demo` | `hubtech-demo` |
+
+Demoen er helt for sig selv: data ligger i `~/.hubtech-demo` (ikke i en rigtig HUBTECH), den kan kun nås fra den computer, den kører på, og den kan ikke gøres offentlig. Slet mappen for at starte forfra.
+
 ## Flere pc'er sammen – uden server
 
 Starter I HUBTECH på flere pc'er på samme netværk, finder de hinanden selv (Teamnet).
