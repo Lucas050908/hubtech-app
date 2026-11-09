@@ -226,7 +226,7 @@ export default {
           h('button', { class: 'icon-btn', 'aria-label': 'Del noten i Fællesskab', title: 'Del i en chat', onclick: () => import('../features/sharechat.js').then(x => x.shareToChat({ kind: 'note', title: n.title || 'Note', body: String(n.body || '').slice(0, 3000) })), html: svg('share') }),
           h('button', { class: 'icon-btn', 'aria-label': 'Print eller hent som PDF', title: 'Print / PDF', onclick: () => printDialog(n), html: svg('file') }), del),
         titleIn, mode === 'read' ? view : body,
-        h('div', { class: 'note-foot' }, count, h('span', null, '·'), h('span', { class: 'faint' }, `Oprettet ${new Date(n.created).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' })}`), h('span', { style: { flex: 1 } }), saveLabel));
+        h('div', { class: 'note-foot' }, count, h('span', null, '·'), h('span', { class: 'faint' }, `Oprettet ${new Date(n.created || n.updated || Date.now()).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' })}`), h('span', { style: { flex: 1 } }), saveLabel));
     }
 
     // ── print / PDF ──

@@ -48,7 +48,8 @@ export function learnTabs(path) {
 
 let pop = null;
 export function openLearnPanel(btn, path) {
-  if (pop) { pop.close(); return; }
+  if (pop) { const open = pop.box.isConnected; pop.close({ refocus: open }); if (open) return; }   // gone with a redrawn top bar: open a new one
+  if (!btn.isConnected) return;
   const recent = recentLearn(path);
   const box = h('div', { class: 'lnb-pop', role: 'dialog', 'aria-label': 'Alle læringsapps' },
     recent.length ? h('section', { class: 'lnb-grp lnb-grp-recent' }, h('h3', { class: 'ab-h' }, icon('clock'), h('span', null, 'Senest brugt')),
@@ -84,7 +85,7 @@ export function openLearnPanel(btn, path) {
   btn.after(box);
   btn.setAttribute('aria-expanded', 'true');
   addEventListener('pointerdown', outside, true); addEventListener('keydown', key, true); addEventListener('hashchange', hc);
-  pop = { close };
+  pop = { close, box };
   (box.querySelector('.lnb-item.is-on') || box.querySelector('a'))?.focus();
 }
 
@@ -93,9 +94,9 @@ export function partTabs(parent, path) {
   const parts = (parent.parts || []).map(appById).filter(Boolean);
   const root = parent.route.slice(1);
   const tabs = [{ href: parent.route, label: parent.tabLabel || parent.name, icon: parent.tabIcon || parent.icon, hue: parent.hue, on: path === root },
-    ...parts.map(a => ({ href: a.route, label: a.name, icon: a.icon, hue: a.hue, on: onApp(a, path) }))];
+    ...parts.map(a => ({ href: a.route, label: a.name, icon: a.icon, app: a, hue: a.hue, on: onApp(a, path) }))];
   const nav = h('nav', { class: 'learn-tabs part-tabs', 'aria-label': parent.name },
-    tabs.map(t => h('a', { class: ['learn-tab', t.on && 'is-on'], href: t.href, 'aria-current': t.on ? 'page' : null, style: { '--app': t.hue } }, icon(t.icon), h('span', null, t.label))));
+    tabs.map(t => h('a', { class: ['learn-tab', t.on && 'is-on'], href: t.href, 'aria-current': t.on ? 'page' : null, style: { '--app': t.hue } }, t.app ? appGlyph(t.app) : icon(t.icon), h('span', null, t.label))));
   requestAnimationFrame(() => { const on = nav.querySelector('.is-on'); if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2; });
   return nav;
 }

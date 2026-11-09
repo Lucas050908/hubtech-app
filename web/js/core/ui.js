@@ -10,6 +10,9 @@ function host() {
   }
   return toastHost;
 }
+/** The stack of floating messages at the bottom right. Reminders live at the bottom of it, toasts above them –
+ *  so the two never cover each other (or Gnist's button). */
+export function floatHost() { return host(); }
 
 /** toast('Gemt', { text, type: 'ok'|'bad'|'warn'|'xp', icon, ms, action: {label, onClick} }) */
 export function toast(title, opts = {}) {
@@ -23,9 +26,10 @@ export function toast(title, opts = {}) {
       opts.action ? h('button', { class: 'btn btn-sm btn-ghost', style: { marginTop: '6px', marginLeft: '-12px' }, onclick: () => { opts.action.onClick(); dismiss(); } }, opts.action.label) : null),
     h('button', { class: 'icon-btn', style: { width: '28px', height: '28px', marginTop: '-4px', marginRight: '-6px' }, 'aria-label': 'Luk', onclick: () => dismiss() }, icon('x')));
   if (opts.action) el.dataset.action = '1';
-  host().appendChild(el);
+  const stack = host(), pinned = stack.querySelector(':scope > .rm-cards');
+  if (pinned) stack.insertBefore(el, pinned); else stack.appendChild(el);
   // at most 4 at a time: the oldest without a button goes first, so "Skift tilbage", "Opdatér nu" … stay
-  const kids = [...host().children];
+  const kids = [...stack.children].filter(k => k.classList.contains('toast'));
   if (kids.length > 4) (kids.find(k => !k.dataset.action) || kids[0]).remove();
   let gone = false;
   function dismiss() {

@@ -5,7 +5,7 @@
  */
 import { h } from '../core/dom.js';
 import { icon } from '../core/icons.js';
-import { toast } from '../core/ui.js';
+import { toast, floatHost } from '../core/ui.js';
 import { store } from '../core/store.js';
 import { getState, saveState } from '../core/services.js';
 import { navigate } from '../core/router.js';
@@ -170,7 +170,7 @@ function beep() {
 let cardsEl = null;
 function fireEvent(e, key = `event-${e.id}`, how = { system: true }, count = 0) {
   const when = `${new Date(`${e.date}T00:00`).toLocaleDateString('da-DK', { weekday: 'short', day: 'numeric', month: 'short' })}${e.allDay ? '' : ` kl. ${e.start || ''}`}`;
-  if (!cardsEl || !cardsEl.isConnected) { cardsEl = h('div', { class: 'rm-cards', role: 'region', 'aria-label': 'Påmindelser' }); document.body.appendChild(cardsEl); }
+  if (!cardsEl || !cardsEl.isConnected) { cardsEl = h('div', { class: 'rm-cards', role: 'region', 'aria-label': 'Påmindelser' }); floatHost().appendChild(cardsEl); }
   cardsEl.querySelector(`[data-key="${CSS.escape(key)}"]`)?.remove();
   let nagT = 0;
   const close = () => { clearTimeout(nagT); card.remove(); };

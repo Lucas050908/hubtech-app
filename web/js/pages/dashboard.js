@@ -2,7 +2,7 @@
 import { h, clear, timeAgo, animateNumber } from '../core/dom.js';
 import { icon, svg } from '../core/icons.js';
 import { api } from '../core/api.js';
-import { store, refreshSummary, DEFAULT_WORLD } from '../core/store.js';
+import { store, refreshSummary } from '../core/store.js';
 import { appById, APPS } from '../core/registry.js';
 import { getState, getProjects, getIntegrations, courseProgress } from '../core/services.js';
 import { guideById } from '../data/guides.js';
@@ -67,15 +67,15 @@ export default {
     ]).then(([cp, cs, pd]) => {
       const pr = courseProgress(cs);
       const favs = store.get('favorites');
-      const w = store.get('prefs').world;
-      const personalised = Object.keys(DEFAULT_WORLD).some(k => k !== 'lat' && w[k] !== DEFAULT_WORLD[k]);
+      const wd = store.get('prefs').widgets || {}, saved = store.get('prefs').savedGuides || [];
+      const pinned = Array.isArray(wd.dock) || (wd.shortcuts || []).length > 0;   // you have chosen what is in the menu on the left
       const items = [
         { t: 'Gennemfør introduktionen', s: 'En kort rundvisning af platformen', done: user.onboarding.done, href: '#/settings/profile' },
         { t: 'Start opstartskurset', s: 'Kryds din første øvelse af', done: pr.done > 0, href: `#/learn/course/${COURSE.id}/day/1` },
         { t: 'Prøv Elværkstedet', s: 'Byg et kredsløb eller regn en opgave', done: !!cp && ((cp.xp || 0) > 0 || (cp.stats?.sims || 0) > 0), href: '#/learn/electro' },
         owner ? { t: 'Forbind dine projekter', s: 'Cursor eller en projektmappe', done: !!pd && pd.projects?.length > 0, href: '#/projects' } : null,
-        { t: 'Gør verdenen til din egen', s: 'Vælg årstid, vejr eller lysstyrke', done: personalised, href: '#/settings/world' },
-        { t: 'Markér en favorit', s: 'Stjernemarkér en app eller et projekt', done: favs.length > 0 || !!pd?.projects?.some(p => p.meta?.favorite), href: '#/apps' },
+        { t: 'Gør menuen til din egen', s: 'Fastgør en app med nålen i Alle apps – eller tilføj en genvej med +', done: pinned, href: '#/apps' },
+        { t: 'Gem en guide', s: 'Tryk “Gem guide” på en guide, du vil vende tilbage til', done: saved.length > 0 || favs.length > 0 || !!pd?.projects?.some(p => p.meta?.favorite), href: '#/learn' },
       ].filter(Boolean);
       checkSlot.replaceChildren(checklist(items));
 
@@ -84,7 +84,7 @@ export default {
       favs.filter(f => f.kind === 'app').forEach(f => { const a = appById(f.ref); if (a) rows.push(h('a', { class: 'row', href: a.route, style: { '--app': a.hue } }, h('span', { class: 'row-icon' }, icon(a.icon)), h('span', { class: 'row-main' }, h('div', { class: 'row-title' }, a.name), h('div', { class: 'row-sub' }, a.tagline)), h('span', { class: 'row-end' }, icon('chevronRight')))); });
       (store.get('prefs').savedGuides || []).forEach(id => { const g = guideById(id); if (g) rows.push(h('a', { class: 'row', href: `#/learn/guide/${g.id}`, style: { '--app': 'var(--hue-learn)' } }, h('span', { class: 'row-icon' }, icon(g.icon)), h('span', { class: 'row-main' }, h('div', { class: 'row-title' }, g.title), h('div', { class: 'row-sub' }, 'Gemt guide')), h('span', { class: 'row-end' }, icon('chevronRight')))); });
       (pd?.projects || []).filter(p => p.meta?.favorite).slice(0, 5).forEach(p => rows.push(projectRow(p)));
-      if (!rows.length) favList.appendChild(h('p', { class: 'faint' }, 'Stjernemarkér apps, guides og projekter for at samle dem her.'));
+      if (!rows.length) favList.appendChild(h('p', { class: 'faint' }, 'Gem en guide med “Gem guide”, eller stjernemarkér et projekt – så samles de her.'));
       rows.forEach(r => favList.appendChild(r));
     });
 

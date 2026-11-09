@@ -55,7 +55,7 @@ export function buildStats({ calendar, tasks, timesheet, summary }, now = Date.n
   let ms = (timesheet?.entries || []).filter(e => e.end && e.start >= monday).reduce((a, e) => a + (e.end - e.start), 0);
   if (timesheet?.running?.start) ms += Math.max(0, now - Math.max(monday, timesheet.running.start));
   const hrs = Math.round(ms / 36e5 * 10) / 10;
-  const hours = { value: hrs.toLocaleString('da-DK', { maximumFractionDigits: 1 }), sub: timesheet?.running ? 'Uret kører nu' : 'timer denne uge', hot: !!timesheet?.running, href: '#/apps/timesheet' };
+  const hours = { value: hrs.toLocaleString('da-DK', { maximumFractionDigits: 1 }), sub: timesheet?.running ? 'Uret kører nu' : hrs ? 'registreret i Tidsregistrering' : 'Ingen registreret endnu', hot: !!timesheet?.running, href: '#/apps/timesheet' };
   const s = summary || { level: 1, xp: 0, levelXp: 0, levelSize: 1000 };
   const left = Math.max(0, (s.levelSize || 1000) - (s.levelXp || 0));
   const level = { label: `Level ${s.level}`, value: `${(s.xp || 0).toLocaleString('da-DK')} XP`, sub: `${left.toLocaleString('da-DK')} XP til level ${s.level + 1}`, pct: Math.round((s.levelXp || 0) / (s.levelSize || 1000) * 100), href: '#/dashboard' };

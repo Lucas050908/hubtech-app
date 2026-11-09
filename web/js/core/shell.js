@@ -323,15 +323,21 @@ function renderThemeBtn() { /* the theme is chosen in the menu by the sliders (t
 
 // where you are: the app (and the part of it), or the place – in Lær og øv it picks between the learning apps
 const CRUMB_PLACES = [['/apps', 'Alle apps', 'apps'], ['/learn', 'Lær og øv', 'graduation'], ['/settings', 'Indstillinger', 'settings'], ['/dashboard', 'Dashboard', 'dashboard'], ['/hubs', 'Forbindelser', 'link'], ['/projects', 'Cursor-projekter', 'folder']];
+let crumbKey = '';
 function drawCrumb(path) {
   if (!crumbEl) return;
   const app = APPS.filter(a => a.route && (path === a.route.slice(1) || path.startsWith(a.route.slice(1) + '/'))).sort((a, b) => b.route.length - a.route.length)[0];
+  // the top bar is redrawn often (every page, every change of the menu): only rebuild when it would say something new –
+  // otherwise an open picker (Lær og øv) vanished under your mouse, and the next click only closed what was already gone
+  const key = path.startsWith('/learn') ? `learn|${isLearnApp(app) ? app.id : ''}` : path === '/' ? 'home' : app ? `app|${app.id}` : `place|${path.split('/')[1] || ''}`;
+  if (key === crumbKey && crumbEl.firstChild && crumbEl.isConnected) return;
+  crumbKey = key;
   const tile = (ic, hue, app) => h('span', { class: 'ab-ico ab-ico-sm', style: { '--app': hue || 'var(--accent)' } }, app ? appGlyph(app, ic) : icon(ic));
   if (path.startsWith('/learn')) {
     const btn = h('button', { type: 'button', class: 'tb-crumb-btn', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-label': `Lær og øv${isLearnApp(app) ? ` – ${app.name}` : ''}: vælg en læringsapp` },
       tile('graduation', '#22c55e'), h('span', { class: 'tb-crumb-t' }, 'Lær og øv'),
       isLearnApp(app) ? [h('span', { class: 'tb-crumb-sep', 'aria-hidden': 'true' }, '›'), h('span', { class: 'tb-crumb-s' }, app.name)] : null, icon('chevronDown'));
-    btn.addEventListener('click', () => import('../features/learnnav.js').then(m => m.openLearnPanel(btn, path)));
+    btn.addEventListener('click', () => import('../features/learnnav.js').then(m => m.openLearnPanel(btn, (location.hash.replace(/^#/, '') || '/').split('?')[0])));
     h(clear(crumbEl), null, btn);
     return;
   }

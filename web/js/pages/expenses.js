@@ -144,7 +144,10 @@ export default {
       const total = expenses.reduce((a, e) => a + toOre(e.data.amount), 0);
       const mineKey = `u:${me()}`, myBal = bal[mineKey] || 0;
       const cats = byCategory(entries);
-      const add = () => expenseDialog(doc, ppl, null, again);
+      // the dialog always works on the group as it is right now: someone you invited a moment ago (or from another device)
+      // is with in the split – the page itself is redrawn a little later
+      const openDialog = async (old) => { let d = doc; try { d = (await sh.get(id, token)).doc || doc; } catch { /* offline: use what we have */ } expenseDialog(d, people(d), old, again); };
+      const add = () => openDialog(null);
       // grouped by date
       const groups = [];
       for (const e of expenses) { const g = groups.at(-1); if (g && g.date === e.data.date) g.items.push(e); else groups.push({ date: e.data.date, items: [e] }); }
@@ -171,7 +174,7 @@ export default {
                 h('div', { class: 'ex-row-b' }, h('b', null, e.data.desc), h('span', { class: 'faint' }, `${name(e.data.paidBy)} betalte · deles mellem ${e.data.split.length === ppl.length ? 'alle' : e.data.split.map(name).join(', ')}`)),
                 h('div', { class: 'ex-amt' }, h('b', null, kr(toOre(e.data.amount))),
                   e.data.split.includes(mineKey) || e.data.paidBy === mineKey ? h('small', { class: e.data.paidBy === mineKey ? 'ex-plus' : 'ex-minus' }, (() => { const mine = splitAmount(toOre(e.data.amount), e.data.split, e.data.custom || null)[mineKey] || 0; const net = (e.data.paidBy === mineKey ? toOre(e.data.amount) : 0) - mine; return net > 0 ? `du får ${kr(net)}` : net < 0 ? `din del ${kr(-net)}` : ''; })()) : null),
-                h('div', { class: 'ex-row-acts' }, h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Ret udgift', onclick: () => expenseDialog(doc, ppl, e, again) }, icon('edit')),
+                h('div', { class: 'ex-row-acts' }, h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Ret udgift', onclick: () => openDialog(e) }, icon('edit')),
                   h('button', { class: 'icon-btn btn-sm', 'aria-label': 'Slet udgift', onclick: async () => { if (await confirmDialog({ title: `Slet “${e.data.desc}”?`, confirmLabel: 'Slet', danger: true })) { await sh.remove(e.id); again(); } } }, icon('trash'))))))),
               h('div', { class: 'row-actions' }, h('button', { class: 'btn btn-sm btn-ghost', onclick: exportCsv }, icon('download'), 'Hent til Excel')))
               : emptyState('wallet', 'Ingen udgifter endnu', 'Tryk “Tilføj udgift”, når nogen har betalt noget for fællesskabet.'),

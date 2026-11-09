@@ -2,7 +2,7 @@
 import { h, clear } from './core/dom.js';
 import { api, onUnauthorized } from './core/api.js';
 import { store, loadUserData, resetSessionState } from './core/store.js';
-import { route, startRouter, navigate, currentPath } from './core/router.js';
+import { route, startRouter, navigate, currentPath, query } from './core/router.js';
 import { buildShell, hasShell, getOutlet, setActiveNav } from './core/shell.js';
 import { appById, access, isLearnApp, suiteOf } from './core/registry.js';
 import { learnTabs, partTabs } from './features/learnnav.js';
@@ -87,7 +87,10 @@ async function onRoute({ path, route: r, params }) {
   if (r.notFound) return showInShell(notFound(), { title: 'Ikke fundet' }, seq);
 
   if (r.public) {
-    if (user && !r.open) return navigate('/', { replace: true });
+    if (user && !r.open) {   // already logged in (a reload on the login page, an old link): go where the link wanted, else home
+      const next = query().get('next');
+      return navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
+    }
     return showPublic(await r.render(params), r.title, seq);
   }
   if (r.home) {

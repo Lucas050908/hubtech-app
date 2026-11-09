@@ -23,14 +23,15 @@
 :root[data-look="rolig"][data-theme="light"] {
   color-scheme: light;
   --bg: #f4efe7; --bg-side: #ece5da; --bg-sunk: #ebe4d8;
-  --text: #2a241e; --text-2: #5c5248; --text-3: #786d61; --text-inv: #fffdf9;
-  --accent: #c2581f; --accent-2: #a84a17; --accent-glow: rgba(194, 88, 31, .25); --accent-soft: rgba(194, 88, 31, .1);
+  --text: #2a241e; --text-2: #5c5248; --text-3: #695e53; --text-inv: #fffdf9;
+  /* deep enough for white text on it (5.3:1) and as text on the paper and the cards (4.7:1 and up) */
+  --accent: #b04c18; --accent-2: #a04514; --accent-glow: rgba(176, 76, 24, .25); --accent-soft: rgba(176, 76, 24, .1);
   --ok: #2f7d3e; --warn: #9a6512; --bad: #b5402c; --info: #2f5f93;
   --ink-0: #f4efe7; --ink-1: #ece5da; --surface-solid: #fffdf9; --ink-2: #fffdf9; --ink-3: #f1ebe2;
   --glass: #fffdf9; --glass-strong: #fffdf9; --glass-soft: rgba(42, 36, 30, .04); --glass-hover: rgba(42, 36, 30, .06);
   --line: #e3dbcf; --line-2: #cfc4b4;
   --shadow-2: 0 20px 50px -24px rgba(60, 40, 20, .3);
-  --ring: 0 0 0 2px #f4efe7, 0 0 0 4px #c2581f;
+  --ring: 0 0 0 2px #f4efe7, 0 0 0 4px #b04c18;
 }
 
 /* no world behind the app – a calm, flat background (and nothing to draw) */
@@ -127,6 +128,30 @@
 :root[data-look="rolig"] .home-title { font: 350 clamp(2.2rem, calc(4.4vw / var(--z, 1)), 3.6rem)/1.08 var(--font-display) !important; color: var(--text) !important; text-shadow: none !important; }
 :root[data-look="rolig"] .home-title b, :root[data-look="rolig"] .home-title em, :root[data-look="rolig"] .home-greet-name { font-style: italic; font-weight: 350; color: var(--accent-2); }
 :root[data-look="rolig"] :is(.home-sub, .home-lead, .on-world) { color: var(--text-2) !important; text-shadow: none !important; }
+/* no landscape behind the text: the "on-world" zones (page heads, section heads, the hero) use the theme's own colours.
+   In the other looks they are light-on-dark in both themes – on the light theme's paper that was white on white. */
+:root[data-look="rolig"] :is(.on-world, .page > .page-head, .home-hero, .guide-cat, .guide-head, .course-top, .landing-hero, .section-head, .public-nav, .site-page > .cp-head ~ .callout) {
+  --text: inherit; --text-2: inherit; --text-3: inherit; --accent: inherit; --accent-soft: inherit;
+  --glass-soft: inherit; --glass-hover: inherit; --glass-strong: inherit; --line: inherit; --line-2: inherit; --hue-cursor: inherit;
+  color: var(--text); text-shadow: none !important;
+}
+:root[data-look="rolig"][data-theme="light"] :is(.on-world, .page > .page-head, .guide-head, .home-hero) .input { background: var(--bg-sunk); color: var(--text); }
+/* the dark glass of the structure underneath is see-through; here it is the same colour but solid, so a menu, a toast or a
+   reminder never shows the page through it. What floats above the page is a shade lighter and casts a shadow. */
+:root[data-look="rolig"][data-theme="dark"] { --glass: #1c1917; --glass-strong: #191614; }
+:root[data-look="rolig"] :is(.toast, .rm-card) { background: var(--surface-solid) !important; border: 1px solid var(--line-2) !important; box-shadow: var(--shadow-2) !important; }
+/* lessons: the pills and the goal use the one accent, not each course's own colour */
+:root[data-look="rolig"] .day-pill { background: var(--glass); border-color: var(--line-2); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-look="rolig"] .day-pill:hover { border-color: var(--accent); color: var(--text); }
+:root[data-look="rolig"] .day-pill.is-progress { border-color: var(--accent); color: var(--accent-2); }
+:root[data-look="rolig"] .day-pill.is-done { background: var(--accent-soft); border-color: transparent; color: var(--text); }
+:root[data-look="rolig"] .day-pill[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #1c1a17; box-shadow: none; }
+:root[data-look="rolig"][data-theme="light"] .day-pill[aria-current="page"] { color: #fff; background: var(--accent-2); border-color: var(--accent-2); }
+:root[data-look="rolig"] .day-goal svg { color: var(--accent); }
+/* the small counters in the top bar: their icons were white for the dark glass */
+:root[data-look="rolig"] .tw-streak svg { color: var(--text-3); }
+:root[data-look="rolig"] .tw-dot { background: var(--text-3); opacity: .6; }
+@media (max-width: 900px) { :root[data-look="rolig"] .toasts { right: 12px !important; left: 12px !important; width: auto !important; bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important; } }
 :root[data-look="rolig"] .home-clock { font-family: var(--font-display); font-weight: 350; text-shadow: none !important; }
 
 /* login and sign-up: the same calm look, with the skyline drawn in lines */
@@ -149,6 +174,8 @@
 :root[data-look="rolig"] code, :root[data-look="rolig"] kbd { background: var(--bg-sunk); border: 1px solid var(--line); border-radius: 6px; }
 :root[data-look="rolig"] ::selection { background: var(--accent-soft); }
 :root[data-look="rolig"] :where(a:not([class])) { color: var(--accent-2); }
+/* a link in running text is underlined – colour alone doesn't set it apart from the text around it */
+:root[data-look="rolig"] :is(p, .callout, .faint, .muted, .toast-text, dd, small, .set-label) :where(a:not([class])) { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 :root[data-look="rolig"] :is(.nav-item, .irail-item, .dock-item, .btn, .app-card, .launcher-item, .lx-tile, .home-recent-app, .tab, .learn-tab, a.tw-chip) { color: inherit; }
 
 /* readable everywhere (WCAG AA): faded days and small labels on highlighted rows keep their contrast */
@@ -266,7 +293,8 @@ a.tb-crumb-t:hover { color: var(--accent-2); }
 :root[data-look="rolig"] .home-d .home-tip:hover { border-color: var(--line-2) !important; color: var(--text) !important; }
 :root[data-look="rolig"] .home-d .home-tip b { color: var(--accent-2); font-weight: 600; }
 :root[data-look="rolig"] .home-d .home-tip-mark { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; flex: none; } :root[data-look="rolig"] .home-d .home-tip-mark svg { width: 100%; height: 100%; }
-:root[data-look="rolig"] .home-d .home-customize-top { color: var(--text-3); }
+:root[data-look="rolig"] .home-d .home-customize-top { color: var(--text-3) !important; text-shadow: none !important; }
+:root[data-look="rolig"] .home-d .home-customize-top:is(:hover, :focus-visible) { color: var(--text) !important; background: var(--glass-hover) !important; }
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .home-main { display: grid; gap: 20px; min-width: 0; align-content: start; }
 .home-side { position: sticky; top: calc(var(--topbar-h, 60px) + 16px); display: grid; gap: 20px; }
@@ -359,3 +387,21 @@ a.tb-crumb-t:hover { color: var(--accent-2); }
 
 /* deadlines from Opgaver in the calendar: small text, so a bit more contrast */
 :root[data-look="rolig"] .cal-task { color: color-mix(in srgb, var(--hue-tasks) 62%, var(--text)); }
+
+/* ── colours that were written for the dark picture behind the old looks ── */
+:root[data-look="rolig"] .ahs-value { color: var(--text); }
+:root[data-look="rolig"] .ahs-label { color: var(--text-3); }
+:root[data-look="rolig"] .app-hero-stat + .app-hero-stat { border-left-color: var(--line); }
+:root[data-look="rolig"] .app-hero p .icon-btn { color: var(--text-2); }
+:root[data-look="rolig"][data-theme="light"] .ahs-icon { color: color-mix(in srgb, var(--app) 62%, var(--text)); }
+:root[data-look="rolig"] .kx-out-h { color: var(--text-3); }
+:root[data-look="rolig"] .lx-boot-line { color: #a8a29e; }                      /* on the terminal's own dark screen */
+:root[data-look="rolig"] .dp2-item.is-past { opacity: 1; } :root[data-look="rolig"] .dp2-item.is-past :is(b, .dp2-time) { color: var(--text-3); font-weight: 500; }
+:root[data-look="rolig"] .dp2-item.is-past > :not(b):not(.dp2-time) { opacity: .55; }
+:root[data-look="rolig"][data-theme="light"] .cs-course-go { color: color-mix(in srgb, var(--c) 45%, var(--text)); }
+:root[data-look="rolig"][data-theme="light"] .sh-tag.is-on { color: #fff; }
+:root[data-look="rolig"][data-theme="light"] :is(.tk-res.is-main b, .tk-unit) { color: color-mix(in srgb, var(--app) 60%, var(--text)); }
+:root[data-look="rolig"][data-theme="light"] .cl-pts.lv1 { color: #1f7a3d; } :root[data-look="rolig"][data-theme="light"] .cl-pts.lv2 { color: #8a5a06; } :root[data-look="rolig"][data-theme="light"] .cl-pts.lv3 { color: #b0362b; }
+:root[data-look="rolig"][data-theme="light"] .ns-bit.on, :root[data-look="rolig"][data-theme="light"] .ns-bit.on small { color: #fff; }
+:root[data-look="rolig"] .g-list li::marker { color: var(--accent); }
+:root[data-look="rolig"] .guide-head h2 { display: flex; align-items: center; gap: 10px; } :root[data-look="rolig"] .guide-head h2 svg { margin: 0; flex: none; }

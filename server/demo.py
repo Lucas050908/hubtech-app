@@ -63,8 +63,8 @@ def seed():
         {"id": "t3", "title": "Skriv tilbud til Hansen", "notes": "", "status": "todo", "prio": "med", "due": d(5), "project": None, "remind": "none", "created": now * 1000, "updated": now * 1000},
     ]})
     _state(uid, "notes", {"notes": [
-        {"id": "n1", "title": "Wi-Fi i mødelokalet", "body": "Svagt signal ved vinduet.\n[ ] Mål med telefonen\n[ ] Bestil 3. adgangspunkt", "updated": now * 1000},
-        {"id": "n2", "title": "Nyttige kommandoer", "body": "ipconfig /all\nping 192.168.1.1\ntracert 8.8.8.8", "updated": now * 1000},
+        {"id": "n1", "title": "Wi-Fi i mødelokalet", "body": "Svagt signal ved vinduet.\n[ ] Mål med telefonen\n[ ] Bestil et access point mere", "created": now * 1000, "updated": now * 1000},
+        {"id": "n2", "title": "Nyttige kommandoer", "body": "ipconfig /all\nping 192.168.1.1\ntracert 8.8.8.8", "created": now * 1000, "updated": now * 1000},
     ]})
 
     # two projects: a job with the customer, and a bit of code with a described change (like a commit)
@@ -73,7 +73,7 @@ def seed():
                                        "about": "Netværk, printere og pc'er flyttes til det nye kontor.", "members": [{"username": "maja", "name": "Maja"}], "review": False, "slug": "kontorflytning"})
     projects.emit(me, job, "msg", {"text": "Hej Maja – switchen står i skabet ved døren. Kassen skal på VLAN 20."})
     projects.emit(maja, job, "msg", {"text": "Super! Jeg tager kablerne med i morgen. Husk gæstenettet på VLAN 99."})
-    for tid, title, done in (("a1b2c3d4e5f60718", "Mål Wi-Fi i mødelokalet", False), ("a1b2c3d4e5f60719", "Bestil 3. adgangspunkt", False), ("a1b2c3d4e5f6071a", "Tegn netværket", True)):
+    for tid, title, done in (("a1b2c3d4e5f60718", "Mål Wi-Fi i mødelokalet", False), ("a1b2c3d4e5f60719", "Bestil et access point mere", False), ("a1b2c3d4e5f6071a", "Tegn netværket", True)):
         projects.emit(me, job, "task", {"tid": tid, "title": title, "done": done})
     code = secrets.token_hex(8)
     projects.emit(me, code, "project", {"name": "Lager-scanneren", "kind": "code", "color": "#6aa9e8", "customer": "", "deadline": "", "about": "En lille side, hvor lageret scannes med telefonen.",

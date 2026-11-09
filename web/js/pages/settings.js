@@ -27,7 +27,7 @@ const AVATARS = ['⚡', '🦊', '🐺', '🦁', '🐯', '🐻', '🦅', '🐉', 
 const TABS = [
   { id: 'profile', label: 'Profil', icon: 'user' },
   { id: 'security', label: 'Sikkerhed', icon: 'lock' },
-  { id: 'world', label: 'Verden & udseende', icon: 'mountain' },
+  { id: 'world', label: 'Udseende', icon: 'sun' },
   { id: 'apps', label: 'Apps og opkald', icon: 'phone' },
   { id: 'integrations', label: 'Integrationer', icon: 'plug' },
   { id: 'users', label: 'Brugere', icon: 'users', owner: true },
@@ -183,6 +183,7 @@ function browserName(ua = '') {
 
 function worldTab() {
   const w = () => store.get('prefs').world;
+  const rolig = document.documentElement.dataset.look === 'rolig';   // design D: flat colours, no picture behind the app
   const preview = h('canvas', { class: 'world-preview', 'aria-hidden': 'true' });
   const drawPreview = () => {   // the one background: Højhuse om natten
     import('../world/cityscape.js').then(m => m.paintScene(preview, 'desert', { time: 'night', light: document.documentElement.dataset.theme === 'light' }));
@@ -207,10 +208,14 @@ function worldTab() {
   const clarity = segmented([{ value: 'system', label: 'Følg system' }, { value: 'normal', label: 'Glas' }, { value: 'solid', label: 'Tydelig' }], w().clarity || 'system', (v) => setWorld({ clarity: v }), { label: 'Læsbarhed' });
   const styleSel = h('select', { class: 'select', 'aria-label': 'Stil' });
   const drawStyle = () => {
-    const auto = SCENES.desert.style;
-    h(clear(styleSel), null, STYLES.map(([v, l]) => h('option', { value: v, selected: (w().style || 'auto') === v }, v === 'auto' ? `${l} (${STYLES.find(x => x[0] === auto)?.[1] || 'Standard'})` : l)));
+    const cur = w().style && w().style !== 'auto' ? w().style : SCENES.desert.style;   // "auto" is the standard look
+    h(clear(styleSel), null, STYLES.filter(([v]) => v !== 'auto').map(([v, l]) => h('option', { value: v, selected: cur === v }, l)));
   };
-  styleSel.addEventListener('change', () => { setWorld({ style: styleSel.value }); drawStyle(); });
+  styleSel.addEventListener('change', () => {
+    setWorld({ style: styleSel.value }); drawStyle();
+    // the rows below depend on the look (a background or not): draw the tab again when it has changed
+    setTimeout(() => { const old = styleSel.closest('[data-tour="world-settings"]'); if (!old?.isConnected) return; const fresh = worldTab(); old.replaceWith(fresh); fresh.querySelector('select[aria-label="Stil"]')?.focus(); }, 150);
+  });
   drawStyle();
   const quality = segmented([{ value: 'normal', label: 'Normal' }, { value: 'high', label: 'Høj' }], w().quality || 'normal', (v) => setWorld({ quality: v }), { label: 'Billedkvalitet' });
   const locBox = h('div');
@@ -228,7 +233,7 @@ function worldTab() {
     }
   };
   drawLoc();
-  refresh();
+  if (!rolig) refresh();
   const parallax = switchControl({ checked: w().parallax, label: 'Dybdeeffekt (parallax)', onChange: (v) => setWorld({ parallax: v }) });
   // ── screen: size (4K etc.) and a see-through window ──
   const scaleSel = h('select', { class: 'select', 'aria-label': 'Størrelse på skærmen' }, SCALES.map(([v, l]) => h('option', { value: v, selected: getScale() === v }, v === 'auto' ? `${l} (${Math.round(autoZoom() * 100)} % her)` : l)));
@@ -248,25 +253,27 @@ function worldTab() {
   };
   drawTrans();
   return h('div', { class: 'stack', dataset: { tour: 'world-settings' } },
-    h('section', { class: 'glass panel world-hero' }, preview, h('div', { class: 'world-hero-text' }, h('h2', { class: 'panel-title' }, 'Baggrunden'), status)),
+    rolig ? null : h('section', { class: 'glass panel world-hero' }, preview, h('div', { class: 'world-hero-text' }, h('h2', { class: 'panel-title' }, 'Baggrunden'), status)),
     h('section', { class: 'glass panel' },
-      row('Tema', 'Lys eller mørk brugerflade', theme),
+      row('Tema', 'Lys eller mørk brugerflade. Arbejdstilstand (øjet i topbaren) gør lyset varmere, når du arbejder længe.', theme),
       ),
     h('section', { class: 'glass panel' },
-      h('h2', { class: 'panel-title' }, 'Baggrund'),
-      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'HUBTECH har én baggrund: Højhuse om natten – med lys i vinduerne, en bil, der kører forbi, og et kredsløb, der gløder i bunden.'),
-      row('Stil', 'Farver og former på knapper og paneler. “Følger temaet” skifter med baggrunden.', styleSel),
-      row('Billedkvalitet', 'Høj tegner baggrunden i fuld skarphed på store og skarpe skærme (bruger lidt mere strøm)', quality)),
+      h('h2', { class: 'panel-title' }, rolig ? 'Stil' : 'Baggrund'),
+      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, rolig
+        ? 'Rolig og varm er HUBTECHs standard: flade, varme farver uden et billede i baggrunden – let for øjnene og for computeren. De andre stile har baggrunden Højhuse om natten.'
+        : 'Denne stil har baggrunden Højhuse om natten – med lys i vinduerne, en bil, der kører forbi, og et kredsløb, der gløder i bunden. Rolig og varm er uden baggrund.'),
+      row('Vælg stil', 'Farver og former på knapper og paneler.', styleSel),
+      rolig ? null : row('Billedkvalitet', 'Høj tegner baggrunden i fuld skarphed på store og skarpe skærme (bruger lidt mere strøm)', quality)),
     h('section', { class: 'glass panel' },
       h('h2', { class: 'panel-title' }, 'Skærm'),
       row('Størrelse', 'Gør alt større eller mindre på denne skærm. Automatisk gør det større på store skærme som 4K.', h('div', { class: 'set-stack' }, scaleSel, screenInfo)),
-      row('Gennemsigtig baggrund', 'Se dit eget skrivebord bag HUBTECH i stedet for højhusene', transBox)),
+      rolig ? null : row('Gennemsigtig baggrund', 'Se dit eget skrivebord bag HUBTECH i stedet for højhusene', transBox)),
     h('section', { class: 'glass panel' },
-      row('Animationer', 'Mængden af partikler og bevægelse', mkRange('intensity', 0, 1, 0.05, 'Animationernes intensitet')),
-      row('Baggrundens lysstyrke', 'Dæmp verdenen for mere ro', mkRange('brightness', 0.4, 1.1, 0.05, 'Lysstyrke')),
-      row('Bevægelse', 'Reduceret viser et stillbillede og slår overgange fra', motion),
-      row('Læsbarhed', 'Tydelig giver faste paneler og stærkere kontrast – godt i skarpt lys eller ved nedsat syn', clarity),
-      row('Ydeevne', 'Telefoner og langsomme computere starter i let tilstand, og verdenen skruer selv ned (til sidst et stillbillede), hvis den bliver for tung.', perfControl())));
+      rolig ? null : row('Animationer', 'Mængden af partikler og bevægelse', mkRange('intensity', 0, 1, 0.05, 'Animationernes intensitet')),
+      rolig ? null : row('Baggrundens lysstyrke', 'Dæmp verdenen for mere ro', mkRange('brightness', 0.4, 1.1, 0.05, 'Lysstyrke')),
+      row('Bevægelse', rolig ? 'Reduceret slår overgange og animationer fra' : 'Reduceret viser et stillbillede og slår overgange fra', motion),
+      rolig ? null : row('Læsbarhed', 'Tydelig giver faste paneler og stærkere kontrast – godt i skarpt lys eller ved nedsat syn', clarity),
+      rolig ? null : row('Ydeevne', 'Telefoner og langsomme computere starter i let tilstand, og verdenen skruer selv ned (til sidst et stillbillede), hvis den bliver for tung.', perfControl())));
 }
 
 function perfControl() {
