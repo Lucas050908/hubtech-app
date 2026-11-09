@@ -1,0 +1,731 @@
+package dk.hubtech.app;
+
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.DownloadManager;
+import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.print.PrintAttributes;
+import android.print.PrintManager;
+import android.provider.MediaStore;
+import android.provider.Settings;
+import android.util.Base64;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
+import android.webkit.URLUtil;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+
+import com.chaquo.python.PyObject;
+import com.chaquo.python.Python;
+
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * HUBTECH for Android: starts the HUBTECH server (Python, via Chaquopy) on this phone and shows it
+ * in a WebView. All data stays in the app's private storage (files/hubtech). No computer needed.
+ * Native extras: reminders as notifications, a home screen widget, shortcuts, "Del til HUBTECH",
+ * camera (photos + scanning), printing, an app lock and installing updates.
+ */
+public class MainActivity extends AppCompatActivity {
+    private static final int PICK_FILE = 4711, REQ_CAMERA = 11, REQ_NOTIFY = 12, REQ_CAMERA_CHOOSER = 13;
+    private static final long LOCK_AFTER_MS = 30_000;
+    private WebView web, printWeb;
+    private View splash, lockView;
+    private TextView splashText;
+    private ValueCallback<Uri[]> fileCallback;
+    private WebChromeClient.FileChooserParams pendingChooser;
+    private PermissionRequest pendingPermission;
+    private Uri cameraUri;
+    private int port = 0;
+    private String remote = "";      // another HUBTECH server (https://…) chosen under Indstillinger → Telefon
+    private volatile boolean offline = false;   // the other HUBTECH can't be reached → using the server inside the app for now
+    private final java.util.concurrent.ScheduledExecutorService watch = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+    private String pendingPath = null;
+    private long stoppedAt = 0, updateDownload = -1;
+    private boolean unlocked = false;
+    private final ExecutorService bg = Executors.newSingleThreadExecutor();
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private SharedPreferences prefs;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        prefs = getSharedPreferences("hubtech", MODE_PRIVATE);
+        remote = prefs.getString("remote", "");
+        NotifyJob.sync(this);
+        Reminders.ensureChannel(this);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.parseColor("#141210"));
+        web = new WebView(this);
+        web.setBackgroundColor(Color.parseColor("#141210"));
+        web.setVisibility(View.INVISIBLE);
+        root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        splash = buildSplash();
+        root.addView(splash, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        lockView = buildLock();
+        lockView.setVisibility(View.GONE);
+        root.addView(lockView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(root);
+        setupWebView();
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                if (web.canGoBack()) web.goBack();
+                else { setEnabled(false); getOnBackPressedDispatcher().onBackPressed(); }
+            }
+        });
+        handleIntent(getIntent());
+        if (remote.isEmpty()) startServer();
+        else bg.execute(() -> { if (reachable(remote, 4000)) openRemote(); else goOffline(); });
+    }
+
+    /** Does a HUBTECH answer at this address? (short timeout – used before opening it and to notice it is back) */
+    private static boolean reachable(String base, int timeoutMs) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/health").openConnection();
+            c.setConnectTimeout(timeoutMs); c.setReadTimeout(timeoutMs);
+            int code = c.getResponseCode();
+            c.disconnect();
+            return code == 200;
+        } catch (Exception e) { return false; }
+    }
+
+    /** The computer is off (or out of reach): keep working with the HUBTECH inside the app, and watch for the computer. */
+    private void goOffline() {
+        if (offline) return;
+        offline = true;
+        ui.post(() -> Toast.makeText(this, R.string.offline_now, Toast.LENGTH_LONG).show());
+        if (port == 0) startServer();
+        else ui.post(() -> web.loadUrl(base() + "/?source=app"));
+        watch.scheduleWithFixedDelay(() -> {
+            if (offline && reachable(remote, 5000)) js("window.hubtechServerBack && window.hubtechServerBack();");
+        }, 20, 30, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    /** Use another HUBTECH (e.g. a friend's or your own computer via HTTPS) instead of the server inside the app. */
+    private void openRemote() {
+        ui.post(() -> {
+            String start = pendingPath != null ? "/#" + pendingPath : "/?source=app";
+            pendingPath = null;
+            web.loadUrl(remote + start);
+        });
+    }
+
+    private boolean ready() { return (!remote.isEmpty() && !offline) || port != 0; }
+
+    private boolean sameOrigin(Uri u) {
+        if (u == null) return false;
+        if (!remote.isEmpty() && !offline) {
+            Uri r = Uri.parse(remote);
+            return r.getScheme() != null && r.getScheme().equals(u.getScheme()) && r.getHost() != null && r.getHost().equalsIgnoreCase(u.getHost()) && r.getPort() == u.getPort();
+        }
+        String host = u.getHost();
+        return ("127.0.0.1".equals(host) || "localhost".equals(host)) && u.getPort() == port;
+    }
+
+    // ── splash / first start ──
+    private View buildSplash() {
+        // the same look as HUBTECH itself: warm dark stone, an orange glow, the logo and an orange bar
+        float dp = getResources().getDisplayMetrics().density;
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[] { Color.parseColor("#1C1410"), Color.parseColor("#141210"), Color.parseColor("#141210") });
+        box.setBackground(bg);
+        android.widget.ImageView logo = new android.widget.ImageView(this);
+        logo.setImageResource(R.mipmap.ic_launcher);
+        logo.setContentDescription("HUBTECH");
+        box.addView(logo, new LinearLayout.LayoutParams((int) (88 * dp), (int) (88 * dp)));
+        TextView title = new TextView(this);
+        title.setText("HUBTECH");
+        title.setTextColor(Color.parseColor("#F5F0E8"));
+        title.setTextSize(26);
+        title.setLetterSpacing(0.18f);
+        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        title.setPadding(0, (int) (18 * dp), 0, 0);
+        box.addView(title);
+        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setIndeterminate(true);
+        bar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#F97316")));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams((int) (180 * dp), ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = (int) (26 * dp);
+        box.addView(bar, lp);
+        splashText = new TextView(this);
+        // the first start after installing / updating unpacks the server and web app – say so
+        boolean first = prefs.getLong("startedVersion", -1) != versionCode();
+        splashText.setText(first ? R.string.first_start : R.string.starting);
+        splashText.setTextColor(Color.parseColor("#A8A29E"));
+        splashText.setPadding((int) (32 * dp), (int) (18 * dp), (int) (32 * dp), 0);
+        splashText.setGravity(Gravity.CENTER);
+        box.addView(splashText);
+        return box;
+    }
+
+    private long versionCode() {
+        try {
+            PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+        } catch (Exception e) { return 0; }
+    }
+
+    private String versionName() {
+        try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return ""; }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupWebView() {
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
+        s.setUserAgentString(s.getUserAgentString() + " HUBTECH-Android");
+        CookieManager.getInstance().setAcceptCookie(true);
+        web.addJavascriptInterface(new Bridge(), "HubtechAndroid");
+
+        web.setWebViewClient(new WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+                Uri u = req.getUrl();
+                if (sameOrigin(u)) return false;
+                // links to other sites (and tel:/mailto:) open in the phone's own apps
+                try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (ActivityNotFoundException ignored) { }
+                return true;
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest req, android.webkit.WebResourceError err) {
+                if (!req.isForMainFrame() || remote.isEmpty() || offline) return;
+                if (req.getUrl() != null && sameOrigin(req.getUrl())) { goOffline(); return; }
+                String html = "<!doctype html><html lang=da><meta name=viewport content='width=device-width,initial-scale=1'><body style='margin:0;min-height:100vh;display:grid;place-items:center;background:#0a1422;color:#eef4fb;font:16px system-ui'>"
+                        + "<div style='max-width:340px;padding:24px;text-align:center'><h2>Serveren svarer ikke</h2><p style='color:#9fb0c4'>" + android.text.TextUtils.htmlEncode(remote) + " kunne ikke nås. Tjek internettet, eller om computeren med HUBTECH er tændt.</p>"
+                        + "<p><button style='font:inherit;padding:12px 18px;border:0;border-radius:12px;background:#4cc2ff;font-weight:700' onclick='location.href=" + JSONObject.quote(remote + "/") + "'>Prøv igen</button></p>"
+                        + "<p><button style='font:inherit;padding:12px 18px;border-radius:12px;background:none;color:#eef4fb;border:1px solid #445' onclick='HubtechAndroid.useLocalServer()'>Brug appens egen server</button></p></div>";
+                view.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
+                if (splash.getVisibility() == View.VISIBLE) { web.setVisibility(View.VISIBLE); splash.setVisibility(View.GONE); }
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                if (splash.getVisibility() == View.VISIBLE) {
+                    prefs.edit().putLong("startedVersion", versionCode()).apply();
+                    web.setVisibility(View.VISIBLE);
+                    splash.animate().alpha(0f).setDuration(220).withEndAction(() -> splash.setVisibility(View.GONE));
+                }
+            }
+        });
+
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileCallback != null) fileCallback.onReceiveValue(null);
+                fileCallback = callback;
+                boolean wantsImages = false;
+                for (String a : params.getAcceptTypes()) if (a == null || a.isEmpty() || a.startsWith("image") || a.equals("*/*")) wantsImages = true;
+                if (wantsImages && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+                        && !prefs.getBoolean("cameraAsked", false)) {
+                    prefs.edit().putBoolean("cameraAsked", true).apply();
+                    pendingChooser = params;
+                    requestPermissions(new String[] { Manifest.permission.CAMERA }, REQ_CAMERA_CHOOSER);
+                    return true;
+                }
+                return openChooser(params, wantsImages);
+            }
+
+            // getUserMedia: camera (scanner, snaps, video calls) and microphone (calls) – only for HUBTECH itself
+            @Override public void onPermissionRequest(PermissionRequest request) {
+                ui.post(() -> {
+                    if (!sameOrigin(request.getOrigin())) { request.deny(); return; }
+                    java.util.List<String> want = new java.util.ArrayList<>(), need = new java.util.ArrayList<>();
+                    for (String r : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) { want.add(r); if (!has(Manifest.permission.CAMERA)) need.add(Manifest.permission.CAMERA); }
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) { want.add(r); if (!has(Manifest.permission.RECORD_AUDIO)) need.add(Manifest.permission.RECORD_AUDIO); }
+                    }
+                    if (want.isEmpty()) { request.deny(); return; }
+                    if (need.isEmpty()) { request.grant(want.toArray(new String[0])); return; }
+                    pendingPermission = request;
+                    requestPermissions(need.toArray(new String[0]), REQ_CAMERA);
+                });
+            }
+        });
+
+        // plain http downloads (e.g. a backup .db) – the session cookie is passed along
+        web.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            if (url.startsWith("blob:") || url.startsWith("data:")) return;   // handled by the JS bridge
+            try {
+                DownloadManager.Request r = new DownloadManager.Request(Uri.parse(url));
+                r.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
+                r.addRequestHeader("User-Agent", userAgent);
+                String name = URLUtil.guessFileName(url, contentDisposition, mimeType);
+                r.setTitle(name);
+                r.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                r.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
+                ((DownloadManager) getSystemService(DOWNLOAD_SERVICE)).enqueue(r);
+                Toast.makeText(this, getString(R.string.saved_to, name), Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, R.string.save_failed, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    /** File chooser – with "take a photo" offered next to the gallery when images are accepted. */
+    private boolean openChooser(WebChromeClient.FileChooserParams params, boolean wantsImages) {
+        try {
+            Intent pick = params.createIntent();
+            Intent chooser = Intent.createChooser(pick, null);
+            cameraUri = null;
+            if (wantsImages && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                File dir = new File(getCacheDir(), "camera");
+                if (dir.exists() || dir.mkdirs()) {
+                    File f = new File(dir, "foto-" + System.currentTimeMillis() + ".jpg");
+                    cameraUri = FileProvider.getUriForFile(this, "dk.hubtech.app.files", f);
+                    Intent cam = new Intent(MediaStore.ACTION_IMAGE_CAPTURE).putExtra(MediaStore.EXTRA_OUTPUT, cameraUri)
+                            .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    if (params.isCaptureEnabled()) chooser = cam;
+                    else chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[] { cam });
+                }
+            }
+            startActivityForResult(chooser, PICK_FILE);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            if (fileCallback != null) fileCallback.onReceiveValue(null);
+            fileCallback = null;
+            return false;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, @NonNull String[] perms, @NonNull int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        boolean ok = res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED;
+        if (code == REQ_CAMERA && pendingPermission != null) {
+            java.util.List<String> grant = new java.util.ArrayList<>();
+            for (String r : pendingPermission.getResources()) {
+                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r) && has(Manifest.permission.CAMERA)) grant.add(r);
+                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r) && has(Manifest.permission.RECORD_AUDIO)) grant.add(r);
+            }
+            if (!grant.isEmpty()) pendingPermission.grant(grant.toArray(new String[0]));
+            else { pendingPermission.deny(); Toast.makeText(this, R.string.camera_denied, Toast.LENGTH_LONG).show(); }
+            pendingPermission = null;
+        } else if (code == REQ_CAMERA_CHOOSER && pendingChooser != null) {
+            WebChromeClient.FileChooserParams p = pendingChooser;
+            pendingChooser = null;
+            openChooser(p, true);
+        } else if (code == REQ_NOTIFY) {
+            js("window.dispatchEvent(new CustomEvent('hubtech-notify', { detail: " + ok + " }))");
+        }
+    }
+
+    // ── server start + opening pages ──
+    private void startServer() {
+        final File dataDir = new File(getFilesDir(), "hubtech");
+        bg.execute(() -> {
+            try {
+                Python py = Python.getInstance();
+                PyObject res = py.getModule("android_main").callAttr("start", dataDir.getAbsolutePath());
+                port = res.toInt();
+                ui.post(() -> {
+                    String start = pendingPath != null ? "/#" + pendingPath : "/?source=app";
+                    pendingPath = null;
+                    web.loadUrl(base() + start);
+                });
+            } catch (Throwable t) {
+                ui.post(() -> splashText.setText(getString(R.string.start_failed) + "\n\n" + t.getMessage()));
+            }
+        });
+    }
+
+    private String base() { return remote.isEmpty() || offline ? "http://127.0.0.1:" + port : remote; }
+
+    private boolean has(String perm) { return ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED; }
+
+    private void openPath(String path) {
+        if (path == null || path.isEmpty()) path = "/";
+        if (!path.startsWith("/")) path = "/" + path;
+        if (!ready()) { pendingPath = path; return; }
+        final String p = path;
+        js("location.hash = " + JSONObject.quote(p) + ";");
+    }
+
+    private void js(String code) { ui.post(() -> { if (web != null) web.evaluateJavascript(code, null); }); }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent(intent);
+    }
+
+    /** hubtech://open/apps/... from shortcuts, notifications and the widget; ACTION_SEND from other apps. */
+    private void handleIntent(Intent in) {
+        if (in == null) return;
+        String action = in.getAction();
+        if (Intent.ACTION_VIEW.equals(action) && in.getData() != null && "hubtech".equals(in.getData().getScheme())) {
+            Uri d = in.getData();
+            String path = d.getPath() == null ? "/" : d.getPath();
+            if (d.getQuery() != null) path += "?" + d.getQuery();
+            openPath(path);
+        } else if (Intent.ACTION_SEND.equals(action)) {
+            String type = in.getType() == null ? "" : in.getType();
+            if (type.startsWith("text/")) {
+                String text = in.getStringExtra(Intent.EXTRA_TEXT), subject = in.getStringExtra(Intent.EXTRA_SUBJECT);
+                openPath("/share?text=" + enc(text) + (subject != null ? "&title=" + enc(subject) : ""));
+            } else if (type.startsWith("image/")) {
+                Uri img = in.getParcelableExtra(Intent.EXTRA_STREAM);
+                if (img != null) shareImage(img, type);
+            }
+        }
+    }
+
+    private static String enc(String s) {
+        try { return URLEncoder.encode(s == null ? "" : s, "UTF-8"); } catch (Exception e) { return ""; }
+    }
+
+    /** A shared picture is stored on this phone's HUBTECH (like an Office image) and then offered on /share. */
+    private void shareImage(Uri img, String type) {
+        Toast.makeText(this, R.string.share_sending, Toast.LENGTH_SHORT).show();
+        bg.execute(() -> {
+            String path;
+            try {
+                while (!ready()) SystemClock.sleep(200);
+                byte[] bytes;
+                try (InputStream is = getContentResolver().openInputStream(img); ByteArrayOutputStream bo = new ByteArrayOutputStream()) {
+                    byte[] buf = new byte[65536]; int n;
+                    while ((n = is.read(buf)) > 0) { bo.write(buf, 0, n); if (bo.size() > 15 * 1024 * 1024) break; }
+                    bytes = bo.toByteArray();
+                }
+                HttpURLConnection c = (HttpURLConnection) new URL(base() + "/api/office/files").openConnection();
+                c.setRequestMethod("POST");
+                c.setDoOutput(true);
+                c.setRequestProperty("X-Requested-With", "hubtech");
+                c.setRequestProperty("Content-Type", type);
+                c.setRequestProperty("X-File-Name", "delt-billede");
+                String cookie = CookieManager.getInstance().getCookie(base());
+                if (cookie != null) c.setRequestProperty("Cookie", cookie);
+                try (OutputStream os = c.getOutputStream()) { os.write(bytes); }
+                int code = c.getResponseCode();
+                if (code == 201 || code == 200) {
+                    String body;
+                    try (InputStream is = c.getInputStream(); ByteArrayOutputStream bo = new ByteArrayOutputStream()) {
+                        byte[] buf = new byte[4096]; int n; while ((n = is.read(buf)) > 0) bo.write(buf, 0, n); body = bo.toString("UTF-8");
+                    }
+                    path = "/share?image=" + enc(new JSONObject(body).getJSONObject("file").getString("url"));
+                } else path = "/share?error=" + (code == 401 ? "login" : "image");
+            } catch (Exception e) { path = "/share?error=image"; }
+            final String p = path;
+            ui.post(() -> openPath(p));
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PICK_FILE || fileCallback == null) return;
+        Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+        if ((result == null || result.length == 0) && resultCode == RESULT_OK && cameraUri != null) result = new Uri[] { cameraUri };
+        fileCallback.onReceiveValue(result);
+        fileCallback = null;
+    }
+
+    // ── app lock (fingerprint / face / screen lock) ──
+    private View buildLock() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setBackgroundColor(Color.parseColor("#141210"));
+        box.setClickable(true);
+        TextView t = new TextView(this);
+        t.setText(R.string.lock_title);
+        t.setTextColor(Color.parseColor("#F5F0E8"));
+        t.setTextSize(22);
+        t.setTypeface(t.getTypeface(), android.graphics.Typeface.BOLD);
+        box.addView(t);
+        TextView s = new TextView(this);
+        s.setText(R.string.lock_sub);
+        s.setTextColor(Color.parseColor("#A8A29E"));
+        s.setPadding(48, 16, 48, 32);
+        s.setGravity(Gravity.CENTER);
+        box.addView(s);
+        Button b = new Button(this);
+        b.setText(R.string.lock_retry);
+        b.setOnClickListener(v -> promptUnlock());
+        box.addView(b);
+        return box;
+    }
+
+    private static final int AUTH = BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+
+    private boolean lockAvailable() { return BiometricManager.from(this).canAuthenticate(AUTH) == BiometricManager.BIOMETRIC_SUCCESS; }
+
+    private boolean lockEnabled() { return prefs.getBoolean("lock", false) && lockAvailable(); }
+
+    private void promptUnlock() {
+        BiometricPrompt p = new BiometricPrompt(this, ContextCompat.getMainExecutor(this), new BiometricPrompt.AuthenticationCallback() {
+            @Override public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult r) {
+                unlocked = true;
+                lockView.animate().alpha(0f).setDuration(160).withEndAction(() -> { lockView.setVisibility(View.GONE); lockView.setAlpha(1f); });
+            }
+        });
+        p.authenticate(new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.lock_title))
+                .setSubtitle(getString(R.string.lock_sub))
+                .setAllowedAuthenticators(AUTH)
+                .build());
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        boolean away = stoppedAt == 0 || SystemClock.elapsedRealtime() - stoppedAt > LOCK_AFTER_MS;
+        if (lockEnabled() && (!unlocked || away)) {
+            unlocked = false;
+            lockView.setVisibility(View.VISIBLE);
+            ui.postDelayed(this::promptUnlock, 250);
+        }
+        js("window.dispatchEvent(new Event('hubtech-resume'))");
+    }
+
+    @Override protected void onStop() { super.onStop(); stoppedAt = SystemClock.elapsedRealtime(); }
+
+    @Override protected void onPause() { super.onPause(); CookieManager.getInstance().flush(); }
+
+    @Override protected void onDestroy() {
+        if (updateReceiver != null) try { unregisterReceiver(updateReceiver); } catch (Exception ignored) { }
+        watch.shutdownNow();
+        super.onDestroy();
+    }
+
+    // ── updates: download the new APK and hand it to Android's installer ──
+    private BroadcastReceiver updateReceiver;
+
+    private boolean startUpdate(String url) {
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, R.string.update_allow, Toast.LENGTH_LONG).show();
+            try { startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { }
+            return false;
+        }
+        File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        if (dir == null) return false;
+        File apk = new File(dir, "hubtech-update.apk");
+        if (apk.exists()) //noinspection ResultOfMethodCallIgnored
+            apk.delete();
+        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        DownloadManager.Request r = new DownloadManager.Request(Uri.parse(url))
+                .setTitle("HUBTECH")
+                .setDescription(getString(R.string.update_downloading))
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "hubtech-update.apk");
+        if (updateReceiver == null) {
+            updateReceiver = new BroadcastReceiver() {
+                @Override public void onReceive(Context c, Intent i) {
+                    long id = i.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                    if (id != updateDownload) return;
+                    DownloadManager.Query q = new DownloadManager.Query().setFilterById(id);
+                    boolean ok = false;
+                    try (android.database.Cursor cur = dm.query(q)) {
+                        if (cur != null && cur.moveToFirst()) ok = cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) == DownloadManager.STATUS_SUCCESSFUL;
+                    }
+                    if (!ok || !apk.exists()) { Toast.makeText(c, R.string.update_failed, Toast.LENGTH_LONG).show(); return; }
+                    Uri u = FileProvider.getUriForFile(c, "dk.hubtech.app.files", apk);
+                    Intent inst = new Intent(Intent.ACTION_VIEW).setDataAndType(u, "application/vnd.android.package-archive")
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    try { startActivity(inst); } catch (Exception e) { Toast.makeText(c, R.string.update_failed, Toast.LENGTH_LONG).show(); }
+                }
+            };
+            ContextCompat.registerReceiver(this, updateReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), ContextCompat.RECEIVER_EXPORTED);
+        }
+        updateDownload = dm.enqueue(r);
+        Toast.makeText(this, R.string.update_downloading, Toast.LENGTH_SHORT).show();
+        return true;
+    }
+
+    /** Called from the web app (window.HubtechAndroid). */
+    private class Bridge {
+        @JavascriptInterface
+        public boolean saveFile(String name, String mime, String base64) {
+            try {
+                byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+                String safe = name.replaceAll("[\\\\/:*?\"<>|]", "-");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.Downloads.DISPLAY_NAME, safe);
+                    v.put(MediaStore.Downloads.MIME_TYPE, mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+                    v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/HUBTECH");
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                    if (uri == null) throw new IllegalStateException("no uri");
+                    try (OutputStream out = getContentResolver().openOutputStream(uri)) { out.write(bytes); }
+                } else {
+                    File dir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "HUBTECH");
+                    if (!dir.exists() && !dir.mkdirs()) throw new IllegalStateException("no dir");
+                    try (OutputStream out = new FileOutputStream(new File(dir, safe))) { out.write(bytes); }
+                }
+                ui.post(() -> Toast.makeText(MainActivity.this, getString(R.string.saved_to, "HUBTECH/" + safe), Toast.LENGTH_SHORT).show());
+                return true;
+            } catch (Exception e) {
+                ui.post(() -> Toast.makeText(MainActivity.this, R.string.save_failed, Toast.LENGTH_LONG).show());
+                return false;
+            }
+        }
+
+        @JavascriptInterface public boolean isAndroidApp() { return true; }
+
+        @JavascriptInterface public String appInfo() {
+            try { return new JSONObject().put("versionCode", versionCode()).put("versionName", versionName()).put("sdk", Build.VERSION.SDK_INT).toString(); }
+            catch (Exception e) { return "{}"; }
+        }
+
+        // reminders → notifications
+        @JavascriptInterface public int scheduleReminders(String json) { return Reminders.schedule(MainActivity.this, json); }
+
+        @JavascriptInterface public String notificationState() {
+            if (Build.VERSION.SDK_INT < 33) return "granted";
+            return ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ? "granted" : "default";
+        }
+
+        // Fællesskab notifications: shown now (app in the background) and checked while the app is closed
+        @JavascriptInterface public void showNotification(String title, String text, String path) {
+            NotifyJob.show(MainActivity.this, 30000 + (int) (System.currentTimeMillis() % 10000), title, text, path, false);
+        }
+        @JavascriptInterface public boolean backgroundNotify() { return prefs.getBoolean("bgNotify", true); }
+        @JavascriptInterface public void setBackgroundNotify(boolean on) { prefs.edit().putBoolean("bgNotify", on).apply(); NotifyJob.sync(MainActivity.this); }
+
+        @JavascriptInterface public void requestNotifications() {
+            if (Build.VERSION.SDK_INT >= 33) ui.post(() -> requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, REQ_NOTIFY));
+        }
+
+        // home screen widget
+        @JavascriptInterface public void updateWidget(String json) {
+            prefs.edit().putString("widget", json).apply();
+            TodayWidget.refresh(MainActivity.this);
+        }
+
+        // printing through Android's print service (printers and "Gem som PDF")
+        @JavascriptInterface public void printHtml(String title, String html, String baseUrl) {
+            ui.post(() -> {
+                printWeb = new WebView(MainActivity.this);
+                printWeb.setWebViewClient(new WebViewClient() {
+                    @Override public void onPageFinished(WebView view, String url) {
+                        PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+                        boolean landscape = html.contains("size: A4 landscape");
+                        PrintAttributes attrs = new PrintAttributes.Builder()
+                                .setMediaSize(landscape ? PrintAttributes.MediaSize.ISO_A4.asLandscape() : PrintAttributes.MediaSize.ISO_A4)
+                                .build();
+                        pm.print(title, view.createPrintDocumentAdapter(title), attrs);
+                    }
+                });
+                printWeb.loadDataWithBaseURL(baseUrl, html, "text/html", "utf-8", null);
+            });
+        }
+
+        // app lock
+        @JavascriptInterface public boolean lockAvailable() { return MainActivity.this.lockAvailable(); }
+        @JavascriptInterface public boolean lockEnabled() { return prefs.getBoolean("lock", false); }
+        @JavascriptInterface public void setLock(boolean on) {
+            prefs.edit().putBoolean("lock", on).apply();
+            if (on) unlocked = true;     // you just proved it's you by turning it on
+        }
+
+        // which HUBTECH server the app shows ("" = the one inside the app)
+        @JavascriptInterface public String serverUrl() { return remote; }
+
+        /** Check and switch to another HUBTECH server. Returns "ok" or a Danish error message. */
+        @JavascriptInterface public String setServerUrl(String url) {
+            String u = url == null ? "" : url.trim().replaceAll("/+$", "");
+            if (u.isEmpty()) { useLocalServer(); return "ok"; }
+            if (!u.startsWith("https://")) return "Adressen skal starte med https:// (fx https://min-pc.tailnet.ts.net).";
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(u + "/api/health").openConnection();
+                c.setConnectTimeout(6000); c.setReadTimeout(6000);
+                int code = c.getResponseCode();
+                String body;
+                try (InputStream is = c.getInputStream(); ByteArrayOutputStream bo = new ByteArrayOutputStream()) {
+                    byte[] buf = new byte[2048]; int n; while ((n = is.read(buf)) > 0 && bo.size() < 8192) bo.write(buf, 0, n); body = bo.toString("UTF-8");
+                }
+                if (code != 200 || !body.contains("\"hubtech\"")) return "Der svarer ikke en HUBTECH-server på adressen.";
+            } catch (Exception e) { return "Serveren kunne ikke nås: " + e.getMessage(); }
+            prefs.edit().putString("remote", u).remove("notifySince").apply();
+            NotifyJob.sync(MainActivity.this);
+            ui.post(MainActivity.this::recreate);
+            return "ok";
+        }
+
+        @JavascriptInterface public String offlineState() {
+            try { return new JSONObject().put("remote", remote).put("offline", offline).toString(); } catch (Exception e) { return "{}"; }
+        }
+
+        @JavascriptInterface public void backToRemote() {
+            if (remote.isEmpty()) return;
+            bg.execute(() -> {
+                if (!reachable(remote, 6000)) { ui.post(() -> Toast.makeText(MainActivity.this, R.string.offline_still, Toast.LENGTH_LONG).show()); return; }
+                offline = false;
+                ui.post(() -> web.loadUrl(remote + "/?source=app"));
+            });
+        }
+
+        @JavascriptInterface public void useLocalServer() {
+            prefs.edit().remove("remote").remove("notifySince").apply();
+            NotifyJob.sync(MainActivity.this);
+            ui.post(MainActivity.this::recreate);
+        }
+
+        // updates
+        @JavascriptInterface public void openAppSettings() {
+            ui.post(() -> {
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e) { /* very old or locked-down phone */ }
+            });
+        }
+
+        @JavascriptInterface public boolean installUpdate(String url) {
+            final boolean[] ok = { false };
+            ui.post(() -> ok[0] = startUpdate(url));
+            return true;
+        }
+    }
+}

@@ -1,0 +1,113 @@
+/* ═══ HUBTECH look for the original pages (scoped to html.in-hubtech, set by sites-theme.js) ═══ */
+@import url("/fonts/fonts.css");
+
+html.in-hubtech {
+  --ht-glass: rgba(10, 20, 34, .74);
+  --ht-glass-2: rgba(255, 255, 255, .05);
+  --ht-line: rgba(255, 255, 255, .11);
+  --ht-text: #eef4fb;
+  --ht-muted: #9fb0c4;
+  --ht-accent: #2f8cff;
+  --ht-accent-2: #7c5cff;
+  --ht-field: rgba(4, 10, 20, .5);
+  background: transparent !important;
+}
+html.in-hubtech body, html.in-hubtech button, html.in-hubtech input, html.in-hubtech textarea, html.in-hubtech select {
+  font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important;
+}
+
+/* ── classic HUBTECH pages: dark glass over the living landscape ── */
+html.in-hubtech[data-site="classic"] body {
+  background: linear-gradient(180deg, rgba(5, 10, 20, .66), rgba(5, 10, 20, .82)) !important;
+  color: var(--ht-text) !important; min-height: 100vh;
+}
+html.in-hubtech[data-site="classic"] body > h1,
+html.in-hubtech[data-site="classic"] body > header,
+html.in-hubtech[data-site="classic"] header {
+  background: none !important; box-shadow: none !important; border: 0 !important;
+  color: #fff !important; -webkit-text-fill-color: #fff; text-shadow: 0 2px 16px rgba(0, 0, 0, .45) !important;
+  font: 700 clamp(1.5rem, 3vw, 2rem)/1.2 "Manrope", sans-serif !important; letter-spacing: -.02em; padding: 26px 20px 8px !important; margin: 0 !important;
+}
+html.in-hubtech[data-site="classic"] h2 { color: #fff !important; text-shadow: none !important; -webkit-text-fill-color: #fff; letter-spacing: -.01em; }
+
+/* surfaces */
+html.in-hubtech[data-site="classic"] .container, html.in-hubtech[data-site="classic"] .calendar-container,
+html.in-hubtech[data-site="classic"] #chatbox, html.in-hubtech[data-site="classic"] .hubtech-info-box,
+html.in-hubtech[data-site="classic"] .info-box, html.in-hubtech[data-site="classic"] .weather-box,
+html.in-hubtech[data-site="classic"] #modal, html.in-hubtech[data-site="classic"] aside,
+html.in-hubtech[data-site="classic"] #editor, html.in-hubtech[data-site="classic"] .dm-messages {
+  background: var(--ht-glass) !important; color: var(--ht-text) !important;
+  border: 1px solid var(--ht-line) !important; border-radius: 16px !important;
+  box-shadow: 0 18px 50px -24px rgba(0, 0, 0, .75) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.15); backdrop-filter: blur(16px) saturate(1.15);
+}
+html.in-hubtech[data-site="classic"] .hubtech-info-box h2, html.in-hubtech[data-site="classic"] .info-box h2 { color: #fff !important; }
+
+/* fields */
+html.in-hubtech[data-site="classic"] input:not([type=checkbox]):not([type=radio]), html.in-hubtech[data-site="classic"] textarea,
+html.in-hubtech[data-site="classic"] select, html.in-hubtech[data-site="classic"] #userInput {
+  background: var(--ht-field) !important; color: var(--ht-text) !important; border: 1px solid var(--ht-line) !important; border-radius: 10px !important; box-shadow: none !important;
+}
+html.in-hubtech[data-site="classic"] input:focus, html.in-hubtech[data-site="classic"] textarea:focus, html.in-hubtech[data-site="classic"] select:focus {
+  outline: none !important; border-color: var(--ht-accent) !important; box-shadow: 0 0 0 3px rgba(47, 140, 255, .3) !important;
+}
+html.in-hubtech[data-site="classic"] ::placeholder { color: #7f91a8 !important; }
+html.in-hubtech[data-site="classic"] select option { background: #0f1b2b; color: #eef4fb; }
+
+/* buttons: the platform's glowing blue */
+html.in-hubtech[data-site="classic"] button:not(.day button):not(.delete-btn), html.in-hubtech[data-site="classic"] #sendBtn,
+html.in-hubtech[data-site="classic"] .top-links a, html.in-hubtech[data-site="classic"] a.download {
+  background: linear-gradient(140deg, #4aa3ff, #1f5fd6) !important; color: #fff !important; border: 1.5px solid rgba(79, 160, 255, .8) !important;
+  border-radius: 10px !important; box-shadow: 0 0 18px -6px rgba(47, 140, 255, .75) !important; text-shadow: none !important; font-weight: 700 !important;
+}
+html.in-hubtech[data-site="classic"] button::after { display: none !important; }
+html.in-hubtech[data-site="classic"] button:hover, html.in-hubtech[data-site="classic"] .top-links a:hover { filter: brightness(1.1); transform: none; }
+html.in-hubtech[data-site="classic"] li { background: var(--ht-glass-2) !important; border: 1px solid var(--ht-line) !important; border-radius: 10px !important; color: var(--ht-text) !important; }
+html.in-hubtech[data-site="classic"] .hubtech-info-box li, html.in-hubtech[data-site="classic"] .info-box li { background: none !important; border: 0 !important; }
+
+/* front page + GameHub tiles */
+html.in-hubtech[data-site="classic"] #clock { background: var(--ht-glass) !important; border: 1px solid var(--ht-line) !important; border-radius: 999px !important; color: var(--ht-text) !important; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+html.in-hubtech[data-site="classic"] .pop-img { border-radius: 18px !important; border: 1.5px solid rgba(79, 160, 255, .55); box-shadow: 0 0 22px -8px rgba(47, 140, 255, .8) !important; background: var(--ht-glass); }
+html.in-hubtech[data-site="classic"] .pop-img:hover { transform: translateY(-4px) scale(1.04) !important; box-shadow: 0 0 30px -6px rgba(47, 140, 255, .9) !important; }
+
+/* chatbot */
+html.in-hubtech[data-page="chatbot"] .user { background: linear-gradient(140deg, #4aa3ff, #1f5fd6) !important; color: #fff !important; border-radius: 14px 14px 4px 14px !important; }
+html.in-hubtech[data-page="chatbot"] .bot { background: rgba(255, 255, 255, .08) !important; color: var(--ht-text) !important; border: 1px solid var(--ht-line); border-radius: 14px 14px 14px 4px !important; }
+
+/* calendar */
+html.in-hubtech[data-page="kalender"] .month-title { color: #fff !important; text-shadow: none !important; font-weight: 700; }
+html.in-hubtech[data-page="kalender"] .weekdays { color: var(--ht-muted) !important; }
+html.in-hubtech[data-page="kalender"] .day { background: var(--ht-glass-2) !important; border: 1px solid var(--ht-line) !important; border-radius: 12px !important; color: var(--ht-text) !important; }
+html.in-hubtech[data-page="kalender"] .day:hover { border-color: rgba(79, 160, 255, .7) !important; background: rgba(47, 140, 255, .12) !important; }
+html.in-hubtech[data-page="kalender"] .day button { background: rgba(255, 255, 255, .08) !important; border: 1px solid var(--ht-line) !important; color: var(--ht-text) !important; box-shadow: none !important; }
+html.in-hubtech[data-page="kalender"] #overlay { background: rgba(4, 9, 18, .6) !important; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+
+/* files */
+html.in-hubtech[data-page="d"] .container { box-shadow: 0 18px 50px -24px rgba(0, 0, 0, .75) !important; }
+html.in-hubtech[data-page="d"] input[type="file"] { padding: 10px !important; }
+
+/* classic documents page */
+html.in-hubtech[data-page="doc"] .doc-entry button { background: var(--ht-glass-2) !important; color: var(--ht-text) !important; border: 1px solid var(--ht-line) !important; box-shadow: none !important; }
+html.in-hubtech[data-page="doc"] .toolbar button { background: var(--ht-glass-2) !important; border: 1px solid var(--ht-line) !important; box-shadow: none !important; }
+
+/* ── ARCHIVE-01: keeps its cyan/pink identity, takes the platform's surfaces and type ── */
+html.in-hubtech[data-site="archive"] { color-scheme: dark; }
+html.in-hubtech[data-site="archive"][data-theme="light"] { color-scheme: light; }
+html.in-hubtech[data-site="archive"] body, html.in-hubtech[data-site="archive"] .root { background: transparent !important; }
+html.in-hubtech[data-site="archive"] body {
+  --bg: transparent;
+  --surface: light-dark(rgba(255, 255, 255, .86), rgba(10, 20, 34, .74));
+  --surface2: light-dark(rgba(12, 26, 43, .05), rgba(255, 255, 255, .05));
+  --line: light-dark(rgba(12, 26, 43, .12), rgba(255, 255, 255, .11));
+  --text: light-dark(#0c1a2b, #f2f7fc);
+  --muted: light-dark(#50637a, #a9b8cb);
+  background: linear-gradient(180deg, rgba(5, 10, 20, .55), rgba(5, 10, 20, .78)) !important;
+}
+html.in-hubtech[data-site="archive"][data-theme="light"] body { background: linear-gradient(180deg, rgba(244, 247, 251, .8), rgba(244, 247, 251, .92)) !important; }
+html.in-hubtech[data-site="archive"] .card, html.in-hubtech[data-site="archive"] .hero-visual, html.in-hubtech[data-site="archive"] .stats {
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+html.in-hubtech[data-site="archive"] .card { box-shadow: 0 18px 50px -26px rgba(0, 0, 0, .6); }
+html.in-hubtech[data-site="archive"] .btn { border-radius: 10px; }
+html.in-hubtech[data-site="archive"] .btn.primary { box-shadow: 0 0 20px -6px rgba(0, 217, 238, .8); }
+html.in-hubtech[data-site="archive"] .nav { position: sticky; top: 0; z-index: 10; background: light-dark(rgba(255, 255, 255, .8), rgba(8, 14, 24, .78)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hold the app icon: quick actions straight into HUBTECH -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="timer" android:enabled="true" android:icon="@drawable/sc_timer"
+        android:shortcutShortLabel="@string/sc_timer" android:shortcutLongLabel="@string/sc_timer_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="dk.hubtech.app"
+            android:targetClass="dk.hubtech.app.MainActivity" android:data="hubtech://open/apps/timesheet?start=1" />
+    </shortcut>
+    <shortcut android:shortcutId="task" android:enabled="true" android:icon="@drawable/sc_task"
+        android:shortcutShortLabel="@string/sc_task" android:shortcutLongLabel="@string/sc_task">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="dk.hubtech.app"
+            android:targetClass="dk.hubtech.app.MainActivity" android:data="hubtech://open/apps/tasks?new=1" />
+    </shortcut>
+    <shortcut android:shortcutId="note" android:enabled="true" android:icon="@drawable/sc_note"
+        android:shortcutShortLabel="@string/sc_note" android:shortcutLongLabel="@string/sc_note">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="dk.hubtech.app"
+            android:targetClass="dk.hubtech.app.MainActivity" android:data="hubtech://open/apps/notes?new=1" />
+    </shortcut>
+    <shortcut android:shortcutId="calendar" android:enabled="true" android:icon="@drawable/sc_calendar"
+        android:shortcutShortLabel="@string/sc_calendar" android:shortcutLongLabel="@string/sc_calendar">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="dk.hubtech.app"
+            android:targetClass="dk.hubtech.app.MainActivity" android:data="hubtech://open/apps/calendar" />
+    </shortcut>
+</shortcuts>

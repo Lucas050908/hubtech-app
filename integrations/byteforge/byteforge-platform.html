@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ByteForge Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="byteforge-platform.css"/>
+<script src="hubtech-theme.js"></script><!-- tilføjet af HUBTECH -->
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-panel">
+    <div class="login-brand">BYTE<span>FORGE</span></div>
+    <div class="login-sub">SECURE HOMELAB CONTROL</div>
+    <div class="form-label">Username</div>
+    <input class="input" id="login-user" value="ADMIN" autocomplete="username"/>
+    <div class="form-label">Password</div>
+    <input class="input" id="login-pass" type="password" autocomplete="current-password"/>
+    <div class="form-label login-setup-only" style="display:none">Confirm password</div>
+    <input class="input login-setup-only" id="login-confirm" type="password" style="display:none" autocomplete="new-password"/>
+    <div class="form-label" id="login-otp-label" style="display:none">2FA Code</div>
+    <input class="input" id="login-otp" style="display:none" inputmode="numeric" maxlength="6" autocomplete="one-time-code"/>
+    <button class="btn btn-o" id="login-btn" onclick="login()" style="width:100%;justify-content:center;margin-top:14px">LOGIN</button>
+    <div class="login-msg" id="login-msg">Log in as ADMIN with the password chosen during install.</div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button id="hamburger" onclick="toggleSidebar()" style="display:none;background:none;border:none;color:var(--t);font-size:20px;cursor:pointer;padding:0 8px">☰</button>
+  <a class="logo" href="#">
+    <span class="logo-icon">
+      <img src="/byteforge-icon.png" width="30" height="30" style="border-radius:50%;display:block" alt="ByteForge"/>
+    </span>
+    <span class="logo-text">BYTE<b>FORGE</b></span>
+  </a>
+  <div class="topbar-sep"></div>
+  <div id="sys-ticker">
+    <span class="tick-item"><span class="tick-dot"></span><span>CPU</span><span class="tick-val" id="tk-cpu">—%</span></span>
+    <span class="tick-item"><span>RAM</span><span class="tick-val" id="tk-ram">—%</span></span>
+    <span class="tick-item"><span>TEMP</span><span class="tick-val" id="tk-temp">—°C</span></span>
+    <span class="tick-item"><span>UPTIME</span><span class="tick-val" id="tk-up">—</span></span>
+    <span class="tick-item"><span>MC</span><span class="tick-val" id="tk-mc">—</span></span>
+  </div>
+  <div class="topbar-right">
+    <div class="notif-wrap" onclick="toggleNotif()">
+      <button class="notif-bell">🔔</button>
+      <div class="notif-badge" id="notif-badge">0</div>
+      <div class="notif-drop" id="notif-drop">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--b);font-family:var(--display);font-size:14px;letter-spacing:2px">ALERTS</div>
+        <div id="notif-list"><div class="notif-empty">Ingen alerts</div></div>
+      </div>
+    </div>
+    <span id="clock"></span>
+    <button class="forge-btn" onclick="nav('settings',document.querySelector('[data-nav=settings]'))">CONFIG</button>
+  </div>
+</div>
+
+<div id="layout">
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-section">
+    <div class="sb-label" data-i18n="nav.overview">Overblik</div>
+    <div class="sb-item active" onclick="nav('system',this)"><span class="si">🖥</span><span data-i18n="nav.system">System</span></div>
+    <div class="sb-item" onclick="nav('network',this)"><span class="si">📡</span><span data-i18n="nav.network">Netværk</span></div>
+  </div>
+  <div class="sb-section">
+    <div class="sb-label" data-i18n="nav.storage">Storage</div>
+    <div class="sb-item" onclick="nav('nas',this)"><span class="si">🗄</span><span data-i18n="nav.nas">NAS</span><span class="sb-badge">NFS</span></div>
+    <div class="sb-item" onclick="nav('raid',this)"><span class="si">⚡</span><span data-i18n="nav.raid">RAID</span></div>
+    <div class="sb-item" onclick="nav('backup',this)"><span class="si">💾</span><span data-i18n="nav.backup">Backup & Sync</span></div>
+    <div class="sb-item" onclick="nav('diskheath',this)"><span class="si">❤</span><span data-i18n="nav.diskhealth">Disk Health</span></div>
+  </div>
+  <div class="sb-section">
+    <div class="sb-label" data-i18n="nav.services">Services</div>
+    <div class="sb-item" onclick="nav('docker',this)"><span class="si">▣</span><span data-i18n="nav.docker">Docker</span><span class="sb-badge" id="sb-docker-count">—</span></div>
+    <div class="sb-item" onclick="nav('minecraft',this)"><span class="si">▶</span><span data-i18n="nav.gameservers">Game Servers</span><span class="sb-badge" id="sb-game-count">—</span></div>
+    <div class="sb-item" onclick="nav('proxy',this)"><span class="si">⌁</span><span data-i18n="nav.proxy">Proxy & SSL</span></div>
+    <div class="sb-item" onclick="nav('websites',this)"><span class="si">⌂</span><span data-i18n="nav.websites">Websites</span></div>
+    <div class="sb-item" onclick="nav('privacy',this)"><span class="si">🔐</span><span data-i18n="nav.privacy">Privacy Suite</span></div>
+  </div>
+  <div class="sb-section">
+    <div class="sb-label" data-i18n="nav.platform">Platform</div>
+    <div class="sb-item" onclick="nav('files',this)"><span class="si">▤</span><span data-i18n="nav.files">Filer</span></div>
+    <div class="sb-item" onclick="nav('access',this)"><span class="si">◎</span><span data-i18n="nav.access">Adgang</span></div>
+    <div class="sb-item" data-nav="settings" onclick="nav('settings',this)"><span class="si">⚙</span><span data-i18n="nav.settings">Settings</span></div>
+  </div>
+  <div class="sb-section">
+    <div class="sb-label" data-i18n="nav.tools">Tools</div>
+    <div class="sb-item" onclick="nav('appstore',this)"><span class="si">▣</span><span data-i18n="nav.appstore">Apps</span></div>
+    <div class="sb-item" onclick="nav('terminal',this)"><span class="si">⌨</span><span data-i18n="nav.terminal">Terminal</span></div>
+    <div class="sb-item" onclick="nav('ai',this)"><span class="si">🤖</span><span data-i18n="nav.ai">AI Assistant</span></div>
+    <div class="sb-item" onclick="nav('tools',this)"><span class="si">🔧</span><span data-i18n="nav.devtools">Dev Tools</span></div>
+  </div>
+  <div class="sb-bottom">
+    <div class="sb-ver">BYTEFORGE v1.2 // STANDALONE<br><span data-i18n="ver.tagline">SELVSTÆNDIG</span></div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main id="main">
+
+<!-- ████ OVERVIEW ████ -->
+<!-- ████ SYSTEM ████ -->
+<div class="page active" id="page-system">
+  <div class="ph"><div class="ph-left"><h1>SYS<span>TEM</span></h1><p>// CPU · RAM · TEMP · UPTIME</p></div></div>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div class="card ring-wrap" style="padding:20px">
+      <div class="ring">
+        <svg viewBox="0 0 80 80" width="80" height="80">
+          <circle cx="40" cy="40" r="32" fill="none" stroke="#242424" stroke-width="6"/>
+          <circle cx="40" cy="40" r="32" fill="none" stroke="#FF6B1A" stroke-width="6" stroke-dasharray="201" id="ring-cpu-c" stroke-dashoffset="201" stroke-linecap="square"/>
+        </svg>
+        <div class="ring-val" id="ring-cpu">—</div>
+      </div>
+      <div class="ring-lbl">CPU</div>
+    </div>
+    <div class="card ring-wrap" style="padding:20px">
+      <div class="ring">
+        <svg viewBox="0 0 80 80" width="80" height="80">
+          <circle cx="40" cy="40" r="32" fill="none" stroke="#242424" stroke-width="6"/>
+          <circle cx="40" cy="40" r="32" fill="none" stroke="#FF9A3C" stroke-width="6" stroke-dasharray="201" id="ring-ram-c" stroke-dashoffset="201" stroke-linecap="square"/>
+        </svg>
+        <div class="ring-val" id="ring-ram">—</div>
+      </div>
+      <div class="ring-lbl">RAM</div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center">
+      <div style="font-family:var(--display);font-size:48px;color:var(--o)" id="sys-temp2">—</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:2px;margin-top:4px">TEMPERATUR °C</div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:center;align-items:center">
+      <div style="font-family:var(--display);font-size:32px;color:var(--t);text-align:center" id="sys-uptime2">—</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);letter-spacing:2px;margin-top:4px">UPTIME</div>
+    </div>
+  </div>
+  <div class="card"><div class="ct">RAM DETALJER</div><div class="cs" id="sys-ram-detail"></div><div class="bar" style="height:6px;margin-top:10px"><div class="bar-f" id="sys-ram-bar2" style="width:0%"></div></div></div>
+</div>
+
+<!-- ████ NETWORK ████ -->
+<div class="page" id="page-network">
+  <div class="ph"><div class="ph-left"><h1>NET<span>VÆRK</span></h1><p>// PING · LATENCY · UPTIME MONITOR</p></div></div>
+  <div class="grid g2" style="margin-bottom:12px">
+    <div class="card"><div class="ct">INBOUND</div><div class="cv" style="font-size:34px" id="net-rx-now">0 <span class="u">KB/s</span></div><canvas class="graph-canvas" id="graph-net-rx" height="80"></canvas></div>
+    <div class="card"><div class="ct">OUTBOUND</div><div class="cv" style="font-size:34px" id="net-tx-now">0 <span class="u">KB/s</span></div><canvas class="graph-canvas" id="graph-net-tx" height="80"></canvas></div>
+  </div>
+  <div class="st">UPTIME <span>MONITOR</span></div>
+  <div class="card" id="monitor-list">
+    <div class="monitor-row">
+      <div class="monitor-name">NFS SERVER</div>
+      <div class="monitor-bars" id="mon-nfs"></div>
+      <div class="monitor-ping" id="ping-nfs">— ms</div>
+    </div>
+    <div class="monitor-row">
+      <div class="monitor-name">INTERNET</div>
+      <div class="monitor-bars" id="mon-inet"></div>
+      <div class="monitor-ping" id="ping-inet">— ms</div>
+    </div>
+  </div>
+  <div class="st" style="margin-top:20px">NETVÆRK <span>INFO</span></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="ct">INTERFACE</div>
+      <table class="tbl"><tbody id="net-info"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="ct">DISCORD / SLACK ALERTS</div>
+      <div class="form-label" style="margin-top:8px">Webhook URL</div>
+      <input class="input" id="webhook-url" placeholder="https://discord.com/api/webhooks/..."/>
+      <div class="btn-row">
+        <button class="btn btn-o btn-sm" onclick="testWebhook()">⚡ TEST ALERT</button>
+        <button class="btn btn-g btn-sm" onclick="saveWebhook()">💾 GEM</button>
+      </div>
+    </div>
+  </div>
+  <div class="st" style="margin-top:20px">ENHEDER PÅ <span>NETVÆRKET</span></div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl" style="width:100%">
+      <thead><tr><th>IP</th><th>Hostname</th><th>MAC</th><th>Status</th></tr></thead>
+      <tbody id="net-devices"><tr><td colspan="4" style="color:var(--t3);font-family:var(--mono);font-size:10px">Indlæser...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ████ NAS ████ -->
+<div class="page" id="page-nas">
+  <div class="ph">
+    <div class="ph-left"><h1>NAS <span>SERVER</span></h1><p>// NETWORK FILE SYSTEM · DELTE MAPPER</p></div>
+    <div class="ph-right"><button class="btn btn-o btn-sm" onclick="openNasSetup()">+ TILFØJ SHARE</button></div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="ct">NFS STATUS</div>
+      <div id="nas-badge" style="margin:8px 0"></div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-g btn-sm" onclick="nasRestart()">⟳ GENSTART NFS</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">FORBIND FRA ENHEDER</div>
+      <div class="form-label" style="margin-top:8px">Windows (SAMBA)</div>
+      <div class="sbox" id="nas-win-cmd">\\…\nas-share</div>
+      <div class="form-label" style="margin-top:10px">Linux (NFS)</div>
+      <div class="sbox" id="nas-nfs-cmd">mount -t nfs …:/mnt/nas-share /mnt/remote</div>
+      <div class="form-label" style="margin-top:10px">Mac (Finder)</div>
+      <div class="sbox" id="nas-mac-cmd">Cmd+K → nfs://…/mnt/nas-share</div>
+    </div>
+  </div>
+  <div class="st">AKTIVE <span>SHARES</span></div>
+  <div id="nas-exports-list"><div class="card"><div class="cs">Indlæser...</div></div></div>
+  <div class="st">STORAGE <span>BRUG</span></div>
+  <div id="nas-storage"></div>
+</div>
+
+<!-- NAS SETUP MODAL -->
+<div id="nas-setup-modal" style="display:none;position:fixed;inset:0;z-index:999;align-items:center;justify-content:center">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px)" onclick="closeNasSetup()"></div>
+  <div class="install-box">
+    <div class="install-header">
+      <span id="nas-modal-title">TILFØJ NFS SHARE</span>
+      <button class="install-close" onclick="closeNasSetup()">✕</button>
+    </div>
+    <div id="nas-setup-form" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="form-label">Share mappe (oprettes automatisk)</div>
+        <input class="input" id="nas-new-path" value="/mnt/nas-share" placeholder="/mnt/nas-share"/>
+      </div>
+      <div>
+        <div class="form-label">Tillad netværk (subnet eller enkelt IP)</div>
+        <input class="input" id="nas-new-subnet" placeholder="192.168.1.0/24"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="nas-readonly" style="accent-color:var(--o);width:16px;height:16px"/>
+        <label for="nas-readonly" style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--t2)">READ-ONLY (ingen skriveadgang)</label>
+      </div>
+      <div style="border-top:1px solid var(--b);padding-top:12px;margin-top:4px">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--o);margin-bottom:10px">WINDOWS ADGANG (SAMBA) — VALGFRIT</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div class="form-label">Linux brugernavn</div>
+            <input class="input" id="nas-smb-user" placeholder="dit-brugernavn"/>
+          </div>
+          <div>
+            <div class="form-label">Samba adgangskode</div>
+            <input class="input" id="nas-smb-pass" type="password" placeholder="Vælg en adgangskode"/>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-o" onclick="runNasSetup()" style="margin-top:4px">⚡ INSTALLER & KONFIGURÉR NFS + SAMBA</button>
+    </div>
+    <div class="install-log" id="nas-setup-log" style="display:none"></div>
+    <div class="install-footer" id="nas-setup-footer" style="display:none">
+      <button class="btn btn-g" onclick="closeNasSetup()">LUK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ████ RAID ████ -->
+<div class="page" id="page-raid">
+  <div class="ph"><div class="ph-left"><h1>RAID <span>ARRAY</span></h1><p>// SPEJLING · DATABESKYTTELSE</p></div></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="ct">ARRAY STATUS</div>
+      <div id="raid-badge" style="margin:8px 0"></div>
+      <div class="term"><div class="term-bar"><div class="td on"></div><div class="td"></div><span class="term-lbl">/proc/mdstat</span></div><div class="term-body" id="raid-info">Indlæser...</div></div>
+    </div>
+    <div class="card">
+      <div class="ct">OPRET RAID MANUELT</div>
+      <div class="form-label" style="margin-top:8px">RAID 1 (Spejling) – 2 diske</div>
+      <div class="sbox" style="font-size:10px">mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdX /dev/sdY</div>
+      <div class="form-label" style="margin-top:10px">Montér array</div>
+      <div class="sbox" style="font-size:10px">mount /dev/md0 /mnt/raid</div>
+      <div class="form-label" style="margin-top:10px">Vis status</div>
+      <div class="sbox" style="font-size:10px">mdadm --detail /dev/md0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ BACKUP ████ -->
+<div class="page" id="page-backup">
+  <div class="ph">
+    <div class="ph-left"><h1>BACKUP <span>& SYNC</span></h1><p>// RSYNC · AUTOMATISK SCHEDULER · RESTORE POINTS</p></div>
+    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="loadBackup()">⟳ REFRESH</button></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid g4" style="margin-bottom:14px">
+    <div class="card"><div class="ct">BACKUP JOBS</div><div class="cv" id="bk-total">—</div><div class="cs">Konfigurerede</div></div>
+    <div class="card"><div class="ct">SENESTE</div><div class="cv" style="font-size:22px;color:var(--ok)" id="bk-last">—</div><div class="cs" id="bk-last-size"></div></div>
+    <div class="card"><div class="ct">RESTORE POINTS</div><div class="cv" id="bk-rp-count">—</div><div class="cs">Tilgængelige</div></div>
+    <div class="card"><div class="ct">BACKUP PLACERING</div><div style="font-family:var(--mono);font-size:10px;color:var(--o2);margin-top:6px;word-break:break-all" id="bk-dest-path">—</div></div>
+  </div>
+
+  <!-- Add new job -->
+  <div class="st">NY BACKUP <span>JOB</span></div>
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:10px;align-items:end">
+      <div>
+        <div class="form-label">Navn</div>
+        <input class="input" id="bk-new-name" placeholder="e.g. Game Servers"/>
+      </div>
+      <div>
+        <div class="form-label">Kilde mappe</div>
+        <input class="input" id="bk-new-src" placeholder="/opt/byteforge/files/servers"/>
+      </div>
+      <div>
+        <div class="form-label">Kør</div>
+        <select class="select" id="bk-new-schedule">
+          <option value="manual">Manuelt</option>
+          <option value="daily">Dagligt</option>
+          <option value="weekly">Ugentligt</option>
+        </select>
+      </div>
+      <button class="btn btn-o" onclick="addBackupJob()">+ TILFØJ</button>
+    </div>
+  </div>
+
+  <!-- Jobs list -->
+  <div class="st">BACKUP <span>JOBS</span></div>
+  <div id="bk-jobs-list">
+    <div class="card"><div class="cs">Indlæser backup jobs...</div></div>
+  </div>
+
+  <!-- Backup output -->
+  <div class="st" style="margin-top:14px">BACKUP <span>OUTPUT</span></div>
+  <div class="term">
+    <div class="term-bar"><div class="td" id="bk-td"></div><div class="td"></div><span class="term-lbl" id="bk-log-title">Klik KØR NU på et job</span></div>
+    <div class="term-body" id="bk-output" style="max-height:200px">Ingen aktiv backup kørende.</div>
+  </div>
+
+  <!-- Restore points -->
+  <div class="st">RESTORE <span>POINTS</span></div>
+  <div id="bk-restore-list">
+    <div class="card"><div class="cs">Indlæser restore points...</div></div>
+  </div>
+</div>
+
+<!-- ████ DISK HEALTH ████ -->
+<div class="page" id="page-diskheath">
+  <div class="ph"><div class="ph-left"><h1>DISK <span>HEALTH</span></h1><p>// SMART DATA · TEMPERATUR · LEVETID</p></div></div>
+  <div id="smart-cards"><div style="font-family:var(--mono);font-size:11px;color:var(--t3)">Indlæser SMART data...</div></div>
+</div>
+
+<!-- ████ DOCKER ████ -->
+<div class="page" id="page-docker">
+  <div class="ph"><div class="ph-left"><h1>DOCKER <span>HUB</span></h1><p>// CONTAINERS · PRESETS · LOGS</p></div></div>
+  <div id="docker-install-banner" style="display:none;background:rgba(255,176,32,.1);border:1px solid var(--warn);padding:16px 20px;margin-bottom:16px;border-radius:0">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span style="font-size:24px">⚠</span>
+      <div style="flex:1">
+        <div style="font-family:var(--display);font-size:18px;letter-spacing:2px;color:var(--warn)" data-i18n="docker.notinstalled">DOCKER IKKE INSTALLERET</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:3px" data-i18n="docker.notinstalled.desc">Docker kræves for at køre containers og game servers.</div>
+      </div>
+      <button class="btn btn-o" onclick="runDockerInstall()" id="docker-install-btn">
+        <span data-i18n="docker.btn.install">▣ INSTALLER DOCKER NU</span>
+      </button>
+    </div>
+    <div id="docker-install-progress" style="display:none;margin-top:12px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--warn);letter-spacing:1px" data-i18n="docker.installing">Installerer Docker, vent venligst...</div>
+      <div class="bar" style="margin-top:6px"><div class="bar-f" style="width:100%;animation:progress 2s infinite"></div></div>
+    </div>
+  </div>
+  <div class="st"><span data-i18n="docker.running">KØRENDE</span> <span>CONTAINERS</span></div>
+  <div class="card" style="margin-bottom:16px">
+    <table class="tbl">
+      <thead><tr><th>Container</th><th>Image</th><th>Status</th><th>Porte</th><th></th></tr></thead>
+      <tbody id="docker-tbl"><tr><td colspan="5" style="text-align:center;color:var(--t3);padding:20px">Indlæser...</td></tr></tbody>
+    </table>
+  </div>
+  <div class="st">STACK <span>PRESETS</span></div>
+  <div class="grid g3" id="preset-grid">
+    <div class="preset-card" onclick="deployPreset('webdev')">
+      <div class="preset-title">🌐 WEBDEV STACK</div>
+      <div class="preset-desc">Nginx + MySQL + phpMyAdmin + Redis. Komplet web-udviklingsmiljø.</div>
+      <div class="preset-tags"><span class="preset-tag">nginx</span><span class="preset-tag">mysql</span><span class="preset-tag">redis</span></div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ DEPLOY</button></div>
+    </div>
+    <div class="preset-card" onclick="deployPreset('monitoring')">
+      <div class="preset-title">📊 MONITORING STACK</div>
+      <div class="preset-desc">Grafana + Prometheus + Node Exporter. Komplet metrics og dashboards.</div>
+      <div class="preset-tags"><span class="preset-tag">grafana</span><span class="preset-tag">prometheus</span></div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ DEPLOY</button></div>
+    </div>
+    <div class="preset-card" onclick="deployPreset('ai')">
+      <div class="preset-title">🤖 AI STACK</div>
+      <div class="preset-desc">Ollama + Open WebUI. Kør lokale LLMs direkte på din server.</div>
+      <div class="preset-tags"><span class="preset-tag">ollama</span><span class="preset-tag">llama3</span><span class="preset-tag">webui</span></div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ DEPLOY</button></div>
+    </div>
+    <div class="preset-card" onclick="deployPreset('privacy')">
+      <div class="preset-title">🔐 PRIVACY SUITE</div>
+      <div class="preset-desc">Bitwarden + Nextcloud + Pi-hole + WireGuard. Komplet privacy setup.</div>
+      <div class="preset-tags"><span class="preset-tag">bitwarden</span><span class="preset-tag">nextcloud</span><span class="preset-tag">pihole</span></div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ DEPLOY</button></div>
+    </div>
+    <div class="preset-card" onclick="deployPreset('media')">
+      <div class="preset-title">🎬 MEDIA STACK</div>
+      <div class="preset-desc">Jellyfin + Sonarr + Radarr + Prowlarr. Automatisk media server.</div>
+      <div class="preset-tags"><span class="preset-tag">jellyfin</span><span class="preset-tag">sonarr</span><span class="preset-tag">radarr</span></div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ DEPLOY</button></div>
+    </div>
+    <div class="preset-card" onclick="deployPreset('custom')">
+      <div class="preset-title">➕ CUSTOM STACK</div>
+      <div class="preset-desc">Tilføj din egen docker-compose.yml og deploy med ét klik.</div>
+      <div class="preset-tags"><span class="preset-tag">custom</span></div>
+      <div class="btn-row"><button class="btn btn-g btn-sm">⚙ KONFIGURER</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ GAME SERVERS ████ -->
+<div class="page" id="page-minecraft">
+  <div class="ph">
+    <div class="ph-left"><h1>GAME <span>SERVERS</span></h1><p>// 30+ SPIL · DOCKER RUNTIME · MODS & PLUGINS</p></div>
+    <div class="ph-right"><button class="btn btn-o btn-sm" onclick="loadGameServers()">⟳ OPDATER</button></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid g4" style="margin-bottom:18px">
+    <div class="card"><div class="ct">SERVERE</div><div class="cv" id="gs-total">0</div><div class="cs">Konfigurerede instanser</div></div>
+    <div class="card"><div class="ct">ONLINE</div><div class="cv" style="color:var(--ok)" id="gs-online">0</div><div class="cs">Kørende nu</div></div>
+    <div class="card"><div class="ct">AUTO-RESTART</div><div class="cv" id="gs-restart">0</div><div class="cs">Crash recovery</div></div>
+    <div class="card"><div class="ct">RUNTIME</div><div class="cv" style="font-size:28px">DOCKER</div><div class="cs">Isoleret container per server</div></div>
+  </div>
+
+  <!-- Game Picker -->
+  <div class="st">VÆLG <span>SPIL</span></div>
+  <div class="gp-cats" id="gp-cats">
+    <button class="gpcat-btn active" onclick="filterGamePicker('All')" data-gcat="All">ALLE</button>
+    <button class="gpcat-btn" onclick="filterGamePicker('Minecraft')" data-gcat="Minecraft">⛏ MINECRAFT</button>
+    <button class="gpcat-btn" onclick="filterGamePicker('Survival / Open World')" data-gcat="Survival / Open World">🌿 SURVIVAL</button>
+    <button class="gpcat-btn" onclick="filterGamePicker('Shooter / Action')" data-gcat="Shooter / Action">🔫 SHOOTER</button>
+    <button class="gpcat-btn" onclick="filterGamePicker('Simulation / Builder')" data-gcat="Simulation / Builder">🏗 SIMULATION</button>
+    <button class="gpcat-btn" onclick="filterGamePicker('Andre')" data-gcat="Andre">🎮 ANDRE</button>
+  </div>
+  <div class="game-picker-grid" id="game-picker-grid">
+    <div class="card"><div class="cs">Indlæser spil...</div></div>
+  </div>
+
+  <!-- Create Form (appears after picking a game) -->
+  <div class="create-form-panel" id="gs-create-panel">
+    <div style="font-family:var(--display);font-size:18px;letter-spacing:3px;margin-bottom:14px;color:var(--o)">OPRET SERVER — <span id="gs-selected-name">—</span></div>
+    <div class="create-form-grid">
+      <div>
+        <div class="form-label">Server navn</div>
+        <input class="input" id="new-server-name" placeholder="Mit Valheim Server..."/>
+      </div>
+      <div>
+        <div class="form-label">Port (valgfrit)</div>
+        <input class="input" id="new-server-port" placeholder="Auto"/>
+      </div>
+      <div>
+        <div class="form-label">CPU</div>
+        <input class="input" id="new-server-cpu" value="2"/>
+      </div>
+      <div>
+        <div class="form-label">RAM</div>
+        <input class="input" id="new-server-ram" value="4g"/>
+      </div>
+      <button class="btn btn-o" onclick="createGameServer()">⚡ DEPLOY</button>
+    </div>
+    <input type="hidden" id="new-server-type" value=""/>
+  </div>
+
+  <!-- Server List -->
+  <div class="st">DINE <span>SERVERE</span></div>
+  <div class="grid g2" id="game-server-list">
+    <div class="card" style="padding:32px;text-align:center;border-style:dashed">
+      <div style="font-size:48px;margin-bottom:12px">🎮</div>
+      <div style="font-family:var(--display);font-size:20px;letter-spacing:2px;color:var(--t3)">INGEN SERVERE ENDNU</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:8px">Vælg et spil ovenfor og klik DEPLOY</div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="st" style="margin-top:16px">SERVER <span>LOG</span></div>
+  <div class="term">
+    <div class="term-bar"><div class="td on"></div><div class="td"></div><span class="term-lbl" id="gs-log-title">Vælg en server</span><button class="btn btn-g btn-sm" style="margin-left:auto" onclick="loadGameServers(true)">⟳ LOGS</button></div>
+    <div class="term-body" id="mc-logs">Klik LOG på en server for at se output.</div>
+  </div>
+</div>
+
+<!-- MODS MODAL -->
+<div id="mods-modal" style="display:none;position:fixed;inset:0;z-index:999;align-items:center;justify-content:center">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px)" onclick="closeModsModal()"></div>
+  <div class="install-box" style="width:min(700px,96vw)">
+    <div class="install-header">
+      <span id="mods-modal-title">MODS & PLUGINS</span>
+      <button class="install-close" onclick="closeModsModal()">✕</button>
+    </div>
+    <div style="padding:14px 16px;border-bottom:1px solid var(--b);display:flex;gap:8px">
+      <input class="input" id="mods-search" placeholder="Søg Modrinth efter mods..." style="flex:1" onkeydown="if(event.key==='Enter')searchMods()"/>
+      <button class="btn btn-o btn-sm" onclick="searchMods()">🔍 SØG</button>
+    </div>
+    <div id="mods-results" style="max-height:320px;overflow-y:auto;padding:12px 16px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">Søg efter mods ovenfor, eller installér fra URL herunder.</div>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid var(--b);display:flex;gap:8px">
+      <input class="input" id="mods-url" placeholder="Direct URL til mod/plugin .jar fil..." style="flex:1"/>
+      <button class="btn btn-g btn-sm" onclick="installModFromUrl()">⬇ INSTALLER</button>
+    </div>
+    <div class="install-log" id="mods-log" style="display:none;max-height:120px"></div>
+    <div style="padding:10px 16px;border-top:1px solid var(--b)">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3)">INSTALLEREDE MODS / PLUGINS</div>
+      <div id="mods-installed" style="margin-top:8px;font-family:var(--mono);font-size:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ FILES ████ -->
+<div class="page" id="page-files">
+  <div class="ph"><div class="ph-left"><h1>FILE<span>SYSTEM</span></h1><p>// BROWSE · UPLOAD · SLET · PRIVATE / DELTE OMRÅDER</p></div></div>
+  <div class="card">
+    <div class="file-toolbar">
+      <select class="select" id="file-scope" onchange="_fileResetPath();loadFiles()">
+        <option value="home">Home</option>
+        <option value="public">Public</option>
+        <option value="private">Private</option>
+        <option value="shared">Shared</option>
+        <option value="servers">Servers</option>
+      </select>
+      <input class="input" id="file-query" placeholder="Søg filer..."/>
+      <button class="btn btn-g btn-sm" onclick="searchFiles()">⌕</button>
+      <button class="btn btn-g btn-sm" id="btn-hidden" onclick="toggleHidden()" title="Vis skjulte filer">⊙</button>
+      <button class="btn btn-g btn-sm" onclick="makeFolder()">+ MAPPE</button>
+      <label class="btn btn-o btn-sm" style="cursor:pointer;margin:0">↑ UPLOAD<input type="file" id="file-upload" style="display:none" onchange="uploadFile()" multiple/></label>
+    </div>
+    <div id="file-breadcrumb" class="file-breadcrumb"></div>
+    <div class="file-grid" id="file-list"><div class="file-empty">Indlæser...</div></div>
+  </div>
+</div>
+
+<!-- ████ ACCESS ████ -->
+<div class="page" id="page-access">
+  <div class="ph"><div class="ph-left"><h1>ACCESS <span>CONTROL</span></h1><p>// MULTI-USER PROFILER · PRIVATE OG DELTE FILER</p></div></div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="ct">BRUGERE</div>
+      <div id="user-list"><div class="cs">Indlæser...</div></div>
+    </div>
+    <div class="card">
+      <div class="ct">ADGANGSMODEL</div>
+      <div class="access-row"><span>Private filer</span><span class="badge b-ok"><span class="bd"></span>AKTIV</span><span>BYTEFORGE_HOME/files/private</span></div>
+      <div class="access-row"><span>Delte mapper</span><span class="badge b-ok"><span class="bd"></span>AKTIV</span><span>BYTEFORGE_HOME/files/shared</span></div>
+      <div class="access-row"><span>Server data</span><span class="badge b-ok"><span class="bd"></span>ISOLERET</span><span>Per game server</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ WEBSITES ████ -->
+<div class="page" id="page-websites">
+  <div class="ph"><div class="ph-left"><h1>WEB<span>SITES</span></h1><p>// HOST STATISKE SITES FRA BYTEFORGE STORAGE</p></div></div>
+  <div class="grid g3">
+    <div class="card highlight"><div class="ct">WEB ROOT</div><div class="sbox">BYTEFORGE_HOME/files/public/www</div><div class="cs">Upload HTML, CSS, JS og assets via filsystemet</div></div>
+    <div class="card"><div class="ct">PDF / VIDEO VIEWER</div><div class="cv" style="font-size:30px">READY</div><div class="cs">Filer kan åbnes direkte fra storage</div></div>
+    <div class="card"><div class="ct">DELING</div><div class="cv" style="font-size:30px">PUBLIC</div><div class="cs">Brug public scope til fælles filer</div></div>
+  </div>
+</div>
+
+<!-- ████ PROXY / SSL ████ -->
+<div class="page" id="page-proxy">
+  <div class="ph">
+    <div class="ph-left"><h1>PROXY <span>SSL</span></h1><p>// CADDY REVERSE PROXY · AUTOMATIC LET'S ENCRYPT · NPM OPTION</p></div>
+    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="loadProxy()">⟳ REFRESH</button></div>
+  </div>
+  <div class="grid g3">
+    <div class="card highlight"><div class="ct">CADDY STATUS</div><div id="proxy-status" class="cv" style="font-size:30px">...</div><div class="cs" id="proxy-status-sub">Checking container</div></div>
+    <div class="card"><div class="ct">AUTO SSL</div><div class="cv" style="font-size:30px">LET'S ENCRYPT</div><div class="cs">Caddy requests and renews certs when domains point at this host.</div></div>
+    <div class="card"><div class="ct">CONFIG FILES</div><div class="sbox" id="proxy-caddyfile">...</div><div class="sbox" id="proxy-nginxfile">...</div></div>
+  </div>
+
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card">
+      <div class="ct">ADD PROXY HOST</div>
+      <div class="form-row">
+        <div>
+          <div class="form-label">Domain</div>
+          <input class="input" id="proxy-domain" placeholder="app.example.com"/>
+        </div>
+      </div>
+      <div class="form-row" style="grid-template-columns:110px 1fr 110px">
+        <div>
+          <div class="form-label">Scheme</div>
+          <select class="select" id="proxy-scheme" style="width:100%"><option value="http">http</option><option value="https">https</option></select>
+        </div>
+        <div>
+          <div class="form-label">Target host</div>
+          <input class="input" id="proxy-target-host" value="127.0.0.1"/>
+        </div>
+        <div>
+          <div class="form-label">Port</div>
+          <input class="input" id="proxy-target-port" type="number" min="1" max="65535" placeholder="3000"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <div class="form-label">Let's Encrypt email</div>
+          <input class="input" id="proxy-email" placeholder="admin@example.com"/>
+        </div>
+      </div>
+      <label class="smart-row" style="cursor:pointer"><span>Automatic HTTPS</span><span><input id="proxy-ssl" type="checkbox" checked/> ENABLED</span></label>
+      <div class="btn-row">
+        <button class="btn btn-o btn-sm" onclick="createProxyHost()">+ ADD HOST</button>
+        <button class="btn btn-g btn-sm" onclick="applyProxy()">APPLY CADDY</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">RUNNING DOCKER TARGETS</div>
+      <div class="cs" style="margin-bottom:10px">Pick a mapped host port to prefill the target.</div>
+      <div id="proxy-targets" class="file-list"><div class="file-row"><strong>Loading...</strong></div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="ct">PROXY HOSTS</div>
+    <div id="proxy-hosts"><div class="cs">Loading hosts...</div></div>
+    <div class="btn-row">
+      <button class="btn btn-g btn-sm" onclick="proxyAction('restart')">⟳ RESTART CADDY</button>
+      <button class="btn btn-r btn-sm" onclick="proxyAction('stop')">■ STOP CADDY</button>
+      <button class="btn btn-g btn-sm" onclick="deployNPM()">INSTALL NGINX PROXY MANAGER</button>
+    </div>
+    <div class="cs" style="margin-top:8px">NPM optional UI runs at http://localhost:81 and maps proxy ports to 8088/8443 to avoid ByteForge/Caddy conflicts.</div>
+  </div>
+</div>
+
+<!-- ████ SETTINGS ████ -->
+<div class="page" id="page-settings">
+  <div class="ph">
+    <div class="ph-left"><h1>PLATFORM <span>CONFIG</span></h1><p>// THEME · SPROG · CUSTOM BACKGROUND · PERFORMANCE</p></div>
+    <div class="ph-right">
+      <div class="apps-tabs" style="margin-bottom:0">
+        <button class="apps-tab-btn active" id="set-tab-general">GENERAL</button>
+        <button class="apps-tab-btn" id="set-tab-studio" onclick="nav('studio',document.querySelector('[data-nav=settings]'))">FORGEUI STUDIO</button>
+      </div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="ct">UI / UX</div>
+      <div class="form-label" data-i18n="set.theme">Theme</div>
+      <select class="select" id="set-theme" style="width:100%" onchange="applyTheme(this.value)">
+        <option value="forge-dark">🔥 Forge Dark</option>
+        <option value="forge-light">☀ Forge Light</option>
+        <option value="high-contrast">◈ High Contrast</option>
+        <option value="cyberpunk">💜 Cyberpunk</option>
+        <option value="ocean">🌊 Ocean</option>
+        <option value="matrix">🟩 Matrix</option>
+        <option value="military">🟫 Military</option>
+      </select>
+      <div class="form-label" style="margin-top:10px" data-i18n="set.language">Sprog</div>
+      <select class="select" id="set-language" style="width:100%" onchange="applyLanguage(this.value)"><option value="da">Dansk</option><option value="en">English</option></select>
+      <div class="form-label" style="margin-top:10px">Background</div>
+      <div class="bg-preset-row">
+        <div style="text-align:center">
+          <div class="bg-preset" id="bgp-grid" onclick="setBgPreset('grid')" title="Grid (standard)" style="background:#0D0D0D;background-image:linear-gradient(#242424 1px,transparent 1px),linear-gradient(90deg,#242424 1px,transparent 1px);background-size:12px 12px"></div>
+          <div class="bg-preset-lbl">GRID</div>
+        </div>
+        <div style="text-align:center">
+          <div class="bg-preset" id="bgp-none" onclick="setBgPreset('none')" title="Ingen baggrund" style="background:#0D0D0D"></div>
+          <div class="bg-preset-lbl">MØRK</div>
+        </div>
+        <div style="text-align:center">
+          <div class="bg-preset" id="bgp-forge" onclick="setBgPreset('forge')" title="Forge gløde" style="background:radial-gradient(ellipse at center,rgba(255,107,26,.3) 0%,#0D0D0D 70%)"></div>
+          <div class="bg-preset-lbl">FORGE</div>
+        </div>
+        <div style="text-align:center">
+          <div class="bg-preset" id="bgp-matrix" onclick="setBgPreset('matrix')" title="Matrix" style="background:linear-gradient(135deg,#001100,#003300)"></div>
+          <div class="bg-preset-lbl">MATRIX</div>
+        </div>
+        <div style="text-align:center">
+          <div class="bg-preset" id="bgp-nebula" onclick="setBgPreset('nebula')" title="Nebula" style="background:linear-gradient(135deg,#0d0d2b,#1a0533)"></div>
+          <div class="bg-preset-lbl">NEBULA</div>
+        </div>
+      </div>
+      <input class="input" id="set-background" placeholder="URL til custom baggrundsbillede" style="margin-top:4px"/>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:6px">eller upload et billede:</div>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <input class="input" type="file" id="bg-upload" accept="image/*" style="flex:1"/>
+        <button class="btn btn-g btn-sm" onclick="uploadBackground()">UPLOAD</button>
+      </div>
+      <div class="btn-row"><button class="btn btn-o btn-sm" onclick="saveSettings()">GEM INDSTILLINGER</button></div>
+    </div>
+    <div class="card">
+      <div class="ct">SYSTEM SETUP</div>
+      <div class="smart-row"><span>Docker</span><span class="smart-val" id="setup-docker">Tjekker...</span></div>
+      <div class="smart-row"><span>Service</span><span class="smart-val" id="setup-service">Tjekker...</span></div>
+      <div class="smart-row"><span>Port</span><span class="smart-val" id="setup-port">—</span></div>
+      <div class="smart-row"><span>Data mappe</span><span class="smart-val" id="setup-basedir" style="font-size:10px;word-break:break-all">—</span></div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-o btn-sm" onclick="installService()">⚙ INSTALLER SOM SERVICE</button>
+        <button class="btn btn-g btn-sm" onclick="installDockerSystem()">▣ INSTALLER DOCKER</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">LOGIN / 2FA</div>
+      <div class="smart-row"><span>Session</span><span class="smart-val" id="auth-user">—</span></div>
+      <div class="smart-row"><span>2FA</span><span class="smart-val" id="auth-2fa">—</span></div>
+      <div class="form-label" style="margin-top:12px">Current password</div>
+      <input class="input" id="auth-current" type="password"/>
+      <div class="form-label" style="margin-top:8px">New password</div>
+      <input class="input" id="auth-new" type="password" placeholder="Minimum 8 characters"/>
+      <div class="btn-row">
+        <button class="btn btn-o btn-sm" onclick="changePassword()">CHANGE PASSWORD</button>
+        <button class="btn btn-g btn-sm" onclick="logout()">LOGOUT</button>
+      </div>
+      <div class="st" style="margin-top:16px">2FA <span>SETUP</span></div>
+      <div class="sbox" id="totp-secret">Press setup to generate a TOTP secret.</div>
+      <div class="form-label" style="margin-top:8px">Authenticator code</div>
+      <input class="input" id="totp-code" inputmode="numeric" maxlength="6"/>
+      <div class="btn-row">
+        <button class="btn btn-g btn-sm" onclick="setup2FA()">GENERATE SECRET</button>
+        <button class="btn btn-o btn-sm" onclick="enable2FA()">ENABLE 2FA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ PRIVACY ████ -->
+<div class="page" id="page-privacy">
+  <div class="ph"><div class="ph-left"><h1>PRIVACY <span>SUITE</span></h1><p>// BITWARDEN · NEXTCLOUD · PIHOLE · WIREGUARD</p></div></div>
+  <div class="grid g2">
+    <div class="preset-card" onclick="installPrivacy('bitwarden')">
+      <div class="tool-header" style="padding:0 0 12px;border:none">
+        <div class="tool-icon">🔑</div><div class="tool-name">BITWARDEN</div>
+      </div>
+      <div class="preset-desc">Self-hosted password manager. Sync på tværs af alle enheder.</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ INSTALLER</button><button class="btn btn-g btn-sm">ℹ INFO</button></div>
+    </div>
+    <div class="preset-card" onclick="installPrivacy('nextcloud')">
+      <div class="tool-header" style="padding:0 0 12px;border:none">
+        <div class="tool-icon">☁</div><div class="tool-name">NEXTCLOUD</div>
+      </div>
+      <div class="preset-desc">Din private cloud. Filer, kalender, kontakter og mere.</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ INSTALLER</button><button class="btn btn-g btn-sm">ℹ INFO</button></div>
+    </div>
+    <div class="preset-card" onclick="installPrivacy('pihole')">
+      <div class="tool-header" style="padding:0 0 12px;border:none">
+        <div class="tool-icon">🛡</div><div class="tool-name">PI-HOLE</div>
+      </div>
+      <div class="preset-desc">Netværksbaseret ad-blocking. Blokér reklamer på alle enheder.</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ INSTALLER</button><button class="btn btn-g btn-sm">ℹ INFO</button></div>
+    </div>
+    <div class="preset-card" onclick="installPrivacy('wireguard')">
+      <div class="tool-header" style="padding:0 0 12px;border:none">
+        <div class="tool-icon">🔒</div><div class="tool-name">WIREGUARD VPN</div>
+      </div>
+      <div class="preset-desc">Tilgå dit hjemmenetværk sikkert udefra med WireGuard VPN.</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⚡ INSTALLER</button><button class="btn btn-g btn-sm">ℹ INFO</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ AI ASSISTANT ████ -->
+<div class="page" id="page-ai">
+  <div class="ph"><div class="ph-left"><h1>AI <span>ASSISTANT</span></h1><p>// LOG ANALYSE · CODE REVIEW · DOKUMENTATION</p></div></div>
+  <div class="grid g2">
+    <div class="card" style="display:flex;flex-direction:column;height:500px">
+      <div class="ct">BYTEFORGE AI CHAT</div>
+      <div class="ai-msgs" id="ai-msgs" style="flex:1;overflow-y:auto;padding-right:4px">
+        <div class="ai-msg bot">
+          <div class="who">⚒ BYTEFORGE AI</div>
+          <div class="bubble">Hej Admin! Jeg er din ByteForge AI assistant. Jeg kan hjælpe med at analysere logs, reviewe kode, forklare fejl og meget mere. Hvad kan jeg hjælpe med?</div>
+        </div>
+      </div>
+      <div class="ai-input-row">
+        <input class="input" id="ai-input" placeholder="Spørg om dine logs, kode eller system..." onkeydown="if(event.key==='Enter')sendAI()"/>
+        <button class="btn btn-o btn-sm" onclick="sendAI()">SEND</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div class="ct">HURTIGE HANDLINGER</div>
+        <div class="btn-row" style="flex-direction:column">
+          <button class="btn btn-g" style="width:100%;justify-content:flex-start" onclick="aiQuick('Analysér de seneste systemlogs og rapportér eventuelle fejl')">📋 Analysér systemlogs</button>
+          <button class="btn btn-g" style="width:100%;justify-content:flex-start" onclick="aiQuick('Hvad bruger mest diskplads på serveren?')">💾 Disk pladsanalyse</button>
+          <button class="btn btn-g" style="width:100%;justify-content:flex-start" onclick="aiQuick('Er der noget jeg bør gøre for at optimere min servers performance?')">⚡ Performance tips</button>
+          <button class="btn btn-g" style="width:100%;justify-content:flex-start" onclick="aiQuick('Forklar hvad RAID 1 er og om min konfiguration er optimal')">⚡ Forklar RAID setup</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">AI MOTOR</div>
+        <div class="form-label" style="margin-top:4px">Vælg motor</div>
+        <select class="select" id="ai-engine" style="width:100%;margin-top:4px" onchange="onAiEngineChange()">
+          <option value="claude">🤖 Claude (Anthropic)</option>
+          <option value="ollama">🦙 Ollama (Lokalt)</option>
+          <option value="openai">💡 ChatGPT (OpenAI)</option>
+        </select>
+        <div id="ai-key-row" style="margin-top:10px">
+          <div class="form-label">API Nøgle</div>
+          <input class="input" id="ai-api-key" type="password" placeholder="sk-ant-... / sk-..."/>
+        </div>
+        <div id="ai-model-row" style="margin-top:10px">
+          <div class="form-label">Model</div>
+          <select class="select" id="ai-model" style="width:100%">
+            <option value="claude-sonnet-4-6">claude-sonnet-4-6</option>
+            <option value="claude-opus-4-7">claude-opus-4-7</option>
+            <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+          </select>
+        </div>
+        <div id="ai-ollama-row" style="margin-top:10px;display:none">
+          <div class="form-label">Ollama Model</div>
+          <input class="input" id="ai-ollama-model" value="llama3" placeholder="llama3, mistral, gemma..."/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ DEV TOOLS ████ -->
+<div class="page" id="page-tools">
+  <div class="ph"><div class="ph-left"><h1>DEV <span>TOOLS</span></h1><p>// JSON · LOGS · API TESTER</p></div></div>
+  <div class="grid g2">
+    <div class="tool-card">
+      <div class="tool-header"><span class="tool-icon">{ }</span><span class="tool-name">JSON FORMATTER</span></div>
+      <div class="tool-body">
+        <textarea class="input" id="json-input" rows="6" placeholder='{"key": "value"}'></textarea>
+        <div class="btn-row">
+          <button class="btn btn-o btn-sm" onclick="formatJSON()">⚡ FORMAT</button>
+          <button class="btn btn-g btn-sm" onclick="clearJSON()">✕ RYD</button>
+        </div>
+        <div class="term" style="margin-top:10px"><div class="term-body" id="json-out" style="max-height:180px"></div></div>
+      </div>
+    </div>
+    <div class="tool-card">
+      <div class="tool-header"><span class="tool-icon">🌐</span><span class="tool-name">API TESTER</span></div>
+      <div class="tool-body">
+        <div class="form-row" style="grid-template-columns:100px 1fr">
+          <select class="select" id="api-method"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select>
+          <input class="input" id="api-url" placeholder="https://api.example.com/endpoint"/>
+        </div>
+        <textarea class="input" id="api-body" rows="3" placeholder='{"key": "value"}' style="margin-bottom:8px"></textarea>
+        <button class="btn btn-o btn-sm" onclick="testAPI()">⚡ SEND REQUEST</button>
+        <div class="term" style="margin-top:10px"><div class="term-body" id="api-out" style="max-height:160px">Resultat vises her...</div></div>
+      </div>
+    </div>
+    <div class="tool-card" style="grid-column:1/-1">
+      <div class="tool-header"><span class="tool-icon">📋</span><span class="tool-name">LOG VIEWER</span></div>
+      <div class="tool-body">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select class="select" id="log-source" onchange="loadLog()">
+            <option value="syslog">System Log</option>
+            <option value="byteforge">ByteForge Service</option>
+            <option value="docker">Docker Containers</option>
+            <option value="minecraft">Minecraft Log</option>
+          </select>
+          <button class="btn btn-o btn-sm" onclick="loadLog()">⟳ OPDATER</button>
+        </div>
+        <div class="term"><div class="term-bar"><div class="td on"></div><div class="td"></div><span class="term-lbl" id="log-title">system log</span></div><div class="term-body" id="log-out" style="max-height:250px">Vælg en log kilde...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ APP STORE ████ -->
+<div class="page" id="page-appstore">
+  <div class="ph">
+    <div class="ph-left"><h1>MY <span>APPS</span></h1><p>// INSTALLED APPS & ONE-CLICK STORE</p></div>
+    <div class="ph-right"><button class="btn btn-g btn-sm" onclick="loadApps()">⟳ REFRESH</button></div>
+  </div>
+  <div class="apps-tabs">
+    <button class="apps-tab-btn active" id="tab-installed" onclick="switchAppsTab('installed')">▣ MY APPS</button>
+    <button class="apps-tab-btn" id="tab-store" onclick="switchAppsTab('store')">🛒 STORE</button>
+  </div>
+
+  <!-- MY APPS -->
+  <div id="apps-installed-section">
+    <div class="grid g3" id="apps-installed-grid" style="align-items:start">
+      <div class="card"><div class="ct">INDLÆSER</div><div class="cs">Henter installerede apps...</div></div>
+    </div>
+  </div>
+
+  <!-- STORE -->
+  <div id="apps-store-section" style="display:none">
+    <input id="store-search" placeholder="🔍 Search apps..." oninput="filterApps()"/>
+    <div class="store-cats" id="store-cats">
+      <button class="cat-btn active" onclick="filterApps('All')" data-cat="All">ALL</button>
+      <button class="cat-btn" onclick="filterApps('Media')" data-cat="Media">🎬 MEDIA</button>
+      <button class="cat-btn" onclick="filterApps('Development')" data-cat="Development">💻 DEV</button>
+      <button class="cat-btn" onclick="filterApps('Network')" data-cat="Network">🌐 NETWORK</button>
+      <button class="cat-btn" onclick="filterApps('Cloud')" data-cat="Cloud">☁ CLOUD</button>
+      <button class="cat-btn" onclick="filterApps('Monitoring')" data-cat="Monitoring">📊 MONITORING</button>
+      <button class="cat-btn" onclick="filterApps('Security')" data-cat="Security">🔐 SECURITY</button>
+      <button class="cat-btn" onclick="filterApps('Database')" data-cat="Database">🗄 DATABASE</button>
+      <button class="cat-btn" onclick="filterApps('Home')" data-cat="Home">🏠 HOME</button>
+      <button class="cat-btn" onclick="filterApps('Productivity')" data-cat="Productivity">📋 PRODUCTIVITY</button>
+      <button class="cat-btn" onclick="filterApps('AI')" data-cat="AI">🤖 AI</button>
+    </div>
+    <div class="grid g3" id="app-store-grid" style="align-items:start">
+      <div class="card"><div class="ct">INDLÆSER</div><div class="cs">Henter app catalog...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ TERMINAL ████ -->
+<div class="page" id="page-terminal">
+  <div class="ph"><div class="ph-left"><h1>WEB <span>TERMINAL</span></h1><p>// KØR KOMMANDOER DIREKTE PÅ SERVEREN</p></div></div>
+  <div class="grid g4" style="margin-bottom:14px">
+    <button class="btn btn-g btn-sm" onclick="quickCmd('df -h')">💾 DISK BRUG</button>
+    <button class="btn btn-g btn-sm" onclick="quickCmd('free -h')">🧠 RAM INFO</button>
+    <button class="btn btn-g btn-sm" onclick="quickCmd('docker ps')">▣ DOCKER PS</button>
+    <button class="btn btn-g btn-sm" onclick="quickCmd('uptime')">⏱ UPTIME</button>
+    <button class="btn btn-g btn-sm" onclick="quickCmd('ip addr show')">📡 NETVÆRK</button>
+    <button class="btn btn-g btn-sm" onclick="quickCmd('systemctl list-units --state=failed')">⚠ FEJL SERVICES</button>
+    <button class="btn btn-g btn-sm" onclick="quickCmd('ls -la /opt/byteforge')">📁 BYTEFORGE DIR</button>
+    <button class="btn btn-r btn-sm" onclick="clearTerm()">✕ RYD</button>
+  </div>
+  <div class="term" style="height:calc(100vh - 320px);display:flex;flex-direction:column">
+    <div class="term-bar"><div class="td on"></div><div class="td"></div><span class="term-lbl">ByteForge Terminal // SSH-free command runner</span></div>
+    <div class="term-body" id="term-output" style="flex:1;overflow-y:auto;max-height:none;font-size:11px"></div>
+    <div class="term-input-row">
+      <span class="term-prompt">byteforge $</span>
+      <input id="term-input" placeholder="Skriv en kommando..." onkeydown="handleTermKey(event)" autocomplete="off" spellcheck="false"/>
+    </div>
+  </div>
+</div>
+
+<!-- ████ MARKETPLACE (kept for compat) ████ -->
+<div class="page" id="page-marketplace" style="display:none!important">
+  <div class="grid g3">
+    <div class="preset-card">
+      <div class="preset-title">⭐ LUCAS' SETUP</div>
+      <div class="preset-desc">NAS + RAID + Minecraft. Det komplette ByteForge setup som bruges på denne server.</div>
+      <div class="preset-tags"><span class="preset-tag">nas</span><span class="preset-tag">raid</span><span class="preset-tag">minecraft</span><span class="preset-tag">official</span></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:8px">⭐ 127 stars · af Admin</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⬇ IMPORTÉR</button></div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-title">🎬 MEDIA SERVER</div>
+      <div class="preset-desc">Jellyfin + Sonarr + Radarr + Prowlarr + Jacket. Komplet automatisk media-server.</div>
+      <div class="preset-tags"><span class="preset-tag">jellyfin</span><span class="preset-tag">sonarr</span><span class="preset-tag">media</span></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:8px">⭐ 89 stars · af community</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⬇ IMPORTÉR</button></div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-title">🔐 PRIVACY FIRST</div>
+      <div class="preset-desc">Bitwarden + Nextcloud + Pi-hole + WireGuard + Vaultwarden.</div>
+      <div class="preset-tags"><span class="preset-tag">privacy</span><span class="preset-tag">vpn</span><span class="preset-tag">cloud</span></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:8px">⭐ 64 stars · af community</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⬇ IMPORTÉR</button></div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-title">📊 MONITORING PRO</div>
+      <div class="preset-desc">Grafana + Prometheus + Loki + Node Exporter + Uptime Kuma.</div>
+      <div class="preset-tags"><span class="preset-tag">grafana</span><span class="preset-tag">prometheus</span><span class="preset-tag">loki</span></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:8px">⭐ 43 stars · af community</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⬇ IMPORTÉR</button></div>
+    </div>
+    <div class="preset-card">
+      <div class="preset-title">🤖 LOCAL AI</div>
+      <div class="preset-desc">Ollama + Open WebUI + Stable Diffusion. Kør AI modeller lokalt.</div>
+      <div class="preset-tags"><span class="preset-tag">ollama</span><span class="preset-tag">llama3</span><span class="preset-tag">ai</span></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:8px">⭐ 38 stars · af community</div>
+      <div class="btn-row"><button class="btn btn-o btn-sm">⬇ IMPORTÉR</button></div>
+    </div>
+    <div class="preset-card" style="border-style:dashed;cursor:default">
+      <div class="preset-title" style="color:var(--t3)">+ DEL DIT SETUP</div>
+      <div class="preset-desc" style="color:var(--t3)">Del din konfiguration med homelab-fællesskabet og hjælp andre.</div>
+      <div class="btn-row"><button class="btn btn-g btn-sm">📤 UPLOAD SETUP</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ INSTALL MODAL ████ -->
+<div id="install-modal" style="display:none;position:fixed;inset:0;z-index:999;display:none;align-items:center;justify-content:center">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px)" onclick="closeInstallModal()"></div>
+  <div class="install-box">
+    <div class="install-header">
+      <span id="install-modal-title">INSTALLING</span>
+      <button class="install-close" onclick="closeInstallModal()">✕</button>
+    </div>
+    <div class="install-log" id="install-log"></div>
+    <div class="install-footer" id="install-footer" style="display:none">
+      <button class="btn btn-g" onclick="closeInstallModal()">CLOSE</button>
+      <a id="install-open-btn" class="btn btn-o" href="#" target="_blank" rel="noopener" style="display:none">↗ OPEN APP</a>
+    </div>
+  </div>
+</div>
+
+<!-- ████ FORGEUI STUDIO ████ -->
+<div class="page" id="page-studio">
+  <div class="studio-wrap">
+    <!-- Studio Header -->
+    <div class="studio-topbar">
+      <div class="studio-brand">FORGE<span>UI</span> STUDIO</div>
+      <div class="studio-topbar-actions">
+        <button class="studio-action-btn" onclick="nav('settings',document.querySelector('[data-nav=settings]'))">← SETTINGS</button>
+        <button class="studio-action-btn" onclick="studioReset()">↺ RESET</button>
+        <button class="studio-action-btn" onclick="studioExport()">⬆ EXPORT</button>
+        <button class="studio-action-btn primary" onclick="studioSave()">💾 SAVE</button>
+      </div>
+    </div>
+
+    <div class="studio-body">
+      <!-- Left: Category Nav -->
+      <nav class="studio-nav">
+        <div class="studio-nav-item active" data-tab="presets" onclick="studioTab('presets')">
+          <span class="studio-nav-icon">◈</span><span>PRESETS</span>
+        </div>
+        <div class="studio-nav-item" data-tab="colors" onclick="studioTab('colors')">
+          <span class="studio-nav-icon">🎨</span><span>COLORS</span>
+        </div>
+        <div class="studio-nav-item" data-tab="effects" onclick="studioTab('effects')">
+          <span class="studio-nav-icon">✦</span><span>EFFECTS</span>
+        </div>
+        <div class="studio-nav-item" data-tab="typography" onclick="studioTab('typography')">
+          <span class="studio-nav-icon">𝗔</span><span>TYPOGRAPHY</span>
+        </div>
+        <div class="studio-nav-item" data-tab="layout" onclick="studioTab('layout')">
+          <span class="studio-nav-icon">⊞</span><span>LAYOUT</span>
+        </div>
+      </nav>
+
+      <!-- Center: Controls -->
+      <div class="studio-controls">
+
+        <!-- PRESETS tab -->
+        <div class="studio-tab active" id="studio-tab-presets">
+          <div class="studio-section-title">THEME PRESETS</div>
+          <div class="studio-presets-grid">
+            <div class="studio-preset" data-theme="forge-dark" onclick="studioApplyPreset('forge-dark')">
+              <div class="studio-preset-swatch" style="background:#0D0D0D;border:2px solid #FF6B1A">
+                <div style="background:#FF6B1A;height:6px;margin:8px 8px 4px"></div>
+                <div style="background:#1A1A1A;height:30px;margin:0 8px;border:1px solid #242424"></div>
+              </div>
+              <div class="studio-preset-name">🔥 FORGE DARK</div>
+            </div>
+            <div class="studio-preset" data-theme="cyberpunk" onclick="studioApplyPreset('cyberpunk')">
+              <div class="studio-preset-swatch" style="background:#0a0014;border:2px solid #e040fb">
+                <div style="background:#e040fb;height:6px;margin:8px 8px 4px"></div>
+                <div style="background:#1a003a;height:30px;margin:0 8px;border:1px solid #4b0082"></div>
+              </div>
+              <div class="studio-preset-name">💜 CYBERPUNK</div>
+            </div>
+            <div class="studio-preset" data-theme="matrix" onclick="studioApplyPreset('matrix')">
+              <div class="studio-preset-swatch" style="background:#000;border:2px solid #00ff41">
+                <div style="background:#00ff41;height:6px;margin:8px 8px 4px"></div>
+                <div style="background:#001100;height:30px;margin:0 8px;border:1px solid #003300"></div>
+              </div>
+              <div class="studio-preset-name">🟩 MATRIX</div>
+            </div>
+            <div class="studio-preset" data-theme="ocean" onclick="studioApplyPreset('ocean')">
+              <div class="studio-preset-swatch" style="background:#040d1a;border:2px solid #00bcd4">
+                <div style="background:#00bcd4;height:6px;margin:8px 8px 4px"></div>
+                <div style="background:#0b2040;height:30px;margin:0 8px;border:1px solid #163a6b"></div>
+              </div>
+              <div class="studio-preset-name">🌊 OCEAN</div>
+            </div>
+            <div class="studio-preset" data-theme="military" onclick="studioApplyPreset('military')">
+              <div class="studio-preset-swatch" style="background:#0f110a;border:2px solid #8ba446">
+                <div style="background:#8ba446;height:6px;margin:8px 8px 4px"></div>
+                <div style="background:#1e2414;height:30px;margin:0 8px;border:1px solid #3a4228"></div>
+              </div>
+              <div class="studio-preset-name">🟫 MILITARY</div>
+            </div>
+            <div class="studio-preset" data-theme="forge-light" onclick="studioApplyPreset('forge-light')">
+              <div class="studio-preset-swatch" style="background:#f0ece6;border:2px solid #d45a00">
+                <div style="background:#d45a00;height:6px;margin:8px 8px 4px"></div>
+                <div style="background:#e8e2d9;height:30px;margin:0 8px;border:1px solid #c0b8ad"></div>
+              </div>
+              <div class="studio-preset-name">☀ FORGE LIGHT</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLORS tab -->
+        <div class="studio-tab" id="studio-tab-colors">
+          <div class="studio-section-title">ACCENT COLOR</div>
+          <div class="studio-color-row">
+            <div class="studio-color-swatches">
+              <div class="studio-swatch" style="background:#FF6B1A" onclick="studioSetAccent('#FF6B1A','#FF9A3C')" title="Forge Orange"></div>
+              <div class="studio-swatch" style="background:#e040fb" onclick="studioSetAccent('#e040fb','#ea80fc')" title="Cyberpunk Purple"></div>
+              <div class="studio-swatch" style="background:#00ff41" onclick="studioSetAccent('#00ff41','#00cc30')" title="Matrix Green"></div>
+              <div class="studio-swatch" style="background:#00bcd4" onclick="studioSetAccent('#00bcd4','#4dd0e1')" title="Ocean Cyan"></div>
+              <div class="studio-swatch" style="background:#ff1744" onclick="studioSetAccent('#ff1744','#ff616f')" title="Red Alert"></div>
+              <div class="studio-swatch" style="background:#FFD600" onclick="studioSetAccent('#FFD600','#FFEA00')" title="Gold"></div>
+              <div class="studio-swatch" style="background:#00e5ff" onclick="studioSetAccent('#00e5ff','#84ffff')" title="Ice Blue"></div>
+              <div class="studio-swatch" style="background:#76ff03" onclick="studioSetAccent('#76ff03','#b2ff59')" title="Neon Lime"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">CUSTOM</span>
+              <input type="color" id="studio-accent-picker" value="#FF6B1A" oninput="studioSetAccentFromPicker(this.value)" style="width:40px;height:32px;border:none;background:none;cursor:pointer"/>
+              <input type="color" id="studio-accent2-picker" value="#FF9A3C" oninput="studioSetVar('--o2',this.value)" style="width:40px;height:32px;border:none;background:none;cursor:pointer"/>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--t3)">PRIMARY · SECONDARY</span>
+            </div>
+          </div>
+          <div class="studio-section-title" style="margin-top:20px">BACKGROUND</div>
+          <div class="studio-color-row">
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="color" id="studio-bg-picker" value="#0D0D0D" oninput="studioSetVar('--bg',this.value)" style="width:40px;height:32px;border:none;background:none;cursor:pointer"/>
+              <input type="color" id="studio-panel-picker" value="#1A1A1A" oninput="studioSetVar('--p',this.value)" style="width:40px;height:32px;border:none;background:none;cursor:pointer"/>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--t3)">BACKGROUND · PANEL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- EFFECTS tab -->
+        <div class="studio-tab" id="studio-tab-effects">
+          <div class="studio-effect-row">
+            <div class="studio-effect-label">
+              <span>GLOW INTENSITY</span>
+              <span class="studio-val-badge" id="sv-glow">0</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-glow" min="0" max="10" value="0" step="1" oninput="studioSetEffect('glow',this.value)"/>
+          </div>
+          <div class="studio-effect-row">
+            <div class="studio-effect-label">
+              <span>BLUR PANELS</span>
+              <span class="studio-val-badge" id="sv-blur">0px</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-blur" min="0" max="20" value="0" step="1" oninput="studioSetEffect('blur',this.value)"/>
+          </div>
+          <div class="studio-effect-row">
+            <div class="studio-effect-label">
+              <span>BORDER RADIUS</span>
+              <span class="studio-val-badge" id="sv-radius">0px</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-radius" min="0" max="16" value="0" step="1" oninput="studioSetEffect('radius',this.value)"/>
+          </div>
+          <div class="studio-effect-row">
+            <div class="studio-effect-label">
+              <span>PANEL TRANSPARENCY</span>
+              <span class="studio-val-badge" id="sv-opacity">100%</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-opacity" min="40" max="100" value="100" step="1" oninput="studioSetEffect('opacity',this.value)"/>
+          </div>
+          <div class="studio-effect-row">
+            <div class="studio-effect-label">
+              <span>BORDER BRIGHTNESS</span>
+              <span class="studio-val-badge" id="sv-border">normal</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-border" min="0" max="3" value="1" step="0.1" oninput="studioSetEffect('border',this.value)"/>
+          </div>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
+            <label class="studio-toggle-row">
+              <span>ANIMATIONS</span>
+              <input type="checkbox" id="st-animations" checked onchange="studioToggle('animations',this.checked)"/>
+              <div class="studio-toggle"></div>
+            </label>
+            <label class="studio-toggle-row">
+              <span>GRID OVERLAY</span>
+              <input type="checkbox" id="st-grid" checked onchange="studioToggle('grid',this.checked)"/>
+              <div class="studio-toggle"></div>
+            </label>
+            <label class="studio-toggle-row">
+              <span>SCANLINES</span>
+              <input type="checkbox" id="st-scanlines" onchange="studioToggle('scanlines',this.checked)"/>
+              <div class="studio-toggle"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- TYPOGRAPHY tab -->
+        <div class="studio-tab" id="studio-tab-typography">
+          <div class="studio-section-title">DISPLAY FONT</div>
+          <div class="studio-font-grid" id="studio-fonts-display"></div>
+          <div class="studio-section-title" style="margin-top:20px">MONO FONT</div>
+          <div class="studio-font-grid" id="studio-fonts-mono"></div>
+          <div class="studio-effect-row" style="margin-top:20px">
+            <div class="studio-effect-label">
+              <span>LETTER SPACING</span>
+              <span class="studio-val-badge" id="sv-spacing">2px</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-spacing" min="0" max="8" value="2" step="0.5" oninput="studioSetEffect('spacing',this.value)"/>
+          </div>
+        </div>
+
+        <!-- LAYOUT tab -->
+        <div class="studio-tab" id="studio-tab-layout">
+          <div class="studio-effect-row">
+            <div class="studio-effect-label">
+              <span>UI SCALE</span>
+              <span class="studio-val-badge" id="sv-scale">100%</span>
+            </div>
+            <input type="range" class="studio-slider" id="sl-scale" min="80" max="120" value="100" step="5" oninput="studioSetEffect('scale',this.value)"/>
+          </div>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
+            <label class="studio-toggle-row">
+              <span>COMPACT MODE</span>
+              <input type="checkbox" id="st-compact" onchange="studioToggle('compact',this.checked)"/>
+              <div class="studio-toggle"></div>
+            </label>
+            <label class="studio-toggle-row">
+              <span>WIDE SIDEBAR</span>
+              <input type="checkbox" id="st-wide" onchange="studioToggle('wide',this.checked)"/>
+              <div class="studio-toggle"></div>
+            </label>
+            <label class="studio-toggle-row">
+              <span>TOPBAR TICKER</span>
+              <input type="checkbox" id="st-ticker" checked onchange="studioToggle('ticker',this.checked)"/>
+              <div class="studio-toggle"></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Live Preview -->
+      <div class="studio-preview-panel">
+        <div class="studio-preview-label">LIVE PREVIEW</div>
+        <div class="studio-preview-frame">
+          <div class="spv-topbar">
+            <div class="spv-logo">BF</div>
+            <div class="spv-dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="spv-body">
+            <div class="spv-sidebar">
+              <div class="spv-sb-item active"></div>
+              <div class="spv-sb-item"></div>
+              <div class="spv-sb-item"></div>
+              <div class="spv-sb-item"></div>
+            </div>
+            <div class="spv-main">
+              <div class="spv-card">
+                <div class="spv-ct">SYSTEM</div>
+                <div class="spv-ring"></div>
+                <div class="spv-bar"><div class="spv-bar-fill"></div></div>
+              </div>
+              <div class="spv-card">
+                <div class="spv-ct">DOCKER</div>
+                <div class="spv-val">3</div>
+                <div class="spv-bar"><div class="spv-bar-fill" style="width:60%"></div></div>
+              </div>
+              <div class="spv-card spv-card-wide">
+                <div class="spv-ct">NETWORK</div>
+                <div class="spv-val" style="font-size:14px">↑ 12 MB/s</div>
+              </div>
+              <div class="spv-btn">DEPLOY</div>
+            </div>
+          </div>
+        </div>
+        <div class="studio-preview-info" id="studio-preview-info">
+          Theme: <span id="spv-theme-name">Forge Dark</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</main>
+</div>
+<div id="toast"></div>
+
+<script src="byteforge-platform.js"></script>
+</body>
+</html>

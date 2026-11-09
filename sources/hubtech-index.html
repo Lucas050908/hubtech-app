@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="English">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background-color: #000000;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    header {
+      text-align: center;
+      margin-top: 2%;
+      margin-bottom: 3%;
+    }
+
+    .hubtech-logo {
+      width: 10vw;       /* smaller size */
+      max-width: 120px;  /* reduced max width */
+      min-width: 70px;   /* reduced min width */
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      transition: transform 0.3s ease;
+    }
+
+    .hubtech-logo:hover {
+      transform: scale(1.05);
+    }
+
+    #clock {
+      position: fixed;
+      top: 1%;
+      left: 1%;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      font-size: 1.2vw;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 0.8% 1%;
+      border-radius: 0.5vw;
+      box-shadow: 0 0.2vw 0.6vw rgba(0,0,0,0.3);
+      z-index: 9999;
+      line-height: 1.4;
+    }
+
+    .top-links {
+      position: fixed;
+      top: 1%;
+      right: 1%;
+      display: flex;
+      gap: 1vw;
+      z-index: 9999;
+    }
+
+    .top-links a {
+      background-color: rgb(58, 4, 109);
+      color: white;
+      padding: 0.6vw 1vw;
+      border-radius: 0.5vw;
+      text-decoration: none;
+      font-weight: bold;
+      font-family: 'Segoe UI', sans-serif;
+      box-shadow: 0 0.2vw 0.6vw rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease;
+      font-size: 1vw;
+    }
+
+    .top-links a:hover {
+      background-color: rgb(40, 3, 80);
+    }
+
+    .hubtech-boxes {
+      display: flex;
+      justify-content: center;
+      gap: 2%;
+      flex-wrap: wrap;
+      margin: 2% auto;
+      max-width: 90%;
+    }
+
+    .hubtech-info-box {
+      background-color: rgb(58, 4, 109);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 1.5%;
+      width: 100%;
+      max-width: 35%;
+      border-radius: 1vw;
+      box-shadow: 0 0.4vw 1vw rgba(0,0,0,0.3);
+    }
+
+    .hubtech-info-box h2 {
+      margin-top: 0;
+      font-size: 1.2vw;
+      color: #ffffff;
+    }
+
+    .hubtech-info-box ul {
+      padding-left: 5%;
+      margin: 1% 0 0 0;
+      font-size: 1vw;
+    }
+
+    .info-box {
+      background-color: rgb(58, 4, 109);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 1.5%;
+      margin: 2% auto;
+      width: 80%;
+      max-width: 45%;
+      border-radius: 1vw;
+      box-shadow: 0 0.4vw 1vw rgba(0,0,0,0.3);
+      font-size: 1vw;
+      text-align: center;
+    }
+
+    .mascot-fixed {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 22vw;
+      max-width: 250px;
+      height: auto;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .pop-img {
+      width: 12%;
+      max-width: 150px;
+      min-width: 80px;
+      height: auto;
+      margin: 1%;
+      transition: transform 0.3s ease;
+      border-radius: 0.8vw;
+    }
+
+    .pop-img:hover {
+      transform: scale(1.05);
+    }
+
+    .weather-box {
+      position: fixed;
+      bottom: 1%;
+      left: 1%;
+      width: 20vw;
+      height: 15vh;
+      border-radius: 1vw;
+      overflow: hidden;
+      box-shadow: 0 0.4vw 1vw rgba(0,0,0,0.2);
+      z-index: 9998;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    @media (max-width: 999px) {
+      .pop-img {
+        width: 18%;
+        max-width: 120px;
+      }
+
+      .hubtech-logo {
+        width: 50%;
+        max-width: 1000000px;
+      }
+
+      header {
+        margin-bottom: 5%;
+      }
+    }
+
+    @media (max-width: 599px) {
+      .pop-img {
+        width: 28%;
+        max-width: 110px;
+      }
+
+      .hubtech-logo {
+        width: 30vw;
+        max-width: 90px;
+      }
+
+      header {
+        margin-bottom: 6%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="clock">--</div>
+
+  <div class="top-links">
+    <a href="https://discord.gg/7dCpmeBg" target="_blank">🔗 Go to support on Discord</a>
+    <a href="mailto:HUBTECH2025@proton.me" target="_blank">📧 Contact us by email</a>
+  </div>
+
+  <header>
+    <img src="Logo.png" alt="HUBTECH Logo" class="hubtech-logo">
+  </header>
+
+  <div style="text-align:center;">
+    <a href="m.html"><img src="Pingochat.png" alt="Gå til destination" class="pop-img"></a>
+    <a href="gamehob.html"><img src="Untitled_4.webp" alt="Gå til destination" class="pop-img"></a>
+    <a href="chatbot.html"><img src="image copy.png" alt="Gå til destination" class="pop-img"></a>
+    <a href="d.html"><img src="Unavngivet_8.png" alt="Gå til destination" class="pop-img"></a>
+    <a href="doc.html"><img src="Unavngivet_6.png" alt="Gå til destination" class="pop-img"></a>
+    <a href="kalender.html"><img src="Unavngivet_9.png" alt="Gå til destination" class="pop-img"></a>
+  </div>
+
+  <div class="info-box">
+    <h2>Welcome to HUBTECH</h2>
+    <p>At HUBTECH, you can explore new technologies, share ideas, and develop projects together with others who have the same interests.</p>
+  </div>
+
+  <div class="hubtech-boxes">
+    <div class="hubtech-info-box">
+      <h2>👥 People behind HUBTECH</h2>
+      <ul>
+        <li>Lucas Valentin - Ai/html/css</li>
+        <li>Magnus Froberg - Ai/html/css</li>
+        <li>Mathias Ejstrup - Design/Graphics</li>
+        <li>Ronja Helander - Design/Graphics</li>
+        <li>Sebastian Elgaard - AI/Design</li>
+      </ul>
+    </div>
+
+    <div class="hubtech-info-box">
+      <h2>🔔 HUBTECH News</h2>
+      <ul>
+        <li>If you have ideas for things that could happen in the future at HUBTECH</li>
+        <li>HUBTECH minecraft ip "b-cabin.gl.joinmc.link" and version 1.21.8</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="weather-box">
+    <iframe style="width:100%; height:100%;" src="https://embed.windy.com/embed2.html?lat=57.05&lon=9.92&detailLat=57.05&detailLon=9.92&zoom=10&level=surface&overlay=temperature" frameborder="0"></iframe>
+  </div>
+
+  <img src="maskot 2d.png" alt="Maskot" class="mascot-fixed">
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayName = weekdays[now.getDay()];
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const date = now.getDate();
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const month = monthNames[now.getMonth()];
+      const year = now.getFullYear();
+
+      const timeString = `${dayName} · ${hours}:${minutes} · ${date}. ${month} ${year}`;
+      document.getElementById('clock').textContent = timeString;
+    }
+
+    updateClock();
+    setInterval(updateClock, 60000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+/**
+ * Almen viden – kurser skrevet til HUBTECH (samme form som de andre: t = titel, g = mål, r = læs [tekst, url],
+ * l = lær, d = øv, q = tjek dig selv). Linux, hardware, regneark, Microsoft 365 og skyen, mobilsupport,
+ * kundeservice, sikkerhed i en lille virksomhed og AI i hverdagen.
+ */
+const linux = {
+  id: 'linux', title: 'Linux fra bunden', short: 'Linux', icon: 'terminal', group: 'general', app: 'linux',
+  intro: 'Kommandolinjen i Linux: mapper, filer, rettigheder og programmer – øv dig i den rigtige Linux-terminal i HUBTECH.',
+  days: [
+    { t: 'Rundt i mapperne', g: 'Du kan finde rundt i filsystemet fra kommandolinjen.', r: [['Åbn Linux-terminalen', '#/learn/linux']],
+      l: ['pwd viser, hvilken mappe du står i.', 'ls viser indholdet af mappen – ls -l viser detaljer, ls -a viser også skjulte filer (dem, der starter med punktum).', 'cd mappe går ind i en mappe, cd .. går et niveau op, og cd alene går hjem.', 'Alt i Linux starter i roden /. Din hjemmemappe hedder ~.', 'Tab-tasten gør navne færdige for dig – og pil op henter den forrige kommando.'],
+      d: ['Åbn Linux-terminalen, og skriv pwd og ls.', 'Gå til / og tilbage til ~ igen.', 'Brug Tab til at skrive et langt mappenavn.'],
+      q: [['Hvilken kommando viser, hvor du står?', 'pwd.'], ['Hvad betyder ~?', 'Din hjemmemappe.']] },
+    { t: 'Filer og mapper', g: 'Du kan oprette, kopiere, flytte og slette filer.', r: [['Åbn Linux-terminalen', '#/learn/linux']],
+      l: ['mkdir navn laver en mappe, touch fil.txt laver en tom fil.', 'cp a b kopierer, mv a b flytter eller omdøber.', 'rm fil sletter en fil, rm -r mappe sletter en mappe med indhold – der er ingen papirkurv.', 'cat fil viser indholdet, less fil lader dig bladre (q for at lukke).', 'echo "hej" > fil.txt skriver til en fil, >> tilføjer i bunden.'],
+      d: ['Lav mappen ovelse, og en fil i den.', 'Skriv tre linjer i filen med echo og >>, og vis den med cat.', 'Omdøb filen med mv.'],
+      q: [['Hvad er forskellen på > og >>?', '> overskriver filen, >> tilføjer i bunden.'], ['Kan man fortryde rm?', 'Nej – der er ingen papirkurv på kommandolinjen.']] },
+    { t: 'Rettigheder og sudo', g: 'Du forstår, hvem der må læse, skrive og køre en fil.', r: [['Åbn Linux-terminalen', '#/learn/linux']],
+      l: ['ls -l viser rettigheder som rwxr-xr-- : ejer, gruppe og alle andre.', 'r = læse, w = skrive, x = køre (eller gå ind i en mappe).', 'chmod +x script.sh gør en fil kørbar. chmod 644 fil: ejer læser og skriver, andre læser.', 'sudo kører én kommando som administrator (root). Brug det kun, når det er nødvendigt.', 'chown ændrer, hvem der ejer en fil.'],
+      d: ['Se rettighederne på dine filer med ls -l.', 'Lav et lille script med echo, og gør det kørbart med chmod +x.', 'Forklar 755 med dine egne ord.'],
+      q: [['Hvad betyder x på en fil?', 'At filen må køres som et program.'], ['Hvad gør sudo?', 'Kører kommandoen som administrator (root).']] },
+    { t: 'Søg, programmer og processer', g: 'Du kan finde ting og holde øje med, hvad der kører.', r: [['Åbn Linux-terminalen', '#/learn/linux'], ['Kommandoer', '#/learn/snippets']],
+      l: ['grep ord fil finder linjer med ordet. grep -r ord . søger i alle filer i mappen.', 'find . -name "*.txt" finder filer ud fra navnet.', 'ps viser processer, top viser dem live (q for at lukke). kill PID stopper en proces.', 'På Ubuntu installeres programmer med sudo apt install navn – og opdateres med sudo apt update && sudo apt upgrade.', 'En kommandos manual: man kommando, eller kommando --help.'],
+      d: ['Find alle .txt-filer i din hjemmemappe.', 'Søg efter et ord i en fil med grep.', 'Kør top, og find den proces, der bruger mest CPU.'],
+      q: [['Hvordan søger du efter tekst i filer?', 'Med grep.'], ['Hvordan installerer du et program på Ubuntu?', 'sudo apt install navn.']] },
+  ],
+};
+
+const hardware = {
+  id: 'hardware', title: 'Hardware: indeni computeren', short: 'Hardware', icon: 'chip', group: 'general', app: 'hwtest',
+  intro: 'Hvad de enkelte dele gør, hvordan man vælger og opgraderer – og hvordan man skifter dem sikkert.',
+  days: [
+    { t: 'Delene og hvad de gør', g: 'Du kan forklare, hvad hver del i en computer gør.', r: [['Hardwaretest', '#/apps/hwtest']],
+      l: ['CPU (processor): regner og styrer alt. Flere kerner = flere ting på én gang.', 'RAM (hukommelse): arbejdsbordet – det, der er åbent lige nu. Tømmes, når strømmen går.', 'Lager (SSD/HDD): gemmer filer, også når strømmen er væk. En SSD er mange gange hurtigere end en HDD.', 'Bundkort: forbinder alle dele. Strømforsyning (PSU): giver strøm til det hele.', 'Grafikkort (GPU): tegner billedet – og bruges til spil, video og AI.'],
+      d: ['Find, hvor meget RAM og hvilken CPU din computer har (Jobliste → Ydelse).', 'Forklar forskellen på RAM og lager til en kunde.', 'Kør Hardwaretest i HUBTECH.'],
+      q: [['Hvad sker der med indholdet i RAM, når strømmen går?', 'Det forsvinder.'], ['Hvad er hurtigst: SSD eller HDD?', 'SSD.']] },
+    { t: 'Opgradér en gammel pc', g: 'Du ved, hvad der giver mest for pengene.', r: [['Hardwaretest', '#/apps/hwtest']],
+      l: ['Den største forbedring på en gammel pc er næsten altid en SSD i stedet for en HDD.', 'Under 8 GB RAM er for lidt til Windows 11 og en browser med mange faner – 16 GB er godt i dag.', 'Tjek, hvilken RAM bundkortet tager (DDR4 eller DDR5) og hvor mange pladser der er fri.', 'M.2-SSD’er findes som SATA og NVMe – bundkortet skal understøtte den type.', 'Overfør Windows med et kloningsprogram, eller installer forfra og flyt filerne.'],
+      d: ['Find ud af, om din computer har SSD eller HDD.', 'Find, hvilken type RAM din computer bruger.', 'Lav et tilbud: SSD + mere RAM til en kundes gamle bærbar.'],
+      q: [['Hvad giver typisk mest fart på en gammel pc?', 'En SSD i stedet for en HDD.'], ['Hvorfor skal du tjekke DDR4/DDR5?', 'Bundkortet tager kun den ene type.']] },
+    { t: 'Skift dele sikkert', g: 'Du åbner en computer uden at skade den eller dig selv.', r: [['Elektronik fra bunden', '#/learn/course/elektronik']],
+      l: ['Sluk, tag stikket ud, og tryk på tænd-knappen for at tømme den sidste strøm.', 'Statisk elektricitet kan ødelægge dele: rør ved metal på kabinettet, eller brug et ESD-armbånd.', 'Tag billeder undervejs, så du ved, hvor kabler og skruer sad.', 'Åbn aldrig en strømforsyning – kondensatorerne kan holde på farlig spænding.', 'Batterier i bærbare kan brænde, hvis de bliver bøjet eller punkteret – en opsvulmet batteri skal skiftes og afleveres korrekt.'],
+      d: ['Skriv en tjekliste til at åbne en stationær pc.', 'Find ESD-tegnet på en emballage til en computerdel.', 'Forklar en kunde, hvorfor et opsvulmet batteri er farligt.'],
+      q: [['Hvorfor trykker du på tænd-knappen efter at have taget stikket ud?', 'For at tømme den sidste strøm.'], ['Må du åbne en strømforsyning?', 'Nej – den kan holde på farlig spænding.']] },
+    { t: 'Fejlfinding på hardware', g: 'Du finder den del, der er gået i stykker.', r: [['Fejlfindingslab', '#/learn/labs/cases'], ['Hardwaretest', '#/apps/hwtest']],
+      l: ['Start enkelt: strøm, kabler, skærm og den rigtige indgang.', 'Bip-koder og lamper på bundkortet fortæller, hvad der fejler – slå koden op i manualen.', 'Tilfældige genstarter: tjek temperatur (støv i blæserne) og RAM (kør Windows Hukommelsesdiagnose).', 'Klik-lyde fra en HDD betyder, at den er ved at dø – tag backup med det samme.', 'Udelukkelse: skift én del ad gangen med en, du ved virker.'],
+      d: ['Kør Windows Hukommelsesdiagnose (søg på “hukommelse” i Start).', 'Rens en blæser forsigtigt med trykluft (hold blæseren fast).', 'Løs en hardwaresag i Fejlfindingslabbet.'],
+      q: [['Hvad betyder klik-lyde fra en harddisk?', 'At den er ved at gå i stykker – tag backup nu.'], ['Hvad er udelukkelse?', 'At skifte én del ad gangen med en, der virker.']] },
+  ],
+};
+
+const sheets = {
+  id: 'regneark', title: 'Regneark: fra tal til overblik', short: 'Regneark', icon: 'grid', group: 'general', app: 'hubtech',
+  intro: 'Celler, formler, funktioner og diagrammer – det samme i Excel, Google Sheets og HUBTECH Office.',
+  days: [
+    { t: 'Celler og formler', g: 'Du kan lave et regneark, der regner selv.', r: [['Åbn HUBTECH Office', '#/apps/hubtech']],
+      l: ['En celle har en adresse: kolonne og række, fx B3.', 'En formel starter altid med = , fx =B3*C3.', 'Kopierer du en formel ned, flytter adresserne med (relativ). $B$1 bliver stående (absolut).', 'Brug cellerne i formlen – ikke selve tallene – så regner arket igen, når tallene ændrer sig.', 'Formatér tal som valuta, procent eller dato i stedet for at skrive “kr.” i cellen.'],
+      d: ['Lav et indkøbsark med vare, antal, pris og i alt.', 'Læg moms på med en celle til momsen og $-adresse.', 'Formatér beløbene som kroner.'],
+      q: [['Hvad starter en formel med?', 'Et lighedstegn (=).'], ['Hvad gør $ i $B$1?', 'Holder adressen fast, når formlen kopieres.']] },
+    { t: 'De vigtigste funktioner', g: 'Du bruger SUM, MIDDEL, HVIS og LOPSLAG/XOPSLAG.', r: [['Åbn HUBTECH Office', '#/apps/hubtech']],
+      l: ['=SUM(B2:B20) lægger sammen, =MIDDEL(B2:B20) finder gennemsnittet (engelsk: AVERAGE).', '=MIN og =MAKS finder det mindste og største tal.', '=HVIS(B2>1000;"Stor";"Lille") vælger ud fra en betingelse (engelsk: IF).', '=TÆL.HVIS(A:A;"Printer") tæller, hvor mange gange noget står (COUNTIF).', '=XOPSLAG slår en værdi op i en tabel (XLOOKUP) – den nyere afløser for LOPSLAG.'],
+      d: ['Find den samlede og gennemsnitlige pris i dit indkøbsark.', 'Marker dyre varer med HVIS.', 'Tæl, hvor mange servicesager der er pr. enhedstype.'],
+      q: [['Hvad hedder SUM-funktionen på engelsk og dansk?', 'Den hedder SUM på begge sprog.'], ['Hvad gør HVIS?', 'Viser én ting, hvis betingelsen er sand, og en anden, hvis den er falsk.']] },
+    { t: 'Sortér, filtrér og tabeller', g: 'Du får overblik over mange rækker.', r: [['Åbn HUBTECH Office', '#/apps/hubtech']],
+      l: ['Gør overskrifterne fede, og frys øverste række, så den bliver stående.', 'Sortér efter en kolonne – markér hele tabellen først, så rækkerne følges ad.', 'Filtrér for kun at se rækker, der passer (fx én kunde).', 'Én ting pr. celle og én række pr. post gør arket let at sortere og regne på.', 'En pivottabel opsummerer mange rækker – fx omsætning pr. måned pr. kunde.'],
+      d: ['Sortér dine servicesager efter dato.', 'Filtrér, så du kun ser én kunde.', 'Frys overskriftsrækken.'],
+      q: [['Hvorfor markere hele tabellen, før du sorterer?', 'Så rækkerne følges ad og ikke blandes.'], ['Hvad bruges en pivottabel til?', 'At opsummere mange rækker, fx pr. måned eller kunde.']] },
+    { t: 'Diagrammer', g: 'Du vælger det rigtige diagram til dine tal.', r: [['Diagrammer', '#/apps/charts']],
+      l: ['Søjler: sammenlign kategorier (salg pr. produkt).', 'Linje: udvikling over tid (omsætning pr. måned).', 'Lagkage: kun dele af et hele – og helst få dele.', 'Giv diagrammet en titel, og skriv enheder på akserne.', 'Gnist kan også lave et diagram, hvis du giver hende tallene.'],
+      d: ['Lav et søjlediagram over sager pr. enhedstype.', 'Lav et linjediagram over km pr. måned fra kørebogen.', 'Bed Gnist om et diagram over tre tal.'],
+      q: [['Hvilket diagram viser udvikling over tid?', 'Et linjediagram.'], ['Hvornår passer et lagkagediagram?', 'Når du viser få dele af et hele.']] },
+  ],
+};
+
+const cloud = {
+  id: 'sky-og-365', title: 'Skyen, mail og Microsoft 365', short: 'Skyen og 365', icon: 'cloud', group: 'general', app: 'learning',
+  intro: 'Mail, OneDrive, Teams og deling – det, de fleste kontorer bruger, og det, kunderne oftest spørger om.',
+  days: [
+    { t: 'Hvad er skyen?', g: 'Du kan forklare skyen enkelt.', r: [['IT-ordbog', '#/learn/glossary']],
+      l: ['“Skyen” er computere i et datacenter, som du bruger over internettet.', 'Fordele: adgang fra alle enheder, automatisk backup og ingen server at passe.', 'Ulemper: kræver internet, koster pr. bruger pr. måned, og data ligger hos en udbyder.', 'Synkronisering (OneDrive, Google Drive) holder filerne ens på alle enheder – slettes en fil ét sted, slettes den alle steder.', 'Synkronisering er ikke det samme som backup.'],
+      d: ['Forklar skyen til en kunde på tre sætninger.', 'Find, hvor gamle versioner af en fil gemmes i OneDrive eller Google Drive.', 'Skriv, hvorfor synkronisering ikke er backup.'],
+      q: [['Er synkronisering det samme som backup?', 'Nej – en slettet fil slettes på alle enheder.'], ['Nævn en ulempe ved skyen.', 'Den kræver internet (og koster løbende).']] },
+    { t: 'Mail der virker', g: 'Du kan sætte mail op og løse de typiske problemer.', r: [['Hjælp: mails sendes ikke', '#/apps/gnist']],
+      l: ['En Microsoft 365- eller Gmail-konto sættes op med mailadresse og kode – programmet finder selv serverne.', 'IMAP holder mailen ens på alle enheder. POP henter den ned og sletter den typisk fra serveren.', 'Fuld postkasse: slet store vedhæftninger og tøm Slettet post.', 'Mails i spam: bed modtageren markere “Ikke spam”, og tjek at domænet har SPF/DKIM sat op.', 'Del store filer som et link i stedet for en vedhæftning.'],
+      d: ['Find, hvor meget plads din postkasse bruger.', 'Send et delingslink til en stor fil.', 'Forklar forskellen på IMAP og POP.'],
+      q: [['Hvad er forskellen på IMAP og POP?', 'IMAP holder mailen ens på alle enheder, POP henter den ned.'], ['Hvordan sender du en stor fil?', 'Som et delingslink.']] },
+    { t: 'Del filer sikkert', g: 'Du deler filer med de rigtige og ingen andre.', r: [['Spot phishing', '#/learn/course/phishing']],
+      l: ['Del med navngivne personer frem for “alle med linket”.', 'Giv kun læseadgang, hvis modtageren ikke skal rette.', 'Sæt udløbsdato på links til eksterne.', 'Tjek jævnligt, hvad der er delt – og fjern gamle delinger.', 'Persondata (CPR, helbred) må ikke deles åbent – GDPR kræver, at de beskyttes.'],
+      d: ['Del en fil med læseadgang til én person.', 'Find listen over, hvad du har delt.', 'Fjern en gammel deling.'],
+      q: [['Hvilken deling er sikrest?', 'Til navngivne personer med kun den adgang, de har brug for.'], ['Må du dele CPR-numre i et åbent link?', 'Nej – persondata skal beskyttes (GDPR).']] },
+    { t: 'Teams og møder', g: 'Du hjælper med online-møder, der virker.', r: [['Test mikrofon og kamera', '#/settings/apps']],
+      l: ['Test lyd og kamera før mødet – de fleste programmer har en testfunktion.', 'Ingen lyd: tjek at den rigtige mikrofon og højttaler er valgt i programmet.', 'Brug hovedtelefoner for at undgå ekko.', 'Dårlig forbindelse: slå kamera fra, luk andre programmer, og brug kabel frem for wifi.', 'Del kun det vindue, du vil vise – ikke hele skærmen.'],
+      d: ['Test mikrofonen i HUBTECHs indstillinger.', 'Del et enkelt vindue i et testopkald.', 'Skriv en tjekliste “før mødet”.'],
+      q: [['Hvad hjælper mod ekko?', 'Hovedtelefoner.'], ['Hvad gør du ved dårlig forbindelse?', 'Slår kameraet fra og bruger kabel frem for wifi.']] },
+  ],
+};
+
+const mobile = {
+  id: 'mobil-support', title: 'Mobil- og tabletsupport', short: 'Mobilsupport', icon: 'phone', group: 'general', app: 'learning',
+  intro: 'iPhone og Android: opsætning, plads, batteri, backup og de problemer, kunderne kommer med.',
+  days: [
+    { t: 'Ny telefon og flyt data', g: 'Du kan sætte en ny telefon op og flytte kundens data.', r: [['IT-ordbog', '#/learn/glossary']],
+      l: ['iPhone til iPhone: Hurtig start – læg telefonerne ved siden af hinanden.', 'Android til Android: Googles kopiering under opsætningen (kabel eller wifi).', 'Mellem iPhone og Android: brug producentens app (fx “Flyt til iOS” eller Switch-appen).', 'Tjek, at kunden kender sin Apple-id- eller Google-kode før du starter.', 'Gamle telefoner nulstilles helt, før de sælges eller afleveres.'],
+      d: ['Skriv en tjekliste til at skifte telefon for en kunde.', 'Find, hvor du nulstiller en telefon til fabriksindstillinger.', 'Find, hvor backup er slået til på din egen telefon.'],
+      q: [['Hvad skal kunden kende, før du skifter telefon?', 'Sin Apple-id- eller Google-kode.'], ['Hvad gør du med en gammel telefon, der skal sælges?', 'Nulstiller den til fabriksindstillinger.']] },
+    { t: 'Plads og hastighed', g: 'Du frigør plads og gør telefonen hurtigere.', r: [['Hjælp: lageret er fyldt', '#/apps/gnist']],
+      l: ['Se, hvad der fylder: Indstillinger → Generelt → iPhone-lagringsplads / Indstillinger → Lagerplads.', 'Billeder og videoer fylder mest – flyt dem til skyen eller en computer.', 'Tøm “Senest slettet” i Fotos – ellers bliver pladsen ikke fri i 30 dage.', 'Beskeder med vedhæftninger og offline-musik fylder meget.', 'En genstart løser mange små problemer.'],
+      d: ['Find de tre apps, der fylder mest på din telefon.', 'Tøm “Senest slettet”.', 'Slå automatisk sletning af gamle beskeder til.'],
+      q: [['Hvad fylder typisk mest?', 'Billeder og videoer.'], ['Hvorfor tømme “Senest slettet”?', 'Ellers bliver pladsen først fri efter 30 dage.']] },
+    { t: 'Batteri og opladning', g: 'Du kan rådgive om batteri og opladning.', r: [['Elektronik fra bunden', '#/learn/course/elektronik']],
+      l: ['Batterier slides: efter 2–3 år holder de typisk mærkbart kortere.', 'Se batteritilstanden under Indstillinger → Batteri.', 'Varme slider mest – undgå at lade i solen eller under hovedpuden.', 'Lader telefonen ikke: rens porten forsigtigt (fnug), og prøv et andet kabel og stik.', 'Et opsvulmet batteri skal skiftes med det samme.'],
+      d: ['Find din telefons batteritilstand.', 'Find de apps, der bruger mest batteri.', 'Forklar en kunde, hvordan batteriet holder længere.'],
+      q: [['Hvad slider mest på et batteri?', 'Varme.'], ['Hvad tjekker du først, når en telefon ikke lader?', 'Porten (fnug), kablet og stikket.']] },
+    { t: 'Sikkerhed på mobilen', g: 'Du sikrer kundens telefon.', r: [['Spot phishing', '#/learn/course/phishing']],
+      l: ['Skærmlås med kode eller biometri – og automatisk lås efter kort tid.', 'Find min iPhone / Find min enhed: slå det til, så telefonen kan findes og slettes på afstand.', 'Installer kun apps fra App Store og Google Play.', 'Opdatér systemet – opdateringer lukker sikkerhedshuller.', 'SMS med links om pakker, bank eller bøder er ofte svindel.'],
+      d: ['Tjek, at Find min enhed er slået til på din telefon.', 'Se, hvornår telefonen sidst blev opdateret.', 'Find tre tegn på en svindel-SMS i Phishing-træneren.'],
+      q: [['Hvorfor slå “Find min enhed” til?', 'Så telefonen kan findes og slettes på afstand.'], ['Hvor bør apps installeres fra?', 'App Store og Google Play.']] },
+  ],
+};
+
+const customer = {
+  id: 'kundeservice', title: 'Kundeservice og kommunikation', short: 'Kundeservice', icon: 'users', group: 'general', app: 'replies',
+  intro: 'Den gode servicetekniker kan både løse problemet og forklare det. Spørgsmål, forklaringer, sure kunder og gode rapporter.',
+  days: [
+    { t: 'Spørg dig frem', g: 'Du finder ud af, hvad problemet er, før du rører noget.', r: [['Svar-skabeloner', '#/apps/replies']],
+      l: ['Start åbent: “Hvad sker der, når …?” – og lyt til hele svaret.', 'Spørg ind: Hvornår startede det? Er der sket noget nyt? Sker det hver gang?', 'Gentag med dine egne ord: “Så printeren stopper midt i siden – er det rigtigt?”', 'Skriv fejlen ned med kundens ord i rapporten.', 'Lov ikke, hvad du ikke ved: “Jeg ser på det og siger det, så snart jeg ved mere.”'],
+      d: ['Skriv fem spørgsmål, du stiller ved en “printeren virker ikke”-sag.', 'Øv at gentage en fejl med dine egne ord.', 'Udfyld feltet “Fejl som kunden beskriver” i din rapport.'],
+      q: [['Hvorfor gentage fejlen med dine egne ord?', 'For at være sikker på, at I mener det samme.'], ['Hvad gør du, hvis du ikke kender svaret endnu?', 'Siger, at du undersøger det og vender tilbage.']] },
+    { t: 'Forklar uden fagord', g: 'Kunden forstår, hvad du har lavet.', r: [['IT-ordbog', '#/learn/glossary']],
+      l: ['Brug hverdagsord: “hukommelsen” i stedet for “RAM”, eller forklar ordet.', 'Sammenlign: RAM er skrivebordet, harddisken er arkivskabet.', 'Fortæl, hvad du fandt, hvad du gjorde, og hvad kunden skal gøre fremover.', 'Vis det på skærmen, hvis det er noget kunden selv skal kunne.', 'Spørg: “Giver det mening?” – ikke “Forstår du?”'],
+      d: ['Forklar “router” til én, der aldrig har hørt ordet.', 'Skriv en forklaring på en SSD-opgradering i tre sætninger.', 'Find et fagord i en rapport, og skriv det om.'],
+      q: [['Hvilke tre ting fortæller du kunden?', 'Hvad du fandt, hvad du gjorde, og hvad kunden skal gøre fremover.'], ['Hvorfor spørge “Giver det mening?”', 'Det lyder ikke, som om kunden er dum.']] },
+    { t: 'Den sure kunde', g: 'Du holder roen og finder en løsning.', r: [['Svar-skabeloner', '#/apps/replies']],
+      l: ['Lyt færdigt – afbryd ikke, og tag det ikke personligt.', 'Anerkend følelsen: “Jeg forstår godt, det er irriterende, når …”', 'Undskyld for oplevelsen, også selvom det ikke var din fejl.', 'Sig, hvad du kan gøre nu – og hvornår kunden hører fra dig.', 'Hold det, du lover. Skriv det ned.'],
+      d: ['Skriv et svar til en kunde, hvis printer stadig ikke virker efter besøget.', 'Øv sætningen “Det, jeg kan gøre nu, er …”', 'Lav en svar-skabelon til forsinkede reservedele.'],
+      q: [['Hvad gør du først med en sur kunde?', 'Lytter færdigt uden at afbryde.'], ['Hvorfor sige, hvornår kunden hører fra dig?', 'Så kunden ved, hvad der sker – og du kan holde det.']] },
+    { t: 'Den gode servicerapport', g: 'Din rapport kan læses af kunden og den næste tekniker.', r: [['Kunder', '#/apps/customers']],
+      l: ['Skriv fejl, årsag og udført arbejde hver for sig.', 'Skriv konkret: “Skiftet fikseringsenhed (varenr. …)” i stedet for “Repareret”.', 'Billeder før og efter siger mere end mange ord.', 'Skriv anbefalinger: hvad kunden bør gøre, og hvornår du bør komme igen.', 'Send PDF’en samme dag, mens det er friskt.'],
+      d: ['Skriv en rapport i Office med fejl, årsag og udført arbejde.', 'Tilføj et billede og en anbefaling.', 'Hent rapporten som PDF.'],
+      q: [['Hvorfor skrive fejl, årsag og udført arbejde hver for sig?', 'Så kunden og den næste tekniker kan følge, hvad der skete.'], ['Hvad er bedst: “Repareret” eller hvad du konkret gjorde?', 'Hvad du konkret gjorde.']] },
+  ],
+};
+
+const smallbiz = {
+  id: 'it-sikkerhed-firma', title: 'IT-sikkerhed i en lille virksomhed', short: 'Sikkerhed i firmaet', icon: 'shield', group: 'general', app: 'passwords',
+  intro: 'De få ting, der stopper de fleste angreb: koder, totrin, opdateringer, backup og sund fornuft – plus GDPR i praksis.',
+  days: [
+    { t: 'De fem vigtigste', g: 'Du kan give en lille virksomhed en sikkerhedsplan på fem punkter.', r: [['Windows-support', '#/learn/course/windows-support']],
+      l: ['1. Totrinsbekræftelse på mail og alt vigtigt.', '2. Opdateringer slået til på computere, telefoner og router.', '3. Backup efter 3-2-1-reglen – og test den.', '4. En adgangskodemanager, så ingen genbruger koder.', '5. Kort træning i at spotte phishing.'],
+      d: ['Gennemgå de fem punkter for din egen computer.', 'Lav en tjekliste til en kunde ud fra de fem punkter.', 'Tag en runde i Phishing-træneren.'],
+      q: [['Hvad stopper de fleste kontoovertagelser?', 'Totrinsbekræftelse.'], ['Hvad er 3-2-1-reglen?', 'Tre kopier, to forskellige medier, én uden for huset.']] },
+    { t: 'Netværket og wifi', g: 'Du sætter et sikkert netværk op.', r: [['Netværk fra bunden', '#/learn/course/netvaerk']],
+      l: ['Skift routerens standard-kode til administration.', 'Brug WPA2 eller WPA3 og en lang wifi-kode.', 'Lav et gæstenetværk til kunder og besøgende.', 'Opdatér routerens firmware.', 'Printere og smart-enheder kan ligge på et separat netværk.'],
+      d: ['Find, hvilken kryptering dit wifi bruger.', 'Find, om din router har et gæstenetværk.', 'Skriv en plan for et kontornetværk med gæstenet.'],
+      q: [['Hvorfor have et gæstenetværk?', 'Så gæster ikke kommer ind på firmaets computere.'], ['Hvilken wifi-kryptering bør bruges?', 'WPA2 eller WPA3.']] },
+    { t: 'GDPR i praksis', g: 'Du ved, hvad GDPR betyder for dit arbejde.', r: [['Kunder', '#/apps/customers']],
+      l: ['Persondata er alt, der kan føres tilbage til en person: navn, mail, telefon, CPR.', 'Gem kun det, du har brug for – og kun så længe, du har brug for det.', 'CPR-numre og helbred er følsomme og skal beskyttes ekstra.', 'Ser du kundens filer under en reparation, så rør dem ikke og del dem aldrig.', 'Mister man persondata (fx en stjålet bærbar uden kryptering), skal det anmeldes til Datatilsynet inden 72 timer.'],
+      d: ['Gennemgå, hvilke oplysninger du gemmer om dine kunder.', 'Slå BitLocker eller enhedskryptering til på en bærbar.', 'Skriv en sætning til kunderne om, hvad du gemmer og hvorfor.'],
+      q: [['Hvor hurtigt skal et brud på persondatasikkerheden anmeldes?', 'Inden 72 timer.'], ['Må du kigge i kundens filer under en reparation?', 'Nej – rør dem ikke, og del dem aldrig.']] },
+    { t: 'Når uheldet er ude', g: 'Du ved, hvad man gør ved et angreb.', r: [['Spot phishing', '#/learn/course/phishing']],
+      l: ['Afbryd den ramte computer fra netværket – men sluk den ikke, hvis den skal undersøges.', 'Skift koder fra en ren enhed, og log alle sessioner ud.', 'Ring til banken med det samme, hvis der er betalt eller givet kortoplysninger.', 'Gendan fra backup – betal ikke løsepenge.', 'Skriv ned, hvad der skete og hvornår. Anmeld til politiet.'],
+      d: ['Skriv en nødplan på én side til en lille virksomhed.', 'Find, hvor man logger alle enheder ud af en Microsoft- eller Google-konto.', 'Øv en nødplan med en kollega.'],
+      q: [['Hvad er første skridt ved et angreb?', 'At afbryde den ramte computer fra netværket.'], ['Bør man betale løsepenge?', 'Nej – gendan fra backup.']] },
+  ],
+};
+
+const ai = {
+  id: 'ai-i-hverdagen', title: 'AI i hverdagen', short: 'AI', icon: 'sparkles', group: 'general', app: 'gnist',
+  intro: 'Hvad sprogmodeller som Gnist kan og ikke kan – og hvordan du får gode svar og bruger dem forsvarligt.',
+  days: [
+    { t: 'Hvad er en sprogmodel?', g: 'Du kan forklare, hvordan en AI som Gnist virker.', r: [['Åbn Gnist', '#/apps/gnist']],
+      l: ['En sprogmodel har læst enorme mængder tekst og gætter det næste ord – igen og igen.', 'Den “ved” ikke ting som et opslagsværk, men kan lyde sikker, også når den tager fejl.', 'Når en AI finder på noget, kaldes det at hallucinere.', 'Gnist slår op i HUBTECHs guides og dine data først og viser kilderne – tjek dem.', 'Store modeller er klogere, men kræver mere hukommelse og et kraftigt grafikkort.'],
+      d: ['Spørg Gnist om noget, du ved svaret på – stemmer det?', 'Klik på en kilde under et svar.', 'Forklar “hallucinere” til en kollega.'],
+      q: [['Hvad betyder det, når en AI hallucinerer?', 'At den finder på noget, der ikke er sandt.'], ['Hvorfor vise kilder?', 'Så du kan tjekke svaret.']] },
+    { t: 'Gode spørgsmål', g: 'Du får bedre svar, fordi du spørger bedre.', r: [['Åbn Gnist', '#/apps/gnist']],
+      l: ['Vær konkret: “Brother HL-L2350 viser fejl ‘Papirstop bagside’” i stedet for “printeren virker ikke”.', 'Sig, hvad du vil have: en tjekliste, en mail, en kort forklaring.', 'Giv rammen: “til en kunde uden IT-viden”, “på max fem linjer”.', 'Spørg videre: “forklar trin 3 nærmere”.', 'Er svaret forkert, så sig det – og hvorfor.'],
+      d: ['Stil det samme spørgsmål vagt og konkret – sammenlign svarene.', 'Bed Gnist om en tjekliste til en printerfejl.', 'Bed Gnist skrive en kort mail til en kunde.'],
+      q: [['Hvad giver bedre svar: et vagt eller et konkret spørgsmål?', 'Et konkret spørgsmål.'], ['Hvad gør du, hvis svaret er forkert?', 'Siger det – og hvorfor – og spørger igen.']] },
+    { t: 'Brug AI forsvarligt', g: 'Du ved, hvad du ikke må give en AI.', r: [['IT-sikkerhed i firmaet', '#/learn/course/it-sikkerhed-firma']],
+      l: ['Skriv aldrig adgangskoder, CPR-numre eller kortoplysninger til en AI.', 'Online-AI’er kan gemme det, du skriver. Gnist kører på din egen enhed, så intet sendes ud.', 'Tjek fakta, tal og kommandoer, før du bruger dem – især ved noget, der sletter eller ændrer.', 'Du har ansvaret for det, du sender videre – også hvis en AI har skrevet det.', 'Fortæl det, når en tekst er lavet med AI, hvis det betyder noget for modtageren.'],
+      d: ['Lav tre regler for AI på din arbejdsplads.', 'Find, hvor Gnist skriver, at hun kører på din enhed.', 'Tjek en kommando fra Gnist i Kommandoer-appen før du bruger den.'],
+      q: [['Må du skrive en kundes CPR-nummer til en AI?', 'Nej.'], ['Hvem har ansvaret for en tekst, AI har skrevet?', 'Den, der sender den videre.']] },
+    { t: 'AI i arbejdet', g: 'Du bruger AI der, hvor den sparer tid.', r: [['Åbn Gnist', '#/apps/gnist'], ['Projekter', '#/apps/projects']],
+      l: ['Opsummér lange tekster: manualer, mails og noter.', 'Skriv udkast: kundemails, rapporttekster og tjeklister – og ret dem selv til.', 'Fejlfinding: beskriv symptomerne, og få forslag til, hvad du skal tjekke.', 'Regn og lav diagrammer: Gnist regner præcist og tegner grafer.', 'Planlæg: “Hvad skal jeg nå i dag?” – Gnist kigger i kalender og opgaver.'],
+      d: ['Bed Gnist om at opsummere en lang tekst.', 'Bed Gnist om et udkast til “Anbefalinger” i en servicerapport.', 'Spørg Gnist: “Hvad skal jeg nå i dag?”'],
+      q: [['Nævn to ting, AI er god til i arbejdet.', 'Fx opsummering og udkast til tekster.'], ['Skal du rette et AI-udkast til?', 'Ja – du har ansvaret for det.']] },
+  ],
+};
+
+export const GENERAL_COURSES = [linux, hardware, sheets, cloud, mobile, customer, smallbiz, ai];
+export const GENERAL_GROUP = ['general', 'Almen IT-viden'];

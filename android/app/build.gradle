@@ -1,0 +1,91 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+}
+
+// Version follows the HUBTECH server (server/config.py)
+def hubtechVersion = { ->
+    def m = (file('../../server/config.py').text =~ /(?m)^VERSION\s*=\s*"([^"]+)"/)
+    return m.find() ? m.group(1) : '1.0.0'
+}()
+def versionNum = { String v ->
+    def p = v.tokenize('.').collect { it.replaceAll(/\D.*/, '') }.findAll { it }.collect { it as int }
+    while (p.size() < 3) p << 0
+    return p[0] * 10000 + p[1] * 100 + p[2]
+}
+
+android {
+    namespace 'dk.hubtech.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'dk.hubtech.app'
+        minSdk 24
+        targetSdk 35
+        // GitHub builds number themselves (1 000 000 + run number), so every new APK is a real update
+        def run = System.getenv('GITHUB_RUN_NUMBER')
+        versionCode run ? 1000000 + (run as int) : versionNum(hubtechVersion)
+        versionName run ? "${hubtechVersion} (build ${run})" : hubtechVersion
+        // modern phones are 64-bit ARM; leaving out x86_64 (emulators) makes the APK much smaller
+        ndk { abiFilters 'arm64-v8a' }
+    }
+
+    signingConfigs {
+        // A fixed key, so a new APK installs on top of the old one (keeps your data).
+        // CI: HUBTECH_KEYSTORE / HUBTECH_KEYSTORE_PASSWORD / HUBTECH_KEY_ALIAS / HUBTECH_KEY_PASSWORD come from GitHub Secrets.
+        // Local builds: put your own android/app/hubtech-local.keystore (never committed), see docs/OFFENTLIG.md.
+        hubtech {
+            def ks = System.getenv('HUBTECH_KEYSTORE')
+            storeFile file(ks ?: 'hubtech-local.keystore')
+            storePassword System.getenv('HUBTECH_KEYSTORE_PASSWORD') ?: 'hubtech-local'
+            keyAlias System.getenv('HUBTECH_KEY_ALIAS') ?: 'hubtech'
+            keyPassword System.getenv('HUBTECH_KEY_PASSWORD') ?: 'hubtech-local'
+        }
+    }
+
+    buildTypes {
+        debug { signingConfig signingConfigs.hubtech }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.hubtech
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version '3.12'
+        // the web app's files (HTML, JS, CSS, fonts) are read from disk by the server
+        extractPackages 'hubtech'
+    }
+    sourceSets {
+        main { srcDir "$buildDir/hubtech-python" }
+    }
+}
+
+// Copy the HUBTECH server + web app (the same code as on the computer) into the app.
+tasks.register('copyHubtech', Sync) {
+    from('../../server') { into 'hubtech/server'; exclude '**/__pycache__/**', '**/*.pyc' }
+    from('../../web') { into 'hubtech/web' }
+    into "$buildDir/hubtech-python"
+    doLast {
+        file("$buildDir/hubtech-python/hubtech/__init__.py").text = '# HUBTECH (packaged for Android)\n'
+    }
+}
+preBuild.dependsOn 'copyHubtech'
+// Chaquopy's own tasks read the copied folder – tell Gradle they must wait for the copy.
+tasks.configureEach { t ->
+    if (t.name != 'copyHubtech' && t.name.contains('Python')) t.dependsOn 'copyHubtech'
+}
+
+dependencies {
+    // keeps kotlin-stdlib-jdk7/jdk8 (pulled in by older libraries) on the same version as kotlin-stdlib
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.biometric:biometric:1.1.0'
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

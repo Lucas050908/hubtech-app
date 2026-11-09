@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- HUBTECH for Windows: a small window (WebView2) that starts HUBTECH's own server and shows it.
+       .NET Framework 4.8 is part of Windows 10/11, so nothing extra has to be installed. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>HUBTECH</AssemblyName>
+    <RootNamespace>Hubtech</RootNamespace>
+    <ApplicationIcon>..\..\hubtech.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>disable</Nullable>
+    <Version>1.2.0</Version>
+    <Product>HUBTECH</Product>
+    <Company>Lucas Valentin</Company>
+    <Copyright>MIT</Copyright>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
