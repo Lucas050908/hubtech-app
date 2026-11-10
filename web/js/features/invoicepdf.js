@@ -8,15 +8,31 @@ export async function invoicePdf(inv, company = {}, customer = {}) {
   const lib = await loadScript('vendor/jspdf.umd.min.js', 'jspdf');
   const doc = new lib.jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210, L = 18, R = W - 18;
+  /** Gør teksten smal nok: skrump skriften først, og klip kun hvis det ikke rækker.
+   *  Sætter skriftstørrelsen på doc, så kaldet skal selv sætte den tilbage bagefter. */
+  const pasform = (tekst, maxBredde, str, mindst) => {
+    let f = str, t = String(tekst ?? '');
+    doc.setFontSize(f);
+    while (f > mindst && doc.getTextWidth(t) > maxBredde) { f -= 0.5; doc.setFontSize(f); }
+    if (doc.getTextWidth(t) > maxBredde) {
+      let kort = t;
+      while (kort.length > 1 && doc.getTextWidth(kort + '…') > maxBredde) kort = kort.slice(0, -1);
+      t = kort + '…';
+    }
+    return t;
+  };
   const draft = inv.status === 'draft';
   doc.setProperties({ title: `Faktura ${invoiceNo(inv.no)}`, creator: 'HUBTECH' });
 
   // header: seller
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(20, 30, 45);
-  doc.text(company.name || 'Dit firma', L, 24);
+  doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 30, 45);
+  doc.setFontSize(26);
+  const titel = draft ? 'FAKTURAUDKAST' : 'FAKTURA';
+  const plads = R - doc.getTextWidth(titel) - 8 - L;   // det, der er tilbage til venstre for overskriften
+  doc.text(pasform(company.name || 'Dit firma', plads, 20, 11), L, 24);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(90, 100, 115);
   const seller = [company.address, [company.zip, company.city].filter(Boolean).join(' '), company.cvr && `CVR ${company.cvr}`, company.phone && `Tlf. ${company.phone}`, company.email].filter(Boolean);
-  seller.forEach((s, i) => doc.text(String(s), L, 31 + i * 4.6));
+  seller.forEach((s, i) => { doc.text(pasform(s, plads, 9.5, 7), L, 31 + i * 4.6); doc.setFontSize(9.5); });
 
   // title block
   doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(20, 30, 45);
@@ -29,9 +45,10 @@ export async function invoicePdf(inv, company = {}, customer = {}) {
   let y = 62;
   doc.setFontSize(8); doc.setTextColor(120, 130, 145); doc.text('FAKTURERES TIL', L, y);
   doc.setFontSize(11); doc.setTextColor(20, 30, 45); doc.setFont('helvetica', 'bold');
-  doc.text(customer.name || '–', L, y + 6);
+  doc.text(pasform(customer.name || '–', R - L, 11, 8), L, y + 6);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(60, 70, 85);
-  [customer.contact && `Att. ${customer.contact}`, customer.address, customer.cvr && `CVR ${customer.cvr}`, customer.email].filter(Boolean).forEach((s, i) => doc.text(String(s), L, y + 11.5 + i * 4.6));
+  [customer.contact && `Att. ${customer.contact}`, customer.address, customer.cvr && `CVR ${customer.cvr}`, customer.email].filter(Boolean)
+    .forEach((s, i) => { doc.text(pasform(s, R - L, 9.5, 7), L, y + 11.5 + i * 4.6); doc.setFontSize(9.5); });
 
   // lines
   y = 96;
