@@ -61,12 +61,11 @@ def make_backup(kind="manual"):
     if kind not in ("auto", "manual", "before-restore", "before-update"):
         raise ValueError(kind)
     with _lock:
-        stamp = time.strftime("%Y%m%d-%H%M%S")
-        target = folder() / f"hubtech-{kind}-{stamp}.db"
-        n = 1
-        while target.exists():  # two copies within the same second
-            n += 1
-            target = folder() / f"hubtech-{kind}-{stamp[:-2]}{min(59, int(stamp[-2:]) + n):02d}.db"
+        when = time.time()
+        target = folder() / f"hubtech-{kind}-{time.strftime('%Y%m%d-%H%M%S', time.localtime(when))}.db"
+        while target.exists():  # two copies within the same second: take the next free second
+            when += 1
+            target = folder() / f"hubtech-{kind}-{time.strftime('%Y%m%d-%H%M%S', time.localtime(when))}.db"
         tmp = target.with_suffix(".db.part")
         dst = sqlite3.connect(str(tmp))
         try:
