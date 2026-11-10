@@ -8,6 +8,7 @@ import { toast, modal, confirmDialog, stateBlock, segmented } from '../core/ui.j
 import { appById } from '../core/registry.js';
 import { appHero, heroBtn, heroGhost } from '../features/apphero.js';
 import { saveBlob } from '../core/files.js';
+import { round2 } from '../features/invoice.js';   // samme afrunding som fakturaen bruger
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const pad = (n) => String(n).padStart(2, '0');
@@ -160,12 +161,12 @@ export default {
       const items = st.entries.filter(inRange).sort((a, b) => a.start - b.start);
       return [['Dato', 'Fra', 'Til', 'Timer', 'Kunde/projekt', 'Beskrivelse', 'Fakturerbar', 'Beløb (kr.)']].concat(items.map(e => {
         const t = (e.end - e.start) / 3600000;
-        return [isoDay(e.start).split('-').reverse().join('-'), hm(e.start), hm(e.end), t, e.project, e.desc, e.billable === false ? 'Nej' : 'Ja', e.billable === false ? 0 : Math.round(t * st.rate * 100) / 100];
+        return [isoDay(e.start).split('-').reverse().join('-'), hm(e.start), hm(e.end), t, e.project, e.desc, e.billable === false ? 'Nej' : 'Ja', e.billable === false ? 0 : round2(t * st.rate)];
       }));
     }
     const periodName = () => ({ week: 'denne-uge', month: 'denne-maaned', last: 'sidste-maaned', all: 'alt' }[range]);
     function exportCsv() {
-      const cell = (x) => { const s = typeof x === 'number' ? String(Math.round(x * 100) / 100).replace('.', ',') : String(x ?? ''); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+      const cell = (x) => { const s = typeof x === 'number' ? String(round2(x)).replace('.', ',') : String(x ?? ''); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
       saveBlob(`timeseddel-${periodName()}.csv`, new Blob(['﻿' + exportRows().map(r => r.map(cell).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
     }
     async function exportXlsx() {
