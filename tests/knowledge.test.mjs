@@ -84,6 +84,16 @@ assert.ok(first('hvordan laver jeg en faktura').includes('Kunder'), first('hvord
 // men et vagt spørgsmål må stadig ikke trække HUBTECHs materiale ind
 assert.equal((retrieve(items, 'hvad skal jeg nå i dag', 4000) || []).length, 0);
 
+// ── Korte fagord skal kunne slås op ───────────────────────────────────────
+// Ord på to tegn kasseres, med mindre de står på listen over IT-ord. GB, MB, KB og TB
+// stod ikke der, så "hvad er gb" gav ingenting — og det er noget, man slår op.
+for (const [q, vent] of [['hvad er GB', /KB, MB, GB, TB/], ['hvor mange MB er en GB', /KB, MB, GB, TB/],
+                         ['hvad er usb pd', /Power Delivery/], ['hvad betyder nm', /nanometer|bølgelængde/i]]) {
+  assert.ok(vent.test(first(q)), `"${q}": ${first(q).slice(0, 90)}`);
+}
+// men to tegn må ikke ramme et længere ord: "ap" er ikke "apps"
+assert.equal((retrieve(items, 'hvad er et ap', 1500) || []).length, 0);
+
 // ── Et ord er nok til et opslag ────────────────────────────────────────────
 // Brødtekst kan højst give 3 point, så med krav om 6 kunne et étords-opslag aldrig findes.
 for (const q of ['printerdriver', 'netværkskabel', 'sublimationspapir']) {

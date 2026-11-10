@@ -129,7 +129,9 @@ export function expandWords(ws) {
 }
 
 // two-letter words only when they are IT words ("ip adresse", "min pc") – and small verbs like "ser" and "får" say nothing
-const SHORT = new Set(['ip', 'pc', 'it', 'ai', 'os', 'ad', 'tv', 'vm', '3d', '4g', '5g']);
+const SHORT = new Set(['ip', 'pc', 'it', 'ai', 'os', 'ad', 'tv', 'vm', '3d', '4g', '5g',
+  'kb', 'mb', 'gb', 'tb',      // datastørrelser – "hvad er gb" gav ingenting
+  'nm', 'uv', 'pd']);         // bølgelængde i nanometer, UV-print, USB Power Delivery ('ap' kan ikke bruges: det matcher 'apps')
 const VERBS = new Set('ser får gør gøre går kommer står ved tror siger sker findes viser vise'.split(' '));   // not "skriver" (a printer), "bruger" (a user) or "finder" (the Mac's)
 const words = (s) => String(s || '').toLowerCase().normalize('NFC').match(/[a-zæøå0-9]{2,}/g)?.filter(w => (w.length > 2 || SHORT.has(w)) && !STOP.has(w) && !VERBS.has(w)) || [];
 /** Does the word x from a text match the asked word w? Long words by their stem; short ones only as themselves (+ an ending),
