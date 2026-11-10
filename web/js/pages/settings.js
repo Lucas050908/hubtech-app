@@ -1043,7 +1043,9 @@ export function networkPanel() {
       qrSvg(url).then(svgEl => qrBox.prepend(svgEl)).catch(() => {});
       qrBox.append(h('div', null, h('b', null, 'Scan med telefonens kamera'), h('div', { class: 'mono net-url' }, url),
         n.urls.length > 1 ? h('div', { class: 'faint small' }, `Andre adresser: ${n.urls.slice(1).join(' · ')}`) : null,
-        h('p', { class: 'faint small' }, 'Virker i telefonens browser. For at installere HUBTECH som app på telefonen (eget ikon, offline) kræver Android HTTPS – se nedenfor.')));
+        h('p', { class: 'faint small' }, 'Virker i telefonens browser med det samme.'),
+        h('p', { class: 'faint small' }, h('b', null, 'iPhone og iPad: '), 'åbn adressen i Safari, tryk ', h('b', null, 'Del'), ' og så ', h('b', null, 'Føj til hjemmeskærm'), '. Så får HUBTECH sit eget ikon og åbner uden browserlinje – det virker på adressen her.'),
+        h('p', { class: 'faint small' }, h('b', null, 'Android: '), 'Chrome kræver HTTPS for “Installér app”. Uden det bliver ikonet kun en genvej i browseren – se nedenfor.')));
       rows.push(qrBox);
     } else if (n.lanAccess && !n.open) rows.push(h('p', { class: 'faint' }, 'Genstart HUBTECH, så serveren lytter på netværket.'));
     const ts = n.tailscale || {};
