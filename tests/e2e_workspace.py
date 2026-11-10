@@ -263,7 +263,9 @@ async def main():
             cols = await p1.locator(".doc-page table tr >> nth=0").locator("th, td").count()
             check("dokument: tabelværktøjer dukker op og tilføjer en kolonne", cols == 4, cols)
             await p1.click(".ofx-tool[aria-label='Overblik over overskrifter']")
-            check("dokument: overblik med overskrifterne", "Indledning" in await p1.inner_text(".ofx-outline"))
+            await p1.wait_for_selector(".ofx-outline:not([hidden])", state="visible")
+            ol_txt = await p1.inner_text(".ofx-outline")
+            check("dokument: overblik med overskrifterne", "Indledning" in ol_txt, ol_txt)
             await p1.screenshot(path=f"{OUT}/doc-tools.png")
             d = await api(p1, "POST", "/api/office/docs", {"kind": "sheet", "title": "Uger"})
             dd = d["data"]; sid = (dd.get("doc") or dd)["id"]

@@ -147,7 +147,7 @@ export function docEditor(doc, ctx) {
   const ol = outline(page);
   let showOutline = false;
   try { showOutline = localStorage.getItem('hubtech.doc.outline') === '1'; } catch { /* */ }
-  const olBtn = toolBtn('list', 'Overblik over overskrifter', () => { showOutline = !showOutline; try { localStorage.setItem('hubtech.doc.outline', showOutline ? '1' : '0'); } catch { /* */ } ol.el.hidden = !showOutline; olBtn.setAttribute('aria-pressed', String(showOutline)); });
+  const olBtn = toolBtn('list', 'Overblik over overskrifter', () => { showOutline = !showOutline; try { localStorage.setItem('hubtech.doc.outline', showOutline ? '1' : '0'); } catch { /* */ } ol.el.hidden = !showOutline; olBtn.setAttribute('aria-pressed', String(showOutline)); if (showOutline) ol.draw(); });
   olBtn.setAttribute('aria-pressed', String(showOutline)); ol.el.hidden = !showOutline;
   frame.toolbar.append(olBtn);
   const tables = tableTools(page, () => changed());
