@@ -776,7 +776,7 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .cal-wk-head b { font-size: 20px; }
 .cal-wk-head .cal-hol { grid-column: 1 / -1; font-size: 11px; color: var(--app); }
 .cal-wk-add { grid-row: 1; grid-column: 3; opacity: 0; font-weight: 700; color: var(--app); } .cal-wk-head:hover .cal-wk-add, .cal-wk-head:focus-visible .cal-wk-add { opacity: 1; }
-.cal-wk-col .cal-item { padding: 6px 8px; } .cal-wk-col .cal-item b { overflow-wrap: anywhere; }
+.cal-wk-col .cal-item { padding: 6px 8px; }
 .cal-wk-free { font-size: 12px; text-align: center; padding: 10px 0; }
 @media (max-width: 900px) { .cal-wk-grid { grid-template-columns: minmax(0, 1fr); } .cal-wk-col { min-height: 0; } .cal-wk-free { text-align: left; padding: 2px 6px; } }
 .cal-results { padding: 14px; display: grid; gap: 8px; }
@@ -834,6 +834,9 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .cal-hol-chip svg { width: 15px; height: 15px; }
 .cal-item { display: grid; gap: 2px; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); border-left: 4px solid var(--c, var(--hue-tasks)); background: var(--glass-soft); color: var(--text); font: inherit; cursor: pointer; text-decoration: none; width: 100%; }
 .cal-item.is-task { --c: var(--hue-tasks); }
+/* En aftaletitel kan være et langt firmanavn eller et indsat link. Uden dette voksede
+   dagens panel ud over skærmkanten, fordi et ord uden mellemrum ikke kunne brydes. */
+.cal-item b { overflow-wrap: anywhere; }
 .cal-item-time { font: 700 var(--fs-xs) var(--font-mono); color: var(--text-3); }
 .cal-item .faint { display: inline-flex; gap: 4px; align-items: center; font-size: var(--fs-xs); }
 .cal-item .faint svg { width: 12px; height: 12px; }
