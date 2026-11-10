@@ -95,7 +95,8 @@ export default {
     try { recentApps = JSON.parse(localStorage.getItem('hubtech.recentApps') || '[]').map(appById).filter(a => a && a.page && visible(a, u) && access(a, u).ok).slice(0, 4); } catch { /* */ }
     const starters = ['hubtech', 'learning', 'tasks'].map(appById).filter(a => a && access(a, u).ok);
     const resumeList = recentApps.length ? recentApps : starters;
-    const resume = panel('Fortsæt hvor du slap', { icon: 'clock' },
+    // Første gang har man ikke sluppet noget endnu, så overskriften skal ikke lade som om
+    const resume = panel(recentApps.length ? 'Fortsæt hvor du slap' : 'Kom godt i gang', { icon: recentApps.length ? 'clock' : 'sparkles' },
       h('div', { class: 'home-resume' }, resumeList.map(a => h('a', { class: 'home-resume-item', href: a.route, style: { '--app': a.hue } },
         h('span', { class: 'ab-ico' }, appGlyph(a)), h('span', null, h('b', null, a.name), h('small', null, recentApps.length ? (a.tagline || 'Senest brugt') : a.tagline)), icon('arrowRight')))));
 
