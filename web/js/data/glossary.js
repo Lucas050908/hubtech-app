@@ -93,7 +93,7 @@ export const GLOSSARY = [
   ['Entra ID', 'sw', 'Microsofts skybaserede brugerstyring (tidligere Azure AD), som bruges med Microsoft 365.'],
   ['Gruppepolitik', 'sw', 'Regler, der skubbes ud til mange computere på én gang i et domæne.'],
   ['Fjernsupport', 'sw', 'Hjælp en bruger ved at se og styre deres skærm over internettet – altid med brugerens accept.'],
-  ['Fejlsikret tilstand', 'sw', 'Windows startet med et minimum af drivere – bruges til at fjerne programmer eller drivere, der driller.'],
+  ['Fejlsikret tilstand (Windows)', 'sw', 'Windows startet med et minimum af drivere – bruges til at fjerne programmer eller drivere, der driller.'],
   ['Logbog (Event Viewer)', 'sw', 'Windows’ log over fejl og hændelser. God til at finde årsagen til nedbrud.'],
   ['Blue screen (BSOD)', 'sw', 'Windows’ blå fejlskærm efter et alvorligt nedbrud. Stopkoden giver et hint om årsagen.'],
   ['Image', 'sw', 'Et færdigt billede af en installation, der kan lægges på mange computere.'],
