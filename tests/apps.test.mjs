@@ -299,6 +299,36 @@ console.log('apps ok');
   console.log(`code challenges ok (${CHALLENGES.length})`);
 }
 
+{ // Kodeskolen: hver lektion har en opgave og en quiz – og facit skal selv bestå lektionens tjek
+  const { CODE_COURSES } = await import('../web/js/data/code-courses.js');
+  const ids = new Set();
+  let lessons = 0, checked = 0;
+  for (const c of CODE_COURSES) {
+    assert.ok(c.id && c.title && (c.lessons || []).length, `kursus uden indhold: ${c.id}`);
+    for (const l of c.lessons) {
+      lessons++;
+      const where = `${c.id}/${l.id}`;
+      assert.ok(!ids.has(l.id), `to lektioner med samme id: ${l.id}`); ids.add(l.id);
+      assert.ok(l.title && l.body, `lektion uden titel eller tekst: ${where}`);
+      assert.ok(l.task && l.task.text && l.task.solution, `lektion uden opgave eller facit: ${where}`);
+      assert.ok((l.quiz || []).length, `lektion uden quiz: ${where}`);
+      for (const [q, options, right] of l.quiz) {
+        assert.ok(q && Array.isArray(options) && options.length >= 2, `quiz uden svarmuligheder: ${where}`);
+        assert.ok(Number.isInteger(right) && options[right] !== undefined, `quiz peger på et svar, der ikke findes: ${where}`);
+        assert.equal(new Set(options).size, options.length, `quiz med ens svarmuligheder: ${where}`);
+      }
+      // de tjek, der kan køres uden en kodemotor: et regex skal passe på lektionens eget facit
+      for (const re of l.task.check?.re || []) {
+        checked++;
+        assert.ok(new RegExp(re).test(String(l.task.solution).trim()),
+          `facit består ikke sit eget tjek i ${where}: ${JSON.stringify(l.task.solution)} mod ${re}`);
+      }
+    }
+  }
+  assert.ok(lessons > 40 && checked > 10, `for få lektioner kontrolleret: ${lessons}/${checked}`);
+  console.log(`kodeskolen ok (${lessons} lektioner, ${checked} regex-tjek)`);
+}
+
 { // Dam
   const D = await import('../web/js/features/checkers.js');
   const g = D.newGame([{ name: 'A' }, { name: 'B' }]);
