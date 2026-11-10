@@ -12,10 +12,128 @@ export const GUIDE_CATEGORIES = [
   { id: 'printer', label: 'Printer-support', icon: 'printer' },
   { id: 'security', label: 'Sikkerhed', icon: 'shield' },
   { id: 'hardware', label: 'Computer og hardware', icon: 'chip' },
+  { id: 'maker', label: 'Værksted', icon: 'tool' },
   { id: 'developer', label: 'Udvikling', icon: 'code' },
 ];
 
 export const GUIDES = [
+  {
+    id: 'maker-first-laser', category: 'maker', app: 'labs', icon: 'flame', minutes: 4,
+    title: 'Dit første laserjob',
+    summary: 'Fra fil til færdigt emne – i den rækkefølge, der giver et godt resultat.',
+    sections: [
+      { h: 'Før du tænder', list: [
+        'Tjek materialet. Er du i tvivl om, hvad det er lavet af, så lad være – PVC og alt med klor må aldrig i en laser.',
+        'Tænd afsuget, og se at det trækker. Hav brandtæppe og slukker inden for rækkevidde.',
+        'Er maskinen åben (ikke klasse 1), skal du og alle i rummet have briller, der passer til bølgelængden.',
+      ] },
+      { h: 'Sæt jobbet op', steps: [
+        { t: 'Læg emnet i', d: 'Helt plant, og spænd det fast eller brug magneter. Et emne, der buler, går ud af fokus midt i snittet.' },
+        { t: 'Sæt fokus', d: 'Brug maskinens fokusklods eller autofokus. Forkert fokus er den hyppigste årsag til, at laseren ikke skærer igennem.' },
+        { t: 'Vælg lag og indstillinger', d: 'Gravering på ét lag, skæring på et andet. Graver først, skær til sidst – så flytter delen sig ikke.' },
+        { t: 'Kør en ramme', d: 'Frame/ramme viser, hvor jobbet lander. Ret placeringen, før du starter.' },
+        { t: 'Prøv på en rest', d: 'Samme materiale og tykkelse. To minutter her sparer et ødelagt emne.' },
+      ] },
+      { h: 'Mens den kører', list: [
+        'Bliv ved maskinen. En laser, der brænder, gør det i løbet af sekunder.',
+        'Lyt og kig: små flammer er normalt, en stående flamme er ikke.',
+        'Luftassistance skal blæse, mens den skærer.',
+      ] },
+      { callout: { kind: 'warn', text: 'Skærer den ikke igennem, så sæt hellere et gennemløb mere på end effekten op. Høj effekt giver brede, brændte kanter.' } },
+    ],
+    actions: [{ label: 'Prøv i Lasersimulatoren', href: '#/learn/labs/laser' }, { label: 'Læs om lasertyper', href: '#/learn/course/lasertyper' }],
+  },
+  {
+    id: 'maker-materials', category: 'maker', app: 'labs', icon: 'alert', minutes: 3,
+    title: 'Hvad må i laseren – og hvad må aldrig',
+    summary: 'Den korte liste, du kan hænge op ved maskinen.',
+    sections: [
+      { h: 'Aldrig', list: [
+        'PVC og vinyl (også kunstlæder med PVC): der dannes klorgas og saltsyre. Det er farligt for dig og ætser maskinen indefra.',
+        'Polycarbonat (Lexan): brænder, bliver gult og afgiver giftig røg.',
+        'ABS: smelter, svitser og lugter grimt – og afgiver cyanid-holdige dampe.',
+        'Materialer med ukendt indhold. Spørg efter navnet eller databladet.',
+      ] },
+      { h: 'Gode valg', list: [
+        'Krydsfiner og MDF beregnet til laser (limen betyder meget for snittet).',
+        'Massivt træ, kork, pap og papir.',
+        'Støbt akryl (frostet gravering) og ekstruderet akryl (klar gravering, skarp kant).',
+        'Ægte læder – ikke kunstlæder.',
+      ] },
+      { h: 'Kræver den rigtige lasertype', table: [['Materiale', 'Type'], ['Klar akryl', 'CO2 – en blå diode går lige igennem'], ['Metal (mærkning)', 'Fiber eller MOPA'], ['Glas og sten', 'CO2 (matning) eller UV'], ['Mørkt træ og læder', 'CO2 eller diode']] },
+      { callout: { kind: 'info', text: 'Sig hellere nej til et emne end at gætte. En ødelagt maskine koster mere end en tabt ordre.' } },
+    ],
+    actions: [{ label: 'Prøv materialerne', href: '#/learn/labs/laser' }],
+  },
+  {
+    id: 'maker-first-print', category: 'maker', app: 'labs', icon: 'cube', minutes: 4,
+    title: 'Dit første 3D-print',
+    summary: 'Pladen, filamentet og de fire indstillinger, der betyder noget.',
+    sections: [
+      { h: 'Klargør', steps: [
+        { t: 'Rens pladen', d: 'Varmt vand og opvaskemiddel, eller isopropylalkohol. Fedt fra fingre er den hyppigste årsag til, at printet slipper.' },
+        { t: 'Tjek afstanden', d: 'Kør maskinens automatiske niveau/z-offset. Første lag skal se ud som flade bånd, der rører hinanden – ikke runde tråde.' },
+        { t: 'Vælg filament', d: 'PLA til næsten alt indendørs. PETG til noget, der skal tåle varme og slag. ABS kun med lukket kabinet og udsugning.' },
+      ] },
+      { h: 'De fire indstillinger', list: [
+        'Laghøjde: 0,2 mm er et godt udgangspunkt. Lavere giver finere overflade og længere tid.',
+        'Vægge: 2–3 vægge. Styrken kommer herfra – ikke fra fyldet.',
+        'Infill: 10–20 % til det meste.',
+        'Støtte: kun når emnet hænger ud i luften med mere end ca. 45 grader.',
+      ] },
+      { h: 'Når noget går galt', table: [['Symptom', 'Mest sandsynlige årsag'], ['Printet slipper pladen', 'Fedtet plade eller for stor afstand i første lag'], ['Tynde tråde mellem delene', 'For høj temperatur eller for lidt tilbagetrækning'], ['Bunden buler ud', 'For varm plade eller dysen for tæt på'], ['Lagene hænger ikke sammen', 'For lav temperatur eller for hurtig printning']] },
+    ],
+    actions: [{ label: 'Prøv indstillingerne', href: '#/learn/labs/print3d' }, { label: 'Læs 3D-print fra bunden', href: '#/learn/course/3d-print-basis' }],
+  },
+  {
+    id: 'maker-htv', category: 'maker', app: 'checklists', icon: 'scissors', minutes: 3,
+    title: 'Tekstilfolie: fra fil til trøje',
+    summary: 'Spejlvend, skær, rens, pres – og de tal, der skal komme fra databladet.',
+    sections: [
+      { h: 'Rækkefølgen', steps: [
+        { t: 'Spejlvend motivet', d: 'Du skærer i bagsiden af folien. Glemmer du det, vender teksten forkert på tøjet.' },
+        { t: 'Læg folien rigtigt i', d: 'Den blanke bærefilm nedad mod måtten, så kniven skærer i den matte bagside.' },
+        { t: 'Skær kun igennem folien', d: 'Bærefilmen skal blive hel. Lav en lille testskæring i hjørnet først.' },
+        { t: 'Rens (weeding)', d: 'Pil alt det væk, der ikke skal med. Begynd med det yderste, og brug en weedingkrog.' },
+        { t: 'Forpres tøjet', d: '3–5 sekunder fjerner fugt og folder.' },
+        { t: 'Pres motivet', d: 'Temperatur, tid og tryk kommer fra foliens datablad – aldrig fra hukommelsen.' },
+        { t: 'Træk filmen af', d: 'Varm eller kold – det står også i databladet.' },
+      ] },
+      { h: 'Vaskeråd til kunden', list: [
+        'Vent 24 timer med første vask.',
+        'Vend vrangen ud, maks. 40 grader, ingen skyllemiddel.',
+        'Ingen tørretumbler, og stryg aldrig direkte på motivet.',
+      ] },
+      { callout: { kind: 'warn', text: 'Slipper motivet i kanten, er det næsten altid for lidt tryk eller en presseplade med kolde zoner.' } },
+    ],
+    actions: [{ label: 'Læs Folie og tekstiltryk', href: '#/learn/course/folie-og-tekstil' }],
+  },
+  {
+    id: 'maker-first-cnc', category: 'maker', app: 'checklists', icon: 'anvil', minutes: 4,
+    title: 'Dit første fræsejob',
+    summary: 'Opspænding, nulpunkt og de værdier, der afgør, om det går godt.',
+    sections: [
+      { h: 'Sikkerhed først', list: [
+        'Briller på. Hørerværn ved længere job.',
+        'Ingen handsker, løstsiddende tøj, smykker eller løst hår nær spindlen.',
+        'Udsugning til. Træstøv er både sundhedsskadeligt og brandfarligt.',
+        'Find nødstoppet, før du starter.',
+      ] },
+      { h: 'Sæt op', steps: [
+        { t: 'Spænd emnet fast', d: 'Skruetvinger, dobbeltklæbende tape eller vakuum. Et løst emne ødelægger både fræser og maskine.' },
+        { t: 'Vælg fræser', d: 'Fladfræser til kanter og lommer, V-fræser til graveret skrift, enkelt-skær til akryl.' },
+        { t: 'Sæt nulpunkt', d: 'X0 og Y0 på emnets hjørne, Z0 på overfladen – eller på offerpladen, hvis du skærer helt igennem.' },
+        { t: 'Kør i luften', d: 'En tør-kørsel viser, om motivet ligger inden for emnet.' },
+      ] },
+      { h: 'Under fræsningen', list: [
+        'Spånerne skal være krøller. Fint støv betyder, at fræseren gnider: mere fremføring eller færre omdrejninger.',
+        'Flere lave gange er bedre end én dyb.',
+        'En jævn tone er godt. Hyl og ramlen betyder for dybt indgreb, løst emne eller sløv fræser.',
+      ] },
+      { callout: { kind: 'info', text: 'Husk tabs på konturen, så delen ikke slynges væk, når det sidste snit er færdigt.' } },
+    ],
+    actions: [{ label: 'Læs CNC-fræsning fra bunden', href: '#/learn/course/cnc-basis' }],
+  },
   {
     id: 'welcome', category: 'start', app: 'hubtech', icon: 'sparkles', minutes: 2,
     title: 'Velkommen til HUBTECH',

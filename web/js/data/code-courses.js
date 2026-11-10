@@ -580,6 +580,20 @@ SELECT navn, antal FROM dele;`),
 <p><code>.gitignore</code> lister filer, Git skal ignorere – fx <code>.env</code> med hemmeligheder, <code>node_modules/</code> og <code>__pycache__/</code>. Læg <b>aldrig</b> adgangskoder og API-nøgler i Git.</p>`,
         task: { text: 'Skriv den linje, der i <code>.gitignore</code> får Git til at ignorere filen <code>.env</code>.', answer: true, hint: 'Bare filnavnet.', solution: '.env', check: { re: ['^/?\\.env$'] } },
         quiz: [['Hvor hører API-nøgler hjemme?', ['I koden', 'I en commit-besked', 'I en .env-fil, der står i .gitignore', 'I README'], 2, 'Hemmeligheder må aldrig komme i Git-historikken.']] },
+      { id: 'git6', title: 'Arbejd sammen: clone, konflikter og pull requests', minutes: 14,
+        body: `<p>Skal du arbejde videre på et projekt, der allerede ligger på GitHub, henter du det hele ned én gang med <code>git clone</code>:</p>
+<ul><li><code>git clone https://github.com/brugernavn/repo.git</code> – henter projektet og hele historikken ned i en ny mappe</li><li><code>cd repo</code> – og så er du i gang; <code>origin</code> er sat op i forvejen</li></ul>
+<p>Når to har rettet i den samme linje, kan Git ikke selv vælge. Så opstår en <b>konflikt</b>, og filen får markører:</p>
+<pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+pris = 100
+=======
+pris = 125
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; main</code></pre>
+<p>Du retter filen til, så den ser ud, som den skal – markørerne skal væk – og gemmer løsningen med <code>git add fil.py</code> og <code>git commit</code>.</p>
+<p>På GitHub arbejder man sjældent direkte i <code>main</code>. I stedet laver du en branch, sender den op med <code>git push -u origin min-branch</code> og åbner en <b>pull request</b>: en side, hvor andre kan se ændringerne, kommentere og godkende, før de flettes ind i <code>main</code>.</p>`,
+        task: { text: 'Skriv kommandoen, der henter projektet <code>https://github.com/lucas/hubtech.git</code> ned på din computer.', answer: true, hint: 'git … og hele adressen.', solution: 'git clone https://github.com/lucas/hubtech.git', check: { re: ['^git\\s+clone\\s+https://github\\.com/lucas/hubtech\\.git/?$'] } },
+        quiz: [['Hvad betyder markørerne <<<<<<< og >>>>>>> i en fil?', ['Filen er ødelagt', 'En konflikt: to har rettet i det samme, og du skal vælge', 'Git er i gang med at hente', 'Filen er krypteret'], 1, 'Ret filen til, så markørerne er væk, og gem med git add og git commit.'],
+               ['Hvad er en pull request?', ['En kommando, der henter kode ned', 'En anmodning om at få dine ændringer flettet ind – som andre kan se og godkende', 'En måde at slette en branch', 'Et andet ord for commit'], 1, 'Den gør det muligt at læse og kommentere ændringerne, før de rammer main.']] },
     ],
   },
 

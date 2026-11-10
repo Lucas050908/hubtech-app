@@ -233,5 +233,59 @@ const powershell = {
   ],
 };
 
-export const GENERAL_COURSES = [linux, hardware, wifi, powershell, sheets, cloud, mobile, customer, smallbiz, ai];
+const mac = {
+  id: 'mac-support', title: 'Mac-support', short: 'Mac', icon: 'monitor', group: 'general',
+  intro: 'macOS for en, der kan Windows: hvad tingene hedder, hvor de ligger, hvordan programmer installeres – og hvad du gør, når en Mac driller.',
+  days: [
+    { t: 'Find rundt: Finder, Dock og menulinjen', g: 'Du kan navigere i macOS og oversætte fra Windows.',
+      r: [['IT-ordbog', '#/learn/glossary']],
+      l: ['Finder er macOS’ stifinder. Dock nederst svarer til proceslinjen, og menulinjen øverst hører til det program, der er forrest – ikke til vinduet.', 'Cmd (⌘) gør det, Ctrl gør i Windows: Cmd+C kopiér, Cmd+V sæt ind, Cmd+Q luk program, Cmd+W luk vindue.', 'Den røde knap lukker vinduet, men ikke programmet. Programmet lukkes med Cmd+Q – det er den hyppigste misforståelse for Windows-brugere.', 'Spotlight (Cmd+mellemrum) finder programmer, filer og regnestykker. Det er den hurtigste vej til næsten alt.', 'Systemindstillinger svarer til Indstillinger i Windows. Brugerens filer ligger i hjemmemappen med Skrivebord, Dokumenter og Overførsler.'],
+      d: ['Åbn tre programmer med Spotlight uden at bruge musen.', 'Luk et program helt, og se, at det forsvinder fra Dock-prikkerne.', 'Lav en lille oversættelsesliste: 10 Windows-ord → macOS-ord.'],
+      q: [['Hvad gør den røde knap i et vindue?', 'Lukker vinduet – men ikke programmet. Brug Cmd+Q.'], ['Hvad er Spotlight?', 'Macens søgning, der åbnes med Cmd+mellemrum.']] },
+    { t: 'Programmer, opdateringer og filer', g: 'Du kan installere, opdatere og fjerne programmer.',
+      r: [['IT-ordbog', '#/learn/glossary']],
+      l: ['Programmer installeres fra App Store, fra en .dmg (træk programmet over i Programmer) eller med en .pkg-installer.', 'Afinstallation er som regel at trække programmet til papirkurven. Rester kan ligge i ~/Library – men ryd kun op der, hvis du ved, hvad du laver.', 'macOS og Apples programmer opdateres i Systemindstillinger → Generelt → Softwareopdatering.', 'Gatekeeper blokerer programmer fra ukendte udviklere. Åbn dem med højreklik → Åbn, eller tillad dem i Systemindstillinger → Anonymitet og sikkerhed – kun hvis du stoler på kilden.', 'Time Machine er indbygget backup til en ekstern disk eller NAS. Sæt den op som det første på en ny Mac.'],
+      d: ['Installér et program fra en .dmg, og flyt det korrekt til Programmer.', 'Find softwareopdatering, og se, hvilken macOS-version maskinen har.', 'Sæt Time Machine op mod en ekstern disk.'],
+      q: [['Hvor flyttes et program hen fra en .dmg?', 'Til mappen Programmer.'], ['Hvad er Gatekeeper?', 'Den funktion, der blokerer programmer fra ukendte udviklere, indtil du tillader dem.']] },
+    { t: 'Fejlfinding på en Mac', g: 'Du kan løse de almindeligste problemer.',
+      r: [['Fejlfindingslab', '#/learn/labs/cases']],
+      l: ['Programmet hænger: Cmd+Option+Esc åbner Tving til at slutte – macOS’ svar på Jobliste.', 'Aktivitetsovervågning viser CPU, hukommelse, disk og netværk, og hvad der dræner batteriet.', 'Sikker opstart (hold Shift under start) starter med et minimum og rydder caches. På Mac med Apple-chip: hold tænd-knappen inde, vælg disken, og hold Shift.', 'Nulstil NVRAM/SMC gælder kun ældre Intel-Macs. På Apple-chip klares det samme med en almindelig genstart.', 'Diskværktøj → Førstehjælp retter fejl i filsystemet. Virker Macen slet ikke, startes gendannelse (Apple-chip: hold tænd-knappen inde; Intel: Cmd+R under start).'],
+      d: ['Tving et program til at slutte.', 'Find i Aktivitetsovervågning, hvad der bruger mest hukommelse.', 'Kør Førstehjælp på startdisken.'],
+      q: [['Hvad er macOS’ svar på Jobliste?', 'Aktivitetsovervågning – og Cmd+Option+Esc til at tvinge et program til at slutte.'], ['Hvordan starter du gendannelse på en Mac med Apple-chip?', 'Hold tænd-knappen inde, til mulighederne kommer frem.']] },
+    { t: 'Mac i et Windows-hus', g: 'Du kan få en Mac til at spille med resten af firmaet.',
+      r: [['Skyen, mail og Microsoft 365', '#/learn/course/sky-og-365']],
+      l: ['Microsoft 365 findes til Mac, og OneDrive, Teams og Outlook virker på samme konto som på Windows.', 'Delte Windows-mapper åbnes i Finder med Gå → Opret forbindelse til server og adressen smb://servernavn/mappe.', 'Netværksprintere findes som regel selv. Ellers tilføjes de i Systemindstillinger → Printere og scannere, typisk med IPP eller AirPrint.', 'Filformater: Pages, Numbers og Keynote skal eksporteres til Word, Excel og PowerPoint, før de sendes til Windows-kolleger.', 'exFAT er det filsystem, en USB-disk skal have, hvis både Mac og Windows skal kunne skrive på den.'],
+      d: ['Forbind til en delt mappe med smb://.', 'Tilføj en netværksprinter på en Mac.', 'Eksportér et Pages-dokument til Word, og tjek, at opsætningen holder.'],
+      q: [['Hvordan åbnes en delt Windows-mappe på en Mac?', 'Finder → Gå → Opret forbindelse til server, og skriv smb://servernavn/mappe.'], ['Hvilket filsystem skal en USB-disk have til både Mac og Windows?', 'exFAT.']] },
+  ],
+};
+
+const backup = {
+  id: 'backup', title: 'Backup og gendannelse', short: 'Backup', icon: 'restore', group: 'general',
+  intro: 'Den vigtigste opgave i IT: at kunne få data tilbage. Hvad der skal sikres, hvordan – og hvordan du beviser, at det virker.',
+  days: [
+    { t: 'Hvad der kan gå galt – og 3-2-1-reglen', g: 'Du kan forklare, hvorfor en kopi ikke er nok.',
+      r: [['Data og sikkerhedskopi i HUBTECH', '#/settings/data']],
+      l: ['Data går tabt på fem måder: disken dør, nogen sletter noget, ransomware krypterer, udstyret bliver stjålet eller brænder – eller en fil bliver overskrevet.', '3-2-1-reglen: mindst 3 kopier af dine data, på 2 forskellige medier, hvoraf 1 er uden for huset.', 'En backup skal være adskilt. En disk, der altid sidder i computeren, bliver krypteret sammen med resten ved et ransomware-angreb.', 'RAID er ikke backup: det beskytter mod at én disk dør, ikke mod sletning, krypteringsvirus eller brand.', 'Synkronisering (OneDrive, Dropbox, Google Drev) er heller ikke backup: sletter du en fil, forsvinder den alle steder. Versionshistorik hjælper, men kun et stykke tid.'],
+      d: ['Skriv en liste over, hvad der ville være katastrofalt at miste, hjemme og på arbejdet.', 'Tegn 3-2-1 for en lille virksomhed med en server og fem bærbare.', 'Find ud af, hvor længe jeres skyløsning gemmer slettede filer.'],
+      q: [['Hvad betyder 3-2-1?', '3 kopier, 2 forskellige medier, 1 uden for huset.'], ['Hvorfor er RAID ikke en backup?', 'Det beskytter kun mod, at en disk dør – ikke mod sletning, ransomware eller brand.']] },
+    { t: 'Hvad skal sikres – og hvor ofte', g: 'Du kan lave en backupplan, der passer til risikoen.',
+      r: [['Tjeklister', '#/apps/checklists']],
+      l: ['Start med at finde data: dokumenter, billeder, mail, regnskab, databaser, konfigurationer og licensnøgler. Det, ingen kan lave om igen, er det vigtigste.', 'To spørgsmål styrer alt: hvor meget må vi miste (hvor ofte skal der tages backup), og hvor længe må vi vente på at få det tilbage.', 'Mister I en dags arbejde, skal der tages backup dagligt. Mister I en times arbejde, skal det ske oftere – eller løbende.', 'Opbevar flere generationer: fx 7 daglige, 4 ugentlige og 12 månedlige. En fejl, ingen opdager med det samme, kræver en gammel kopi.', 'Husk det, man glemmer: mails i en lokal pst-fil, data i et regnskabsprogram, fotos på telefonen og indstillinger i maskiner og routere.'],
+      d: ['Lav en liste: hvilke data, hvor de ligger, hvor ofte de sikres, og hvem der har ansvaret.', 'Find ud af, hvad der ikke bliver sikret i dag.', 'Skriv, hvor meget arbejde jeres nuværende plan kan koste jer at miste.'],
+      q: [['Hvilke to spørgsmål styrer en backupplan?', 'Hvor meget må vi miste, og hvor længe må vi vente på at få det tilbage.'], ['Hvorfor gemme flere generationer?', 'Fordi en fejl kan opdages længe efter, den skete.']] },
+    { t: 'Metoder: lokalt, sky og hybrid', g: 'Du kan vælge og sætte en løsning op.',
+      r: [['Data og sikkerhedskopi i HUBTECH', '#/settings/data']],
+      l: ['Ekstern disk er billigt og hurtigt at gendanne fra, men skal kobles fra bagefter og helst opbevares et andet sted.', 'NAS giver automatisk backup for flere maskiner. Sæt den op med sin egen adgangskode og uden fri adgang fra internettet.', 'Sky-backup klarer kravet om "uden for huset" af sig selv. Tjek, hvor data ligger, og hvor lang tid en gendannelse tager på jeres forbindelse.', 'Image/fuldt systembillede gendanner hele maskinen, inklusive programmer. Filbackup gendanner kun filer, men fylder mindre og er hurtigere.', 'Windows har Filhistorik og systemimage, macOS har Time Machine – og HUBTECH kan selv gemme både dine egne data og hele systemet under Data og sikkerhedskopi.'],
+      d: ['Sæt en automatisk backup op på din egen maskine.', 'Tag en sikkerhedskopi af HUBTECH, og gem filen et andet sted.', 'Regn ud, hvor lang tid det tager at hente 200 GB hjem på jeres forbindelse.'],
+      q: [['Hvad er forskellen på et image og en filbackup?', 'Et image gendanner hele maskinen med programmer; en filbackup kun filerne.'], ['Hvorfor skal en ekstern backupdisk kobles fra?', 'Så ransomware ikke krypterer den sammen med computeren.']] },
+    { t: 'Gendannelse: øvelsen, de fleste springer over', g: 'Du kan bevise, at backuppen virker.',
+      r: [['Data og sikkerhedskopi i HUBTECH', '#/settings/data']],
+      l: ['En backup, der aldrig er prøvet gendannet, er et håb – ikke en sikkerhed. Afprøv den mindst to gange om året.', 'Øv både den lille og den store gendannelse: én slettet fil fra i går, og hele maskinen fra bunden.', 'Skriv en gendannelsesvejledning, som en anden kan følge: hvor ligger kopierne, hvad er adgangskoderne (opbevaret sikkert), og i hvilken rækkefølge startes tingene.', 'Hold øje med, at backuppen rent faktisk kører. En fejlet opgave, ingen opdager, er det samme som ingen backup.', 'Ved ransomware: afbryd netværket, rør ikke ved maskinen, og gendan først, når I ved, at angriberen er ude – ellers bliver det krypteret igen.'],
+      d: ['Gendan en enkelt fil fra din backup, og tag tid på det.', 'Gendan en HUBTECH-sikkerhedskopi på en testinstallation.', 'Skriv gendannelsesvejledningen, og lad en kollega prøve at følge den.'],
+      q: [['Hvor tit bør en gendannelse afprøves?', 'Mindst to gange om året – og efter større ændringer.'], ['Hvad gør du først ved et ransomware-angreb?', 'Afbryder netværket, så det ikke spreder sig – og gendanner først, når maskinen er ren.']] },
+  ],
+};
+
+export const GENERAL_COURSES = [linux, hardware, wifi, powershell, sheets, cloud, mac, backup, mobile, customer, smallbiz, ai];
 export const GENERAL_GROUP = ['general', 'Almen IT-viden'];

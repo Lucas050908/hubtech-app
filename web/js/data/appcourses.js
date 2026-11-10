@@ -89,7 +89,7 @@ const commands = {
       r: [['Se og kopiér kommandoerne i Kodestumper', '#/learn/snippets']],
       l: cmds.map(c => `${c.cmd.replace(/\n/g, ' · ')} (${OS_LABEL?.[c.os] || c.os}${c.admin ? ', kræver administrator' : ''}): ${c.d}`),
       d: ['Kør to af kommandoerne på din egen computer, og forklar resultatet.', 'Skriv de tre kommandoer, du tror du får mest brug for, i dine noter.', 'Gem dine egne favoritkommandoer i Kodestumper.'],
-      q: cmds.slice(0, 4).map(c => [`Hvad gør “${c.cmd.split('\n')[0]}”?`, c.d]),
+      q: cmds.slice(0, 4).map(c => [`Hvad gør “${c.cmd.replace(/\n/g, ' · ')}”?`, c.d]),
     };
   }).filter(d => d.l.length),
 };
@@ -116,6 +116,7 @@ const CODE_GOALS = {
   git1: 'Du kan finde rundt i mapper fra terminalen', git2: 'Du ved, hvad Git er, og kan gemme dit første commit',
   git3: 'Du kan lave en branch, skifte mellem branches og merge dem', git4: 'Du kan sende commits til GitHub med push og hente med pull',
   git5: 'Du kan fortryde ændringer og holde hemmeligheder ude af Git med .gitignore',
+  git6: 'Du kan klone et projekt, løse en konflikt og åbne en pull request',
   lx1: 'Du kan vise, kopiere, flytte og slette filer på en server', lx2: 'Du kan læse og ændre rettigheder og ved, hvornår sudo skal bruges',
   lx3: 'Du kan søge i filer med grep og find og kæde kommandoer sammen med pipes', lx4: 'Du kan se, hvad der kører, og starte og genstarte tjenester',
   lx5: 'Du kan tjekke netværket og logge ind på en anden maskine med SSH', lx6: 'Du kan installere og opdatere programmer med pakkehåndteringen',
