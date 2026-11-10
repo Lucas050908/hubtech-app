@@ -32,7 +32,14 @@ function defaults() {
 }
 let cfg = { ...defaults(), ...read(KEY, {}) };
 cfg.use = { ...defaults().use, ...(cfg.use || {}) };
-const saveCfg = () => write(KEY, cfg);
+const saveCfg = () => { write(KEY, cfg); chatsChanged(); };   // the page that shows where Gnist runs is drawn again
+/** Where the chosen model runs: on this device, in Ollama/LM Studio on the HUBTECH computer, or at an AI service in the cloud. */
+export function runsWhere() {
+  const m = String(cfg.model || '');
+  if (m.startsWith('ext:cloud:')) { const n = resolved().model?.name || 'en AI i skyen'; return { kind: 'cloud', short: `Bruger ${n} i skyen`, text: `Lige nu svarer jeg med ${n} – det, du skriver, sendes til den tjeneste.` }; }
+  if (m.startsWith('ext:')) return { kind: 'computer', short: 'Kører på HUBTECH-computeren', text: 'Jeg kører i Ollama på HUBTECH-computeren, så alt bliver hos jer.' };
+  return { kind: 'device', short: 'Kører på din enhed', text: 'Jeg kører på din egen enhed, så alt bliver hos dig.' };
+}
 
 /** Model + context the settings resolve to. */
 export function resolved() {
@@ -212,7 +219,7 @@ function build() {
     h('div', { class: 'ai-compose' }, h('label', { class: 'icon-btn ai-attach', title: 'Vedhæft en fil (tekst, noter, kode eller CSV)', 'aria-label': 'Vedhæft en fil' }, icon('paperclip'),
       h('input', { type: 'file', accept: '.txt,.md,.csv,.tsv,.json,.log,.html,.css,.js,.py,.ino,.c,.cpp,.xml,.yaml,.yml,.ini,.cfg', hidden: true, onchange: (e) => { attachFile(e.target.files?.[0]); e.target.value = ''; } })), input, send),
     String(cfg.model).startsWith('ext:cloud:') ? h('p', { class: 'ai-foot is-cloud' }, icon('globe'), `Bruger ${resolved().model?.name || 'en AI i skyen'} – det, du skriver, sendes til tjenesten.`)
-      : h('p', { class: 'ai-foot' }, icon('lock'), 'Kører på din enhed – dine data sendes ikke nogen steder hen.'));
+      : h('p', { class: 'ai-foot' }, icon('lock'), runsWhere().kind === 'computer' ? 'Kører i Ollama på HUBTECH-computeren – dine data bliver hos jer.' : 'Kører på din enhed – dine data sendes ikke nogen steder hen.'));
   document.body.appendChild(panel);
   els = { status, mode, list, input, send, settingsBox, histBox, head, attachBox };
 
@@ -317,7 +324,7 @@ function startCard() {
     h('div', { class: 'ai-hello' }, h('span', { class: 'ai-hello-mark' }, gnist(52, { mood: 'wave' })), h('div', null, h('b', null, tutor() ? 'Gnist – din programmeringslærer' : builder() ? 'Gnist – din app-bygger' : `Hej${store.get('user')?.displayName ? ' ' + store.get('user').displayName.split(' ')[0] : ''}! Jeg hedder Gnist`),
       h('p', null, builder() ? 'Jeg kan se appens filer og fejlene i konsollen. Beskriv, hvad appen skal kunne, så skriver jeg koden – og du vælger selv, hvilke filer der skal bruges. Vælg gerne 4096 tokens hukommelse eller mere.'
         : tutor() ? 'Jeg kan se opgaven og din kode, og jeg hjælper dig videre med hints – men jeg giver dig ikke løsningen. Du lærer mest ved selv at skrive den.'
-        : 'Jeg er HUBTECHs egen AI – en lille gnist fra værkstedet. Jeg kender alle guides og kurser, kan læse dine noter, opgaver og aftaler, og hjælper gerne med at planlægge, forklare og fejlfinde. Jeg kører på din egen enhed, så alt bliver hos dig.'))),
+        : 'Jeg er HUBTECHs egen AI – en lille gnist fra værkstedet. Jeg kender alle guides og kurser, kan læse dine noter, opgaver og aftaler, og hjælper gerne med at planlægge, forklare og fejlfinde. ' + runsWhere().text))),
     st.status === 'error' ? h('p', { class: 'field-error' }, st.error) : null,
     unsupported ? h('p', { class: 'field-error' }, unsupported) : null,
     h('div', { class: 'ai-pick' }, icon('chip'), h('span', null, localFile ? `Fil: ${localFile.name} (${mb(localFile.size)})` : cfg.model === 'file' ? 'Vælg din .gguf-fil (den skal vælges igen, når siden er genindlæst)' : cfg.model === 'url' ? 'Egen model fra URL' : r.external ? `Stor model: ${r.external} (Ollama/LM Studio på computeren)` : r.model ? `${r.model.name} · ${mb(r.model.size)} download · ca. ${gb(r.ram)} RAM` : 'Vælg en model'),

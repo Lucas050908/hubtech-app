@@ -260,32 +260,57 @@ def _http_error(e, who):
     return ApiError(502, f"{who} svarede med en fejl ({e.code}). {detail}".strip(), "cloud_error")
 
 
+def _open_first(reqs, who):
+    """Open the first of the requests that the service accepts. A 400 means "this model doesn't take that parameter"
+    (the newest models reject temperature, some want max_completion_tokens): then the plainer request after it is tried."""
+    for i, r in enumerate(reqs):
+        try:
+            return urllib.request.urlopen(r, timeout=300)
+        except urllib.error.HTTPError as e:
+            if e.code != 400 or i == len(reqs) - 1:
+                raise _http_error(e, who)
+        except (urllib.error.URLError, OSError):
+            raise ApiError(502, f"Kunne ikke nå {who}. Er computeren på internettet?", "cloud_offline")
+    raise ApiError(502, f"{who} svarede ikke.", "cloud_error")
+
+
+def _post(url, body, headers):
+    return urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
+                                  headers={"Content-Type": "application/json", "User-Agent": "HUBTECH-Gnist", **headers})
+
+
 def chat_cloud(model, msgs, max_tokens, temperature):
     pid, _, name = model[len("cloud:"):].partition("/")
     p = PROVIDERS.get(pid)
     key = _key(pid) if p else ""
     if not p or not key or not name:
         raise ApiError(400, "Den AI-tjeneste er ikke sat op på denne HUBTECH.", "cloud_missing")
+    # models that think before they answer count the thinking in the limit: leave room for it, or the answer is cut short
+    roomy = max(4096, max_tokens + 3000)
     if p["kind"] == "anthropic":
         system = "\n\n".join(m["content"] for m in msgs if m["role"] == "system")
         conv = [m for m in msgs if m["role"] != "system"]
-        while conv and conv[0]["role"] != "user":   # the API wants the conversation to start with the user
+        while conv and conv[0]["role"] != "user":    # the API wants the conversation to start with the user …
             conv.pop(0)
-        payload = {"model": name, "max_tokens": max_tokens, "temperature": min(1.0, temperature), "stream": True, "messages": conv or [{"role": "user", "content": "Hej"}]}
+        while conv and conv[-1]["role"] != "user":   # … and to end with the user (no half-written answer to continue)
+            conv.pop()
+        base = {"model": name, "max_tokens": roomy, "stream": True, "messages": conv or [{"role": "user", "content": "Hej"}]}
         if system:
-            payload["system"] = system
-        r = urllib.request.Request(p["base"] + "/v1/messages", data=json.dumps(payload).encode("utf-8"), method="POST",
-                                   headers={"Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "User-Agent": "HUBTECH-Gnist"})
+            base["system"] = system
+        url = p["base"] + "/v1/messages"
+        heads = lambda v: {"x-api-key": key, "anthropic-version": v}   # noqa: E731
+        # no temperature (the current models reject it); little thinking, so a chat answer comes quickly
+        reqs = [_post(url, {**base, "output_config": {"effort": "low"}}, heads("2026-10-21")),
+                _post(url, base, heads("2026-10-21")),
+                _post(url, base, heads("2023-06-01"))]
     else:
-        payload = {"model": name, "messages": msgs, "stream": True, "max_tokens": max_tokens, "temperature": temperature}
-        r = urllib.request.Request(p["base"] + "/chat/completions", data=json.dumps(payload).encode("utf-8"), method="POST",
-                                   headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}", "User-Agent": "HUBTECH-Gnist"})
-    try:
-        resp = urllib.request.urlopen(r, timeout=300)
-    except urllib.error.HTTPError as e:
-        raise _http_error(e, p["name"])
-    except (urllib.error.URLError, OSError):
-        raise ApiError(502, f"Kunne ikke nå {p['name']}. Er computeren på internettet?", "cloud_offline")
+        base = {"model": name, "messages": msgs, "stream": True}
+        url = p["base"] + "/chat/completions"
+        heads = {"Authorization": f"Bearer {key}"}
+        reqs = [_post(url, {**base, "max_tokens": max_tokens, "temperature": temperature}, heads),
+                _post(url, {**base, "max_completion_tokens": roomy}, heads),   # models that think: their own name for the limit, no temperature
+                _post(url, base, heads)]
+    resp = _open_first(reqs, p["name"])
 
     def gen():
         with resp:
@@ -299,8 +324,15 @@ def chat_cloud(model, msgs, max_tokens, temperature):
                     j = json.loads(data.decode("utf-8"))
                 except ValueError:
                     continue
+                if not isinstance(j, dict):
+                    continue
+                err = j.get("error") if (j.get("type") == "error" or "choices" not in j) else None
+                if isinstance(err, dict) and err.get("message"):   # the service gave up in the middle of the answer: say so
+                    yield f"\n\n⚠️ {p['name']} afbrød svaret: {str(err['message'])[:300]}".encode("utf-8")
+                    break
                 if p["kind"] == "anthropic":
-                    piece = (j.get("delta") or {}).get("text", "") if j.get("type") == "content_block_delta" else ""
+                    d = j.get("delta") or {}
+                    piece = d.get("text", "") if j.get("type") == "content_block_delta" and d.get("type", "text_delta") == "text_delta" else ""
                 else:
                     piece = (((j.get("choices") or [{}])[0] or {}).get("delta") or {}).get("content") or ""
                 if piece:

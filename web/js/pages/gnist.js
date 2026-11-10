@@ -12,7 +12,7 @@ export default {
     const drawSide = async () => {
       const { chats, current } = await m.chatList();
       h(clear(side), null,
-        h('div', { class: 'gn-brand' }, h('span', { class: 'gn-mark' }, gnist(30, { mood: 'wave' })), h('div', null, h('b', null, 'Gnist'), h('small', { class: 'faint' }, 'Kører på din enhed'))),
+        h('div', { class: 'gn-brand' }, h('span', { class: 'gn-mark' }, gnist(30, { mood: 'wave' })), h('div', null, h('b', null, 'Gnist'), h('small', { class: 'faint' }, m.runsWhere().short))),
         h('button', { type: 'button', class: 'btn btn-primary gn-newchat', onclick: () => m.newChat() }, icon('plus'), 'Ny chat'),
         h('div', { class: 'gn-side-h faint' }, 'Dine chats'),
         chats.length ? h('ul', { class: 'gn-chats' }, chats.map(c => h('li', { class: c.id === current ? 'is-on' : null },
