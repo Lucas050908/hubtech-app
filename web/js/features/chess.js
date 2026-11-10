@@ -295,22 +295,22 @@ export const LEVELS = { easy: { label: 'Let', depth: 1, noise: 150 }, medium: { 
  * judge moves more loosely (noise) and now and then simply blunder (a random legal move).
  */
 export const BOTS = [
-  { id: 'mini', name: 'Mini-Mia', rating: 100, depth: 1, noise: 900, blunder: 0.6, avatar: '🐥', about: 'Har lige lært, hvordan brikkerne går – og flytter mest på må og få.' },
-  { id: 'gnist', name: 'Gnist', rating: 300, depth: 1, noise: 400, blunder: 0.3, avatar: '✨', coach: true, about: 'Spiller roligt – godt at starte med. Vil du lære undervejs, så slå “Gnist forklarer” til.' },
-  { id: 'bo', name: 'Bo Begynder', rating: 400, depth: 1, noise: 500, blunder: 0.35, avatar: '🐣', about: 'Kender reglerne, men glemmer tit, at brikker kan slås.' },
-  { id: 'nora', name: 'Nysgerrige Nora', rating: 550, depth: 1, noise: 320, blunder: 0.22, avatar: '🐢', about: 'Prøver nye ting af hele tiden – nogle gange virker det.' },
-  { id: 'lise', name: 'Lise Lærling', rating: 700, depth: 1, noise: 220, blunder: 0.15, avatar: '🙂', about: 'Tager gerne dine brikker – men passer ikke altid på sine egne.' },
-  { id: 'emil', name: 'Erfarne Emil', rating: 850, depth: 1, noise: 120, blunder: 0.09, avatar: '🧩', about: 'Slår, når der er noget at slå, og flytter væk fra fare. Tænker ikke langt.' },
-  { id: 'karl', name: 'Klub-Karl', rating: 1000, depth: 2, noise: 90, blunder: 0.06, avatar: '🧢', about: 'Spiller i klubben om tirsdagen. Solid, men laver fejl under pres.' },
-  { id: 'sofie', name: 'Sikre Sofie', rating: 1150, depth: 2, noise: 50, blunder: 0.035, avatar: '🛡️', about: 'Passer godt på sine brikker – men angriber sjældent selv.' },
-  { id: 'tanja', name: 'Taktik-Tanja', rating: 1300, depth: 2, noise: 20, blunder: 0.02, avatar: '⚡', about: 'Ser gafler og bindinger. Giv hende ikke en løs brik.' },
-  { id: 'viktor', name: 'Vovehalsen Viktor', rating: 1450, depth: 2, noise: 8, blunder: 0.008, avatar: '🔥', about: 'Går altid efter kongen – og glemmer engang imellem sit eget forsvar.' },
-  { id: 'holger', name: 'Holger Strateg', rating: 1600, depth: 3, noise: 12, blunder: 0, max: 70000, avatar: '🎩', about: 'Tænker tre træk frem og straffer de fleste fejl.' },
-  { id: 'freja', name: 'Fokuserede Freja', rating: 1750, depth: 3, noise: 5, blunder: 0, max: 95000, avatar: '🎯', about: 'Rolig og grundig. Hun finder næsten altid det bedste træk på kort sigt.' },
-  { id: 'astrid', name: 'Astrid Mester', rating: 1900, depth: 3, noise: 0, blunder: 0, max: 120000, avatar: '👑', about: 'Stærk og præcis. Du skal spille godt for at få remis.' },
-  { id: 'grete', name: 'Grand-Grete', rating: 2050, depth: 4, noise: 4, blunder: 0, max: 160000, time: 2500, avatar: '🦊', about: 'Ser fire træk frem og elsker lange, seje partier.' },
-  { id: 'pind', name: 'Professor Pind', rating: 2200, depth: 4, noise: 0, blunder: 0, max: 220000, time: 3000, avatar: '🦉', about: 'Laboratoriets stærkeste menneske. Tænker sig længe om – og sjældent forkert.' },
-  { id: 'storm', name: 'Stormester Storm', rating: 2400, depth: 5, noise: 0, blunder: 0, max: 420000, time: 3500, avatar: '⛈️', about: 'Den allerstærkeste. Tænker fem træk frem – giv ham et øjeblik til hvert træk.' },
+  { id: 'mini', name: 'Mini-Mia', rating: 100, depth: 1, noise: 900, blunder: 0.6, about: 'Har lige lært, hvordan brikkerne går – og flytter mest på må og få.' },
+  { id: 'gnist', name: 'Gnist', rating: 300, depth: 1, noise: 400, blunder: 0.3, coach: true, about: 'Spiller roligt – godt at starte med. Vil du lære undervejs, så slå “Gnist forklarer” til.' },
+  { id: 'bo', name: 'Bo Begynder', rating: 400, depth: 1, noise: 500, blunder: 0.35, about: 'Kender reglerne, men glemmer tit, at brikker kan slås.' },
+  { id: 'nora', name: 'Nysgerrige Nora', rating: 550, depth: 1, noise: 320, blunder: 0.22, about: 'Prøver nye ting af hele tiden – nogle gange virker det.' },
+  { id: 'lise', name: 'Lise Lærling', rating: 700, depth: 1, noise: 220, blunder: 0.15, about: 'Tager gerne dine brikker – men passer ikke altid på sine egne.' },
+  { id: 'emil', name: 'Erfarne Emil', rating: 850, depth: 1, noise: 120, blunder: 0.09, about: 'Slår, når der er noget at slå, og flytter væk fra fare. Tænker ikke langt.' },
+  { id: 'karl', name: 'Klub-Karl', rating: 1000, depth: 2, noise: 90, blunder: 0.06, about: 'Spiller i klubben om tirsdagen. Solid, men laver fejl under pres.' },
+  { id: 'sofie', name: 'Sikre Sofie', rating: 1150, depth: 2, noise: 50, blunder: 0.035, about: 'Passer godt på sine brikker – men angriber sjældent selv.' },
+  { id: 'tanja', name: 'Taktik-Tanja', rating: 1300, depth: 2, noise: 20, blunder: 0.02, about: 'Ser gafler og bindinger. Giv hende ikke en løs brik.' },
+  { id: 'viktor', name: 'Vovehalsen Viktor', rating: 1450, depth: 2, noise: 8, blunder: 0.008, about: 'Går altid efter kongen – og glemmer engang imellem sit eget forsvar.' },
+  { id: 'holger', name: 'Holger Strateg', rating: 1600, depth: 3, noise: 12, blunder: 0, max: 70000, about: 'Tænker tre træk frem og straffer de fleste fejl.' },
+  { id: 'freja', name: 'Fokuserede Freja', rating: 1750, depth: 3, noise: 5, blunder: 0, max: 95000, about: 'Rolig og grundig. Hun finder næsten altid det bedste træk på kort sigt.' },
+  { id: 'astrid', name: 'Astrid Mester', rating: 1900, depth: 3, noise: 0, blunder: 0, max: 120000, about: 'Stærk og præcis. Du skal spille godt for at få remis.' },
+  { id: 'grete', name: 'Grand-Grete', rating: 2050, depth: 4, noise: 4, blunder: 0, max: 160000, time: 2500, about: 'Ser fire træk frem og elsker lange, seje partier.' },
+  { id: 'pind', name: 'Professor Pind', rating: 2200, depth: 4, noise: 0, blunder: 0, max: 220000, time: 3000, about: 'Laboratoriets stærkeste menneske. Tænker sig længe om – og sjældent forkert.' },
+  { id: 'storm', name: 'Stormester Storm', rating: 2400, depth: 5, noise: 0, blunder: 0, max: 420000, time: 3500, about: 'Den allerstærkeste. Tænker fem træk frem – giv ham et øjeblik til hvert træk.' },
 ];
 /** The bots in four tiers, so the list stays short. */
 export const TIERS = [

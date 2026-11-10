@@ -21,9 +21,9 @@ import * as droid from '../core/android.js';
 import { getCall, setCall, getNotify, setNotify, getStudio, setStudio, mediaConstraints, applySpeaker } from '../features/appsettings.js';
 import * as piano from '../features/piano.js';
 import { SCENES, STYLES } from '../world/scenes.js';
+import { PICKABLE, botAvatar } from '../core/avatars.js';
 import { SCALES, BACKDROPS, getScale, setScale, getBackdrop, setBackdrop, canBeTransparent, autoZoom } from '../core/display.js';
 
-const AVATARS = ['⚡', '🦊', '🐺', '🦁', '🐯', '🐻', '🦅', '🐉', '🔧', '💡', '🛸', '🔬', '🎯', '🚀', '🏆', '🌊', '🤖', '🔌', '🧠', '🌲', '🏔️', '🍂', '❄️', '🌸', '☀️'];
 const TABS = [
   { id: 'profile', label: 'Profil', icon: 'user' },
   { id: 'security', label: 'Sikkerhed', icon: 'lock' },
@@ -55,8 +55,9 @@ function profileTab() {
   const email = h('input', { class: 'input', type: 'email', value: u.email, maxlength: 254, autocomplete: 'email', placeholder: 'valgfri' });
   const fName = fieldEl('Navn', name), fEmail = fieldEl('E-mail', email, 'Kan bruges til at logge ind.');
   let avatar = u.avatar;
-  const grid = h('div', { class: 'avatar-grid', role: 'radiogroup', 'aria-label': 'Avatar' }, AVATARS.map(a => {
-    const b = h('button', { class: 'avatar-opt', role: 'radio', 'aria-checked': String(a === avatar), 'aria-label': `Avatar ${a}` }, a);
+  const grid = h('div', { class: 'avatar-grid', role: 'radiogroup', 'aria-label': 'Avatar' }, PICKABLE.map(id => {
+    const a = `a:${id}`;
+    const b = h('button', { class: 'avatar-opt', role: 'radio', 'aria-checked': String(a === avatar), 'aria-label': `Avatar ${id}` }, botAvatar(id, 0));
     b.addEventListener('click', () => { avatar = a; grid.querySelectorAll('.avatar-opt').forEach(x => x.setAttribute('aria-checked', String(x === b))); });
     return b;
   }));

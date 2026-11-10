@@ -6,6 +6,7 @@
  */
 import { h, clear, svgEl } from '../core/dom.js';
 import { icon, gnist } from '../core/icons.js';
+import { botAvatar } from '../core/avatars.js';
 import { api } from '../core/api.js';
 import { toast, confirmDialog, segmented, modal } from '../core/ui.js';
 import { onLive } from '../core/live.js';
@@ -65,7 +66,7 @@ export default {
         myColor: G.vs === 'ai' ? G.color : G.s.turn,
         bottom: G.vs === 'ai' ? G.color : (st.flip ? 'b' : 'w'),
         canMove: () => !G.s.result && (G.vs !== 'ai' || G.s.turn === G.color),
-        name: (c) => (G.vs === 'ai' ? (c === G.color ? `Dig${st.rating?.games ? ` (${st.rating.r})` : ''}` : `${botOf(G).avatar} ${botOf(G).name} (${botOf(G).rating})`) : COLOR[c]),
+        name: (c) => (G.vs === 'ai' ? (c === G.color ? `Dig${st.rating?.games ? ` (${st.rating.r})` : ''}` : `${botOf(G).name} (${botOf(G).rating})`) : COLOR[c]),
         move(f, t, pr) {
           const before = coachOn(G) ? JSON.parse(JSON.stringify(G.s)) : null;
           if (C.play(G.s, f, t, pr)) { G.line.push([f, t, pr]); if (before) { try { coach = { n: G.s.moves.length, lines: [K.explainMove(before, G.s, G.color)].filter(Boolean) }; } catch (e) { console.error(e); } } finishLocal(); store.save(); draw(); }
@@ -165,7 +166,7 @@ export default {
         bots.replaceChildren(...C.BOTS.filter(b => C.tierOf(b.rating).id === tier).map(b => {
           const k = st.stats[b.id], diff = b.rating - my;
           return h('button', { class: ['ch-bot', o.bot === b.id && 'is-on'], role: 'radio', 'aria-checked': String(o.bot === b.id), dataset: { bot: b.id }, onclick: () => { o.bot = b.id; drawBots(); } },
-            h('span', { class: 'ch-bot-av', 'aria-hidden': 'true' }, b.avatar),
+            h('span', { class: 'ch-bot-av', 'aria-hidden': 'true' }, b.id === 'gnist' ? gnist(44) : botAvatar(b.id, 44)),
             h('span', { class: 'ch-bot-main' }, h('b', null, b.name, b.id === rec.id ? h('span', { class: 'ch-rec' }, 'Anbefalet') : null), h('span', { class: 'faint' }, b.about),
               k && k.w + k.d + k.l ? h('span', { class: 'ch-bot-rec' }, `${k.w} sejre · ${k.d} remis · ${k.l} tab`) : null),
             h('span', { class: 'ch-bot-r' }, h('b', null, String(b.rating)), h('span', { class: 'faint' }, diff > 250 ? 'Svær for dig' : diff < -250 ? 'Let for dig' : 'Lige op')));
@@ -292,7 +293,9 @@ export default {
       }));
       const cap = C.captured(s);
       const bar = (c) => h('div', { class: ['ch-player', s.turn === c && !s.result && 'is-turn'] },
-        h('span', { class: ['ch-dot', c] }), h('b', null, ctl.name(c)),
+        h('span', { class: ['ch-dot', c] }),
+        ctl.G?.vs === 'ai' && c !== ctl.myColor ? h('span', { class: 'ch-bot-av ch-bot-av-sm', 'aria-hidden': 'true' }, botOf(ctl.G).id === 'gnist' ? gnist(26) : botAvatar(botOf(ctl.G).id, 26)) : null,
+        h('b', null, ctl.name(c)),
         h('span', { class: 'ch-caps' }, cap[c].map(p => `${C.GLYPH[p.toLowerCase()]}\uFE0E`).join('')),
         s.clock ? h('span', { class: ['ch-clock', c === s.turn && s.clock.since != null && !s.result && 'is-on', ctl.left(c) < 20e3 && 'is-low'], dataset: { c }, 'aria-label': `${COLOR[c]}s tid` }, C.fmtClock(ctl.left(c))) : null);
       if (hint && hint.n !== s.moves.length) hint = null;

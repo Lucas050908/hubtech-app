@@ -72,7 +72,7 @@ function viewer({ src, caption, seconds, from, at, onNext, onPrev, onClose, extr
   const key = (e) => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') { close(); onNext?.(); } if (e.key === 'ArrowLeft') { close(); onPrev?.(); } };
   const el = h('div', { class: 'sv', role: 'dialog', 'aria-modal': 'true', 'aria-label': `Fra ${from?.name || ''}` },
     ring,
-    h('div', { class: 'sv-head' }, h('span', { class: 'cm-ava' }, ava(from?.avatar, '👤')), h('b', null, from?.name || ''), h('span', { class: 'faint' }, at ? fmtTime(at) : ''), extra || null,
+    h('div', { class: 'sv-head' }, h('span', { class: 'cm-ava' }, ava(from?.avatar, from?.name)), h('b', null, from?.name || ''), h('span', { class: 'faint' }, at ? fmtTime(at) : ''), extra || null,
       h('button', { class: 'icon-btn', 'aria-label': 'Luk', onclick: close }, icon('x'))),
     h('img', { class: 'sv-img', src, alt: caption || 'Billede', draggable: 'false' }),
     caption ? h('div', { class: 'sv-cap' }, caption) : null,

@@ -125,14 +125,41 @@ export function rect(el) {
 export const viewW = () => innerWidth / uiZoom();
 export const viewH = () => innerHeight / uiZoom();
 
-/** An avatar: the emoji, or the user's own picture (users.avatar = "/api/avatars/…"). Used wherever avatars show. */
-export function ava(v, fallback = '👤') {
-  const s = v || fallback;
-  if (typeof s === 'string' && s.startsWith('/api/avatars/')) {
+import { avatarId, botAvatar } from './avatars.js';
+
+/** Initialer af et navn: "Lucas Andersen" → "LA", "mia" → "M". */
+const initials = (name) => String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2)
+  .map(w => [...w][0]).join('').toUpperCase() || '?';
+/** En rolig farve ud fra navnet, så den samme person altid får den samme. */
+const hueOf = (name) => { let n = 0; for (const ch of String(name || '')) n = (n * 31 + ch.codePointAt(0)) % 360; return n; };
+/** Tegnet standard-avatar: initialer, når vi kender navnet, ellers en silhuet. */
+function drawnAvatar(name) {
+  const el = document.createElement('span');
+  el.className = 'ava-drawn';
+  el.setAttribute('aria-hidden', 'true');
+  if (name) {
+    const hue = hueOf(name);
+    el.style.setProperty('--ava-h', String(hue));
+    el.textContent = initials(name);
+  } else {
+    el.classList.add('is-anon');
+    el.innerHTML = '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true"><circle cx="12" cy="8.6" r="4.2" fill="currentColor"/><path d="M3.8 21c1.3-4.4 4.4-6.6 8.2-6.6s6.9 2.2 8.2 6.6z" fill="currentColor"/></svg>';
+  }
+  return el;
+}
+
+/** An avatar: the user's own picture (users.avatar = "/api/avatars/…"), otherwise a drawn one.
+ *  `fallback` may be the person's name – then the avatar is their initials. */
+export function ava(v, fallback = '') {
+  const drawn = avatarId(v);
+  if (drawn) return botAvatar(drawn, 0);
+  const name = fallback && !/^\/api\/avatars\//.test(fallback) && ![...fallback].some(c => c.codePointAt(0) > 0x2000) ? fallback : '';
+  if (typeof v === 'string' && v.startsWith('/api/avatars/')) {
     const img = document.createElement('img');
-    img.className = 'ava-img'; img.src = s; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.draggable = false;
-    img.onerror = () => img.replaceWith(document.createTextNode(fallback));
+    img.className = 'ava-img'; img.src = v; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.draggable = false;
+    img.onerror = () => img.replaceWith(drawnAvatar(name));
     return img;
   }
-  return s;
+  if (v && typeof v === 'string' && ![...v].some(c => c.codePointAt(0) > 0x2000)) return drawnAvatar(v);
+  return drawnAvatar(name);
 }

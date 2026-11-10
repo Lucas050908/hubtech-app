@@ -88,7 +88,7 @@ class Call {
     let p = this.peers.get(uid);
     if (p) { if (card) p.card = card; return p; }
     const pc = new RTCPeerConnection({ iceServers: this.ice?.length ? this.ice : FALLBACK_ICE });
-    p = { pc, card: card || { id: uid, name: 'Deltager', avatar: '👤' }, polite: typeof card?.polite === 'boolean' ? card.polite : me() > uid, makingOffer: false, ignoreOffer: false, stream: new MediaStream(), tile: null, volume: volumeFor(uid) };
+    p = { pc, card: card || { id: uid, name: 'Deltager', avatar: '' }, polite: typeof card?.polite === 'boolean' ? card.polite : me() > uid, makingOffer: false, ignoreOffer: false, stream: new MediaStream(), tile: null, volume: volumeFor(uid) };
     this.peers.set(uid, p);
     for (const t of this.sendTracks()) pc.addTrack(t, this.local);
     pc.onnegotiationneeded = async () => {
@@ -387,7 +387,7 @@ class Call {
     const state = peer?.lost ? h('span', { class: 'call-state' }, 'Genopretter forbindelsen …') : peer && peer.pc.connectionState !== 'connected' ? h('span', { class: 'call-state' }, 'Forbinder …')
       : peer?.route === 'relay' ? h('span', { class: 'call-state is-relay', title: 'Jeres netværk tillader ikke en direkte forbindelse, så opkaldet går via TURN-serveren.' }, 'Via relæ') : null;
     return h('div', { class: ['call-tile', self && 'is-self', !hasVideo && 'is-audio', peer?.lost && 'is-lost'] }, v,
-      hasVideo ? null : h('span', { class: 'call-ava' }, ava(card.avatar, '👤')),
+      hasVideo ? null : h('span', { class: 'call-ava' }, ava(card.avatar, card.name)),
       state,
       h('span', { class: 'call-name' }, self ? 'Dig' : card.name, mic ? null : icon('micOff')), vol);
   }
@@ -397,7 +397,7 @@ class Call {
     const tiles = [...this.peers.values()].map(p => this.tile(p.stream, p.card, { peer: p }));
     const myCard = { name: 'Dig', avatar: store.get('user')?.avatar };
     const selfStream = this.screen ? new MediaStream([...this.screen.getVideoTracks(), ...(this.local?.getAudioTracks() || [])]) : this.local || new MediaStream();
-    h(clear(this.tilesEl), null, tiles.length ? tiles : h('div', { class: 'call-wait' }, h('span', { class: 'call-ava call-pulse' }, this.kind === 'dm' ? (ava(this.peerCard?.avatar, '👤')) : '🔊'),
+    h(clear(this.tilesEl), null, tiles.length ? tiles : h('div', { class: 'call-wait' }, h('span', { class: 'call-ava call-pulse' }, this.kind === 'dm' ? (ava(this.peerCard?.avatar, this.peerCard?.name)) : '🔊'),
       h('span', null, this.kind === 'dm' ? `Ringer til ${this.title} …` : this.kind === 'group' ? 'Ringer op … Dem, der tager imod, kommer med her.' : 'Du er den eneste her. Andre kan deltage fra kanallisten.')),
     this.local ? this.tile(selfStream, myCard, { self: true, mic: this.mic }) : null);
     this.tilesEl.dataset.n = String(tiles.length);
@@ -491,7 +491,7 @@ function showRing(ev) {
     void r;
   };
   const el = h('div', { class: 'ring glass', role: 'alertdialog', 'aria-label': `${ev.from.name} ringer` },
-    h('span', { class: 'call-ava call-pulse' }, ava(ev.from.avatar, '👤')),
+    h('span', { class: 'call-ava call-pulse' }, ava(ev.from.avatar, ev.from.name)),
     h('div', { class: 'ring-t' }, h('b', null, ev.from.name), h('span', { class: 'faint' }, `${ev.group ? 'Gruppeopkald' : ev.video ? 'Videoopkald' : 'Ringer'}${ev.others?.length ? ` med ${ev.others.join(', ')}` : ''} …`)),
     h('div', { class: 'ring-b' },
       h('button', { class: 'call-btn is-end', 'aria-label': 'Afvis', title: 'Afvis', onclick: () => { api.post(`/api/cm/calls/${ev.id}/leave`).catch(() => {}); closeRing(); } }, icon('phoneOff')),

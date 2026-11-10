@@ -269,7 +269,7 @@ export function chatView(cm, opt) {
     const f = m.file;
     const el = h('article', { class: ['cm-msg', grouped && 'is-grouped', mine && 'is-mine', m.deleted && 'is-deleted', (m.body || '').toLowerCase().includes('@' + meName.toLowerCase()) && 'is-mention'], dataset: { id: m.id }, 'aria-label': `${m.user.name}, ${fmtTime(m.at)}` },
       grouped ? h('span', { class: 'cm-msg-gt', 'aria-hidden': 'true' }, new Date(m.at * 1000).toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' }))
-        : h('button', { type: 'button', class: 'cm-ava cm-ava-lg', 'aria-label': `Profil: ${m.user.name}`, onclick: () => opt.onUser?.(m.user) }, ava(m.user.avatar, '👤')),
+        : h('button', { type: 'button', class: 'cm-ava cm-ava-lg', 'aria-label': `Profil: ${m.user.name}`, onclick: () => opt.onUser?.(m.user) }, ava(m.user.avatar, m.user.name)),
       h('div', { class: 'cm-msg-b' },
         grouped ? null : h('div', { class: 'cm-msg-h' }, h('button', { type: 'button', class: 'cm-name', onclick: () => opt.onUser?.(m.user) }, m.user.name), h('time', { class: 'faint', datetime: new Date(m.at * 1000).toISOString() }, fmtTime(m.at))),
         m.reply ? h('button', { type: 'button', class: 'cm-reply', onclick: () => list.querySelector(`[data-id="${m.reply.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, icon('reply'), h('b', null, m.reply.user), ' ', tokensToNames(m.reply.body)) : null,
