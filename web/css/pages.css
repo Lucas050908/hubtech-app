@@ -1372,8 +1372,10 @@ a.project-card:hover { border-color: color-mix(in srgb, var(--app) 75%, transpar
 .gl-term { padding: 12px 14px; border-radius: var(--r-md); background: var(--glass); border: 1px solid var(--line-2); display: grid; gap: 6px; align-content: start; }
 .gl-term p { margin: 0; font-size: 14px; color: var(--text-2); }
 .gl-term.is-known { border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
-.gl-head { display: flex; align-items: center; gap: 8px; }
-.gl-head b { font-size: 15.5px; }
+/* Rækken skal kunne ombrydes: et langt ord plus en lang emne-chip ("Maskiner og produktion")
+   kunne gøre kortet bredere end telefonens skærm, og så zoomede browseren hele siden ud. */
+.gl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gl-head b { font-size: 15.5px; min-width: 0; overflow-wrap: anywhere; }
 .gl-head .icon-btn { margin-left: auto; }
 .gl-head .icon-btn.is-on { color: var(--ok); }
 .gl-q { font-size: var(--fs-lg); line-height: 1.45; margin: 0 0 14px; }
