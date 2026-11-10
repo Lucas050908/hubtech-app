@@ -36,7 +36,7 @@ export function libraryItems() {
     // every app: what it does and where it is – "hvor kan jeg lave en faktura?"
     for (const a of APPS) {
       if (!a.route || a.status === 'hidden') continue;
-      items.push({ kind: 'app', title: a.name, text: strip([`${a.name}: ${a.tagline || ''}`, a.description || '', (a.keywords || []).join(' ')].join(' ')).slice(0, 900), href: a.route });
+      items.push({ kind: 'app', title: a.name, keys: (a.keywords || []).map(k => k.toLowerCase()), text: strip([`${a.name}: ${a.tagline || ''}`, a.description || '', (a.keywords || []).join(' ')].join(' ')).slice(0, 900), href: a.route });
     }
     // the IT dictionary: one item per word
     for (const [term, , text] of GLOSSARY) items.push({ kind: 'term', title: term, text: `${term}: ${text}`, href: '#/learn/glossary' });
@@ -134,7 +134,13 @@ const VERBS = new Set('ser får gør gøre går kommer står ved tror siger sker
 const words = (s) => String(s || '').toLowerCase().normalize('NFC').match(/[a-zæøå0-9]{2,}/g)?.filter(w => (w.length > 2 || SHORT.has(w)) && !STOP.has(w) && !VERBS.has(w)) || [];
 /** Does the word x from a text match the asked word w? Long words by their stem; short ones only as themselves (+ an ending),
  *  so "ser" isn't "server" and "ram" isn't "rammeaftale". */
-const hits = (x, w) => (w.length < 5 ? x === w || (x.startsWith(w) && x.length <= w.length + 2) : x.startsWith(w.slice(0, Math.max(4, w.length - 2))));
+// Dansk sammensætning. Sidste led bestemmer hvad tingen ER ("varmepresse" er en presse), så det
+// tæller fuldt; forleddet peger kun i retningen ("netværksprinter" er ikke en lektion om netværk),
+// så det tæller halvt. Det korte led skal være mindst 4 tegn, ellers bliver "meningen" til "ingen".
+const hits = (x, w, sammensat = true) => (w.length < 5 ? ((x === w || (x.startsWith(w) && x.length <= w.length + 2)) ? 1 : 0)
+  : x.startsWith(w.slice(0, Math.max(4, w.length - 2))) ? 1
+  : (sammensat && x.length >= 5 && w.length >= x.length + 4 && w.endsWith(x)) ? 1
+  : (sammensat && x.length >= 5 && w.length >= x.length + 4 && w.startsWith(x)) ? 0.5 : 0)
 
 /** How many letters must change to turn a into b (a swap of two neighbours counts as one) – stops early above max. */
 export function editDistance(a, b, max = 2) {
@@ -165,7 +171,7 @@ function vocab(items) {
 export function fixTypos(ws, items) {
   const v = vocab(items), out = new Map();
   for (const w of ws) {
-    if (w.length < 4 || v.has(w) || /\d/.test(w)) continue;
+    if (w.length < 4 || v.has(w) || /\d/.test(w) || STOP.has(w) || VERBS.has(w)) continue;   // "hvordan" skal ikke rettes til "hvoraf"
     const ascii = w.replace(/aa/g, 'å').replace(/oe/g, 'ø').replace(/ae/g, 'æ');   // "netvaerk" → "netværk"
     if (ascii !== w && v.has(ascii)) { out.set(w, ascii); continue; }
     const max = w.length >= 7 ? 2 : 1;
@@ -187,24 +193,40 @@ export function retrieve(items, question, budget, { calendarish = false, page = 
   const asked = [...new Set(typed.map(w => typos.get(w) || w))];
   const extra = new Set(expandWords(asked).filter(w => !asked.includes(w)));
   const q = [...asked, ...extra];
+  const gaet = new Set(typos.values());                 // stavekontrollen har gættet: så deler vi ikke ordet op oveni
+  const egne = words(asked.join(' '));                  // indholdsord brugeren selv skrev
+  // Ét langt, specifikt ord er et opslag ("tekstilfolie"), og brødtekst kan højst give 3 point,
+  // så med krav om 6 kunne det aldrig findes. Et kort ord ("dag") er derimod et vagt spørgsmål,
+  // og der skal HUBTECHs eget materiale ikke trænge sig på.
+  const opslag = egne.length === 1 && egne[0].length >= 6;
+  const kraev = (k) => (k === 'app' ? (opslag ? 6 : 9) : (opslag ? 4 : 6));
   const today = iso(new Date()), soon = iso(new Date(Date.now() + 14 * 864e5));
   const scored = items.map(it => {
     const t = words(it.title), b = words(it.text);
-    let s = 0;
+    let s = 0, syn = 0;
     for (const w of q) {
       const wt = extra.has(w) ? 0.5 : 1;   // a synonym counts, but less than the word the user wrote
-      if (t.some(x => hits(x, w))) s += 4 * wt;
-      s += Math.min(3, b.filter(x => hits(x, w)).length) * wt;
+      let p = 0;
+      const tv = Math.max(0, ...t.map(x => hits(x, w, !gaet.has(w))));
+      if (tv) p += 4 * wt * tv;
+      p += Math.min(3, b.reduce((n, x) => n + hits(x, w, !gaet.has(w)), 0)) * wt;
+      if (extra.has(w)) { p = Math.max(0, Math.min(p, 4 - syn)); syn += p; }   // synonymer må tilsammen højst give 4, så en bred tekst med mange beslægtede ord ikke slår den præcise
+      s += p;
     }
     if (calendarish && (it.kind === 'event' && it.date >= today && it.date <= soon)) s += 3;
     if (calendarish && it.kind === 'task' && !it.done && it.due && it.due <= soon) s += 2;
     if (/prompt/i.test(it.title) && q.some(w => w.startsWith('prompt'))) s += 6;
     if (it.pinned) s += 0.5;
-    if (it.kind === 'app' && asked.includes(it.title.toLowerCase())) s += 3;   // the app's own name in the question ("skak") is a clear match
-    if (it.kind === 'term') { const tw = words(it.title.replace(/\(.*?\)/g, '')); if (tw.length && tw.every(w => asked.includes(w))) s += 4; }   // "hvad er infill?" – the word itself is the question
+    // Appens navn eller et af dens håndplukkede søgeord: begge dele er at pege direkte på appen,
+    // så begge giver samme bonus og sænker kravet fra 9 til 6. "faktura" er Kunders eget søgeord,
+    // og kommentaren over app-emnerne siger netop "hvor kan jeg lave en faktura?".
+    const pegerPaaApp = it.kind === 'app' && (asked.includes(it.title.toLowerCase()) || (it.keys || []).some(k => asked.includes(k)));
+    if (pegerPaaApp) s += 3;   // the app's own name in the question ("skak") is a clear match
+    if (it.kind === 'term') { const tw = words(it.title.replace(/\(.*?\)/g, ''));
+      if (tw.length && tw.every(w => asked.some(a => a === w || (w.length >= 5 && a.length >= w.length + 4 && (a.endsWith(w) || a.startsWith(w)))))) s += 4; }   // "hvad er infill?" – og "tonerkassette" finder opslaget Toner   // "hvad er infill?" – the word itself is the question
     if (page && it.href && it.href.length > 7 && (page === it.href || page.startsWith(it.href + '/'))) s += it.kind === 'app' ? (s > 0 ? 3 : 0) : 30;   // only a real match – "#/" or "#/apps" is not "this page"   // "what does this mean?" on a lesson: that lesson first (the app you're in only nudges)
     // HUBTECH's own guides need a clear match (two words), so they don't crowd out the user's own data
-    if (['guide', 'lesson', 'app', 'term', 'command', 'fix', 'case', 'quiz', 'fact', 'help'].includes(it.kind) && s < (it.kind === 'app' ? 9 : 6)) s = 0;   // HUBTECH's own material only when it really fits
+    if (['guide', 'lesson', 'app', 'term', 'command', 'fix', 'case', 'quiz', 'fact', 'help'].includes(it.kind) && s < (pegerPaaApp ? 6 : kraev(it.kind))) s = 0;   // HUBTECH's own material only when it really fits
     return { it, s };
   }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
   const out = []; let used = 0;

@@ -40,4 +40,54 @@ for (const [q, guide] of [['netværksprinter ip', 'Installér en netværksprinte
 // et spørgsmål uden noget at finde skal stadig give ingenting
 assert.equal((retrieve(items, 'blomkål på en sejlbåd', 1500) || []).length, 0);
 
+// ── Sammensatte ord ────────────────────────────────────────────────────────
+// En dansker skriver "netværksprinter", ikke "printer på netværket". Teksten skriver
+// "printer", og et sammensat ord har hovedet til sidst – uden den regel fandt Gnist intet.
+for (const [q, vent] of [['netværksprinter', /Installér en netværksprinter/],
+                         ['hvordan sætter jeg en netværksprinter op', /Installér en netværksprinter/],
+                         ['varmepresse', /varmepresse/i],
+                         ['skæreplotter', /skæreplotter/i],
+                         ['tekstilfolie', /tekstilfolie/i]]) {
+  assert.ok(vent.test(first(q)), `"${q}" fandt ikke ${vent}: ${first(q).slice(0, 100)}`);
+}
+// men forleddet skal være langt nok, ellers bliver "meningen" delt til "ingen"
+assert.ok(!/ingen lyd/i.test(first('hvad er meningen med livet')), first('hvad er meningen med livet').slice(0, 80));
+
+// ── Stavekontrollen må ikke ødelægge spørgeord ─────────────────────────────
+// "hvordan" blev rettet til "hvoraf", som derefter matchede alt med "hvor", "hvorfor" og "hvornår".
+{
+  const { fixTypos } = await import('../web/js/ai/knowledge.js');
+  const rettet = fixTypos(['hvordan', 'hvornår', 'hvem', 'hvad', 'pritner'], items);
+  assert.equal(rettet.get('hvordan'), undefined, 'hvordan må ikke "rettes"');
+  assert.equal(rettet.get('hvornår'), undefined);
+  assert.equal(rettet.get('hvad'), undefined);
+  assert.equal(rettet.get('pritner'), 'printer', 'rigtige stavefejl skal stadig rettes');
+}
+
+// ── Synonymer må ikke slå det præcise svar ─────────────────────────────────
+// En bred tekst, der nævner mange beslægtede ord (co2, diode, gravering …), vandt før
+// over lektionen, der hedder præcis det, der blev spurgt om.
+assert.ok(first('hvordan virker en laser').includes('Sådan virker en laser'),
+  first('hvordan virker en laser').slice(0, 100));
+
+// ── Sammensatte ord finder også opslaget for deres dele ────────────────────
+// I et dansk sammensat ord bestemmer sidste led hvad tingen er, men forleddet
+// peger ofte på opslaget: "tonerkassette" handler om Toner, "printerdriver" om Driver.
+for (const [q, opslag] of [['tonerkassette', 'Toner'], ['printerdriver', 'Driver']]) {
+  assert.ok(first(q).includes(`[IT-ordbog] ${opslag}`), `"${q}" fandt ikke opslaget ${opslag}: ${first(q).slice(0, 100)}`);
+}
+
+// ── Appernes egne søgeord tæller ───────────────────────────────────────────
+// Kommentaren over app-emnerne siger "hvor kan jeg lave en faktura?" – og netop det
+// spørgsmål fandt ingenting, fordi søgeordene blev smeltet ind i brødteksten.
+assert.ok(first('hvordan laver jeg en faktura').includes('Kunder'), first('hvordan laver jeg en faktura').slice(0, 100));
+// men et vagt spørgsmål må stadig ikke trække HUBTECHs materiale ind
+assert.equal((retrieve(items, 'hvad skal jeg nå i dag', 4000) || []).length, 0);
+
+// ── Et ord er nok til et opslag ────────────────────────────────────────────
+// Brødtekst kan højst give 3 point, så med krav om 6 kunne et étords-opslag aldrig findes.
+for (const q of ['printerdriver', 'netværkskabel', 'sublimationspapir']) {
+  assert.ok((retrieve(items, q, 1500) || []).length > 0, `"${q}" gav ingenting`);
+}
+
 console.log('knowledge ok');
