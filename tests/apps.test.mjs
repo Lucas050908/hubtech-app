@@ -154,6 +154,47 @@ console.log('apps ok');
   const sp = N.split(N.parseCidr('192.168.0.0/24'), 3);
   assert.equal(sp.prefix, 26); assert.equal(sp.total, 4); assert.equal(N.intToIp(sp.list[3].network), '192.168.0.192');
   assert.equal(N.prefixFor(50), 26); assert.equal(N.prefixFor(254), 24); assert.equal(N.prefixFor(255), 23);
+  // Efterregnet i hånden. ip() → tal, så talværdierne ikke står i testen som magiske tal.
+  {
+    const ip = N.ipToInt, s = (a, p) => N.subnet(ip(a), p), vis = (x) => N.intToIp(x);
+    const a = s('192.168.1.130', 24);
+    assert.equal(vis(a.network), '192.168.1.0'); assert.equal(vis(a.broadcast), '192.168.1.255');
+    assert.equal(vis(a.first), '192.168.1.1'); assert.equal(vis(a.last), '192.168.1.254');
+    assert.equal(a.hosts, 254); assert.equal(vis(a.mask), '255.255.255.0'); assert.equal(vis(a.wildcard), '0.0.0.255');
+    const b2 = s('10.0.0.200', 26);
+    assert.equal(vis(b2.network), '10.0.0.192'); assert.equal(vis(b2.broadcast), '10.0.0.255'); assert.equal(b2.hosts, 62);
+    const c = s('172.16.5.6', 30);
+    assert.equal(vis(c.network), '172.16.5.4'); assert.equal(c.hosts, 2);
+    assert.equal(vis(c.first) + '-' + vis(c.last), '172.16.5.5-172.16.5.6');
+    const p31 = s('10.1.1.1', 31);                       // RFC 3021: to brugbare, ikke nul
+    assert.equal(p31.hosts, 2); assert.equal(vis(p31.first) + '-' + vis(p31.last), '10.1.1.0-10.1.1.1');
+    const p32 = s('8.8.8.8', 32);
+    assert.equal(p32.hosts, 1); assert.equal(p32.network, p32.broadcast);
+    const p0 = s('1.2.3.4', 0);
+    assert.equal(vis(p0.broadcast), '255.255.255.255'); assert.equal(vis(p0.mask), '0.0.0.0');
+    assert.equal(s('10.255.255.255', 8).hosts, 16777214);
+    for (let p = 0; p <= 32; p++) assert.equal(N.maskToPrefix(N.prefixToMask(p)), p, `maske ↔ prefix ${p}`);
+    assert.equal(N.maskToPrefix(ip('255.255.240.0')), 20);
+    // Private områder og deres grænser – en adresse lige udenfor må ikke kaldes privat
+    const slags = (x) => N.kindOf(ip(x));
+    for (const x of ['10.0.0.1', '10.255.255.254', '172.16.0.1', '172.31.255.254', '192.168.1.1']) assert.ok(slags(x).startsWith('Privat'), x);
+    for (const x of ['172.15.255.254', '172.32.0.1', '192.167.1.1', '192.169.1.1', '100.128.0.1', '8.8.8.8']) assert.ok(slags(x).startsWith('Offentlig'), x);
+    assert.ok(slags('127.0.0.1').startsWith('Loopback'));
+    assert.ok(slags('169.254.1.1').startsWith('Link-local'));
+    assert.ok(slags('100.64.0.1').startsWith('CGNAT') && slags('100.127.255.254').startsWith('CGNAT'));
+    assert.ok(slags('224.0.0.1').startsWith('Multicast') && slags('240.0.0.1').startsWith('Reserveret'));
+    assert.ok(slags('0.0.0.0').startsWith('Ukendt'));
+    assert.deepEqual(['10.0.0.1', '127.0.0.1', '128.0.0.1', '191.255.255.255', '192.0.0.1', '223.255.255.255', '224.0.0.1', '239.255.255.255', '240.0.0.1'].map(x => N.classOf(ip(x))),
+      ['A', 'A', 'B', 'B', 'C', 'C', 'D', 'D', 'E']);
+    // split: Math.ceil(Math.log2(n)) må ikke skride på en potens af to
+    const net = s('192.168.0.0', 16);
+    for (let k = 0; k <= 12; k++) assert.equal(N.split(net, 2 ** k).total, 2 ** k, `split 2^${k}`);
+    assert.equal(N.split(net, 3).prefix, 18);
+    assert.equal(vis(N.split(net, 3).list[3].network), '192.168.192.0');
+    assert.ok(N.split(s('0.0.0.0', 32), 2).error);
+    assert.ok(!N.sameSubnet(ip('192.168.1.5'), ip('192.168.1.200'), 25));   // samme /24, men ikke samme /25
+    assert.equal(N.toBinary(ip('192.168.1.1')), '11000000.10101000.00000001.00000001');
+  }
   assert.ok(N.sameSubnet(N.ipToInt('192.168.1.5'), N.ipToInt('192.168.1.200'), 24)); assert.ok(!N.sameSubnet(N.ipToInt('192.168.1.5'), N.ipToInt('192.168.2.5'), 24));
   assert.equal(N.convert(1, 'GiB', 'MiB'), 1024); assert.equal(N.convert(100, 'Mbit', 'MB'), 12.5);
   assert.equal(N.downloadSecs(1, 'GB', 100), 80); assert.equal(N.fmtDuration(80), '1 min. 20 sek.');
@@ -655,6 +696,22 @@ console.log('apps ok');
   // Del regningen
   let b = B.splitBill(600, 4, 10, 1); assert.equal(b.each, 165); b = B.splitBill(100, 3, 0, 10); assert.equal(b.rounded, 40); assert.ok(Math.abs(b.extra - 20) < 1e-9);
   const su = B.settleUp({ Anna: 300, Bo: 0, Carl: 0 }); assert.equal(su.share, 100); assert.deepEqual(su.out.map(x => [x.from, x.to, x.amount]).sort(), [['Bo', 'Anna', 100], ['Carl', 'Anna', 100]]);
+  // Overførslerne skal bringe alle præcis til nul — også når andelen ikke går op i hele øre.
+  {
+    const kr = (p) => { const r = B.settleUp(p); const net = {}; Object.keys(p).forEach(k => net[k] = 0);
+      r.out.forEach(o => { net[o.from] += o.amount; net[o.to] -= o.amount; });
+      const ore = Object.values(p).map(v => Math.round(v * 100)); const tot = ore.reduce((a, b) => a + b, 0);
+      const n = ore.length, base = Math.floor(tot / n), rest = tot - base * n;
+      Object.keys(p).forEach((k, i) => { const skal = (ore[i] - base - (i < rest ? 1 : 0)) / 100;
+        assert.ok(Math.abs(net[k] + skal) < 1e-9, `${k} går ikke op: ${net[k]} mod ${skal}`); });
+      return r; };
+    kr({ a: 12.68, b: 13.78, c: 796.91, d: 218.61, e: 211.64, f: 69.77 });   // gav før 3 øre for lidt
+    kr({ a: 10, b: 10, c: 10.01 });                                          // 1 øre kan ikke deles med 3
+    kr({ a: 0.01, b: 0, c: 0 });
+    kr({ a: 100, b: 200, c: 300, d: 1 });
+    const s = B.settleUp({ a: 10, b: 10, c: 10.01 });
+    assert.ok(s.out.every(o => Math.abs(o.amount * 100 - Math.round(o.amount * 100)) < 1e-9), 'beløb skal være hele øre');
+  }
   for (const k of Object.keys(B.NAME_PARTS)) assert.ok(B.makeName(k).length > 2);
   assert.deepEqual(B.textCount('Hej med dig. Hvordan går det?'), { words: 6, chars: 29, sentences: 2 }); assert.equal(B.textCount('').words, 0);
   assert.ok(B.BIKE.length >= 12 && B.BIKE.every(q => q[1].length >= 3 && q[2] >= 0 && q[2] < q[1].length && q[3]));
@@ -716,6 +773,24 @@ console.log('apps ok');
   assert.equal(R.nextStart(mon, '2026-02-01'), '2026-03-31');
   assert.ok(R.startsOn({ id: 'e', date: '2026-11-02', repeat: { freq: 'weekday' } }, '2026-11-06')); assert.ok(!R.startsOn({ id: 'e', date: '2026-11-02', repeat: { freq: 'weekday' } }, '2026-11-07'));
   for (const f of ['day', 'weekday', 'week', '2week', 'month', 'year']) assert.equal(R.fromRrule(R.toRrule({ freq: f, until: '2027-01-01' })).freq, f);
+  // Sommertid må ikke flytte eller sluge en gentagelse. Danmark stiller uret 29. marts
+  // og 25. oktober 2026, og begge datoer er selv en gentagelse her.
+  const dates = (ev, a, b) => R.expand([ev], a, b).map(o => o.date);
+  assert.deepEqual(dates({ id: 's1', date: '2026-03-22', repeat: { freq: 'week' } }, '2026-03-22', '2026-04-12'),
+    ['2026-03-22', '2026-03-29', '2026-04-05', '2026-04-12']);
+  assert.deepEqual(dates({ id: 's2', date: '2026-10-18', repeat: { freq: 'week' } }, '2026-10-18', '2026-11-08'),
+    ['2026-10-18', '2026-10-25', '2026-11-01', '2026-11-08']);
+  assert.deepEqual(dates({ id: 's3', date: '2026-03-15', repeat: { freq: '2week' } }, '2026-03-15', '2026-04-26'),
+    ['2026-03-15', '2026-03-29', '2026-04-12', '2026-04-26']);
+  assert.deepEqual(dates({ id: 's4', date: '2026-03-27', repeat: { freq: 'day' } }, '2026-03-27', '2026-03-31'),
+    ['2026-03-27', '2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31']);
+  assert.deepEqual(dates({ id: 's5', date: '2026-10-23', repeat: { freq: 'day' } }, '2026-10-23', '2026-10-27'),
+    ['2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27']);
+  assert.deepEqual(dates({ id: 's6', date: '2026-03-26', repeat: { freq: 'weekday' } }, '2026-03-26', '2026-04-02'),
+    ['2026-03-26', '2026-03-27', '2026-03-30', '2026-03-31', '2026-04-01', '2026-04-02']);
+  // Den 31. springer de korte måneder over (bevidst: den rammer aldrig en forkert dag)
+  assert.deepEqual(dates({ id: 's7', date: '2026-01-31', repeat: { freq: 'month' } }, '2026-01-31', '2026-07-31'),
+    ['2026-01-31', '2026-03-31', '2026-05-31', '2026-07-31']);
   assert.equal(R.fromRrule('FREQ=WEEKLY;UNTIL=20270101T000000Z').until, '2027-01-01');
   console.log('calrecur ok');
 }

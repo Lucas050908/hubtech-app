@@ -17,4 +17,29 @@ assert.equal(toBases(parseBase('18446744073709551615')).hex, 'FFFFFFFFFFFFFFFF')
 assert.equal(transferSeconds(1e9, 100), 80); assert.equal(fmtDuration(80), '1 min 20 s'); assert.equal(fmtDuration(3600 * 26 + 60), '1 d 2 t 1 min'); assert.equal(fmtDuration(0.25), '250 ms');
 const vd = voltageDrop({ length: 25, current: 10, area: 1.5 }); assert.ok(Math.abs(vd.du - 5.833) < 0.01); assert.ok(Math.abs(vd.pct - 2.536) < 0.01);
 assert.equal(batteryHours(2000, 100), 16);
+// Beløb skal altid vises med to decimaler. fmt() satte før kun et maksimum, så
+// en restgæld på 964.061,80 blev skrevet "964.061,8" og 0,00 blev "0".
+{
+  const C = await import('../web/js/features/calc.js');
+  const kr = (n) => `${C.fmt(Math.abs(n) < 0.005 ? 0 : n, 2, 2)} kr.`;
+  assert.equal(kr(5.920810508541763e-10), '0,00 kr.');   // sidste restgæld – ikke "5,920811e-10 kr."
+  assert.equal(kr(0.004), '0,00 kr.');
+  assert.equal(kr(0.005), '0,01 kr.');
+  assert.equal(kr(964061.7979), '964.061,80 kr.');
+  assert.equal(kr(38961.9977), '38.962,00 kr.');
+  assert.equal(kr(4774.1), '4.774,10 kr.');
+  assert.equal(kr(0), '0,00 kr.');
+  assert.equal(kr(1222.21), '1.222,21 kr.');
+  assert.equal(kr(1.005), '1,01 kr.');       // halve væk fra nul, uden binær støj
+  assert.equal(kr(-0.125), '-0,13 kr.');
+  // intet pengebeløb i en afdragsplan må mangle sine decimaler
+  for (const [p, r, y] of [[1000000, 4, 30], [500000, 3.5, 20], [150000, 7, 5]])
+    for (const row of C.loan(p, r, y).rows)
+      for (const [k, v] of Object.entries(row))
+        if (typeof v === 'number' && k !== 'year') assert.match(kr(v), /,\d\d kr\.$/, `${k}: ${v}`);
+  // og standarden er uændret: procenter og omregning må ikke få tvungne nuller
+  assert.equal(C.fmt(12.5, 2), '12,5');
+  assert.equal(C.fmt(5), '5');
+}
+
 console.log('ittools ok');

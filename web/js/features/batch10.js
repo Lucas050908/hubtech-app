@@ -199,12 +199,17 @@ export function splitBill(total, people, tipPct = 0, round = 1) {
 }
 /** who owes whom when people paid different amounts – fewest payments */
 export function settleUp(paid) {
-  const names = Object.keys(paid), total = names.reduce((a, k) => a + paid[k], 0), share = total / (names.length || 1);
-  const bal = names.map(n => ({ n, v: Math.round((paid[n] - share) * 100) / 100 }));
+  // Alt regnes i hele øre. Rundede man hver saldo for sig i kroner, summede de ikke til nul, og
+  // overførslerne kunne mangle et par øre i forhold til det, appen selv skrev at man skulle have.
+  const names = Object.keys(paid), n = names.length || 1;
+  const ore = names.map(k => Math.round((Number(paid[k]) || 0) * 100));
+  const total = ore.reduce((a, b) => a + b, 0);
+  const base = Math.floor(total / n), rest = total - base * n;   // de øre, der ikke går op, til de første
+  const bal = names.map((name, i) => ({ n: name, v: ore[i] - base - (i < rest ? 1 : 0) }));
   const out = [], pos = bal.filter(b => b.v > 0).sort((a, b) => b.v - a.v), neg = bal.filter(b => b.v < 0).sort((a, b) => a.v - b.v);
   let i = 0, j = 0;
-  while (i < pos.length && j < neg.length) { const amt = Math.min(pos[i].v, -neg[j].v); if (amt > 0.004) out.push({ from: neg[j].n, to: pos[i].n, amount: Math.round(amt * 100) / 100 }); pos[i].v -= amt; neg[j].v += amt; if (pos[i].v < 0.005) i++; if (neg[j].v > -0.005) j++; }
-  return { share, out };
+  while (i < pos.length && j < neg.length) { const amt = Math.min(pos[i].v, -neg[j].v); if (amt > 0) out.push({ from: neg[j].n, to: pos[i].n, amount: amt / 100 }); pos[i].v -= amt; neg[j].v += amt; if (!pos[i].v) i++; if (!neg[j].v) j++; }
+  return { share: total / n / 100, out };
 }
 
 // ── Navnemaskine ──

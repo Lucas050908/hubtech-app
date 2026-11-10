@@ -72,10 +72,10 @@ export function evaluate(src, { deg = true } = {}) {
   if (!isFinite(v)) throw new Error('Resultatet er for stort');
   return Math.abs(v) < 1e-12 ? 0 : Number(v.toPrecision(12));
 }
-export function fmt(n, max = 10) {
+export function fmt(n, max = 10, min = 0) {
   if (!isFinite(n)) return '–';
   if (n !== 0 && (Math.abs(n) >= 1e15 || Math.abs(n) < 1e-9)) return n.toExponential(6).replace('.', ',');
-  return n.toLocaleString('da-DK', { maximumFractionDigits: max });
+  return n.toLocaleString('da-DK', { maximumFractionDigits: max, minimumFractionDigits: Math.min(min, max) });
 }
 
 // ── units ──

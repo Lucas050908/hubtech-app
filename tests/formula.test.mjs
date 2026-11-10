@@ -23,6 +23,28 @@ eq('concat', calc(base, '=A2&" "&B2'), 'Æble 5');
 eq('if', calc(base, '=HVIS(B3>5;"dyr";"billig")'), 'dyr');
 eq('div0', calc(base, '=1/0'), { err: '#DIVISION/0!' });
 eq('iferror', calc(base, '=HVIS.FEJL(1/0;"x")'), 'x');
+
+// Afrunding som i Excel: halve runder VÆK FRA NUL, og den binære støj må ikke smitte.
+eq('afrund halv op', calc(base, '=AFRUND(2,5;0)'), 3);
+eq('afrund negativ halv', calc(base, '=AFRUND(-2,5;0)'), -3);   // ikke -2: Excel runder væk fra nul
+eq('afrund -1,5', calc(base, '=AFRUND(-1,5;0)'), -2);
+eq('afrund to decimaler', calc(base, '=AFRUND(2,345;2)'), 2.35);
+eq('afrund negativ to decimaler', calc(base, '=AFRUND(-2,345;2)'), -2.35);
+eq('afrund binær støj', calc(base, '=AFRUND(1,005;2)'), 1.01);  // 1,005 × 100 = 100,49999999999999
+eq('afrund rører ikke 1,0049999', calc(base, '=AFRUND(1,0049999;2)'), 1);
+eq('afrund negative decimaler', calc(base, '=AFRUND(1250;-2)'), 1300);
+eq('afrund nul', calc(base, '=AFRUND(0;2)'), 0);
+eq('rund op negativ', calc(base, '=RUND.OP(-2,001;2)'), -2.01);
+eq('rund op syv øre', calc(base, '=RUND.OP(0,07;2)'), 0.07);    // 0,07 × 100 = 7,000000000000001
+eq('rund op hele tal', calc(base, '=RUND.OP(5;0)'), 5);
+eq('rund ned negativ', calc(base, '=RUND.NED(-2,999;2)'), -2.99);
+eq('rund ned 4,35', calc(base, '=RUND.NED(4,35;2)'), 4.35);     // 4,35 × 100 = 434,99999999999994
+eq('rund ned 29,99', calc(base, '=RUND.NED(29,99;2)'), 29.99);
+// HELTAL runder nedad, også for negative. Punktum her, fordi et enkelt komma i et kald uden
+// semikolon er argumentskilletegn: HELTAL(-2,5) betyder HELTAL(-2; 5) og giver -2.
+eq('heltal negativ', calc(base, '=HELTAL(-2.5)'), -3);
+eq('heltal positiv', calc(base, '=HELTAL(2.9)'), 2);
+eq('komma uden semikolon skiller argumenter', calc(base, '=HELTAL(-2,5)'), -2);
 eq('cycle', evaluateSheet({ A1: { v: '=B1' }, B1: { v: '=A1' } }).get('A1'), { err: '#CYKLUS!' });
 eq('unknown fn', calc(base, '=FINDESIKKE(1)'), { err: '#NAVN?' });
 // lookup

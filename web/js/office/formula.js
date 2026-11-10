@@ -217,6 +217,14 @@ function textFormat(v, f) {
   return pct ? `${s} %` : s;
 }
 
+// Excel runder på decimaltallet, ikke på den binære støj: 4,35 gange 100 er 434,99999999999994 i
+// flydende tal, så et rent Math.floor ville sige 4,34 og RUND.OP(0,07;2) ville sige 0,08.
+// toPrecision(15) skærer støjen væk, og regnestykket på |x| gør, at halve runder væk fra nul som i Excel.
+const rounder = (step) => ([x, d]) => {
+  const k = Math.pow(10, toNum(d ?? 0)), v = toNum(x);
+  return Math.sign(v) * step(Number((Math.abs(v) * k).toPrecision(15))) / k;
+};
+
 const FN = {
   SUM: (a) => nums(a).reduce((x, y) => x + y, 0),
   AVERAGE: (a) => { const n = nums(a); if (!n.length) throw ERR('#DIVISION/0!'); return n.reduce((x, y) => x + y, 0) / n.length; },
@@ -227,9 +235,9 @@ const FN = {
   COUNTBLANK: (a) => flat(a).filter(v => v === '' || v == null).length,
   PRODUCT: (a) => nums(a).reduce((x, y) => x * y, 1),
   MEDIAN: (a) => { const n = nums(a).sort((x, y) => x - y); if (!n.length) throw ERR('#TAL!'); const m = n.length >> 1; return n.length % 2 ? n[m] : (n[m - 1] + n[m]) / 2; },
-  ROUND: ([x, d]) => { const k = Math.pow(10, toNum(d ?? 0)); return Math.round(toNum(x) * k) / k; },
-  ROUNDUP: ([x, d]) => { const k = Math.pow(10, toNum(d ?? 0)); const v = toNum(x); return Math.sign(v) * Math.ceil(Math.abs(v) * k) / k; },
-  ROUNDDOWN: ([x, d]) => { const k = Math.pow(10, toNum(d ?? 0)); const v = toNum(x); return Math.sign(v) * Math.floor(Math.abs(v) * k) / k; },
+  ROUND: rounder(Math.round),
+  ROUNDUP: rounder(Math.ceil),
+  ROUNDDOWN: rounder(Math.floor),
   INT: ([x]) => Math.floor(toNum(x)),
   ABS: ([x]) => Math.abs(toNum(x)),
   SQRT: ([x]) => { const v = toNum(x); if (v < 0) throw ERR('#TAL!'); return Math.sqrt(v); },

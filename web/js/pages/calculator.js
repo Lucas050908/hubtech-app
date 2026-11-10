@@ -11,7 +11,11 @@ const KEYS = [
   ['C', '(', ')', '÷'], ['7', '8', '9', '×'], ['4', '5', '6', '−'], ['1', '2', '3', '+'], ['0', ',', '⌫', '='],
 ];
 const SCI = ['√', '^', '!', '%', 'π', 'sin', 'cos', 'tan', 'log', 'ln'];
-const kr = (n) => `${C.fmt(Math.round(n * 100) / 100, 2)} kr.`;
+// Beløb har altid to decimaler. Intl runder selv halve væk fra nul og regner på
+// decimaltallet, så 1,005 bliver 1,01 – det klarer Math.round(n * 100) / 100 ikke.
+// Et beløb, der afrundet er nul, snappes til 0, så sidste restgæld i en afdragsplan
+// (5,92e-10 kr.) ikke havner i fmt's eksponentialnotation.
+const kr = (n) => `${C.fmt(Math.abs(n) < 0.005 ? 0 : n, 2, 2)} kr.`;
 
 export default {
   title: 'Regnemaskine',

@@ -17,7 +17,9 @@ export function matchesCustomer(name, text) {
 export const hoursOf = (e) => Math.max(0, ((e.end || 0) - (e.start || 0)) / 3600e3);
 /** Billing is rounded up to the nearest quarter of an hour (0.25). */
 export const quarter = (h) => Math.max(0, Math.ceil(h * 4 - 1e-9) / 4) + 0;
-export const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+/** To decimaler. Halve runder væk fra nul, og toPrecision skærer den binære støj væk:
+ *  754,9 i moms er 188,725, og uden det blev det 188,72 i stedet for 188,73. */
+export const round2 = (n) => { const v = Number(n) || 0; return Math.sign(v) * Math.round(Number((Math.abs(v) * 100).toPrecision(15))) / 100; };
 
 export function lineTotal(l) { return round2((Number(l.qty) || 0) * (Number(l.price) || 0)); }
 export function totals(lines = [], vatPct = 25) {

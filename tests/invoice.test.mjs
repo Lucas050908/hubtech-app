@@ -1,6 +1,6 @@
 // node tests/invoice.test.mjs – Kunder & fakturaer
 import assert from 'node:assert/strict';
-import { matchesCustomer, quarter, totals, linesFromEntries, invoiceState, addDays, daDate, invoiceNo, hoursOf } from '../web/js/features/invoice.js';
+import { matchesCustomer, quarter, totals, round2, linesFromEntries, invoiceState, addDays, daDate, invoiceNo, hoursOf } from '../web/js/features/invoice.js';
 assert.ok(matchesCustomer('Jensen A/S', 'jensen a/s'));
 assert.ok(matchesCustomer('Jensen A/S', 'Service hos Jensen A/S i Vejle'));
 assert.ok(!matchesCustomer('Holm', 'Holmegaard'));                 // whole words only
@@ -11,6 +11,21 @@ assert.ok(!matchesCustomer('', 'x'));
 assert.equal(quarter(1.01), 1.25); assert.equal(quarter(1), 1); assert.equal(quarter(0.1), 0.25); assert.equal(quarter(0), 0);
 assert.deepEqual(totals([{ qty: 1.5, price: 450 }, { qty: 2, price: 39.95 }], 25), { net: 754.9, vat: 188.73, gross: 943.63 });
 assert.deepEqual(totals([], 25), { net: 0, vat: 0, gross: 0 });
+
+// Momsen må ikke blive en øre for lille af binær støj. Efterregnet i hånden:
+// 0,58 × 25 % = 0,145 → 0,15.  2,30 × 25 % = 0,575 → 0,58.  4,02 × 25 % = 1,005 → 1,01.
+assert.deepEqual(totals([{ qty: 1, price: 0.58 }], 25), { net: 0.58, vat: 0.15, gross: 0.73 });
+assert.deepEqual(totals([{ qty: 1, price: 2.30 }], 25), { net: 2.3, vat: 0.58, gross: 2.88 });
+assert.deepEqual(totals([{ qty: 1, price: 4.02 }], 25), { net: 4.02, vat: 1.01, gross: 5.03 });
+assert.equal(round2(1.005), 1.01);
+assert.equal(round2(-1.005), -1.01);
+assert.equal(round2(-0.125), -0.13);   // halve runder væk fra nul, også på en kreditnota
+assert.equal(round2(10.455), 10.46);
+// og nettet + momsen skal altid give bruttoen
+for (let c = 1; c <= 3000; c++) {
+  const r = totals([{ qty: 1, price: c / 100 }], 25);
+  assert.equal(round2(r.net + r.vat), r.gross);
+}
 const t0 = new Date(2026, 9, 20, 9, 0).getTime();
 const ls = linesFromEntries([{ id: 'b', start: t0 + 86400e3, end: t0 + 86400e3 + 50 * 60e3, desc: 'Printer' }, { id: 'a', start: t0, end: t0 + 3600e3, desc: '' }], 450);
 assert.equal(ls[0].src.id, 'a'); assert.equal(ls[0].qty, 1); assert.equal(ls[0].text, '20-10-2026 · Arbejde'); assert.equal(ls[1].qty, 1); assert.equal(ls[1].price, 450);
