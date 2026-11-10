@@ -19,7 +19,7 @@ const STEPS = [
   { id: 'widgets', target: 'widgets', title: 'Streak og hvem der er online', text: 'Flammen tæller dine dage i træk – hold den i live! Ved siden af kan du se, hvem der er her lige nu.' },
   { id: 'customize', target: 'customize', title: 'Gør den til din egen', text: 'Under Tilpas vælger du widgets, hvad de viser, kortene på Hjem og dine fastgjorte apps.' },
   { id: 'search', target: 'search', title: 'Find alt med Ctrl+K', text: 'Apps, guides, kursuslektioner og projekter – skriv bare, hvad du leder efter.' },
-  { id: 'gnist', target: 'gnist', mood: 'wave', title: 'Og her bor jeg!', text: 'Klik på mig eller tryk Ctrl+J. Jeg kender alle guides og kurser, kan planlægge din dag og hjælpe med at fejlfinde – og jeg kører på din egen enhed.' },
+  { id: 'gnist', target: 'gnist', mood: 'wave', title: 'Og her bor jeg!', text: 'Klik på mig eller tryk Ctrl+J. Jeg kender alle guides og kurser, kan planlægge din dag og hjælpe med at fejlfinde – og som standard kører jeg på din egen enhed.' },
   { id: 'profile', target: 'profile', title: 'Din profil', text: 'Profil, sikkerhed, tema og notifikationer. Herfra kan du også tage rundturen med mig igen.' },
 ];
 

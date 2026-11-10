@@ -28,7 +28,8 @@ export function libraryItems() {
       import('../data/commands.js'), import('../data/code-courses.js'), import('../data/course-servicetekniker.js')]);
     const { courses } = await C.loadAllCourses();
     const items = [];
-    for (const g of GUIDES) items.push({ kind: 'guide', title: g.title, text: strip([g.summary, ...(g.sections || []).map(s => [s.h, s.p, ...(s.list || s.ul || [])].filter(Boolean).join(': '))].join(' ')).slice(0, 3000), href: `#/learn/guide/${g.id}` });
+    for (const g of GUIDES) items.push({ kind: 'guide', title: g.title, text: strip([g.summary, ...(g.sections || []).map(s => [s.h, s.p, ...(s.list || s.ul || []),
+      ...(s.steps || []).map(x => `${x.t}: ${x.d}`), ...(s.table || []).flat(), s.callout?.text, s.code].filter(Boolean).join(': '))].join(' ')).slice(0, 3000), href: `#/learn/guide/${g.id}` });
     for (const c of [C.START_COURSE, ...courses]) {
       (c.days || []).forEach((d, i) => items.push({ kind: 'lesson', title: `${c.short || c.title}: ${d.t}`, text: strip([d.g, C.pointsText(d.l), (d.q || []).map(q => q.join(' ')).join(' ')].join(' ')).slice(0, 2500), href: `#/learn/course/${c.id}/day/${i + 1}` }));
     }
@@ -200,6 +201,7 @@ export function retrieve(items, question, budget, { calendarish = false, page = 
     if (/prompt/i.test(it.title) && q.some(w => w.startsWith('prompt'))) s += 6;
     if (it.pinned) s += 0.5;
     if (it.kind === 'app' && asked.includes(it.title.toLowerCase())) s += 3;   // the app's own name in the question ("skak") is a clear match
+    if (it.kind === 'term') { const tw = words(it.title.replace(/\(.*?\)/g, '')); if (tw.length && tw.every(w => asked.includes(w))) s += 4; }   // "hvad er infill?" – the word itself is the question
     if (page && it.href && it.href.length > 7 && (page === it.href || page.startsWith(it.href + '/'))) s += it.kind === 'app' ? (s > 0 ? 3 : 0) : 30;   // only a real match – "#/" or "#/apps" is not "this page"   // "what does this mean?" on a lesson: that lesson first (the app you're in only nudges)
     // HUBTECH's own guides need a clear match (two words), so they don't crowd out the user's own data
     if (['guide', 'lesson', 'app', 'term', 'command', 'fix', 'case', 'quiz', 'fact', 'help'].includes(it.kind) && s < (it.kind === 'app' ? 9 : 6)) s = 0;   // HUBTECH's own material only when it really fits

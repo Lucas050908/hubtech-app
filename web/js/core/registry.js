@@ -41,7 +41,7 @@ export const APPS = [
   },
   {
     id: 'gnist', name: 'Gnist', tagline: 'HUBTECHs AI – på fuld skærm.',
-    description: 'Gnist er HUBTECHs maskot og AI-assistent. Hun kender alle guides og kurser, kan læse dine noter, opgaver og aftaler, planlægge din dag og hjælpe med at fejlfinde – og hun kører på din egen enhed, så intet forlader computeren.',
+    description: 'Gnist er HUBTECHs maskot og AI-assistent. Hun kender alle guides og kurser, kan læse dine noter, opgaver og aftaler, planlægge din dag og hjælpe med at fejlfinde – og som standard kører hun på din egen enhed, så intet forlader computeren – medmindre I selv vælger en AI i skyen.',
     icon: 'spark', hue: '#f97316', route: '#/apps/gnist', category: 'workspace', status: 'available',
     art: { season: 'summer', time: 'dusk', focusX: 0.5, tint: '#f97316' }, page: () => import('../pages/gnist.js'),
     keywords: ['ai', 'assistent', 'chat', 'gnist', 'hjælp', 'spørg', 'chatbot', 'sprogmodel', 'llm', 'qwen'],
