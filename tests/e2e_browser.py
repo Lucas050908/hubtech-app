@@ -2294,7 +2294,10 @@ async def main():
         overflow = {}
         mcust = (await api(mp, "GET", "/api/state/customers"))["data"]["state"]
         extra = [f"/apps/customers/c/{mcust['customers'][0]['id']}", f"/apps/customers/invoice/{mcust['invoices'][0]['id']}"] if mcust and mcust.get("invoices") else []
-        for pth in extra + ["/", "/apps", "/apps/tasks", "/apps/notes", "/apps/hubtech", f"/apps/hubtech/sheet/{msheet}", "/settings/about", "/apps/calendar", "/apps/inventory", "/apps/timesheet", "/apps/snippets", "/learn/codeschool", "/learn/codeschool/python/py4", "/learn/codeschool/play", "/learn/flashcards", "/learn/toolkit", "/apps/customers", "/share?text=hej"]:
+        # Listen skal dække de indholdstunge sider, ikke kun de åbenlyse: IT-ordbogen stod ikke her,
+        # og dens lange emne-chip gjorde siden bredere end telefonen, så browseren zoomede alt ud.
+        for pth in extra + ["/", "/apps", "/apps/tasks", "/apps/notes", "/apps/hubtech", f"/apps/hubtech/sheet/{msheet}", "/settings/about", "/apps/calendar", "/apps/inventory", "/apps/timesheet", "/apps/snippets", "/learn/codeschool", "/learn/codeschool/python/py4", "/learn/codeschool/play", "/learn/flashcards", "/learn/toolkit", "/apps/customers", "/share?text=hej",
+                           "/apps/glossary", "/apps/quiz", "/apps/wiki", "/apps/economy", "/apps/notebook", "/apps/printerdoctor", "/apps/commands", "/apps/checklists", "/apps/labs", "/apps/polls", "/apps/forms", "/apps/studio", "/apps/electro", "/projects", "/dashboard", "/learn", "/settings/apps", "/settings/world"]:
             await mp.goto(BASE + "/#" + pth)
             await mp.wait_for_timeout(900)
             # sideways scrolling – or the phone browser zooming out because something is wider than the screen
