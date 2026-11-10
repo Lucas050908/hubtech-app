@@ -37,7 +37,7 @@ function staticItems() {
     items.push({ group: isLearnApp(a) ? 'Læring' : 'Apps', title: a.name, sub: acc.ok ? a.tagline : acc.reason, icon: a.icon, hue: a.hue, href: a.route, keywords: (a.keywords || []).join(' '), base: 5, disabled: !acc.ok });
   }
   [['Hjem', '#/', 'home'], ['Dashboard', '#/dashboard', 'dashboard'], ['Apps', '#/apps', 'apps'], ['Projekter', '#/projects', 'folder'], ['Guides & Læring', '#/learn', 'book'],
-    ['Profil', '#/settings/profile', 'user'], ['Sikkerhed & adgangskode', '#/settings/security', 'lock'], ['Verden & årstider', '#/settings/world', 'mountain'], ['Integrationer', '#/settings/integrations', 'plug']]
+    ['Profil', '#/settings/profile', 'user'], ['Sikkerhed & adgangskode', '#/settings/security', 'lock'], ['Udseende', '#/settings/world', 'sun'], ['Integrationer', '#/settings/integrations', 'plug']]
     .forEach(([t, href, ic]) => items.push({ group: 'Gå til', title: t, icon: ic, href, base: 4 }));
   for (const g of GUIDES) items.push({ group: 'Guides', title: g.title, sub: g.summary, icon: g.icon, href: `#/learn/guide/${g.id}`, keywords: g.category, base: 2 });
   COURSE.days.forEach((d, i) => items.push({ group: 'Kursus', title: `Dag ${i + 1}: ${d.t}`, sub: d.g, icon: 'graduation', hue: 'var(--hue-course)', href: `#/learn/course/${COURSE.id}/day/${i + 1}`, keywords: d.l.join(' ') + ' ' + d.d.join(' '), base: 1 }));

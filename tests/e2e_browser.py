@@ -776,6 +776,15 @@ async def main():
         check("notesbog: søgning finder siden", "Netværk i nyt lokale" in await page.inner_text(".nb-list"))
         await page.fill(".nb-search-in", ""); await page.click(".nb-todos-btn"); await page.wait_for_selector(".nb-todo-all li")
         check("notesbog: alle åbne punkter samlet", "Bestil access point" in await page.inner_text(".nb-todo-all"))
+        await page.goto(BASE + "/#/apps/notebook"); await page.wait_for_selector("button[aria-label='Mere om siden']", timeout=20000)
+        await page.click("button[aria-label='Mere om siden']"); await page.wait_for_selector(".nb-menu")
+        async with page.expect_download() as nbdl:
+            await page.click(".nb-menu button:has-text('Hent som .md')")
+        nbd = await nbdl.value
+        md = open(await nbd.path(), encoding="utf-8").read()
+        check("notesbog: siden hentes som markdown med tekst og tjekliste",
+              "Netværk i nyt lokale" in md and "Switch i skabet ved døren" in md and "Bestil access point" in md
+              and nbd.suggested_filename.endswith(".md"), (nbd.suggested_filename, md[:200]))
         await page.goto(BASE + "/#/learn/codepad"); await page.wait_for_selector(".kx-cm .cm-editor", timeout=20000)
         # the editor fills the screen: the files fold away, Gnist only when you want her
         h0 = await page.evaluate("document.querySelector('.kx-cm').getBoundingClientRect().height")
@@ -1262,6 +1271,27 @@ async def main():
         check("økonomi: hver del er en fane i Økonomi", await page.locator(".part-tabs .learn-tab").count() == 7 and "Økonomi" in await page.inner_text(".tb-crumb"))
         await page.click(".part-tabs .learn-tab:has-text('Overblik')"); await page.wait_for_selector(".eco-card")
         check("økonomi: overblikket viser alle seks dele", await page.locator(".eco-card").count() == 6)
+        # ── regner Økonomi rigtigt? Facit regnet i hånden: annuitetsformlen og renters rente ──
+        await page.goto(BASE + "/#/apps/savings"); await page.wait_for_selector(".os-big")
+        sf = page.locator(".os-wrap input")
+        for i, v in enumerate(["0", "1000", "5", "10"]):
+            await sf.nth(i).fill(v)
+        await page.wait_for_timeout(500)
+        os_txt = await page.inner_text(".os-big")
+        check("opsparing: 1.000 kr. om måneden i 10 år til 5 % giver 155.282 kr.",
+              "155.282 kr." in os_txt and "120.000 kr." in os_txt and "35.282 kr." in os_txt, os_txt)
+        await page.goto(BASE + "/#/apps/calculator"); await page.wait_for_timeout(600)
+        await page.click("button:has-text('Lån')"); await page.wait_for_selector(".calc-form input")
+        lf = page.locator(".calc-form input")
+        for i, v in enumerate(["1000000", "4", "30"]):
+            await lf.nth(i).fill(v)
+        await page.wait_for_timeout(500)
+        loan_txt = await page.inner_text(".calc-out")
+        loan_rows = await page.locator(".nc-table tbody tr").all_inner_texts()
+        check("lommeregner: 1 mio. kr. over 30 år til 4 % giver 4.774,15 kr. om måneden",
+              "4.774,15 kr." in loan_txt and "1.718.695,06 kr." in loan_txt, loan_txt)
+        check("lommeregner: afdragsplanen har et år pr. række og ender med 0 i restgæld",
+              len(loan_rows) == 30 and loan_rows[-1].split("\t")[-1].strip() in ("0 kr.", "0,00 kr."), loan_rows[-1] if loan_rows else loan_rows)
         await page.goto(BASE + "/#/apps"); await page.wait_for_selector(".ab-page .ab-row")
         await page.fill(".ab-page .ab-search", "kalaha"); await page.wait_for_selector(".ab-page .ab-row.is-first")
         check("apps: søgning finder en enkelt app", "Kalaha" in await page.inner_text(".ab-page .ab-body") and await page.locator(".ab-page .ab-group").count() == 0)
