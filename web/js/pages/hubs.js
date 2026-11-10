@@ -38,10 +38,10 @@ export default {
       draw();
     }
     function linksBox() {
-      if (!info.links.length) return h('div', { class: 'hl-empty' }, h('span', { class: 'hl-big' }, '📡'), h('b', null, info.auto ? 'Leder efter andre HUBTECH’er …' : 'Ingen forbundne HUBTECH’er endnu'),
+      if (!info.links.length) return h('div', { class: 'hl-empty' }, h('span', { class: 'hl-big' }, icon('wifi')), h('b', null, info.auto ? 'Leder efter andre HUBTECH’er …' : 'Ingen forbundne HUBTECH’er endnu'),
         h('span', { class: 'faint' }, info.auto ? 'HUBTECH’er på samme wifi eller samme Tailscale dukker op her af sig selv. Og så snart I er forbundet med én, kommer alle dens forbindelser med.' : 'Automatisk forbindelse er slået fra.'));
       return h('div', { class: 'hl-list' }, info.links.map(l => h('div', { class: ['hl-card', !l.allowLogin && 'is-off'] },
-        h('div', { class: 'hl-card-h' }, h('span', { class: 'hl-logo' }, '🏠'), h('div', null, h('b', null, l.name), h('span', { class: 'faint' }, hostOf(l.url))), (() => { const dot = h('span', { class: 'hl-dot', title: 'Tjekker …' }); api.get(`/api/hublink/links/${l.id}/ping`).then(r => { dot.classList.add(r.online ? 'on' : 'off'); dot.title = r.online ? 'Online' : 'Kan ikke nås lige nu'; dot.textContent = r.online ? 'Online' : 'Ikke tændt'; }).catch(() => {}); return dot; })()),
+        h('div', { class: 'hl-card-h' }, h('span', { class: 'hl-logo' }, icon('hubtech')), h('div', null, h('b', null, l.name), h('span', { class: 'faint' }, hostOf(l.url))), (() => { const dot = h('span', { class: 'hl-dot', title: 'Tjekker …' }); api.get(`/api/hublink/links/${l.id}/ping`).then(r => { dot.classList.add(r.online ? 'on' : 'off'); dot.title = r.online ? 'Online' : 'Kan ikke nås lige nu'; dot.textContent = r.online ? 'Online' : 'Ikke tændt'; }).catch(() => {}); return dot; })()),
         viaText(l.via) ? h('div', { class: 'hl-via' }, viaText(l.via)) : null,
         info.owner ? h('div', { class: 'faint hl-meta' }, `Brugt ${ago(l.lastUsed)}${l.visitors ? ` · ${l.visitors} ${l.visitors === 1 ? 'gæst' : 'gæster'} herfra har besøgt dig` : ''}`) : null,
         h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', alignItems: 'center' } },
@@ -85,7 +85,7 @@ export default {
             try { const r = await api.post('/api/hublink/join', { code: ta.value, url: myUrl.value.trim() || (info.urls || [])[0]?.url }); toast(`Forbundet med ${r.link.name}! 🎉`, { type: 'ok', text: 'I kan nu besøge hinanden.' }); load(); }
             catch (e) { h(clear(out), null, h('div', { class: 'callout bad' }, icon('alert'), h('div', null, e.message))); }
           }));
-          h(clear(out), null, h('div', { class: 'hl-peek' }, h('span', { class: 'hl-logo' }, '🏠'), h('div', null, h('b', null, p.name), h('span', { class: 'faint' }, hostOf(p.url)), p.known ? h('span', { class: 'chip' }, 'Allerede forbundet – forbinder igen') : null), go));
+          h(clear(out), null, h('div', { class: 'hl-peek' }, h('span', { class: 'hl-logo' }, icon('hubtech')), h('div', null, h('b', null, p.name), h('span', { class: 'faint' }, hostOf(p.url)), p.known ? h('span', { class: 'chip' }, 'Allerede forbundet – forbinder igen') : null), go));
         } catch (e) { h(clear(out), null, h('div', { class: 'callout bad' }, icon('alert'), h('div', null, e.message))); }
       }));
       ta.addEventListener('paste', () => setTimeout(() => btn.click(), 50));
@@ -173,7 +173,7 @@ export default {
 
 /** #/hub/<ticket> – arriving from a connected HUBTECH */
 export async function renderArrive(ticket) {
-  const box = h('div', { class: 'auth-wrap page' }, h('div', { class: 'auth-card glass glass-strong hl-arrive' }, h('span', { class: 'hl-big' }, '🔗'), h('h1', { class: 'auth-title' }, 'Et øjeblik …'), h('p', { class: 'muted' }, 'Du logges ind med din konto fra din egen HUBTECH.')));
+  const box = h('div', { class: 'auth-wrap page' }, h('div', { class: 'auth-card glass glass-strong hl-arrive' }, h('span', { class: 'hl-big' }, icon('link')), h('h1', { class: 'auth-title' }, 'Et øjeblik …'), h('p', { class: 'muted' }, 'Du logges ind med din konto fra din egen HUBTECH.')));
   try {
     const r = await api.post('/api/hublink/sso', { ticket });
     const { onAuthenticated } = await import('../features/auth.js');
@@ -181,7 +181,7 @@ export async function renderArrive(ticket) {
     history.replaceState(null, '', r.next ? `#/login?next=${encodeURIComponent(r.next)}` : '#/');
     await onAuthenticated(r.user);
   } catch (e) {
-    h(clear(box.firstChild), null, h('span', { class: 'hl-big' }, '😕'), h('h1', { class: 'auth-title' }, 'Det virkede ikke'), h('p', { class: 'muted' }, e.message),
+    h(clear(box.firstChild), null, h('span', { class: 'hl-big' }, icon('alert')), h('h1', { class: 'auth-title' }, 'Det virkede ikke'), h('p', { class: 'muted' }, e.message),
       h('a', { class: 'btn btn-primary btn-block', href: '#/login' }, 'Til login'));
   }
   return box;
@@ -190,7 +190,7 @@ export async function renderArrive(ticket) {
 /** #/hub-go/<id> – the login page of a connected HUBTECH sent you home to get a ticket */
 export async function renderGo(rid) {
   if (!store.get('user')) { navigate(`/login?next=${encodeURIComponent(location.hash.slice(1))}`, { replace: true }); return h('div'); }
-  const box = h('div', { class: 'auth-wrap page' }, h('div', { class: 'auth-card glass glass-strong hl-arrive' }, h('span', { class: 'hl-big' }, '🔗'), h('h1', { class: 'auth-title' }, 'Du sendes videre …')));
+  const box = h('div', { class: 'auth-wrap page' }, h('div', { class: 'auth-card glass glass-strong hl-arrive' }, h('span', { class: 'hl-big' }, icon('link')), h('h1', { class: 'auth-title' }, 'Du sendes videre …')));
   visit(null, { remoteId: rid, next: new URLSearchParams(location.hash.split('?')[1] || '').get('next') || undefined });
   return box;
 }

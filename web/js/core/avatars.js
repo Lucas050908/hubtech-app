@@ -125,6 +125,9 @@ const EXTRA = {
 Object.assign(BG, EXTRA_BG);
 Object.assign(FIG, EXTRA);
 
+/** Alle figurer, der kan tegnes. Gnist har sit eget mærke og tegnes af den, der viser den. */
+export const BOT_AVATARS = ['gnist', ...Object.keys(FIG)];
+
 /** Figurerne man kan vælge som sin egen avatar. Gemmes som "a:<id>". */
 export const PICKABLE = ['lise', 'grete', 'ulv', 'bjorn', 'pind', 'nora', 'mini', 'viktor', 'tanja',
   'sofie', 'astrid', 'freja', 'emil', 'karl', 'holger', 'storm', 'raket', 'vaerktoj', 'trae', 'boelge', 'bo'];

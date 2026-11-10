@@ -14,12 +14,13 @@ import { codeEditor } from '../features/codeeditor.js';
 import { saveBlob } from '../core/files.js';
 import { setAiContext } from '../ai/context.js';
 import { getStudio } from '../features/appsettings.js';
-import { TEMPLATES } from '../data/studio-templates.js';
+import { TEMPLATES, APP_ICONS, appIconName } from '../data/studio-templates.js';
 
 const BASE = '#/apps/studio';
 const FILE_RE = /^[A-Za-z0-9_-]{1,40}\.(html|css|js|json|md|txt|svg)$/;
 const LANG = { html: 'html', svg: 'html', css: 'css', js: 'javascript', json: 'javascript', md: 'text', txt: 'text' };
-const ICONS = ['🧩', '✅', '🧮', '🎯', '⏱️', '🎮', '📊', '🎨', '🎵', '📝', '🌦️', '🔧', '💡', '🚀', '📚', '🛒'];
+/** Appens ikon som element. */
+const appIcon = (v) => icon(appIconName(v));
 let cleanup = [];
 
 const ago = (sec) => { const d = Date.now() / 1000 - sec; return d < 60 ? 'lige nu' : d < 3600 ? `${Math.floor(d / 60)} min. siden` : d < 86400 ? `${Math.floor(d / 3600)} t. siden` : new Date(sec * 1000).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }); };
@@ -86,7 +87,7 @@ async function overview(app) {
       actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Luk')] });
   };
   const card = (a) => h('article', { class: 'st-card glass' },
-    h('a', { class: 'st-card-main', href: `${BASE}/run/${a.id}`, 'aria-label': `Kør ${a.name}` }, h('span', { class: 'st-icon' }, a.icon || '🧩'),
+    h('a', { class: 'st-card-main', href: `${BASE}/run/${a.id}`, 'aria-label': `Kør ${a.name}` }, h('span', { class: 'st-icon' }, appIcon(a.icon)),
       h('span', { class: 'st-card-t' }, h('b', null, a.name), h('span', { class: 'faint' }, a.mine ? `${a.published ? 'Delt · ' : ''}ændret ${ago(a.updatedAt)}` : `af ${a.owner?.name || '?'} · ${a.runs} kørsler`))),
     a.description ? h('p', { class: 'st-desc faint' }, a.description) : null,
     h('div', { class: 'st-card-b' },
@@ -116,8 +117,8 @@ function newApp() {
   const tpls = h('div', { class: 'st-tpls', role: 'radiogroup', 'aria-label': 'Skabelon' });
   const icons = h('div', { class: 'cm-iconpick', role: 'group', 'aria-label': 'Ikon' });
   const draw = () => {
-    h(clear(tpls), null, TEMPLATES.map(t => h('button', { type: 'button', role: 'radio', class: 'st-tpl', 'aria-checked': String(t === tpl), onclick: () => { tpl = t; ic = t.icon; draw(); } }, h('span', { class: 'st-tpl-ic' }, t.icon), h('b', null, t.name), h('span', { class: 'faint' }, t.description))));
-    h(clear(icons), null, ICONS.map(x => h('button', { type: 'button', class: 'cm-iconbtn', 'aria-pressed': String(x === ic), onclick: () => { ic = x; draw(); } }, x)));
+    h(clear(tpls), null, TEMPLATES.map(t => h('button', { type: 'button', role: 'radio', class: 'st-tpl', 'aria-checked': String(t === tpl), onclick: () => { tpl = t; ic = t.icon; draw(); } }, h('span', { class: 'st-tpl-ic' }, appIcon(t.icon)), h('b', null, t.name), h('span', { class: 'faint' }, t.description))));
+    h(clear(icons), null, APP_ICONS.map(x => h('button', { type: 'button', class: 'cm-iconbtn', 'aria-pressed': String(x === appIconName(ic)), 'aria-label': `Ikon ${x}`, onclick: () => { ic = `i:${x}`; draw(); } }, icon(x))));
   };
   draw();
   const err = h('div', { class: 'field-error' });
@@ -149,7 +150,7 @@ async function runner(app, id) {
   return h('div', { class: 'page st-run-page', style: { '--app': app.hue } },
     h('header', { class: 'st-run-h glass' },
       h('a', { class: 'icon-btn', href: BASE, 'aria-label': 'Tilbage til App-værkstedet' }, icon('chevronLeft')),
-      h('span', { class: 'st-icon' }, a.icon), h('div', { class: 'st-run-t' }, h('h1', null, a.name), h('p', { class: 'faint' }, a.mine ? 'Din app' : `af ${a.owner?.name || '?'}`)),
+      h('span', { class: 'st-icon' }, appIcon(a.icon)), h('div', { class: 'st-run-t' }, h('h1', null, a.name), h('p', { class: 'faint' }, a.mine ? 'Din app' : `af ${a.owner?.name || '?'}`)),
       h('button', { class: 'icon-btn', 'aria-label': 'Genstart appen', title: 'Genstart', onclick: () => { frame.src = `/api/studio/run/${id}?t=${Date.now()}`; } }, icon('refresh')),
       a.mine ? h('a', { class: 'btn btn-sm', href: `${BASE}/edit/${id}` }, icon('edit'), 'Redigér')
         : h('button', { class: 'btn btn-sm', onclick: async () => { const r = await api.post(`/api/studio/apps/${id}/remix`); navigate(`/apps/studio/edit/${r.app.id}`); } }, icon('copy'), 'Lav en kopi')),
@@ -165,7 +166,8 @@ async function editor(app, id) {
   const logs = [];
   const status = h('span', { class: 'st-status faint', role: 'status' }, 'Gemt');
   const nameIn = h('input', { class: 'st-name', value: a.name, maxlength: 60, 'aria-label': 'Appens navn' });
-  const iconBtn = h('button', { class: 'st-icon st-icon-btn', 'aria-label': 'Skift ikon', title: 'Skift ikon' }, a.icon);
+  let pickedIcon = appIconName(a.icon);
+  const iconBtn = h('button', { class: 'st-icon st-icon-btn', 'aria-label': 'Skift ikon', title: 'Skift ikon' }, appIcon(a.icon));
   const tabs = h('div', { class: 'st-tabs', role: 'tablist', 'aria-label': 'Filer' });
   const edHost = h('div', { class: 'st-ed' });
   const consoleList = h('ol', { class: 'st-console', 'aria-label': 'Konsol', 'aria-live': 'polite' });
@@ -199,7 +201,7 @@ async function editor(app, id) {
     if (!dirty) { if (andRun) run(); return; }
     saving = true; dirty = false; status.textContent = 'Gemmer …';
     try {
-      await api.put(`/api/studio/apps/${id}`, { files, name: nameIn.value.trim() || 'Min app', icon: iconBtn.textContent });
+      await api.put(`/api/studio/apps/${id}`, { files, name: nameIn.value.trim() || 'Min app', icon: `i:${pickedIcon}` });
       status.textContent = 'Gemt'; status.classList.remove('is-bad');
       if (andRun) run();
     } catch (e) { dirty = true; status.textContent = 'Ikke gemt'; status.classList.add('is-bad'); toast('Appen kunne ikke gemmes', { type: 'bad', text: e.message }); }
@@ -208,7 +210,7 @@ async function editor(app, id) {
   const changed = () => { dirty = true; status.textContent = 'Ændret'; clearTimeout(saveTimer); saveTimer = setTimeout(() => save(), 900); };
   nameIn.addEventListener('input', changed);
   iconBtn.addEventListener('click', () => {
-    const m = modal({ title: 'Vælg ikon', label: 'App-værksted', size: 420, body: h('div', { class: 'cm-iconpick' }, ICONS.map(x => h('button', { type: 'button', class: 'cm-iconbtn', onclick: () => { iconBtn.textContent = x; m.close(); changed(); } }, x))), actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Luk')] });
+    const m = modal({ title: 'Vælg ikon', label: 'App-værksted', size: 420, body: h('div', { class: 'cm-iconpick' }, APP_ICONS.map(x => h('button', { type: 'button', class: 'cm-iconbtn', 'aria-label': `Ikon ${x}`, onclick: () => { pickedIcon = x; h(clear(iconBtn), null, icon(x)); m.close(); changed(); } }, icon(x)))), actions: [h('button', { class: 'btn', onclick: () => m.close() }, 'Luk')] });
   });
 
   let ed = null;

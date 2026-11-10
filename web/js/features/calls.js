@@ -367,7 +367,7 @@ class Call {
   drawStatus() {
     const n = this.peers.size;
     const connected = [...this.peers.values()].some(p => p.pc.connectionState === 'connected');
-    const music = this.nowPlaying ? ` · 🎵 ${this.nowPlaying.title}${this.nowPlaying.by !== 'dig' ? ` (${this.nowPlaying.by})` : ''}` : '';
+    const music = this.nowPlaying ? ` · ${this.nowPlaying.title}${this.nowPlaying.by !== 'dig' ? ` (${this.nowPlaying.by})` : ''}` : '';
     this.statusEl.textContent = (this.startedAt ? `${fmt((Date.now() - this.startedAt) / 1000)}${this.kind !== 'dm' ? ` · ${n + 1} med` : ''}`
       : this.kind !== 'voice' ? (n && !connected ? 'Forbinder …' : 'Ringer op …') : 'Forbinder …') + music;
     this.el.classList.toggle('is-live', !!this.startedAt);

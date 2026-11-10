@@ -98,7 +98,7 @@ def app_create(req, _):
     files = _clean_files(b.get("files"))
     aid, t = "a" + secrets.token_hex(8), db.now()
     db.q("INSERT INTO studio_apps(id, owner_id, name, icon, description, files, published, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
-         (aid, u["id"], body_str(b, "name", 60, required=True), body_str(b, "icon", 8) or "🧩", body_str(b, "description", 300), json.dumps(files), 0, t, t))
+         (aid, u["id"], body_str(b, "name", 60, required=True), body_str(b, "icon", 24) or "i:grid", body_str(b, "description", 300), json.dumps(files), 0, t, t))
     return 201, {"app": _row(_get(aid, u["id"]), u["id"], files=True)}
 
 
@@ -117,7 +117,7 @@ def app_update(req, params):
     if "name" in b:
         fields["name"] = body_str(b, "name", 60, required=True)
     if "icon" in b:
-        fields["icon"] = body_str(b, "icon", 8) or "🧩"
+        fields["icon"] = body_str(b, "icon", 24) or "i:grid"
     if "description" in b:
         fields["description"] = body_str(b, "description", 300)
     if "published" in b:

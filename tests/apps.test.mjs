@@ -329,6 +329,48 @@ console.log('apps ok');
   console.log(`kodeskolen ok (${lessons} lektioner, ${checked} regex-tjek)`);
 }
 
+{ // Tegnede ikoner og figurer: et forkert navn giver en tom firkant i brugerfladen
+  const fs = await import('node:fs');
+  const iconSrc = fs.readFileSync(new URL('../web/js/core/icons.js', import.meta.url), 'utf8');
+  const iconNames = new Set([...iconSrc.matchAll(/^\s{0,2}([a-zA-Z][\w]*):\s/gm)].map(m => m[1]));
+  assert.ok(iconNames.size > 100, `fandt kun ${iconNames.size} ikoner`);
+
+  const { APP_ICONS, appIconName, TEMPLATES } = await import('../web/js/data/studio-templates.js');
+  for (const n of APP_ICONS) assert.ok(iconNames.has(n), `app-værkstedet vælger et ikon, der ikke findes: ${n}`);
+  for (const t of TEMPLATES) {
+    assert.ok(String(t.icon).startsWith('i:'), `skabelonen ${t.id} bruger ikke husets ikonsæt: ${t.icon}`);
+    assert.ok(iconNames.has(appIconName(t.icon)), `skabelonen ${t.id} peger på et ikon, der ikke findes: ${t.icon}`);
+  }
+  // gamle emoji-ikoner skal stadig kunne oversættes, så ingen app skifter udseende
+  for (const [old, want] of [['🧮', 'calculator'], ['🚀', 'rocket'], ['🧩', 'grid']]) {
+    assert.equal(appIconName(old), want);
+    assert.ok(iconNames.has(want));
+  }
+  assert.equal(appIconName(''), 'grid');
+  assert.equal(appIconName('i:findes-ikke'), 'findes-ikke');  // ukendt navn videregives, så fejlen ses
+
+  const { PICKABLE, BOT_AVATARS, avatarId, botAvatarSvg } = await import('../web/js/core/avatars.js');
+  for (const id of new Set([...PICKABLE, ...BOT_AVATARS])) {
+    if (id === 'gnist') continue;
+    const svg = botAvatarSvg(id, 44);
+    assert.ok(svg.startsWith('<svg') && svg.includes('viewBox="0 0 64 64"'), `figuren ${id} tegnes ikke`);
+    assert.ok(svg.length > 260, `figuren ${id} er mistænkeligt tom (${svg.length} tegn)`);
+  }
+  // hver bot i Skak skal have en figur – og ingen må have en emoji tilbage
+  const { BOTS } = await import('../web/js/features/chess.js');
+  for (const b of BOTS) {
+    assert.ok(!b.avatar, `botten ${b.id} har stadig en emoji-avatar`);
+    assert.ok(b.id === 'gnist' || BOT_AVATARS.includes(b.id), `botten ${b.id} mangler en figur`);
+  }
+  // gamle emoji-avatarer skal stadig oversættes
+  for (const [old, want] of [['⚡', 'tanja'], ['🦊', 'grete'], ['🌊', 'boelge']]) assert.equal(avatarId(old), want);
+  assert.equal(avatarId('a:pind'), 'pind');
+  assert.equal(avatarId('🙃'), '');
+  assert.equal(avatarId(''), '');
+
+  console.log(`tegnede ikoner og figurer ok (${APP_ICONS.length} ikoner, ${PICKABLE.length} figurer, ${BOTS.length} bots)`);
+}
+
 { // Dam
   const D = await import('../web/js/features/checkers.js');
   const g = D.newGame([{ name: 'A' }, { name: 'B' }]);

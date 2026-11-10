@@ -35,7 +35,7 @@ function sqlResult(box, res) {
   if (res.error) {
     box.append(h('div', { class: 'cs-sql-err' }, res.error));
     const why = explainError(res.error);
-    if (why) box.append(h('div', { class: 'cs-why' }, '💡 ', why));
+    if (why) box.append(h('div', { class: 'cs-why' }, icon('spark'), ' ', why));
     return;
   }
   if (!res.tables?.length) { box.append(h('div', { class: 'cs-sql-msg' }, res.changed ? `OK – ${res.changed} række${res.changed === 1 ? '' : 'r'} ændret.` : 'OK – ingen rækker at vise.')); return; }

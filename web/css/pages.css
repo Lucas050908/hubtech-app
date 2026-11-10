@@ -4906,3 +4906,10 @@ button.sv-chip { cursor: pointer; }
   .nb-canvas { min-width: 560px; }
   .nb-todos-btn { margin-top: 8px; }
 }
+
+/* ── Forbindelser: tegnede ikoner i stedet for emojis ── */
+.hl-big { display: grid; place-items: center; }
+.hl-big svg { width: 1em; height: 1em; }
+.hl-logo { display: grid; place-items: center; }
+.hl-logo svg { width: 22px; height: 22px; }
+.cs-why svg { width: 16px; height: 16px; vertical-align: -3px; }

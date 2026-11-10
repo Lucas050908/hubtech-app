@@ -296,7 +296,7 @@
 .cm-chan-ic svg { width: 18px; height: 18px; color: var(--text-3); }
 .cm-log { display: grid; gap: 4px; max-height: 260px; overflow-y: auto; font-size: var(--fs-sm); }
 .cm-iconpick { display: flex; gap: 6px; flex-wrap: wrap; }
-.cm-iconbtn { width: 44px; height: 44px; border-radius: 12px; font-size: 22px; border: 1px solid var(--line); background: var(--glass-soft); }
+.cm-iconbtn { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--glass-soft); }
 .cm-iconbtn[aria-pressed="true"] { border-color: var(--app); background: color-mix(in srgb, var(--app) 25%, transparent); }
 
 /* share to chat + pick lists */
@@ -927,3 +927,10 @@ body.ai-page .ai-fab { display: none; }
 .ai-attached span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 
 .ai-msg:has(.ai-chart) { width: min(620px, 100%); max-width: min(620px, 100%) !important; }
+
+/* ── app-værkstedets ikoner er tegnede, ikke emojis ── */
+.cm-iconbtn svg { width: 22px; height: 22px; }
+.st-icon svg { width: 24px; height: 24px; }
+.st-icon-btn svg { width: 20px; height: 20px; }
+.st-tpl-ic { display: grid; place-items: center; }
+.st-tpl-ic svg { width: 22px; height: 22px; }

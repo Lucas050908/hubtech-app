@@ -25,8 +25,23 @@ button:active { transform: scale(.97); }
 input { font: inherit; padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); background: transparent; color: var(--text); }
 `;
 
+/** Ikonerne man kan vælge til sin app – navne fra HUBTECHs eget ikonsæt (core/icons.js). */
+export const APP_ICONS = ['grid', 'check', 'calculator', 'target', 'timer', 'gamepad', 'chart', 'palette',
+  'music', 'note', 'cloud', 'tool', 'spark', 'rocket', 'book', 'cart'];
+
+/** Ikoner gemt som emoji, før værkstedet brugte HUBTECHs eget sæt. */
+const OLD_APP_ICONS = { '🧩': 'grid', '✅': 'check', '🧮': 'calculator', '🎯': 'target', '⏱️': 'timer', '🎮': 'gamepad',
+  '📊': 'chart', '🎨': 'palette', '🎵': 'music', '📝': 'note', '🌦️': 'cloud', '🔧': 'tool', '💡': 'spark',
+  '🚀': 'rocket', '📚': 'book', '🛒': 'cart' };
+
+/** "i:chart", et gammelt emoji eller ingenting → ikonets navn. */
+export const appIconName = (v) => {
+  const s = String(v || '');
+  return (s.startsWith('i:') ? s.slice(2) : OLD_APP_ICONS[s]) || 'grid';
+};
+
 export const TEMPLATES = [
-  { id: 'blank', name: 'Tom app', icon: '🧩', description: 'En tom side at bygge videre på.', files: {
+  { id: 'blank', name: 'Tom app', icon: 'i:grid', description: 'En tom side at bygge videre på.', files: {
     'index.html': page('Min app', `  <main class="card">
     <h1>Hej verden 👋</h1>
     <p id="msg">Ret i filerne, og tryk Kør.</p>
@@ -42,7 +57,7 @@ btn.addEventListener('click', () => {
 });
 `,
   } },
-  { id: 'todo', name: 'To-do-liste', icon: '✅', description: 'Opgaver der gemmes, så de er der næste gang.', files: {
+  { id: 'todo', name: 'To-do-liste', icon: 'i:check', description: 'Opgaver der gemmes, så de er der næste gang.', files: {
     'index.html': page('To-do', `  <main class="card">
     <h1>Mine opgaver</h1>
     <form id="form"><input id="text" placeholder="Ny opgave" autocomplete="off" required> <button>Tilføj</button></form>
@@ -85,7 +100,7 @@ document.getElementById('form').addEventListener('submit', (e) => {
 draw();
 `,
   } },
-  { id: 'calc', name: 'Lommeregner', icon: '🧮', description: 'Knapper, tal og regnestykker.', files: {
+  { id: 'calc', name: 'Lommeregner', icon: 'i:calculator', description: 'Knapper, tal og regnestykker.', files: {
     'index.html': page('Lommeregner', `  <main class="card calc">
     <output id="screen">0</output>
     <div class="keys" id="keys"></div>
@@ -121,7 +136,7 @@ function press(k) {
 addEventListener('keydown', (e) => { if (/^[0-9+\\-*/(),]$/.test(e.key)) press(e.key); if (e.key === 'Enter') press('='); if (e.key === 'Backspace') press('⌫'); });
 `,
   } },
-  { id: 'game', name: 'Reaktionsspil', icon: '🎯', description: 'Klik på målet så hurtigt du kan – med rekord.', files: {
+  { id: 'game', name: 'Reaktionsspil', icon: 'i:target', description: 'Klik på målet så hurtigt du kan – med rekord.', files: {
     'index.html': page('Reaktionsspil', `  <main class="card">
     <h1>Reaktionsspil</h1>
     <p>Point: <b id="score">0</b> · Tid: <b id="time">20</b> s · Rekord: <b id="best">0</b></p>
@@ -156,7 +171,7 @@ document.getElementById('start').addEventListener('click', () => {
 });
 `,
   } },
-  { id: 'timer', name: 'Stopur', icon: '⏱️', description: 'Start, stop, omgange.', files: {
+  { id: 'timer', name: 'Stopur', icon: 'i:timer', description: 'Start, stop, omgange.', files: {
     'index.html': page('Stopur', `  <main class="card">
     <h1>Stopur</h1>
     <div id="clock">00:00,00</div>

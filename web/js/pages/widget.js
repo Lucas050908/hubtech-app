@@ -90,7 +90,7 @@ export async function renderWidget() {
         open.length ? h('ul', { class: 'wg-list' }, open.slice(0, 8).map(x => h('li', { class: x.due < tk ? 'is-late' : null },
           h('button', { type: 'button', class: 'wg-check', 'aria-label': `Færdig: ${x.title}`, onclick: () => completeTask(x) }),
           h('span', { class: 'wg-what' }, h('b', null, x.title), h('span', null, x.due < tk ? 'Overskredet' : x.dueTime ? `Kl. ${x.dueTime}` : 'I dag')))))
-          : h('p', { class: 'faint wg-none' }, 'Ingen deadlines i dag. 🎉')),
+          : h('p', { class: 'faint wg-none' }, 'Ingen deadlines i dag.')),
       habits.length ? h('section', { class: 'wg-sec' }, h('h2', null, icon('flame'), 'Vaner', h('small', null, `${habits.filter(x => x.days.includes(tk)).length}/${habits.length}`)),
         h('div', { class: 'wg-habits' }, habits.map(x => h('button', { type: 'button', class: ['wg-habit', x.days.includes(tk) && 'is-on'], 'aria-pressed': String(x.days.includes(tk)), onclick: () => toggleHabit(x) }, h('span', { 'aria-hidden': 'true' }, x.emoji || '⭐'), x.name)))) : null,
       t.tomorrowCount ? h('p', { class: 'faint wg-tomorrow' }, `I morgen: ${t.tomorrowCount} ${t.tomorrowCount === 1 ? 'aftale eller deadline' : 'aftaler og deadlines'}.`) : null);
