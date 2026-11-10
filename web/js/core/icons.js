@@ -129,6 +129,8 @@ const P = {
   plugOff: '<path d="M9 3v3M15 3v4.5"/><path d="M17.5 7.5V11a5.5 5.5 0 0 1-1 3.2M8.3 15.2A5.5 5.5 0 0 1 6.5 11V7.5h4"/><path d="M12 16.5V21M3 3l18 18"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>',
   terminal: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7 9.5 3 2.5-3 2.5M12.5 15H17"/>',
+  wifi: '<path d="M2.5 9.5a14 14 0 0 1 19 0"/><path d="M5.5 13a9.5 9.5 0 0 1 13 0"/><path d="M8.7 16.3a5 5 0 0 1 6.6 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/>',
+  scissors: '<circle cx="6" cy="6.5" r="3"/><circle cx="6" cy="17.5" r="3"/><path d="M20 4.5 8.2 15.4M8.2 8.6 20 19.5"/>',
   branch: '<circle cx="6.5" cy="5.5" r="2"/><circle cx="6.5" cy="18.5" r="2"/><circle cx="17.5" cy="7.5" r="2"/><path d="M6.5 7.5v9M17.5 9.5c0 4-5 3.5-9.5 7"/>',
   commit: '<circle cx="12" cy="12" r="3.5"/><path d="M3 12h5.5M15.5 12H21"/>',
   file: '<path d="M6.5 3h7l5 5v12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M13.5 3v5h5"/>',

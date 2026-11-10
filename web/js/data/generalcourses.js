@@ -187,5 +187,51 @@ const ai = {
   ],
 };
 
-export const GENERAL_COURSES = [linux, hardware, sheets, cloud, mobile, customer, smallbiz, ai];
+const wifi = {
+  id: 'wifi', title: 'Wi-Fi der virker', short: 'Wi-Fi', icon: 'wifi', group: 'general', app: 'learning',
+  intro: 'Bånd, placering, kanaler, mesh og access points – og hvad du gør, når nettet er langsomt eller falder ud.',
+  days: [
+    { t: 'Bånd og generationer', g: 'Du kan forklare forskellen på 2,4, 5 og 6 GHz og vælge det rigtige.', r: [['IT-ordbog: netværk', '#/learn/course/it-ordbog/day/2'], ['Netværk fra bunden', '#/learn/course/netvaerk']],
+      l: ['2,4 GHz når længst og går bedst gennem vægge, men er langsomt og fyldt med naboer, mikrobølgeovne og Bluetooth.', '5 GHz er hurtigere og har flere kanaler, men rækker kortere. 6 GHz (Wi-Fi 6E og 7) er endnu hurtigere – på kort afstand og kun med nyere enheder.', 'Wi-Fi 4, 5, 6 og 7 er generationer (802.11n, ac, ax og be). Både router og enhed skal kunne den nye generation, før det giver noget.', 'Tallet på æsken er en teoretisk tophastighed. I praksis får du ofte under det halve – og mindre, jo længere væk du er.', 'Mange smarte enheder og printere kan kun 2,4 GHz. Sørg for, at de har et 2,4 GHz-net, de kan finde.'],
+      d: ['Find ud af, hvilken Wi-Fi-generation din router og din telefon har.', 'Mål hastigheden tæt på routeren og i det fjerneste rum.', 'Lav en liste over enheder derhjemme, der kun kan 2,4 GHz.'],
+      q: [['Hvilket bånd når længst gennem vægge?', '2,4 GHz.'], ['Hvorfor får du ikke den hastighed, der står på routerens æske?', 'Det er en teoretisk tophastighed – afstand, vægge og andre enheder trækker ned.']] },
+    { t: 'Placering, kanaler og forstyrrelser', g: 'Du kan placere en router rigtigt og vælge en god kanal.', r: [['Tjeklister', '#/apps/checklists']],
+      l: ['Sæt routeren højt, frit og midt i boligen – ikke i et skab, bag tv’et eller i kælderen.', 'Beton, mursten, gulvvarme, spejle og akvarier dæmper signalet meget. Træ og gips dæmper kun lidt.', 'På 2,4 GHz overlapper kanalerne. Brug kun kanal 1, 6 eller 11, og vælg den med færrest naboer.', 'På 5 GHz er der mange kanaler. Lad routeren vælge selv, eller prøv en anden kanal, hvis nettet er ustabilt.', 'En bredere kanal (80 eller 160 MHz) er hurtigere, men mere sårbar over for naboer. I en opgang er 40 eller 80 MHz ofte mest stabilt.'],
+      d: ['Tegn boligen, og markér routeren og de steder, hvor nettet er dårligt.', 'Se med en Wi-Fi-analyse-app, hvilke kanaler naboerne bruger.', 'Flyt routeren højere op og mere frit, og mål igen.'],
+      q: [['Hvilke kanaler bruger man på 2,4 GHz?', '1, 6 eller 11 – de overlapper ikke hinanden.'], ['Nævn to ting, der dæmper Wi-Fi meget.', 'Fx beton og gulvvarme (også mursten, spejle og vand).']] },
+    { t: 'Større dækning: kabel, access points og mesh', g: 'Du kan foreslå den rigtige løsning til et hus med dårlig dækning.', r: [['IT-ordbog: netværk', '#/learn/course/it-ordbog/day/2']],
+      l: ['Et kabel er altid bedst til det, der står fast: stationær pc, tv, printer og spillekonsol. Så er der mere luft til resten.', 'Et access point (AP) er et ekstra Wi-Fi-punkt, der er forbundet til routeren med kabel. Det giver den bedste dækning.', 'Mesh er flere enheder, der taler trådløst sammen og giver ét netværk i hele huset. Nemt at sætte op – og bedst, når enhederne står, så de kan nå hinanden med godt signal.', 'En simpel repeater kan halvere hastigheden, fordi den både modtager og sender på samme kanal. Vælg hellere mesh eller et kablet access point.', 'Brug samme netværksnavn (SSID) og kode på alle punkter, så enhederne selv skifter til det bedste.'],
+      d: ['Find ud af, hvilke enheder derhjemme der kan få kabel.', 'Lav et forslag til en kunde med et hus i to plan: mesh eller access points?', 'Find, hvor man ser signalet mellem enhederne i en mesh-app.'],
+      q: [['Hvad er forskellen på et access point og mesh?', 'Et access point er forbundet med kabel; mesh-enheder taler trådløst sammen.'], ['Hvorfor er en simpel repeater ofte en dårlig løsning?', 'Den kan halvere hastigheden, fordi den modtager og sender på samme kanal.']] },
+    { t: 'Sikkerhed og fejlfinding', g: 'Du kan sikre et Wi-Fi og finde ud af, hvorfor det driller.', r: [['Lav en QR-kode til gæstenettet', '#/apps/qrtool'], ['Øv i Netværkslabbet', '#/learn/labs/network']],
+      l: ['Brug WPA2 eller WPA3 og en lang kode. Skift også koden til routerens administration – den står ofte på en mærkat.', 'Lav et gæstenetværk til besøgende og smarte enheder, så de ikke kan nå computere og printere.', 'Slå WPS fra, hvis du ikke bruger det – knappen er en genvej uden om koden.', 'Falder nettet ud: genstart router og enhed, tjek om det kun er én enhed, og test med kabel. Virker kablet, er fejlen i det trådløse; virker det heller ikke, er det forbindelsen udefra.', 'Opdatér routerens firmware. Udbyderens router opdateres som regel af sig selv; din egen skal du selv holde øje med.'],
+      d: ['Lav et gæstenetværk, og del det med en QR-kode fra QR-koder-appen.', 'Skift koden til routerens administration.', 'Skriv en fejlfindingsliste: “Wi-Fi falder ud om aftenen”.'],
+      q: [['Hvorfor have et gæstenetværk?', 'Så gæster og smarte enheder ikke kan nå computere og printere.'], ['Kablet virker, men Wi-Fi gør ikke. Hvor er fejlen?', 'I det trådløse: placering, kanal, kode eller selve Wi-Fi-delen af routeren.']] },
+  ],
+};
+
+const powershell = {
+  id: 'powershell', title: 'PowerShell: de første skridt', short: 'PowerShell', icon: 'terminal', group: 'general', app: 'commands',
+  intro: 'Windows’ moderne kommandolinje: find kommandoer, send resultater videre, arbejd med filer og netværk – og skriv dit første script.',
+  days: [
+    { t: 'Kommandoer og hjælp', g: 'Du kan finde og køre en kommando i PowerShell og slå den op.', r: [['Kommandoer', '#/apps/commands'], ['Kommandoer til IT-support', '#/learn/course/kommandoer']],
+      l: ['PowerShell er Windows’ moderne kommandolinje. Højreklik på Start, og vælg Terminal – så åbner PowerShell.', 'Kommandoerne hedder cmdlets og er bygget som Verbum-Navneord: Get-Process, Stop-Service, Set-Date.', 'Get-Command *printer* finder kommandoer, og Get-Help Get-Printer -Examples viser eksempler.', 'Tab gør kommandoer og parametre færdige, og pil op henter den forrige.', 'De gamle kommandoer virker stadig: ipconfig, ping og cd. dir, ls og cat er genveje (aliaser) til PowerShells egne.'],
+      d: ['Åbn Terminal, og kør Get-Date og Get-Process.', 'Find alle kommandoer med “Service” i navnet med Get-Command.', 'Læs eksemplerne til Get-ChildItem med Get-Help.'],
+      q: [['Hvordan er en cmdlet bygget op?', 'Verbum-Navneord, fx Get-Process.'], ['Hvordan ser du eksempler på en kommando?', 'Get-Help kommando -Examples.']] },
+    { t: 'Pipeline: send resultatet videre', g: 'Du kan sortere, filtrere og gemme resultatet af en kommando.', r: [['Kodestumper', '#/learn/snippets']],
+      l: ['PowerShell sender objekter – ikke bare tekst – videre med tegnet | . Hvert objekt har egenskaber, du kan vælge og sortere efter.', { code: 'Get-Process | Sort-Object CPU -Descending | Select-Object -First 5' }, 'Linjen herover viser de fem processer, der har brugt mest CPU.', 'Where-Object filtrerer: Get-Service | Where-Object Status -eq "Running" viser kun de tjenester, der kører.', 'Get-Member viser, hvilke egenskaber et objekt har: Get-Process | Get-Member.', 'Gem resultatet med Export-Csv rapport.csv -NoTypeInformation eller Out-File liste.txt til sidst i linjen.'],
+      d: ['Vis de fem processer, der bruger mest hukommelse (sortér efter WorkingSet).', 'Vis alle tjenester, der er stoppet.', 'Gem listen over installerede printere (Get-Printer) i en CSV-fil.'],
+      q: [['Hvad sender PowerShell videre i en pipeline?', 'Objekter med egenskaber – ikke kun tekst.'], ['Hvad gør Where-Object?', 'Filtrerer, så kun de objekter, der opfylder betingelsen, kommer videre.']] },
+    { t: 'Filer, programmer og netværk', g: 'Du kan bruge PowerShell til de opgaver, du ellers klikker dig til.', r: [['Kommandoer', '#/apps/commands']],
+      l: ['Get-ChildItem (dir eller ls) viser filer; -Recurse tager undermapper med, og -Filter *.log vælger filtype.', 'Copy-Item, Move-Item, Remove-Item og New-Item kopierer, flytter, sletter og opretter. Med -WhatIf viser kommandoen, hvad der ville ske – uden at gøre det.', 'Test-NetConnection 192.168.1.50 -Port 9100 tester, om en port svarer – fx på en printer.', 'Get-NetIPConfiguration viser adresse, gateway og DNS, ligesom ipconfig.', 'winget install navn installerer et program, og winget upgrade --all opdaterer dem, du har.'],
+      d: ['Find alle filer over 100 MB i din brugermappe (Get-ChildItem -Recurse | Where-Object Length -gt 100MB).', 'Prøv Remove-Item med -WhatIf på en testmappe.', 'Test, om din printer svarer på port 9100.'],
+      q: [['Hvad gør -WhatIf?', 'Viser, hvad kommandoen ville gøre – uden at gøre det.'], ['Hvordan tester du, om en port svarer?', 'Test-NetConnection adresse -Port nummer.']] },
+    { t: 'Dit første script', g: 'Du kan skrive, køre og forstå et lille script.', r: [['Gem dine scripts i Kodestumper', '#/learn/snippets']],
+      l: ['Et script er en tekstfil, der ender på .ps1. Kør det med .\\script.ps1 fra den mappe, det ligger i.', 'Windows blokerer scripts som standard. Set-ExecutionPolicy RemoteSigned -Scope CurrentUser tillader dine egne – og kræver en signatur på dem, du har hentet på nettet.', 'Variabler starter med $: $navn = "PC-01". Tekst i dobbelte anførselstegn sætter variablen ind: "Hej $navn".', 'foreach ($pc in $liste) { … } gentager for hver ting, og if ($x -gt 5) { … } vælger. Sammenligninger hedder -eq, -ne, -gt og -lt.', 'Læs et script, før du kører det – især hvis det er hentet på nettet eller skrevet af en AI.'],
+      d: ['Skriv et script, der viser computernavn, Windows-version og ledig plads på C:.', 'Lad scriptet pinge tre adresser fra en liste og skrive, hvilke der svarer.', 'Gem scriptet i Kodestumper, så du har det næste gang.'],
+      q: [['Hvorfor kan et nyt script ikke køre på en frisk Windows?', 'Execution policy blokerer scripts, indtil du tillader dem (fx RemoteSigned for din egen bruger).'], ['Hvordan skriver man “større end” i PowerShell?', '-gt.']] },
+  ],
+};
+
+export const GENERAL_COURSES = [linux, hardware, wifi, powershell, sheets, cloud, mobile, customer, smallbiz, ai];
 export const GENERAL_GROUP = ['general', 'Almen IT-viden'];
