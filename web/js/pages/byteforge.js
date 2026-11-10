@@ -23,7 +23,8 @@ const FEATURES = [
 
 const INSTALL = {
   linux: [['Download og udpak', 'unzip ByteForge.zip && cd ByteForge'], ['Kør installeren', 'sudo ./install.sh'], ['Åbn browseren', 'http://127.0.0.1:8080']],
-  windows: [['Download og udpak', 'Højreklik → "Udpak alt"'], ['Start serveren', 'Dobbeltklik på: start.bat'], ['Log ind', 'http://127.0.0.1:8080']],
+  windows: [['Download og udpak', 'Højreklik → "Udpak alt"'], ['Start serveren', 'Dobbeltklik på: start.bat'],
+    ['Er .bat blokeret?', 'PowerShell: cd ByteForge og python byteforge-server.py'], ['Log ind', 'http://127.0.0.1:8080']],
   macos: [['Download og udpak', 'unzip ByteForge.zip && cd ByteForge'], ['Kør installeren', './install.sh'], ['Åbn browseren', 'http://127.0.0.1:8080']],
 };
 
