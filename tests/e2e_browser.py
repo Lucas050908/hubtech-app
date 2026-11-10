@@ -2184,8 +2184,11 @@ async def main():
         await cb.wait_for_selector(".ring", timeout=30000)
         check("opkald: det ringer hos vennen", True)
         await cb.click(".ring [aria-label='Tag imod med video']")
+        # WebRTC i en headless browser kan være længe om at få billeder begge veje, især med tre
+        # parter. 60 sekunder i stedet for 20: en forbindelse, der aldrig kommer op, fejler stadig,
+        # men en langsom-men-virkende gør ikke. Løkken stopper straks, når den er forbundet.
         ok = False
-        for _ in range(40):
+        for _ in range(120):
             va = await ca.evaluate("[...document.querySelectorAll('.call-tile:not(.is-self) video')].some(v => v.videoWidth > 0)")
             vb = await cb.evaluate("[...document.querySelectorAll('.call-tile:not(.is-self) video')].some(v => v.videoWidth > 0)")
             if va and vb and ":" in (await ca.text_content(".call-status") or ""):
@@ -2210,7 +2213,7 @@ async def main():
         await cb.wait_for_selector(".cm-voice-u", timeout=10000)
         await cb.click(".cm-voice .cm-chan")
         ok = False
-        for _ in range(40):
+        for _ in range(120):
             if "2 med" in (await ca.text_content(".call-status") or "") and await ca.locator(".call-tile:not(.is-self)").count() == 1:
                 ok = True; break
             await ca.wait_for_timeout(500)
@@ -2239,7 +2242,7 @@ async def main():
         await cb.wait_for_selector(".ring", timeout=30000); await cs.wait_for_selector(".ring", timeout=30000)
         await cb.click(".ring [aria-label='Tag imod']"); await cs.click(".ring [aria-label='Tag imod']")
         ok = False
-        for _ in range(50):
+        for _ in range(120):
             if "3 med" in (await ca.text_content(".call-status") or "") and await ca.locator(".call-tile:not(.is-self)").count() == 2 and await cs.locator(".call-tile:not(.is-self)").count() == 2:
                 ok = True; break
             await ca.wait_for_timeout(500)
